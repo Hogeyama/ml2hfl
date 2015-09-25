@@ -1,0 +1,1890 @@
+MoCHi: Model Checker for Higher-Order Programs
+  Build: _af132b7 (after 2015-07-27 18:08:37 +0900)
+  FPAT version: af132b7
+  TRecS version: 1.33
+  HorSat version: 0.99
+  OCaml version: 4.02.1
+  Command: ./mochi.opt -ignore-conf -color -fair-termination -bool-init-empty -fpat '-wp-max 2 -neg-pred' 
+           test_fair_termination/repeat.ml -rank-widen -horsat -expand-set-flag
+
+parsed:
+ let event_1008 s_1009 = () in
+ let rec repeat_1010 g_1011 = let u_2020 = g_1011 (rand_int ()) in
+                              repeat_1010 g_1011 in
+ let rec f_1012 x_1013 = if x_1013 > 0 then f_1012 (x_1013 - 1) else event_1008 "A" in
+ let main_1014 = repeat_1010 f_1012 in
+ ()
+
+FAIRNESS: {(A, Never)}
+
+###set_main:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   let s_2085 = fst s__r_g_2084 in
+   let u_2040 = snd s__r_g_2084 in
+   repeat_2039 s_2085 set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 = let u_2106 = if not (#0 s_2098) then assert false in
+                  rand_int () = 0 in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2102 = fst sp_2114 in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 s_2102 true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2123 = fst sp_2122 in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0 then f_1012 s_2123 true p_x_2125 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let s_2133 = fst s__r_repeat_2132 in
+ let main_1014 = snd s__r_repeat_2132 in
+ let s_2137 = fst (s_2133, main_1014) in
+ let main_2068 = snd (s_2133, main_1014) in
+ main_2068
+
+###beta_reduce_trivial:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   let s_2085 = fst s__r_g_2084 in
+   repeat_2039 s_2085 set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 = let u_2106 = if not (#0 s_2098) then assert false in
+                  rand_int () = 0 in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2102 = fst sp_2114 in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 s_2102 true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2123 = fst sp_2122 in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0 then f_1012 s_2123 true p_x_2125 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let s_2133 = fst s__r_repeat_2132 in
+ let main_1014 = snd s__r_repeat_2132 in
+ let main_2068 = snd (s_2133, main_1014) in
+ main_2068
+
+###inline:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   repeat_2039 (fst s__r_g_2084) set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 = let u_2106 = if not (#0 s_2098) then assert false in
+                  rand_int () = 0 in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 (fst sp_2114) true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0
+     then
+       f_1012 (fst sp_2122) true p_x_2125 (x_1013 - 1)
+     else
+       ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let main_2068 = snd (fst s__r_repeat_2132, snd s__r_repeat_2132) in
+ main_2068
+
+###CPS:
+ (let rec repeat_2039 s_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_2388 =
+    let s__r_g_2084 k_repeat_s__r_g_2408 =
+      rand_int_cps () (fun x_2413 -> (g_1011 s_2079 set_flag_2080 0) x_2413 k_repeat_s__r_g_2408)
+    in
+    s__r_g_2084 (fun s__r_g_2451 -> (repeat_2039 (fst s__r_g_2451) set_flag_2080 0) g_1011 k_repeat_2388)
+  in
+  let rec f_1012 s_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 =
+    if set_flag_2099
+    then
+      let x_2101 k_f_x_2471 =
+        let u_2106 k_f_x_u_2484 = if not (#0 s_2098) then <|fail|> () k_f_x_u_2484 else k_f_x_u_2484 () in
+        u_2106 (fun u_2501 -> rand_int_cps () (fun x_2489 -> k_f_x_2471 (x_2489 = 0)))
+      in
+      x_2101
+        (fun x_2563 ->
+           let sp_2114 k_f_sp_2529 =
+             if x_2563 then k_f_sp_2529 ((false), (x_1013)) else k_f_sp_2529 (s_2098, (p_x_2100))
+           in
+           sp_2114
+             (fun sp_2562 ->
+                if x_1013 > 0
+                then
+                  (f_1012 (fst sp_2562) true (#0 (snd sp_2562))) (x_1013 - 1) k_f_2467
+                else
+                  k_f_2467 ((true), ())))
+    else
+      let sp_2122 k_f_sp_2591 = k_f_sp_2591 ((false), (x_1013)) in
+      sp_2122
+        (fun sp_2624 ->
+           if x_1013 > 0
+           then
+             (f_1012 (fst sp_2624) true (#0 (snd sp_2624))) (x_1013 - 1) k_f_2467
+           else
+             k_f_2467 ((true), ()))
+  in
+  let s__r_repeat_2132 k_s__r_repeat_2735 = (((repeat_2039 (false)) false) 0) f_1012 k_s__r_repeat_2735 in
+  s__r_repeat_2132
+    (fun s__r_repeat_2765 ->
+       let main_2068 k_main_2756 = k_main_2756 (snd s__r_repeat_2765) in
+       main_2068 (fun main_2764 -> {end}))
+  # [ACPS])
+
+###remove_pair:
+ (let rec repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_2388 =
+    let s__r_g_2084 k_repeat_s__r_g_2408 =
+      rand_int_cps () (fun x_2413 -> g_1011 s0_2079 set_flag_2080 0 x_2413 k_repeat_s__r_g_2408)
+    in
+    s__r_g_2084 (fun s__r_g00_2451 s__r_g1_2451 -> repeat_2039 s__r_g00_2451 set_flag_2080 0 g_1011 k_repeat_2388)
+  in
+  let rec f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 =
+    if set_flag_2099
+    then
+      let x_2101 k_f_x_2471 =
+        let u_2106 k_f_x_u_2484 = if not s0_2098 then <|fail|> () k_f_x_u_2484 else k_f_x_u_2484 () in
+        u_2106 (fun u_2501 -> rand_int_cps () (fun x_2489 -> k_f_x_2471 (x_2489 = 0)))
+      in
+      x_2101
+        (fun x_2563 ->
+           let sp_2114 k_f_sp_2529 =
+             if x_2563 then k_f_sp_2529 false x_1013 else k_f_sp_2529 s0_2098 p_x_2100
+           in
+           sp_2114
+             (fun sp00_2562 sp10_2562 ->
+                if x_1013 > 0
+                then
+                  f_1012 sp00_2562 true sp10_2562 (x_1013 - 1) k_f_2467
+                else
+                  k_f_2467 true ()))
+    else
+      if x_1013 > 0 then f_1012 false true x_1013 (x_1013 - 1) k_f_2467 else k_f_2467 true ()
+  in
+  repeat_2039 false false 0 f_1012 (fun s__r_repeat00_2765 s__r_repeat1_2765 -> {end}) # 
+  [ACPS])
+
+Program with abstraction types (CEGAR-cycle 0)::
+Main: main_3281
+  main_3281 -> (repeat_2039 false false 0 f_1012 f_3288).
+  br_f_3289 b_3290 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when b_3290 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_2467).
+  br_f_3289 b_3290 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when (not b_3290) -> (k_f_2467 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_3286 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_2467)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when (not set_flag_2099) ->
+      (br_f_3289 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467).
+  f_3288 s__r_repeat00_2765 s__r_repeat1_2765 -> end.
+  f_f_3286 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_2467 x_2563 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563
+       (f_f_3287 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_2467)).
+  f_f_3287 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_2467 sp00_2562 sp10_2562 when 
+      (x_1013 > 0) -> (f_1012 sp00_2562 true sp10_2562 (x_1013 - 1) k_f_2467).
+  f_f_3287 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_2467 sp00_2562 sp10_2562 when 
+      (not (x_1013 > 0)) -> (k_f_2467 true ()).
+  f_repeat_3283 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_2388 s__r_g00_2451 s__r_g1_2451 ->
+      (repeat_2039 s__r_g00_2451 set_flag_2080 0 g_1011 k_repeat_2388).
+  f_s__r_g_3282 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_2408 x_2413 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_2413 k_repeat_s__r_g_2408).
+  f_x_3284 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_2471 u_2501 ->
+      (rand_int (f_x_3285 p_x_2100 s0_2098 set_flag_2099 u_2501 x_1013 k_f_x_2471)).
+  f_x_3285 p_x_2100 s0_2098 set_flag_2099 u_2501 x_1013 k_f_x_2471 x_2489 -> (k_f_x_2471 (x_2489 = 0)).
+  fail_3291 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_2388 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_3283 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_2388)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_2408 ->
+      (rand_int (f_s__r_g_3282 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_2408)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_sp_2529 when x_2563 -> (k_f_sp_2529 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_sp_2529 when (not x_2563) -> (k_f_sp_2529 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_2484 when (not s0_2098) -> (fail_3291 true k_f_x_u_2484).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_2484 when (not (not s0_2098)) -> (k_f_x_u_2484 ()).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_2471 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_3284 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_2471)).
+Types:
+  main_3281 : X
+  br_f_3289 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_f_3287 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  fail_3291 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 bool -> int -> (bool -> bool -> int -> int -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+
+(0-1) Abstracting ... DONE!
+
+(0-2) Checking HORS ... DONE!
+
+Error trace::
+  main_3281 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_3282 ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  fail_3291 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 0; 0; 0; 0
+
+(0-3) Checking counterexample ... DONE!
+
+(0-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 1)::
+Main: main_3281
+  main_3281 -> (repeat_2039 false false 0 f_1012 f_3288).
+  br_f_3289 b_3290 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when b_3290 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_2467).
+  br_f_3289 b_3290 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when (not b_3290) -> (k_f_2467 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_3286 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_2467)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467 when (not set_flag_2099) ->
+      (br_f_3289 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_2467).
+  f_3288 s__r_repeat00_2765 s__r_repeat1_2765 -> end.
+  f_f_3286 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_2467 x_2563 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563
+       (f_f_3287 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_2467)).
+  f_f_3287 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_2467 sp00_2562 sp10_2562 when 
+      (x_1013 > 0) -> (f_1012 sp00_2562 true sp10_2562 (x_1013 - 1) k_f_2467).
+  f_f_3287 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_2467 sp00_2562 sp10_2562 when 
+      (not (x_1013 > 0)) -> (k_f_2467 true ()).
+  f_repeat_3283 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_2388 s__r_g00_2451 s__r_g1_2451 ->
+      (repeat_2039 s__r_g00_2451 set_flag_2080 0 g_1011 k_repeat_2388).
+  f_s__r_g_3282 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_2408 x_2413 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_2413 k_repeat_s__r_g_2408).
+  f_x_3284 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_2471 u_2501 ->
+      (rand_int (f_x_3285 p_x_2100 s0_2098 set_flag_2099 u_2501 x_1013 k_f_x_2471)).
+  f_x_3285 p_x_2100 s0_2098 set_flag_2099 u_2501 x_1013 k_f_x_2471 x_2489 -> (k_f_x_2471 (x_2489 = 0)).
+  fail_3291 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_2388 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_3283 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_2388)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_2408 ->
+      (rand_int (f_s__r_g_3282 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_2408)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_sp_2529 when x_2563 -> (k_f_sp_2529 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_2563 k_f_sp_2529 when (not x_2563) -> (k_f_sp_2529 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_2484 when (not s0_2098) -> (fail_3291 true k_f_x_u_2484).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_2484 when (not (not s0_2098)) -> (k_f_x_u_2484 ()).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_2471 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_3284 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_2471)).
+Types:
+  main_3281 : X
+  br_f_3289 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> x_3:bool -> int -> int[(not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_3287 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  fail_3291 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+
+(1-1) Abstracting ... DONE!
+
+(1-2) Checking HORS ... DONE!
+
+Error trace::
+  main_3281 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_3282 ... --> 
+  f_1012 [2/2] ... --> 
+  br_f_3289 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  fail_3291 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 1; 0; 0; 0; 0; 0
+
+(1-3) Checking counterexample ... DONE!
+
+(1-4) Discovering ranking function ... 
+DONE!
+
+###set_main:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   let s_2085 = fst s__r_g_2084 in
+   let u_2040 = snd s__r_g_2084 in
+   repeat_2039 s_2085 set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 =
+       let u_2106 =
+         if not (#0 s_2098)
+         then
+           let u_3965 = if (1 * p_x_2100) + 0 > (1 * x_1013) + 0 then () else _|_ () in
+           assert ((1 * x_1013) + 0 >= 0)
+       in
+       rand_int () = 0
+     in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2102 = fst sp_2114 in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 s_2102 true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2123 = fst sp_2122 in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0 then f_1012 s_2123 true p_x_2125 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let s_2133 = fst s__r_repeat_2132 in
+ let main_1014 = snd s__r_repeat_2132 in
+ let s_2137 = fst (s_2133, main_1014) in
+ let main_2068 = snd (s_2133, main_1014) in
+ main_2068
+
+###beta_reduce_trivial:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   let s_2085 = fst s__r_g_2084 in
+   repeat_2039 s_2085 set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 =
+       let u_2106 =
+         if not (#0 s_2098)
+         then
+           let u_3965 = if (1 * p_x_2100) + 0 > (1 * x_1013) + 0 then () else _|_ () in
+           assert ((1 * x_1013) + 0 >= 0)
+       in
+       rand_int () = 0
+     in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2102 = fst sp_2114 in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 s_2102 true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2123 = fst sp_2122 in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0 then f_1012 s_2123 true p_x_2125 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let s_2133 = fst s__r_repeat_2132 in
+ let main_1014 = snd s__r_repeat_2132 in
+ let main_2068 = snd (s_2133, main_1014) in
+ main_2068
+
+###inline:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   repeat_2039 (fst s__r_g_2084) set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 =
+       let u_2106 =
+         if not (#0 s_2098)
+         then
+           let u_3965 = if (1 * p_x_2100) + 0 > (1 * x_1013) + 0 then () else _|_ () in
+           assert ((1 * x_1013) + 0 >= 0)
+       in
+       rand_int () = 0
+     in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 (fst sp_2114) true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0
+     then
+       f_1012 (fst sp_2122) true p_x_2125 (x_1013 - 1)
+     else
+       ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let main_2068 = snd (fst s__r_repeat_2132, snd s__r_repeat_2132) in
+ main_2068
+
+###CPS:
+ (let rec repeat_2039 s_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_4220 =
+    let s__r_g_2084 k_repeat_s__r_g_4240 =
+      rand_int_cps () (fun x_4245 -> (g_1011 s_2079 set_flag_2080 0) x_4245 k_repeat_s__r_g_4240)
+    in
+    s__r_g_2084 (fun s__r_g_4283 -> (repeat_2039 (fst s__r_g_4283) set_flag_2080 0) g_1011 k_repeat_4220)
+  in
+  let rec f_1012 s_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 =
+    if set_flag_2099
+    then
+      let x_2101 k_f_x_4303 =
+        let u_2106 k_f_x_u_4335 =
+          if not (#0 s_2098)
+          then
+            let u_3965 k_f_x_u_u_4319 = if (1 * p_x_2100) + 0 > (1 * x_1013) + 0 then k_f_x_u_u_4319 () else _|_ in
+            u_3965
+              (fun u_4333 -> if (1 * x_1013) + 0 >= 0 then k_f_x_u_4335 () else <|fail|> () k_f_x_u_4335)
+          else
+            k_f_x_u_4335 ()
+        in
+        u_2106 (fun u_4352 -> rand_int_cps () (fun x_4340 -> k_f_x_4303 (x_4340 = 0)))
+      in
+      x_2101
+        (fun x_4414 ->
+           let sp_2114 k_f_sp_4380 =
+             if x_4414 then k_f_sp_4380 ((false), (x_1013)) else k_f_sp_4380 (s_2098, (p_x_2100))
+           in
+           sp_2114
+             (fun sp_4413 ->
+                if x_1013 > 0
+                then
+                  (f_1012 (fst sp_4413) true (#0 (snd sp_4413))) (x_1013 - 1) k_f_4299
+                else
+                  k_f_4299 ((true), ())))
+    else
+      let sp_2122 k_f_sp_4442 = k_f_sp_4442 ((false), (x_1013)) in
+      sp_2122
+        (fun sp_4475 ->
+           if x_1013 > 0
+           then
+             (f_1012 (fst sp_4475) true (#0 (snd sp_4475))) (x_1013 - 1) k_f_4299
+           else
+             k_f_4299 ((true), ()))
+  in
+  let s__r_repeat_2132 k_s__r_repeat_4586 =
+    (((repeat_2039 (false)) false) 0) f_1012 k_s__r_repeat_4586
+  in
+  s__r_repeat_2132
+    (fun s__r_repeat_4616 ->
+       let main_2068 k_main_4607 = k_main_4607 (snd s__r_repeat_4616) in
+       main_2068 (fun main_4615 -> {end}))
+  # [ACPS])
+
+###remove_pair:
+ (let rec repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_4220 =
+    let s__r_g_2084 k_repeat_s__r_g_4240 =
+      rand_int_cps () (fun x_4245 -> g_1011 s0_2079 set_flag_2080 0 x_4245 k_repeat_s__r_g_4240)
+    in
+    s__r_g_2084 (fun s__r_g00_4283 s__r_g1_4283 -> repeat_2039 s__r_g00_4283 set_flag_2080 0 g_1011 k_repeat_4220)
+  in
+  let rec f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 =
+    if set_flag_2099
+    then
+      let x_2101 k_f_x_4303 =
+        let u_2106 k_f_x_u_4335 =
+          if not s0_2098
+          then
+            let u_3965 k_f_x_u_u_4319 = if (1 * p_x_2100) + 0 > (1 * x_1013) + 0 then k_f_x_u_u_4319 () else _|_ in
+            u_3965
+              (fun u_4333 -> if (1 * x_1013) + 0 >= 0 then k_f_x_u_4335 () else <|fail|> () k_f_x_u_4335)
+          else
+            k_f_x_u_4335 ()
+        in
+        u_2106 (fun u_4352 -> rand_int_cps () (fun x_4340 -> k_f_x_4303 (x_4340 = 0)))
+      in
+      x_2101
+        (fun x_4414 ->
+           let sp_2114 k_f_sp_4380 =
+             if x_4414 then k_f_sp_4380 false x_1013 else k_f_sp_4380 s0_2098 p_x_2100
+           in
+           sp_2114
+             (fun sp00_4413 sp10_4413 ->
+                if x_1013 > 0
+                then
+                  f_1012 sp00_4413 true sp10_4413 (x_1013 - 1) k_f_4299
+                else
+                  k_f_4299 true ()))
+    else
+      if x_1013 > 0
+      then
+        f_1012 false true x_1013 (x_1013 - 1) k_f_4299
+      else
+        k_f_4299 true ()
+  in
+  repeat_2039 false false 0 f_1012 (fun s__r_repeat00_4616 s__r_repeat1_4616 -> {end}) # 
+  [ACPS])
+
+Program with abstraction types (CEGAR-cycle 1)::
+Main: main_5162
+  main_5162 -> (repeat_2039 false false 0 f_1012 f_5170).
+  br_f_5171 b_5172 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when b_5172 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_4299).
+  br_f_5171 b_5172 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when (not b_5172) -> (k_f_4299 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_5168 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_4299)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when (not set_flag_2099) ->
+      (br_f_5171 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299).
+  f_5170 s__r_repeat00_4616 s__r_repeat1_4616 -> end.
+  f_f_5168 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_4299 x_4414 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414
+       (f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299)).
+  f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299 sp00_4413 sp10_4413 when 
+      (x_1013 > 0) -> (f_1012 sp00_4413 true sp10_4413 (x_1013 - 1) k_f_4299).
+  f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299 sp00_4413 sp10_4413 when 
+      (not (x_1013 > 0)) -> (k_f_4299 true ()).
+  f_repeat_5164 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_4220 s__r_g00_4283 s__r_g1_4283 ->
+      (repeat_2039 s__r_g00_4283 set_flag_2080 0 g_1011 k_repeat_4220).
+  f_s__r_g_5163 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240 x_4245 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_4245 k_repeat_s__r_g_4240).
+  f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 u_4333 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_4335 ()).
+  f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 u_4333 when 
+      (not (((1 * x_1013) + 0) >= 0)) -> (fail_5173 true k_f_x_u_4335).
+  f_x_5166 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303 u_4352 ->
+      (rand_int (f_x_5167 p_x_2100 s0_2098 set_flag_2099 u_4352 x_1013 k_f_x_4303)).
+  f_x_5167 p_x_2100 s0_2098 set_flag_2099 u_4352 x_1013 k_f_x_4303 x_4340 -> (k_f_x_4303 (x_4340 = 0)).
+  fail_5173 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_4220 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_5164 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_4220)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240 ->
+      (rand_int (f_s__r_g_5163 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_sp_4380 when x_4414 -> (k_f_sp_4380 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_sp_4380 when (not x_4414) -> (k_f_sp_4380 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 when (not (not s0_2098)) -> (k_f_x_u_4335 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_4319 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_4319 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_4319 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      _|_.
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_5166 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303)).
+Types:
+  main_5162 : X
+  br_f_5171 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_f_5169 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  f_u_5165 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_5173 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 bool -> int -> (bool -> bool -> int -> int -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+  u_3965 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+
+(1-1) Abstracting ... DONE!
+
+(1-2) Checking HORS ... DONE!
+
+Error trace::
+  main_5162 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_5163 ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [1/2] ... --> 
+  f_u_5165 [2/2] ... --> 
+  fail_5173 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 0; 0; 0; 0; 1; 0
+
+(1-3) Checking counterexample ... DONE!
+
+(1-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 2)::
+Main: main_5162
+  main_5162 -> (repeat_2039 false false 0 f_1012 f_5170).
+  br_f_5171 b_5172 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when b_5172 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_4299).
+  br_f_5171 b_5172 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when (not b_5172) -> (k_f_4299 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_5168 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_4299)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when (not set_flag_2099) ->
+      (br_f_5171 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299).
+  f_5170 s__r_repeat00_4616 s__r_repeat1_4616 -> end.
+  f_f_5168 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_4299 x_4414 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414
+       (f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299)).
+  f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299 sp00_4413 sp10_4413 when 
+      (x_1013 > 0) -> (f_1012 sp00_4413 true sp10_4413 (x_1013 - 1) k_f_4299).
+  f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299 sp00_4413 sp10_4413 when 
+      (not (x_1013 > 0)) -> (k_f_4299 true ()).
+  f_repeat_5164 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_4220 s__r_g00_4283 s__r_g1_4283 ->
+      (repeat_2039 s__r_g00_4283 set_flag_2080 0 g_1011 k_repeat_4220).
+  f_s__r_g_5163 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240 x_4245 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_4245 k_repeat_s__r_g_4240).
+  f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 u_4333 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_4335 ()).
+  f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 u_4333 when 
+      (not (((1 * x_1013) + 0) >= 0)) -> (fail_5173 true k_f_x_u_4335).
+  f_x_5166 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303 u_4352 ->
+      (rand_int (f_x_5167 p_x_2100 s0_2098 set_flag_2099 u_4352 x_1013 k_f_x_4303)).
+  f_x_5167 p_x_2100 s0_2098 set_flag_2099 u_4352 x_1013 k_f_x_4303 x_4340 -> (k_f_x_4303 (x_4340 = 0)).
+  fail_5173 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_4220 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_5164 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_4220)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240 ->
+      (rand_int (f_s__r_g_5163 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_sp_4380 when x_4414 -> (k_f_sp_4380 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_sp_4380 when (not x_4414) -> (k_f_sp_4380 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 when (not (not s0_2098)) -> (k_f_x_u_4335 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_4319 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_4319 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_4319 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      _|_.
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_5166 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303)).
+Types:
+  main_5162 : X
+  br_f_5171 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> x_3:bool -> int -> int[(not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_5169 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  f_u_5165 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_5173 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+  u_3965 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+
+(2-1) Abstracting ... DONE!
+
+(2-2) Checking HORS ... DONE!
+
+Error trace::
+  main_5162 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_5163 ... --> 
+  f_1012 [2/2] ... --> 
+  br_f_5171 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [1/2] ... --> 
+  f_u_5165 [2/2] ... --> 
+  fail_5173 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 1; 0; 0; 0; 0; 0; 1; 0
+
+(2-3) Checking counterexample ... DONE!
+
+(2-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 1; 0; 0; 0; 0; 0; 1
+
+Program with abstraction types (CEGAR-cycle 3)::
+Main: main_5162
+  main_5162 -> (repeat_2039 false false 0 f_1012 f_5170).
+  br_f_5171 b_5172 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when b_5172 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_4299).
+  br_f_5171 b_5172 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when (not b_5172) -> (k_f_4299 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_5168 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_4299)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299 when (not set_flag_2099) ->
+      (br_f_5171 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_4299).
+  f_5170 s__r_repeat00_4616 s__r_repeat1_4616 -> end.
+  f_f_5168 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_4299 x_4414 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414
+       (f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299)).
+  f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299 sp00_4413 sp10_4413 when 
+      (x_1013 > 0) -> (f_1012 sp00_4413 true sp10_4413 (x_1013 - 1) k_f_4299).
+  f_f_5169 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_4299 sp00_4413 sp10_4413 when 
+      (not (x_1013 > 0)) -> (k_f_4299 true ()).
+  f_repeat_5164 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_4220 s__r_g00_4283 s__r_g1_4283 ->
+      (repeat_2039 s__r_g00_4283 set_flag_2080 0 g_1011 k_repeat_4220).
+  f_s__r_g_5163 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240 x_4245 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_4245 k_repeat_s__r_g_4240).
+  f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 u_4333 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_4335 ()).
+  f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 u_4333 when 
+      (not (((1 * x_1013) + 0) >= 0)) -> (fail_5173 true k_f_x_u_4335).
+  f_x_5166 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303 u_4352 ->
+      (rand_int (f_x_5167 p_x_2100 s0_2098 set_flag_2099 u_4352 x_1013 k_f_x_4303)).
+  f_x_5167 p_x_2100 s0_2098 set_flag_2099 u_4352 x_1013 k_f_x_4303 x_4340 -> (k_f_x_4303 (x_4340 = 0)).
+  fail_5173 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_4220 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_5164 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_4220)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240 ->
+      (rand_int (f_s__r_g_5163 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_4240)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_sp_4380 when x_4414 -> (k_f_sp_4380 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_4414 k_f_sp_4380 when (not x_4414) -> (k_f_sp_4380 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_5165 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_4335 when (not (not s0_2098)) -> (k_f_x_u_4335 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_4319 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_4319 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_4319 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      _|_.
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_5166 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_4303)).
+Types:
+  main_5162 : X
+  br_f_5171 : (x_2:bool -> bool -> bool -> int -> x_6:int[1 <= x_6 || (not x_2)] -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> x_3:bool -> int -> x_5:int[x_5 >= 0; (not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_5169 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  f_u_5165 : (int -> bool -> bool -> x_5:int -> (unit -> X) -> unit[x_5 >= 0] -> X)
+  fail_5173 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (int -> bool -> bool -> x_5:int[x_5 >= 0] -> (unit -> X) -> X)
+  u_3965 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+
+(3-1) Abstracting ... DONE!
+
+(3-2) Checking HORS ... DONE!
+
+Safe!
+
+###set_main:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   let s_2085 = fst s__r_g_2084 in
+   let u_2040 = snd s__r_g_2084 in
+   repeat_2039 s_2085 set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 =
+       let u_2106 =
+         if not (#0 s_2098)
+         then
+           let u_3965 = assert ((1 * p_x_2100) + 0 > (1 * x_1013) + 0) in
+           if (1 * x_1013) + 0 >= 0 then () else _|_ ()
+       in
+       rand_int () = 0
+     in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2102 = fst sp_2114 in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 s_2102 true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2123 = fst sp_2122 in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0 then f_1012 s_2123 true p_x_2125 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let s_2133 = fst s__r_repeat_2132 in
+ let main_1014 = snd s__r_repeat_2132 in
+ let s_2137 = fst (s_2133, main_1014) in
+ let main_2068 = snd (s_2133, main_1014) in
+ main_2068
+
+###beta_reduce_trivial:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   let s_2085 = fst s__r_g_2084 in
+   repeat_2039 s_2085 set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 =
+       let u_2106 =
+         if not (#0 s_2098)
+         then
+           let u_3965 = assert ((1 * p_x_2100) + 0 > (1 * x_1013) + 0) in
+           if (1 * x_1013) + 0 >= 0 then () else _|_ ()
+       in
+       rand_int () = 0
+     in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2102 = fst sp_2114 in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 s_2102 true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let s_2123 = fst sp_2122 in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0 then f_1012 s_2123 true p_x_2125 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let s_2133 = fst s__r_repeat_2132 in
+ let main_1014 = snd s__r_repeat_2132 in
+ let main_2068 = snd (s_2133, main_1014) in
+ main_2068
+
+###inline:
+ let rec repeat_2039 (s_2079:(bool)) (set_flag_2080:bool) (p_x_2081:int) 
+                    (g_1011:((bool) -> bool -> int -> int -> ((bool) * unit))) =
+   let s__r_g_2084 = g_1011 s_2079 set_flag_2080 0 (rand_int ()) in
+   repeat_2039 (fst s__r_g_2084) set_flag_2080 0 g_1011
+ in
+ let rec f_1012 (s_2098:(bool)) (set_flag_2099:bool) (p_x_2100:int) (x_1013:int) =
+   if set_flag_2099
+   then
+     let x_2101 =
+       let u_2106 =
+         if not (#0 s_2098)
+         then
+           let u_3965 = assert ((1 * p_x_2100) + 0 > (1 * x_1013) + 0) in
+           if (1 * x_1013) + 0 >= 0 then () else _|_ ()
+       in
+       rand_int () = 0
+     in
+     let sp_2114 = if x_2101 then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let p_x_2104 = #0 (snd sp_2114) in
+     if x_1013 > 0 then f_1012 (fst sp_2114) true p_x_2104 (x_1013 - 1) else ((true), ())
+   else
+     let sp_2122 = if true then ((false), (x_1013)) else (s_2098, (p_x_2100)) in
+     let p_x_2125 = #0 (snd sp_2122) in
+     if x_1013 > 0
+     then
+       f_1012 (fst sp_2122) true p_x_2125 (x_1013 - 1)
+     else
+       ((true), ())
+ in
+ let s__r_repeat_2132 = repeat_2039 (false) false 0 f_1012 in
+ let main_2068 = snd (fst s__r_repeat_2132, snd s__r_repeat_2132) in
+ main_2068
+
+###CPS:
+ (let rec repeat_2039 s_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 =
+    let s__r_g_2084 k_repeat_s__r_g_6783 =
+      rand_int_cps () (fun x_6788 -> (g_1011 s_2079 set_flag_2080 0) x_6788 k_repeat_s__r_g_6783)
+    in
+    s__r_g_2084 (fun s__r_g_6826 -> (repeat_2039 (fst s__r_g_6826) set_flag_2080 0) g_1011 k_repeat_6763)
+  in
+  let rec f_1012 s_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 =
+    if set_flag_2099
+    then
+      let x_2101 k_f_x_6846 =
+        let u_2106 k_f_x_u_6878 =
+          if not (#0 s_2098)
+          then
+            let u_3965 k_f_x_u_u_6857 =
+              if (1 * p_x_2100) + 0 > (1 * x_1013) + 0 then k_f_x_u_u_6857 () else <|fail|> () k_f_x_u_u_6857
+            in
+            u_3965 (fun u_6876 -> if (1 * x_1013) + 0 >= 0 then k_f_x_u_6878 () else _|_)
+          else
+            k_f_x_u_6878 ()
+        in
+        u_2106 (fun u_6895 -> rand_int_cps () (fun x_6883 -> k_f_x_6846 (x_6883 = 0)))
+      in
+      x_2101
+        (fun x_6957 ->
+           let sp_2114 k_f_sp_6923 =
+             if x_6957 then k_f_sp_6923 ((false), (x_1013)) else k_f_sp_6923 (s_2098, (p_x_2100))
+           in
+           sp_2114
+             (fun sp_6956 ->
+                if x_1013 > 0
+                then
+                  (f_1012 (fst sp_6956) true (#0 (snd sp_6956))) (x_1013 - 1) k_f_6842
+                else
+                  k_f_6842 ((true), ())))
+    else
+      let sp_2122 k_f_sp_6985 = k_f_sp_6985 ((false), (x_1013)) in
+      sp_2122
+        (fun sp_7018 ->
+           if x_1013 > 0
+           then
+             (f_1012 (fst sp_7018) true (#0 (snd sp_7018))) (x_1013 - 1) k_f_6842
+           else
+             k_f_6842 ((true), ()))
+  in
+  let s__r_repeat_2132 k_s__r_repeat_7129 =
+    (((repeat_2039 (false)) false) 0) f_1012 k_s__r_repeat_7129
+  in
+  s__r_repeat_2132
+    (fun s__r_repeat_7159 ->
+       let main_2068 k_main_7150 = k_main_7150 (snd s__r_repeat_7159) in
+       main_2068 (fun main_7158 -> {end}))
+  # [ACPS])
+
+###remove_pair:
+ (let rec repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 =
+    let s__r_g_2084 k_repeat_s__r_g_6783 =
+      rand_int_cps () (fun x_6788 -> g_1011 s0_2079 set_flag_2080 0 x_6788 k_repeat_s__r_g_6783)
+    in
+    s__r_g_2084 (fun s__r_g00_6826 s__r_g1_6826 -> repeat_2039 s__r_g00_6826 set_flag_2080 0 g_1011 k_repeat_6763)
+  in
+  let rec f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 =
+    if set_flag_2099
+    then
+      let x_2101 k_f_x_6846 =
+        let u_2106 k_f_x_u_6878 =
+          if not s0_2098
+          then
+            let u_3965 k_f_x_u_u_6857 =
+              if (1 * p_x_2100) + 0 > (1 * x_1013) + 0 then k_f_x_u_u_6857 () else <|fail|> () k_f_x_u_u_6857
+            in
+            u_3965 (fun u_6876 -> if (1 * x_1013) + 0 >= 0 then k_f_x_u_6878 () else _|_)
+          else
+            k_f_x_u_6878 ()
+        in
+        u_2106 (fun u_6895 -> rand_int_cps () (fun x_6883 -> k_f_x_6846 (x_6883 = 0)))
+      in
+      x_2101
+        (fun x_6957 ->
+           let sp_2114 k_f_sp_6923 =
+             if x_6957 then k_f_sp_6923 false x_1013 else k_f_sp_6923 s0_2098 p_x_2100
+           in
+           sp_2114
+             (fun sp00_6956 sp10_6956 ->
+                if x_1013 > 0
+                then
+                  f_1012 sp00_6956 true sp10_6956 (x_1013 - 1) k_f_6842
+                else
+                  k_f_6842 true ()))
+    else
+      if x_1013 > 0
+      then
+        f_1012 false true x_1013 (x_1013 - 1) k_f_6842
+      else
+        k_f_6842 true ()
+  in
+  repeat_2039 false false 0 f_1012 (fun s__r_repeat00_7159 s__r_repeat1_7159 -> {end}) # 
+  [ACPS])
+
+Program with abstraction types (CEGAR-cycle 4)::
+Main: main_7705
+  main_7705 -> (repeat_2039 false false 0 f_1012 f_7713).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when b_7715 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_6842).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not b_7715) -> (k_f_6842 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not set_flag_2099) ->
+      (br_f_7714 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842).
+  f_7713 s__r_repeat00_7159 s__r_repeat1_7159 -> end.
+  f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842 x_6957 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957
+       (f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842)).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (x_1013 > 0) -> (f_1012 sp00_6956 true sp10_6956 (x_1013 - 1) k_f_6842).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (not (x_1013 > 0)) -> (k_f_6842 true ()).
+  f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763 s__r_g00_6826 s__r_g1_6826 ->
+      (repeat_2039 s__r_g00_6826 set_flag_2080 0 g_1011 k_repeat_6763).
+  f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 x_6788 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_6788 k_repeat_s__r_g_6783).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_6878 ()).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when (not (((1 * x_1013) + 0) >= 0)) -> _|_.
+  f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 u_6895 ->
+      (rand_int (f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846)).
+  f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846 x_6883 -> (k_f_x_6846 (x_6883 = 0)).
+  fail_7716 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 ->
+      (rand_int (f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when x_6957 -> (k_f_sp_6923 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when (not x_6957) -> (k_f_sp_6923 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not (not s0_2098)) -> (k_f_x_u_6878 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_6857 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      (fail_7716 true k_f_x_u_u_6857).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846)).
+Types:
+  main_7705 : X
+  br_f_7714 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_f_7712 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  f_u_7708 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_7716 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 bool -> int -> (bool -> bool -> int -> int -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+  u_3965 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+
+(4-1) Abstracting ... DONE!
+
+(4-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7705 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_7706 ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [2/2] ... --> 
+  fail_7716 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 0; 0; 0; 1; 0
+
+(4-3) Checking counterexample ... DONE!
+
+(4-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 5)::
+Main: main_7705
+  main_7705 -> (repeat_2039 false false 0 f_1012 f_7713).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when b_7715 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_6842).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not b_7715) -> (k_f_6842 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not set_flag_2099) ->
+      (br_f_7714 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842).
+  f_7713 s__r_repeat00_7159 s__r_repeat1_7159 -> end.
+  f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842 x_6957 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957
+       (f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842)).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (x_1013 > 0) -> (f_1012 sp00_6956 true sp10_6956 (x_1013 - 1) k_f_6842).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (not (x_1013 > 0)) -> (k_f_6842 true ()).
+  f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763 s__r_g00_6826 s__r_g1_6826 ->
+      (repeat_2039 s__r_g00_6826 set_flag_2080 0 g_1011 k_repeat_6763).
+  f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 x_6788 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_6788 k_repeat_s__r_g_6783).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_6878 ()).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when (not (((1 * x_1013) + 0) >= 0)) -> _|_.
+  f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 u_6895 ->
+      (rand_int (f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846)).
+  f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846 x_6883 -> (k_f_x_6846 (x_6883 = 0)).
+  fail_7716 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 ->
+      (rand_int (f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when x_6957 -> (k_f_sp_6923 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when (not x_6957) -> (k_f_sp_6923 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not (not s0_2098)) -> (k_f_x_u_6878 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_6857 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      (fail_7716 true k_f_x_u_u_6857).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846)).
+Types:
+  main_7705 : X
+  br_f_7714 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> x_3:bool -> int -> int[(not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_7712 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  f_u_7708 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_7716 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+  u_3965 : (int -> bool -> bool -> int -> (unit -> X) -> X)
+
+(5-1) Abstracting ... DONE!
+
+(5-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7705 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_7706 ... --> 
+  f_1012 [2/2] ... --> 
+  br_f_7714 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [2/2] ... --> 
+  fail_7716 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 1; 0; 0; 0; 0; 1; 0
+
+(5-3) Checking counterexample ... DONE!
+
+(5-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 1; 0; 0; 0; 0; 1
+
+Program with abstraction types (CEGAR-cycle 6)::
+Main: main_7705
+  main_7705 -> (repeat_2039 false false 0 f_1012 f_7713).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when b_7715 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_6842).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not b_7715) -> (k_f_6842 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not set_flag_2099) ->
+      (br_f_7714 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842).
+  f_7713 s__r_repeat00_7159 s__r_repeat1_7159 -> end.
+  f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842 x_6957 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957
+       (f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842)).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (x_1013 > 0) -> (f_1012 sp00_6956 true sp10_6956 (x_1013 - 1) k_f_6842).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (not (x_1013 > 0)) -> (k_f_6842 true ()).
+  f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763 s__r_g00_6826 s__r_g1_6826 ->
+      (repeat_2039 s__r_g00_6826 set_flag_2080 0 g_1011 k_repeat_6763).
+  f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 x_6788 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_6788 k_repeat_s__r_g_6783).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_6878 ()).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when (not (((1 * x_1013) + 0) >= 0)) -> _|_.
+  f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 u_6895 ->
+      (rand_int (f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846)).
+  f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846 x_6883 -> (k_f_x_6846 (x_6883 = 0)).
+  fail_7716 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 ->
+      (rand_int (f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when x_6957 -> (k_f_sp_6923 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when (not x_6957) -> (k_f_sp_6923 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not (not s0_2098)) -> (k_f_x_u_6878 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_6857 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      (fail_7716 true k_f_x_u_u_6857).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846)).
+Types:
+  main_7705 : X
+  br_f_7714 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (bool -> x_3:bool -> x_4:int -> x_5:int[1 <= x_4 - x_5; (not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_7712 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  f_u_7708 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_7716 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (x_2:int -> bool -> bool -> x_5:int[1 <= x_2 - x_5] -> (unit -> X) -> X)
+  u_3965 : (x_2:int -> bool -> bool -> x_5:int[1 <= x_2 - x_5] -> (unit -> X) -> X)
+
+(6-1) Abstracting ... DONE!
+
+(6-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7705 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_7706 ... --> 
+  f_1012 [2/2] ... --> 
+  br_f_7714 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [2/2] ... --> 
+  f_x_7709 ... --> 
+  f_x_7710 ... --> 
+  f_f_7711 ... --> 
+  sp_2114 [1/2] ... --> 
+  f_f_7712 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [2/2] ... --> 
+  fail_7716 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 1; 0; 0; 0; 1; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0
+
+(6-3) Checking counterexample ... DONE!
+
+(6-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 1; 0; 0; 0; 1
+
+Program with abstraction types (CEGAR-cycle 7)::
+Main: main_7705
+  main_7705 -> (repeat_2039 false false 0 f_1012 f_7713).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when b_7715 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_6842).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not b_7715) -> (k_f_6842 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not set_flag_2099) ->
+      (br_f_7714 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842).
+  f_7713 s__r_repeat00_7159 s__r_repeat1_7159 -> end.
+  f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842 x_6957 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957
+       (f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842)).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (x_1013 > 0) -> (f_1012 sp00_6956 true sp10_6956 (x_1013 - 1) k_f_6842).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (not (x_1013 > 0)) -> (k_f_6842 true ()).
+  f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763 s__r_g00_6826 s__r_g1_6826 ->
+      (repeat_2039 s__r_g00_6826 set_flag_2080 0 g_1011 k_repeat_6763).
+  f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 x_6788 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_6788 k_repeat_s__r_g_6783).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_6878 ()).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when (not (((1 * x_1013) + 0) >= 0)) -> _|_.
+  f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 u_6895 ->
+      (rand_int (f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846)).
+  f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846 x_6883 -> (k_f_x_6846 (x_6883 = 0)).
+  fail_7716 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 ->
+      (rand_int (f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when x_6957 -> (k_f_sp_6923 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when (not x_6957) -> (k_f_sp_6923 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not (not s0_2098)) -> (k_f_x_u_6878 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_6857 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      (fail_7716 true k_f_x_u_u_6857).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846)).
+Types:
+  main_7705 : X
+  br_f_7714 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (x_2:bool ->
+            x_3:bool -> x_4:int -> x_5:int[(not x_2); 1 <= x_4 - x_5; (not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_7712 : (int -> bool -> bool -> int -> bool -> (bool -> unit -> X) -> bool -> int -> X)
+  f_u_7708 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_7716 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> int -> bool -> (bool -> int -> X) -> X)
+  u_2106 : (x_2:int -> x_3:bool -> bool -> x_5:int[(not x_3); 1 <= x_2 - x_5] -> (unit -> X) -> X)
+  u_3965 : (x_2:int -> bool -> bool -> x_5:int[1 <= x_2 - x_5] -> (unit -> X) -> X)
+
+(7-1) Abstracting ... DONE!
+
+(7-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7705 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_7706 ... --> 
+  f_1012 [2/2] ... --> 
+  br_f_7714 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [1/2] ... --> 
+  f_u_7708 [1/2] ... --> 
+  f_x_7709 ... --> 
+  f_x_7710 ... --> 
+  f_f_7711 ... --> 
+  sp_2114 [1/2] ... --> 
+  f_f_7712 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [2/2] ... --> 
+  fail_7716 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 1; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0
+
+(7-3) Checking counterexample ... DONE!
+
+(7-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 1; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1
+
+Program with abstraction types (CEGAR-cycle 8)::
+Main: main_7705
+  main_7705 -> (repeat_2039 false false 0 f_1012 f_7713).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when b_7715 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_6842).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not b_7715) -> (k_f_6842 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not set_flag_2099) ->
+      (br_f_7714 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842).
+  f_7713 s__r_repeat00_7159 s__r_repeat1_7159 -> end.
+  f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842 x_6957 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957
+       (f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842)).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (x_1013 > 0) -> (f_1012 sp00_6956 true sp10_6956 (x_1013 - 1) k_f_6842).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (not (x_1013 > 0)) -> (k_f_6842 true ()).
+  f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763 s__r_g00_6826 s__r_g1_6826 ->
+      (repeat_2039 s__r_g00_6826 set_flag_2080 0 g_1011 k_repeat_6763).
+  f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 x_6788 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_6788 k_repeat_s__r_g_6783).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_6878 ()).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when (not (((1 * x_1013) + 0) >= 0)) -> _|_.
+  f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 u_6895 ->
+      (rand_int (f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846)).
+  f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846 x_6883 -> (k_f_x_6846 (x_6883 = 0)).
+  fail_7716 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 ->
+      (rand_int (f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when x_6957 -> (k_f_sp_6923 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when (not x_6957) -> (k_f_sp_6923 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not (not s0_2098)) -> (k_f_x_u_6878 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_6857 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      (fail_7716 true k_f_x_u_u_6857).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846)).
+Types:
+  main_7705 : X
+  br_f_7714 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (x_2:bool ->
+            x_3:bool -> x_4:int -> x_5:int[(not x_2); 1 <= x_4 - x_5; (not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_7712 : (int -> bool -> bool -> x_5:int -> bool -> (bool -> unit -> X) -> bool -> x_12:int[x_12 >= x_5] -> X)
+  f_u_7708 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_7716 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (int -> bool -> bool -> x_5:int -> bool -> (bool -> x_9:int[x_9 >= x_5] -> X) -> X)
+  u_2106 : (x_2:int -> x_3:bool -> bool -> x_5:int[(not x_3); 1 <= x_2 - x_5] -> (unit -> X) -> X)
+  u_3965 : (x_2:int -> bool -> bool -> x_5:int[1 <= x_2 - x_5] -> (unit -> X) -> X)
+
+(8-1) Abstracting ... DONE!
+
+(8-2) Checking HORS ... DONE!
+
+Error trace::
+  main_7705 ... --> 
+  repeat_2039 ... --> 
+  s__r_g_2084 ... --> 
+  f_s__r_g_7706 ... --> 
+  f_1012 [2/2] ... --> 
+  br_f_7714 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [1/2] ... --> 
+  f_u_7708 [1/2] ... --> 
+  f_x_7709 ... --> 
+  f_x_7710 ... --> 
+  f_f_7711 ... --> 
+  sp_2114 [2/2] ... --> 
+  f_f_7712 [1/2] ... --> 
+  f_1012 [1/2] ... --> 
+  x_2101 ... --> 
+  u_2106 [1/2] ... --> 
+  u_3965 [2/2] ... --> 
+  fail_7716 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 1; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0; 0; 0; 0; 1; 0
+
+(8-3) Checking counterexample ... DONE!
+
+(8-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0; 0; 0; 1; 0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0; 0; 0; 0; 1
+
+Program with abstraction types (CEGAR-cycle 9)::
+Main: main_7705
+  main_7705 -> (repeat_2039 false false 0 f_1012 f_7713).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when b_7715 ->
+      (f_1012 false true x_1013 (x_1013 - 1) k_f_6842).
+  br_f_7714 b_7715 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not b_7715) -> (k_f_6842 true ()).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when set_flag_2099 ->
+      (x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842)).
+  f_1012 s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842 when (not set_flag_2099) ->
+      (br_f_7714 (x_1013 > 0) s0_2098 set_flag_2099 p_x_2100 x_1013 k_f_6842).
+  f_7713 s__r_repeat00_7159 s__r_repeat1_7159 -> end.
+  f_f_7711 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_6842 x_6957 ->
+      (sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957
+       (f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842)).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (x_1013 > 0) -> (f_1012 sp00_6956 true sp10_6956 (x_1013 - 1) k_f_6842).
+  f_f_7712 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_6842 sp00_6956 sp10_6956 when 
+      (not (x_1013 > 0)) -> (k_f_6842 true ()).
+  f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763 s__r_g00_6826 s__r_g1_6826 ->
+      (repeat_2039 s__r_g00_6826 set_flag_2080 0 g_1011 k_repeat_6763).
+  f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 x_6788 ->
+      (g_1011 s0_2079 set_flag_2080 0 x_6788 k_repeat_s__r_g_6783).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when 
+      (((1 * x_1013) + 0) >= 0) -> (k_f_x_u_6878 ()).
+  f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 u_6876 when (not (((1 * x_1013) + 0) >= 0)) -> _|_.
+  f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 u_6895 ->
+      (rand_int (f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846)).
+  f_x_7710 p_x_2100 s0_2098 set_flag_2099 u_6895 x_1013 k_f_x_6846 x_6883 -> (k_f_x_6846 (x_6883 = 0)).
+  fail_7716 b k -> {fail} => (k ()).
+  repeat_2039 s0_2079 set_flag_2080 p_x_2081 g_1011 k_repeat_6763 ->
+      (s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011
+       (f_repeat_7707 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_6763)).
+  s__r_g_2084 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783 ->
+      (rand_int (f_s__r_g_7706 p_x_2081 s0_2079 set_flag_2080 g_1011 k_repeat_s__r_g_6783)).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when x_6957 -> (k_f_sp_6923 false x_1013).
+  sp_2114 p_x_2100 s0_2098 set_flag_2099 x_1013 x_6957 k_f_sp_6923 when (not x_6957) -> (k_f_sp_6923 s0_2098 p_x_2100).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not s0_2098) ->
+      (u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_u_7708 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878)).
+  u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_6878 when (not (not s0_2098)) -> (k_f_x_u_6878 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0)) ->
+      (k_f_x_u_u_6857 ()).
+  u_3965 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_u_u_6857 when (not (((1 * p_x_2100) + 0) > ((1 * x_1013) + 0))) ->
+      (fail_7716 true k_f_x_u_u_6857).
+  x_2101 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846 ->
+      (u_2106 p_x_2100 s0_2098 set_flag_2099 x_1013 (f_x_7709 p_x_2100 s0_2098 set_flag_2099 x_1013 k_f_x_6846)).
+Types:
+  main_7705 : X
+  br_f_7714 : (bool -> bool -> bool -> int -> int -> (bool -> unit -> X) -> X)
+  f_1012 : (x_2:bool ->
+            x_3:bool ->
+            x_4:int -> x_5:int[2 <= x_4 - x_5; (not x_2); 1 <= x_4 - x_5; (not x_3)] -> (bool -> unit -> X) -> X)
+  f_f_7712 : (int ->
+              bool ->
+              bool -> x_5:int -> bool -> (bool -> unit -> X) -> bool -> x_12:int[1 <= -x_5 + x_12; x_12 >= x_5] -> X)
+  f_u_7708 : (int -> bool -> bool -> int -> (unit -> X) -> unit -> X)
+  fail_7716 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool ->
+                 int[(not x_3)] ->
+                 (bool -> x_7:bool -> int -> int[(not x_7)] -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_2114 : (x_2:int ->
+             bool ->
+             bool -> x_5:int -> bool[1 <= x_2 - x_5] -> (bool -> x_9:int[1 <= -x_5 + x_9; x_9 >= x_5] -> X) -> X)
+  u_2106 : (x_2:int ->
+            x_3:bool -> bool -> x_5:int[2 <= x_2 - x_5; (not x_3); 1 <= x_2 - x_5] -> (unit[1 <= x_2 - x_5] -> X) -> X)
+  u_3965 : (x_2:int -> bool -> bool -> x_5:int[2 <= x_2 - x_5; 1 <= x_2 - x_5] -> (unit -> X) -> X)
+
+(9-1) Abstracting ... DONE!
+
+(9-2) Checking HORS ... DONE!
+
+Safe!
+
+###set_main:
+ let rec repeat_2039 (s_11641:(bool)) (set_flag_11642:bool) (g_1011:((bool) -> bool -> int -> ((bool) * unit))) =
+   if set_flag_11642
+   then
+     let x_11643 = let u_11647 = if not (#0 s_11641) then assert false in
+                   rand_int () = 0 in
+     let sp_11653 = if x_11643 then ((false), ()) else (s_11641, ()) in
+     let s_11644 = fst sp_11653 in
+     let s__r_g_11656 = g_1011 s_11644 true (rand_int ()) in
+     let s_11657 = fst s__r_g_11656 in
+     let u_2040 = snd s__r_g_11656 in
+     repeat_2039 s_11657 true g_1011
+   else
+     let sp_11666 = if true then ((false), ()) else (s_11641, ()) in
+     let s_11667 = fst sp_11666 in
+     let s__r_g_11669 = g_1011 s_11667 true (rand_int ()) in
+     let s_11670 = fst s__r_g_11669 in
+     let u_11671 = snd s__r_g_11669 in
+     repeat_2039 s_11670 true g_1011
+ in
+ let rec f_1012 (s_11678:(bool)) (set_flag_11679:bool) (x_1013:int) =
+   if x_1013 > 0 then f_1012 s_11678 set_flag_11679 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_11691 = repeat_2039 (false) false f_1012 in
+ let s_11692 = fst s__r_repeat_11691 in
+ let main_1014 = snd s__r_repeat_11691 in
+ let s_11696 = fst (s_11692, main_1014) in
+ let main_2068 = snd (s_11692, main_1014) in
+ main_2068
+
+###beta_reduce_trivial:
+ let rec repeat_2039 (s_11641:(bool)) (set_flag_11642:bool) (g_1011:((bool) -> bool -> int -> ((bool) * unit))) =
+   if set_flag_11642
+   then
+     let x_11643 = let u_11647 = if not (#0 s_11641) then assert false in
+                   rand_int () = 0 in
+     let sp_11653 = if x_11643 then ((false), ()) else (s_11641, ()) in
+     let s_11644 = fst sp_11653 in
+     let s__r_g_11656 = g_1011 s_11644 true (rand_int ()) in
+     let s_11657 = fst s__r_g_11656 in
+     repeat_2039 s_11657 true g_1011
+   else
+     let sp_11666 = if true then ((false), ()) else (s_11641, ()) in
+     let s_11667 = fst sp_11666 in
+     let s__r_g_11669 = g_1011 s_11667 true (rand_int ()) in
+     let s_11670 = fst s__r_g_11669 in
+     repeat_2039 s_11670 true g_1011
+ in
+ let rec f_1012 (s_11678:(bool)) (set_flag_11679:bool) (x_1013:int) =
+   if x_1013 > 0 then f_1012 s_11678 set_flag_11679 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_11691 = repeat_2039 (false) false f_1012 in
+ let s_11692 = fst s__r_repeat_11691 in
+ let main_1014 = snd s__r_repeat_11691 in
+ let main_2068 = snd (s_11692, main_1014) in
+ main_2068
+
+###inline:
+ let rec repeat_2039 (s_11641:(bool)) (set_flag_11642:bool) (g_1011:((bool) -> bool -> int -> ((bool) * unit))) =
+   if set_flag_11642
+   then
+     let x_11643 = let u_11647 = if not (#0 s_11641) then assert false in
+                   rand_int () = 0 in
+     let sp_11653 = if x_11643 then ((false), ()) else (s_11641, ()) in
+     let s__r_g_11656 = g_1011 (fst sp_11653) true (rand_int ()) in
+     repeat_2039 (fst s__r_g_11656) true g_1011
+   else
+     let sp_11666 = if true then ((false), ()) else (s_11641, ()) in
+     let s__r_g_11669 = g_1011 (fst sp_11666) true (rand_int ()) in
+     repeat_2039 (fst s__r_g_11669) true g_1011
+ in
+ let rec f_1012 (s_11678:(bool)) (set_flag_11679:bool) (x_1013:int) =
+   if x_1013 > 0 then f_1012 s_11678 set_flag_11679 (x_1013 - 1) else ((true), ())
+ in
+ let s__r_repeat_11691 = repeat_2039 (false) false f_1012 in
+ let main_2068 = snd (fst s__r_repeat_11691, snd s__r_repeat_11691) in
+ main_2068
+
+###CPS:
+ (let rec repeat_2039 s_11641 set_flag_11642 g_1011 k_repeat_11935 =
+    if set_flag_11642
+    then
+      let x_11643 k_repeat_x_11939 =
+        let u_11647 k_repeat_x_u_11952 =
+          if not (#0 s_11641) then <|fail|> () k_repeat_x_u_11952 else k_repeat_x_u_11952 ()
+        in
+        u_11647 (fun u_11969 -> rand_int_cps () (fun x_11957 -> k_repeat_x_11939 (x_11957 = 0)))
+      in
+      x_11643
+        (fun x_12050 ->
+           let sp_11653 k_repeat_sp_11989 =
+             if x_12050 then k_repeat_sp_11989 ((false), ()) else k_repeat_sp_11989 (s_11641, ())
+           in
+           sp_11653
+             (fun sp_12049 ->
+                let s__r_g_11656 k_repeat_s__r_g_12010 =
+                  rand_int_cps
+                    () (fun x_12015 -> (g_1011 (fst sp_12049) true) x_12015 k_repeat_s__r_g_12010)
+                in
+                s__r_g_11656
+                  (fun s__r_g_12048 -> (repeat_2039 (fst s__r_g_12048) true) g_1011 k_repeat_11935)))
+    else
+      (fun sp_12610 ->
+         let s__r_g_12611 k_repeat_s__r_g_12612 =
+           rand_int_cps () (fun x_12613 -> (g_1011 (fst sp_12610) true) x_12613 k_repeat_s__r_g_12612)
+         in
+         s__r_g_12611 (fun s__r_g_12614 -> (repeat_2039 (fst s__r_g_12614) true) g_1011 k_repeat_11935))
+        ((false), ())
+  in
+  let rec f_1012 s_11678 set_flag_11679 x_1013 k_f_12148 =
+    if x_1013 > 0
+    then
+      (f_1012 s_11678 set_flag_11679) (x_1013 - 1) k_f_12148
+    else
+      k_f_12148 ((true), ())
+  in
+  let s__r_repeat_11691 k_s__r_repeat_12246 = ((repeat_2039 (false)) false) f_1012 k_s__r_repeat_12246 in
+  s__r_repeat_11691
+    (fun s__r_repeat_12274 ->
+       let main_2068 k_main_12265 = k_main_12265 (snd s__r_repeat_12274) in
+       main_2068 (fun main_12273 -> {end}))
+  # [ACPS])
+
+###remove_pair:
+ (let rec repeat_2039 s0_11641 set_flag_11642 g_1011 k_repeat_11935 =
+    if set_flag_11642
+    then
+      let x_11643 k_repeat_x_11939 =
+        let u_11647 k_repeat_x_u_11952 =
+          if not s0_11641 then <|fail|> () k_repeat_x_u_11952 else k_repeat_x_u_11952 ()
+        in
+        u_11647 (fun u_11969 -> rand_int_cps () (fun x_11957 -> k_repeat_x_11939 (x_11957 = 0)))
+      in
+      x_11643
+        (fun x_12050 ->
+           let sp_11653 k_repeat_sp_11989 =
+             if x_12050 then k_repeat_sp_11989 false () else k_repeat_sp_11989 s0_11641 ()
+           in
+           sp_11653
+             (fun sp00_12049 sp1_12049 ->
+                let s__r_g_11656 k_repeat_s__r_g_12010 =
+                  rand_int_cps () (fun x_12015 -> g_1011 sp00_12049 true x_12015 k_repeat_s__r_g_12010)
+                in
+                s__r_g_11656
+                  (fun s__r_g00_12048 s__r_g1_12048 ->
+                     repeat_2039 s__r_g00_12048 true g_1011 k_repeat_11935)))
+    else
+      let s__r_g_12611 k_repeat_s__r_g_12612 =
+        rand_int_cps () (fun x_12613 -> g_1011 false true x_12613 k_repeat_s__r_g_12612)
+      in
+      s__r_g_12611
+        (fun s__r_g00_12614 s__r_g1_12614 -> repeat_2039 s__r_g00_12614 true g_1011 k_repeat_11935)
+  in
+  let rec f_1012 s0_11678 set_flag_11679 x_1013 k_f_12148 =
+    if x_1013 > 0 then f_1012 s0_11678 set_flag_11679 (x_1013 - 1) k_f_12148 else k_f_12148 true ()
+  in
+  repeat_2039 false false f_1012 (fun s__r_repeat00_12274 s__r_repeat1_12274 -> {end}) # 
+  [ACPS])
+
+Program with abstraction types (CEGAR-cycle 10)::
+Main: main_12766
+  main_12766 -> (repeat_2039 false false f_1012 f_12775).
+  f_1012 s0_11678 set_flag_11679 x_1013 k_f_12148 when (x_1013 > 0) ->
+      (f_1012 s0_11678 set_flag_11679 (x_1013 - 1) k_f_12148).
+  f_1012 s0_11678 set_flag_11679 x_1013 k_f_12148 when (not (x_1013 > 0)) -> (k_f_12148 true ()).
+  f_12775 s__r_repeat00_12274 s__r_repeat1_12274 -> end.
+  f_repeat_12769 s0_11641 set_flag_11642 g_1011 k_repeat_11935 x_12050 ->
+      (sp_11653 s0_11641 set_flag_11642 x_12050 (f_repeat_12770 s0_11641 set_flag_11642 x_12050 g_1011 k_repeat_11935)).
+  f_repeat_12770 s0_11641 set_flag_11642 x_12050 g_1011 k_repeat_11935 sp00_12049 sp1_12049 ->
+      (s__r_g_11656 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011
+       (f_repeat_12772 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_11935)).
+  f_repeat_12772 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_11935 s__r_g00_12048 
+  s__r_g1_12048 -> (repeat_2039 s__r_g00_12048 true g_1011 k_repeat_11935).
+  f_repeat_12774 s0_11641 set_flag_11642 g_1011 k_repeat_11935 s__r_g00_12614 s__r_g1_12614 ->
+      (repeat_2039 s__r_g00_12614 true g_1011 k_repeat_11935).
+  f_s__r_g_12771 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010 x_12015 ->
+      (g_1011 sp00_12049 true x_12015 k_repeat_s__r_g_12010).
+  f_s__r_g_12773 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612 x_12613 ->
+      (g_1011 false true x_12613 k_repeat_s__r_g_12612).
+  f_x_12767 s0_11641 set_flag_11642 k_repeat_x_11939 u_11969 ->
+      (rand_int (f_x_12768 s0_11641 set_flag_11642 u_11969 k_repeat_x_11939)).
+  f_x_12768 s0_11641 set_flag_11642 u_11969 k_repeat_x_11939 x_11957 -> (k_repeat_x_11939 (x_11957 = 0)).
+  fail_12776 b k -> {fail} => (k ()).
+  repeat_2039 s0_11641 set_flag_11642 g_1011 k_repeat_11935 when set_flag_11642 ->
+      (x_11643 s0_11641 set_flag_11642 (f_repeat_12769 s0_11641 set_flag_11642 g_1011 k_repeat_11935)).
+  repeat_2039 s0_11641 set_flag_11642 g_1011 k_repeat_11935 when (not set_flag_11642) ->
+      (s__r_g_12611 s0_11641 set_flag_11642 g_1011 (f_repeat_12774 s0_11641 set_flag_11642 g_1011 k_repeat_11935)).
+  s__r_g_11656 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010 ->
+      (rand_int (f_s__r_g_12771 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010)).
+  s__r_g_12611 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612 ->
+      (rand_int (f_s__r_g_12773 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612)).
+  sp_11653 s0_11641 set_flag_11642 x_12050 k_repeat_sp_11989 when x_12050 -> (k_repeat_sp_11989 false ()).
+  sp_11653 s0_11641 set_flag_11642 x_12050 k_repeat_sp_11989 when (not x_12050) -> (k_repeat_sp_11989 s0_11641 ()).
+  u_11647 s0_11641 set_flag_11642 k_repeat_x_u_11952 when (not s0_11641) -> (fail_12776 true k_repeat_x_u_11952).
+  u_11647 s0_11641 set_flag_11642 k_repeat_x_u_11952 when (not (not s0_11641)) -> (k_repeat_x_u_11952 ()).
+  x_11643 s0_11641 set_flag_11642 k_repeat_x_11939 ->
+      (u_11647 s0_11641 set_flag_11642 (f_x_12767 s0_11641 set_flag_11642 k_repeat_x_11939)).
+Types:
+  main_12766 : X
+  f_1012 : (bool -> bool -> int -> (bool -> unit -> X) -> X)
+  fail_12776 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool -> bool -> (bool -> bool -> int -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_11653 : (bool -> bool -> bool -> (bool -> unit -> X) -> X)
+  u_11647 : (bool -> bool -> (unit -> X) -> X)
+
+(10-1) Abstracting ... DONE!
+
+(10-2) Checking HORS ... DONE!
+
+Error trace::
+  main_12766 ... --> 
+  repeat_2039 [1/2] ... --> 
+  x_11643 ... --> 
+  u_11647 [1/2] ... --> 
+  fail_12776 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 0; 0; 0; 0
+
+(10-3) Checking counterexample ... DONE!
+
+(10-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 0
+
+Program with abstraction types (CEGAR-cycle 11)::
+Main: main_12766
+  main_12766 -> (repeat_2039 false false f_1012 f_12775).
+  f_1012 s0_11678 set_flag_11679 x_1013 k_f_12148 when (x_1013 > 0) ->
+      (f_1012 s0_11678 set_flag_11679 (x_1013 - 1) k_f_12148).
+  f_1012 s0_11678 set_flag_11679 x_1013 k_f_12148 when (not (x_1013 > 0)) -> (k_f_12148 true ()).
+  f_12775 s__r_repeat00_12274 s__r_repeat1_12274 -> end.
+  f_repeat_12769 s0_11641 set_flag_11642 g_1011 k_repeat_11935 x_12050 ->
+      (sp_11653 s0_11641 set_flag_11642 x_12050 (f_repeat_12770 s0_11641 set_flag_11642 x_12050 g_1011 k_repeat_11935)).
+  f_repeat_12770 s0_11641 set_flag_11642 x_12050 g_1011 k_repeat_11935 sp00_12049 sp1_12049 ->
+      (s__r_g_11656 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011
+       (f_repeat_12772 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_11935)).
+  f_repeat_12772 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_11935 s__r_g00_12048 
+  s__r_g1_12048 -> (repeat_2039 s__r_g00_12048 true g_1011 k_repeat_11935).
+  f_repeat_12774 s0_11641 set_flag_11642 g_1011 k_repeat_11935 s__r_g00_12614 s__r_g1_12614 ->
+      (repeat_2039 s__r_g00_12614 true g_1011 k_repeat_11935).
+  f_s__r_g_12771 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010 x_12015 ->
+      (g_1011 sp00_12049 true x_12015 k_repeat_s__r_g_12010).
+  f_s__r_g_12773 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612 x_12613 ->
+      (g_1011 false true x_12613 k_repeat_s__r_g_12612).
+  f_x_12767 s0_11641 set_flag_11642 k_repeat_x_11939 u_11969 ->
+      (rand_int (f_x_12768 s0_11641 set_flag_11642 u_11969 k_repeat_x_11939)).
+  f_x_12768 s0_11641 set_flag_11642 u_11969 k_repeat_x_11939 x_11957 -> (k_repeat_x_11939 (x_11957 = 0)).
+  fail_12776 b k -> {fail} => (k ()).
+  repeat_2039 s0_11641 set_flag_11642 g_1011 k_repeat_11935 when set_flag_11642 ->
+      (x_11643 s0_11641 set_flag_11642 (f_repeat_12769 s0_11641 set_flag_11642 g_1011 k_repeat_11935)).
+  repeat_2039 s0_11641 set_flag_11642 g_1011 k_repeat_11935 when (not set_flag_11642) ->
+      (s__r_g_12611 s0_11641 set_flag_11642 g_1011 (f_repeat_12774 s0_11641 set_flag_11642 g_1011 k_repeat_11935)).
+  s__r_g_11656 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010 ->
+      (rand_int (f_s__r_g_12771 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010)).
+  s__r_g_12611 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612 ->
+      (rand_int (f_s__r_g_12773 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612)).
+  sp_11653 s0_11641 set_flag_11642 x_12050 k_repeat_sp_11989 when x_12050 -> (k_repeat_sp_11989 false ()).
+  sp_11653 s0_11641 set_flag_11642 x_12050 k_repeat_sp_11989 when (not x_12050) -> (k_repeat_sp_11989 s0_11641 ()).
+  u_11647 s0_11641 set_flag_11642 k_repeat_x_u_11952 when (not s0_11641) -> (fail_12776 true k_repeat_x_u_11952).
+  u_11647 s0_11641 set_flag_11642 k_repeat_x_u_11952 when (not (not s0_11641)) -> (k_repeat_x_u_11952 ()).
+  x_11643 s0_11641 set_flag_11642 k_repeat_x_11939 ->
+      (u_11647 s0_11641 set_flag_11642 (f_x_12767 s0_11641 set_flag_11642 k_repeat_x_11939)).
+Types:
+  main_12766 : X
+  f_1012 : (bool -> bool -> int -> (bool -> unit -> X) -> X)
+  fail_12776 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (bool ->
+                 x_3:bool[(not x_3)] -> (bool -> bool -> int -> (bool -> unit -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_11653 : (bool -> bool -> bool -> (bool -> unit -> X) -> X)
+  u_11647 : (bool -> bool -> (unit -> X) -> X)
+
+(11-1) Abstracting ... DONE!
+
+(11-2) Checking HORS ... DONE!
+
+Error trace::
+  main_12766 ... --> 
+  repeat_2039 [2/2] ... --> 
+  s__r_g_12611 ... --> 
+  f_s__r_g_12773 ... --> 
+  f_1012 [2/2] ... --> 
+  f_repeat_12774 ... --> 
+  repeat_2039 [1/2] ... --> 
+  x_11643 ... --> 
+  u_11647 [1/2] ... --> 
+  fail_12776 ... --> fail -->
+  ERROR!
+
+Spurious counterexample::
+  0; 1; 0; 0; 1; 0; 0; 0; 0; 0
+
+(11-3) Checking counterexample ... DONE!
+
+(11-4) Discovering predicates (infeasible case) ... 
+DONE!
+
+Prefix of spurious counterexample::
+0; 1; 0; 0; 1; 0; 0; 0; 0
+
+Program with abstraction types (CEGAR-cycle 12)::
+Main: main_12766
+  main_12766 -> (repeat_2039 false false f_1012 f_12775).
+  f_1012 s0_11678 set_flag_11679 x_1013 k_f_12148 when (x_1013 > 0) ->
+      (f_1012 s0_11678 set_flag_11679 (x_1013 - 1) k_f_12148).
+  f_1012 s0_11678 set_flag_11679 x_1013 k_f_12148 when (not (x_1013 > 0)) -> (k_f_12148 true ()).
+  f_12775 s__r_repeat00_12274 s__r_repeat1_12274 -> end.
+  f_repeat_12769 s0_11641 set_flag_11642 g_1011 k_repeat_11935 x_12050 ->
+      (sp_11653 s0_11641 set_flag_11642 x_12050 (f_repeat_12770 s0_11641 set_flag_11642 x_12050 g_1011 k_repeat_11935)).
+  f_repeat_12770 s0_11641 set_flag_11642 x_12050 g_1011 k_repeat_11935 sp00_12049 sp1_12049 ->
+      (s__r_g_11656 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011
+       (f_repeat_12772 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_11935)).
+  f_repeat_12772 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_11935 s__r_g00_12048 
+  s__r_g1_12048 -> (repeat_2039 s__r_g00_12048 true g_1011 k_repeat_11935).
+  f_repeat_12774 s0_11641 set_flag_11642 g_1011 k_repeat_11935 s__r_g00_12614 s__r_g1_12614 ->
+      (repeat_2039 s__r_g00_12614 true g_1011 k_repeat_11935).
+  f_s__r_g_12771 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010 x_12015 ->
+      (g_1011 sp00_12049 true x_12015 k_repeat_s__r_g_12010).
+  f_s__r_g_12773 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612 x_12613 ->
+      (g_1011 false true x_12613 k_repeat_s__r_g_12612).
+  f_x_12767 s0_11641 set_flag_11642 k_repeat_x_11939 u_11969 ->
+      (rand_int (f_x_12768 s0_11641 set_flag_11642 u_11969 k_repeat_x_11939)).
+  f_x_12768 s0_11641 set_flag_11642 u_11969 k_repeat_x_11939 x_11957 -> (k_repeat_x_11939 (x_11957 = 0)).
+  fail_12776 b k -> {fail} => (k ()).
+  repeat_2039 s0_11641 set_flag_11642 g_1011 k_repeat_11935 when set_flag_11642 ->
+      (x_11643 s0_11641 set_flag_11642 (f_repeat_12769 s0_11641 set_flag_11642 g_1011 k_repeat_11935)).
+  repeat_2039 s0_11641 set_flag_11642 g_1011 k_repeat_11935 when (not set_flag_11642) ->
+      (s__r_g_12611 s0_11641 set_flag_11642 g_1011 (f_repeat_12774 s0_11641 set_flag_11642 g_1011 k_repeat_11935)).
+  s__r_g_11656 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010 ->
+      (rand_int (f_s__r_g_12771 s0_11641 set_flag_11642 sp00_12049 sp1_12049 x_12050 g_1011 k_repeat_s__r_g_12010)).
+  s__r_g_12611 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612 ->
+      (rand_int (f_s__r_g_12773 s0_11641 set_flag_11642 g_1011 k_repeat_s__r_g_12612)).
+  sp_11653 s0_11641 set_flag_11642 x_12050 k_repeat_sp_11989 when x_12050 -> (k_repeat_sp_11989 false ()).
+  sp_11653 s0_11641 set_flag_11642 x_12050 k_repeat_sp_11989 when (not x_12050) -> (k_repeat_sp_11989 s0_11641 ()).
+  u_11647 s0_11641 set_flag_11642 k_repeat_x_u_11952 when (not s0_11641) -> (fail_12776 true k_repeat_x_u_11952).
+  u_11647 s0_11641 set_flag_11642 k_repeat_x_u_11952 when (not (not s0_11641)) -> (k_repeat_x_u_11952 ()).
+  x_11643 s0_11641 set_flag_11642 k_repeat_x_11939 ->
+      (u_11647 s0_11641 set_flag_11642 (f_x_12767 s0_11641 set_flag_11642 k_repeat_x_11939)).
+Types:
+  main_12766 : X
+  f_1012 : (bool -> bool -> int -> (x_6:bool -> unit[x_6] -> X) -> X)
+  fail_12776 : (bool -> (unit -> X) -> X)
+  repeat_2039 : (x_2:bool ->
+                 x_3:bool[x_2; (not x_3)] ->
+                 (bool -> bool -> int -> (x_9:bool -> unit[x_9] -> X) -> X) -> (bool -> unit -> X) -> X)
+  sp_11653 : (bool -> bool -> bool -> (bool -> unit -> X) -> X)
+  u_11647 : (x_2:bool -> bool[x_2] -> (unit -> X) -> X)
+
+(12-1) Abstracting ... DONE!
+
+(12-2) Checking HORS ... DONE!
+
+Safe!
+
+Fair terminating!
+
+cycles: 4
+CEGAR-cycles: 12
+total: 1.412 sec
+  abst: 0.460 sec
+  mc: 0.456 sec
+  refine: 0.240 sec
