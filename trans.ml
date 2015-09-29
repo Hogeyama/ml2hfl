@@ -2505,3 +2505,12 @@ let add_id t =
 
 
 let remove_id t = filter_attr (function AId _ -> false | _ -> true) t
+
+
+let replace_fail_with_raise = make_trans ()
+let replace_fail_with_raise_desc desc =
+  match desc with
+  | App({desc=Event("fail", _)}, [{desc=Const Unit}]) -> Raise(make_construct "Assert_failure" [])
+  | _ -> replace_fail_with_raise.tr_desc_rec desc
+let () = replace_fail_with_raise.tr_desc <- replace_fail_with_raise_desc
+let replace_fail_with_raise = replace_fail_with_raise.tr_term

@@ -61,7 +61,6 @@ let elim_same_arg = ref false
 let base_to_int = ref false
 let exists_unknown_false = true
 let replace_const = ref false
-
 let mode = ref Reachability
 let cegar = ref CEGAR_DependentType
 let mc = ref TRecS
@@ -71,6 +70,7 @@ let wp_max_max = 8
 let cartesian_abstraction = ref true
 let modular = ref false
 let ignore_non_termination = ref false
+let fail_as_exception = ref false
 
 
 

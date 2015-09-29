@@ -82,3 +82,4 @@ val split_assert : typed_term -> typed_term
 val inline_specified : (id * id list * typed_term) -> typed_term -> typed_term
 val add_id : typed_term -> int * typed_term
 val remove_id : typed_term -> typed_term
+val replace_fail_with_raise : typed_term -> typed_term

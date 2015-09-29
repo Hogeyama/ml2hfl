@@ -34,6 +34,7 @@ let preprocess t spec =
       let fun_list = Term_util.get_top_funs t in
       let abst_env = Spec.get_abst_env spec t |@not!Flag.only_result&> Spec.print_abst_env Format.std_formatter in
       let t = trans_and_print (Trans.replace_typ abst_env) "add_preds" Fun.id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
+      let t = t |&!Flag.fail_as_exception&> trans_and_print Trans.replace_fail_with_raise "replace_fali_with_raise" Fun.id in
       let t = trans_and_print Encode_rec.trans "encode_recdata" Fun.id t in
       let t = t |&!Flag.base_to_int&> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
       let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in

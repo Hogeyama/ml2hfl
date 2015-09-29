@@ -265,6 +265,7 @@ let arg_spec =
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      (* preprocessing *)
+     "-fail-as-excep", Arg.Set Flag.fail_as_exception, " Treat fail as an exception";
      "-replace-const", Arg.Set Flag.replace_const, " Replace unchanging variables with constants";
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
      "-list-option", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";

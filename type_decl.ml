@@ -12,7 +12,7 @@ let debug () = List.mem "Type_decl" !Flag.debug_module
 
 let primitives = ["char";"string";"float";"int32";"int64";"nativeint";"format4";"format6"]
 
-let typ_decls = ref (("ABST", Abstract) :: ("exn",TKVariant[]) :: List.map (Pair.pair -$- Primitive) primitives)
+let typ_decls = ref (("ABST", Abstract) :: ("exn",TKVariant["Assert_failure",[]]) :: List.map (Pair.pair -$- Primitive) primitives)
 
 let print_kind fm = function
   | Primitive -> Format.fprintf fm "(prim)"
