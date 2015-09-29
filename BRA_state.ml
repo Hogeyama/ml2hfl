@@ -24,6 +24,7 @@ and default_val' =
 	  | None -> raise (Invalid_argument "default_val: not yet implemented syntax(TVar None)")
 	  | Some t' -> default_val' t'
       end
+    | TFuns _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TFuns)")
 
 let state_transducer trans_prev_statevar trans_statevar trans_argvars state =
   {state with

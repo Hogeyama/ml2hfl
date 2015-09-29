@@ -204,13 +204,13 @@ and trans_term post xs env t =
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
   | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) when List.mem S.AAbst_under attr ->
-      assert (t1.desc = Const Unit);
+      assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
       defs1@defs2, make_app (Const (RandInt (Some 0))) (List.map _Var xs' @ [t2'])
   | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
-      assert (t1.desc = Const Unit);
+      assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt None), t2')
@@ -220,7 +220,7 @@ and trans_term post xs env t =
         then Some 0
         else None
       in
-      assert (t1.desc = Const Unit);
+      assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (RandInt flag), t2')
@@ -228,7 +228,7 @@ and trans_term post xs env t =
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
   | S.App({S.desc=S.Const(S.RandValue(typ,true))}, [t1;t2]) ->
-      assert (t1.desc = Const Unit);
+      assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(t2', Const (RandVal (Format.asprintf "%a" Print.typ typ)))
@@ -241,7 +241,7 @@ and trans_term post xs env t =
       let defs = [k, TFun(typ_unit, fun _ -> typ_unit), ["u"], Const True, [], Const Unit] in
       defs, App(Const (Temp s), Var k)
   | S.App({S.desc=S.Event(s,true)}, [t1;t2]) ->
-      assert (t1.desc = Const Unit);
+      assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       defs1@defs2, App(Const (Temp s), t2')

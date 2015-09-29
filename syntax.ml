@@ -1059,6 +1059,7 @@ let fold_tr_typ fld env = function
   | TOption typ ->
       let env',typ' = fld.fold_tr_typ env typ in
       env', TOption typ'
+  | TFuns _ -> unsupported ""
 
 let fold_tr_var fld env x =
   let env',typ' = fld.fold_tr_typ env (Id.typ x) in

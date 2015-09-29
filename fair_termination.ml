@@ -260,7 +260,7 @@ let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   (*
   let rank_funs = if read_int () = 0 then [{coeffs=[-1;1];const=0}] else rank_funs in (* koskinen-2 *)
    *)
-  let t' = make_let [rank_var, ps@xs, make_check_rank ps xs rank_funs] t in
+  let _t' = make_let [rank_var, ps@xs, make_check_rank ps xs rank_funs] t in
   if false then Format.printf "INPUT: %a@." Print.term t;
   let t'' = Trans.inline_specified (rank_var, ps@xs, make_check_rank ps xs rank_funs) t in
   let t''' = Trans.split_assert t'' in
@@ -288,7 +288,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
       let spcs' = spc::spcs in
       let spcWithExparams' = spcWithExparam::spcWithExparams in
       let solution =
-        let all_vars = List.map fst env in
+        let _all_vars = List.map fst env in
         let aux = Fpat.Idnt.make -| Id.to_string in
         let arg_vars' = List.map aux arg_vars in
         let prev_vars' = List.map aux prev_vars in
@@ -321,7 +321,6 @@ let pr ?(check_typ=Some TUnit) s t =
 let rec run spec t =
   let {Spec.fairness} = spec in
   Format.printf "FAIRNESS: %a@.@." print_fairness fairness;
-  let env = ref [] in
   let t' =
     t
     |> Trans.copy_poly_funs

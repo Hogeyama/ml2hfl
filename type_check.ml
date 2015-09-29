@@ -24,12 +24,14 @@ let rec check t typ =
   | Const(True|False), TBool -> ()
   | Const(Int _), (TInt | TRInt _) -> ()
   | Const _, TData _ -> ()
+(*
   | Const(RandInt false), (TFun(x,TInt) | TFuns([x], TInt))->
       check_var x TUnit
   | Const(RandInt true), (TFun(x,TFun(k,rtyp)) | TFuns([x],TFuns([k],rtyp))) ->
       assert (rtyp = typ_result);
       check_var x TUnit;
       check_var k (TFun(Id.new_var TInt, typ_result))
+*)
   | Const(RandValue(typ1,false)), TFun({Id.typ=TUnit},typ2) ->
       assert (Type.can_unify typ1 typ2)
   | Const(RandValue(typ1,true)), TFun({Id.typ=TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2)) -> ()
