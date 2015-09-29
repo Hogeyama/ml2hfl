@@ -61,6 +61,7 @@ let rec elim_tpred_all = function
   | TPred(x,_) -> elim_tpred_all @@ Id.typ x
   | TRef typ -> TRef (elim_tpred_all typ)
   | TOption typ -> TOption (elim_tpred_all typ)
+  | TFuns _ -> unsupported ""
 
 let rec decomp_tfun = function
   | TFun(x,typ) ->
@@ -169,6 +170,7 @@ let rec occurs r typ =
   | TPred(x,_) -> occurs r (Id.typ x)
   | TRef typ -> occurs r typ
   | TOption typ -> occurs r typ
+  | TFuns _ -> unsupported ""
 
 
 let rec unify typ1 typ2 =
@@ -284,6 +286,7 @@ let rec has_pred = function
   | TPred(x,ps) -> has_pred (Id.typ x) || ps <> []
   | TRef typ -> has_pred typ
   | TOption typ -> has_pred typ
+  | TFuns _ -> unsupported ""
 
 let rec to_id_string = function
   | TUnit -> "unit"
@@ -303,6 +306,7 @@ let rec to_id_string = function
   | TPred(x,_) -> to_id_string (Id.typ x)
   | TRef typ -> to_id_string typ ^ "_ref"
   | TOption typ -> to_id_string typ ^ "_option"
+  | TFuns _ -> unsupported ""
 
 
 (* order of simpl types *)

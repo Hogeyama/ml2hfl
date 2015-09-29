@@ -26,7 +26,7 @@ let rec from_type typ =
   match typ with
   | Type.TUnit
   | Type.TBool
-  | Type.TInt _ -> TBase
+  | Type.TInt -> TBase
   | Type.TFun(x,typ') -> TFun(from_type @@ Id.typ x, 0, from_type typ')
   | Type.TTuple typs -> TTuple (List.map (from_type -| Id.typ) typs)
   | Type.TList _
@@ -36,7 +36,8 @@ let rec from_type typ =
   | Type.TAbsBool
   | Type.TRInt _
   | Type.TVar _
-  | Type.TPred _ -> unsupported "uncurry"
+  | Type.TPred _
+  | Type.TFuns _ -> unsupported "uncurry"
 
 let rec decomp_tfun sol = function
   | TVar {contents = Some typ} -> decomp_tfun sol typ

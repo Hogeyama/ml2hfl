@@ -89,7 +89,7 @@ let preprocess t spec =
     end;
 
   (* ill-formed program *)
-  let progWithExparam =
+  let _progWithExparam =
     if !Flag.add_closure_exparam
     then Some (Quadruple.fst @@ CEGAR_trans.trans_prog !ExtraParamInfer.withExparam)
     else None
@@ -283,7 +283,7 @@ let rec run orig exparam_sol ?(spec=Spec.init) parsed =
       let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var (fun n -> CEGAR_syntax.Const (CEGAR_syntax.Int n))) exparam_sol in
       let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') prog in
       if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog prog;
-      {prog'' with info={prog.info with exparam_orig=Some prog}}
+      {prog'' with CEGAR_syntax.info={prog.CEGAR_syntax.info with CEGAR_syntax.exparam_orig=Some prog}}
     else
       prog
   in
