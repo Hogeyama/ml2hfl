@@ -101,7 +101,7 @@ let rec from_type_expr tenv typ =
           | Type_abstract -> false
           | Type_variant _ -> true
           | Type_record _ -> true
-          | Type_open -> unsupported "Type_open"
+          | Type_open -> false
         with Not_found -> false
       in
       let s = Path.name path in

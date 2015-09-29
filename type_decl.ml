@@ -35,6 +35,7 @@ let from_type_kind kind =
   | KAbstract -> invalid_argument "Type_decl.from_type_kind"
   | KVariant decls -> TKVariant decls
   | KRecord decls -> TKRecord decls
+  | KOpen -> Abstract
 
 let in_typ_decls s = List.mem_assoc s !typ_decls
 

@@ -72,6 +72,7 @@ and type_kind =
     KAbstract
   | KVariant of (string * typ list) list
   | KRecord of (string * (mutable_flag * typ)) list
+  | KOpen
 and pred = term
 and typed_pattern = {pat_desc:pattern; pat_typ:typ}
 and pattern =

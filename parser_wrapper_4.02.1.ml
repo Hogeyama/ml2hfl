@@ -101,7 +101,7 @@ let rec from_type_expr tenv typ =
           | Type_abstract -> false
           | Type_variant _ -> true
           | Type_record _ -> true
-          | Type_open -> unsupported "Type_open"
+          | Type_open -> true
         with Not_found -> false
       in
       let s = Path.name path in
@@ -185,7 +185,7 @@ let from_type_kind tenv type_kind =
         Ident.name ld_id, (from_mutable_flag ld_mutable, from_type_expr tenv ld_type)
       in
       KRecord (List.map aux decls)
-  | Type_open -> unsupported "Type_open"
+  | Type_open -> KOpen
 
 let rec from_type_declaration tenv decl =
   let venv = List.map (fun typ -> typ.Types.id, TVar (ref None)) decl.type_params in
