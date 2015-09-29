@@ -7,7 +7,7 @@ module RT = Ref_type
 
 let print_error_information () =
   try
-    let st =  Parsing.symbol_start_pos () in
+    let st = Parsing.symbol_start_pos () in
     let en = Parsing.symbol_end_pos () in
     Format.printf "%s, line %d, characters %d-%d\n"
                   st.Lexing.pos_fname
@@ -68,10 +68,14 @@ let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %token FAIRNESS
 %token TRUE
 %token FALSE
+%token INTER
+%token UNION
 %token EOF
 
 /* priority : low -> high */
+%left UNION
 %right ARROW
+%left INTER
 %left OR
 %left AND
 %nonassoc NOT
@@ -296,6 +300,8 @@ ref_typ:
     in
     RT.Fun(x, $1, $3)
   }
+| ref_typ UNION ref_typ { RT.Union[$1; $3] }
+| ref_typ INTER ref_typ { RT.Inter[$1; $3] }
 
 pred_list:
   { [] }

@@ -56,6 +56,8 @@ rule token = parse
 | "fairness" { FAIRNESS }
 | "true" { TRUE }
 | "false" { FALSE }
+| "/\\" { INTER }
+| "\\/" { UNION }
 | digit+ { INT(int_of_string (Lexing.lexeme lexbuf)) }
 | lower(digit|lower|upper)* { IDENT(Lexing.lexeme lexbuf) }
 | (lower|upper)(digit|lower|upper)* { EVENT(Lexing.lexeme lexbuf) }

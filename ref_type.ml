@@ -366,8 +366,22 @@ let rec generate_check genv cenv x typ =
             else genv', cenv', U.make_letrec [def] t
       in
       genv', cenv', add_len t
+  | Inter typs ->
+      let aux (genv',cenv',ts) typ =
+        let genv'',cenv'',t = generate_check genv' cenv' x typ in
+        genv'', cenv'', ts@[t]
+      in
+      let genv'',cenv'',ts = List.fold_left aux (genv,cenv,[]) typs in
+      genv'', cenv'', U.make_ands ts
+  | Union typs ->
+      let aux (genv',cenv',ts) typ =
+        let genv'',cenv'',t = generate_check genv' cenv' x typ in
+        genv'', cenv'', ts@[t]
+      in
+      let genv'',cenv'',ts = List.fold_left aux (genv,cenv,[]) typs in
+      genv'', cenv'', U.make_ors ts
   | _ -> Format.printf "%a@." print typ; unsupported "Ref_type.generate_check"
-
+(*
 and generate_simple_aux typ =
   match typ with
   | Type.TInt -> U.randint_unit_term
@@ -387,11 +401,11 @@ and generate_simple_aux typ =
       in
       make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
   | _ -> unsupported "Ref_type.generate_simple"
-
+*)
 and generate_simple typ = U.make_fail typ
 (*
   U.make_br (U.make_fail typ) (generate_simple_aux typ)
- *)
+*)
 
 and generate genv cenv typ =
   if has_no_predicate typ
@@ -426,6 +440,9 @@ and generate genv cenv typ =
           let genv'',cenv'',t2 = generate genv' cenv' typ2' in
           genv'', cenv'', U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
       | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
+      | Inter[Base(base1, x1, p1); Base(base2, x2, p2)] ->
+          assert (base1 = base2);
+          generate genv cenv @@ Base(base1, x1, U.make_and p1 (U.subst_var x2 x1 p2))
       | Inter typs -> unsupported "Ref_type.generate: Inter"
       | Union typs -> unsupported "Ref_type.generate: Union"
       | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
