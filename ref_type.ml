@@ -534,7 +534,7 @@ let rec simplify_typs constr and_or typs =
     assert (List.for_all ((=) base) bs);
     let x = List.hd xs in
     let ts' = List.map2 (U.subst_var -$- x) xs ts in
-    Base(base, x, List.fold_left and_or U.true_term ts')
+    Base(base, x, and_or ts')
 (*
   else if List.for_all is_fun typs' then
     let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
@@ -545,7 +545,7 @@ let rec simplify_typs constr and_or typs =
       flatten @@ constr typs'
 *)
   else
-    flatten @@ constr typs'
+     flatten @@ constr typs'
 
 and simplify typ =
   match flatten typ with
@@ -561,9 +561,9 @@ and simplify typ =
       else Fun(x, typ1', simplify typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd simplify) xtyps)
   | Inter [] -> Inter []
-  | Inter typs -> simplify_typs _Inter U.make_and typs
+  | Inter typs -> simplify_typs _Inter (List.fold_left U.make_and U.true_term) typs
   | Union [] -> Union []
-  | Union typs -> simplify_typs _Union U.make_or typs
+  | Union typs -> simplify_typs _Union (List.fold_left U.make_or U.false_term) typs
   | ExtArg(x,typ1,typ2) -> ExtArg(x, simplify typ1, simplify typ2)
   | List(x,p_len,y,p_i,typ) ->
       let p_len' = simplify_pred p_len in
