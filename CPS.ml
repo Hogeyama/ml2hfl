@@ -14,7 +14,6 @@ type typed_term = {t_cps:t_cps; typ_cps:typ_cps; typ_orig:typ; effect:effect_var
 and typed_ident = {id_cps:id; id_typ:typ_cps}
 and t_cps =
   | ConstCPS of const
-  | UnknownCPS
   | BottomCPS
   | RandIntCPS of bool
   | RandValueCPS of typ
@@ -86,7 +85,6 @@ and print_typed_term fm {t_cps=t; typ_cps=typ; effect=e} =
 
 and print_t_cps fm = function
   | ConstCPS c -> Format.fprintf fm "%a" Print.const c
-  | UnknownCPS -> Format.fprintf fm "***"
   | BottomCPS -> Format.fprintf fm "_|_"
   | RandIntCPS b -> Format.fprintf fm "rand_int(%b)" b
   | RandValueCPS typ -> Format.fprintf fm "rand_value(%a)" Print.typ typ
@@ -738,7 +736,6 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig; effect=e} =
            (make_app_excep t1.effect t1'
               (make_fun b (make_app (make_var k) [make_not (make_var b)]))
               (make_var h)))
-  | UnknownCPS, _ -> assert false
   | EventCPS s, ENone -> make_event_cps s
   | ProjCPS(i,t1), ENone ->
       make_proj i @@ transform k_post t1
@@ -848,7 +845,6 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
       assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
   | NotCPS t1 ->
       assoc_typ_cps f t1
-  | UnknownCPS -> []
   | EventCPS s -> []
   | ProjCPS(_, t1) ->
       assoc_typ_cps f t1
