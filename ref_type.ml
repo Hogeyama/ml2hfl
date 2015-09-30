@@ -143,7 +143,7 @@ let subst x t typ = map_pred (U.subst x t) typ
 let subst_var x y typ = map_pred (U.subst_var x y) typ
 let subst_rev t x typ = map_pred (U.subst_rev t x) typ
 let replace_term t1 t2 t3 =
-  let x = Id.new_var t1.Syntax.typ in
+  let x = Id.new_var t1.S.typ in
   subst x t2 @@ subst_rev t1 x t3
 
 let rec rename var = function
@@ -443,6 +443,26 @@ and generate genv cenv typ =
       | Inter[Base(base1, x1, p1); Base(base2, x2, p2)] ->
           assert (base1 = base2);
           generate genv cenv @@ Base(base1, x1, U.make_and p1 (U.subst_var x2 x1 p2))
+      | Inter[Fun(x1,typ11,typ12); Fun(x2,typ21,typ22)] ->
+          let x = Id.new_var @@ to_abst_typ typ11 in
+          let typ22 = subst_var x1 x typ12 in
+          let typ22 = subst_var x2 x typ22 in
+          let b1 = Id.new_var ~name:"b" Type.TBool in
+          let b2 = Id.new_var ~name:"b" Type.TBool in
+          let e = Id.new_var ~name:"e" !U.typ_excep in
+          let genv,cenv,t1 = generate_check genv cenv x typ11 in
+          let genv,cenv,t2 = generate_check genv cenv x typ21 in
+          let genv,cenv,t_tt = generate genv cenv @@ Inter [typ12; typ22] in
+          let genv,cenv,t_tf = generate genv cenv typ12 in
+          let genv,cenv,t_ft = generate genv cenv typ22 in
+          let t_ff = U.make_fail t_tt.S.typ in
+          let tb1 = U.make_or U.randbool_unit_term @@ U.make_trywith t1 e [U.make_pany @@ Id.typ e, U.true_term, U.false_term] in
+          let tb2 = U.make_or U.randbool_unit_term @@ U.make_trywith t2 e [U.make_pany @@ Id.typ e, U.true_term, U.false_term] in
+          let t = U.make_if (U.make_var b1)
+                    (U.make_if (U.make_var b2) t_tt t_tf)
+                    (U.make_if (U.make_var b2) t_ft t_ff)
+          in
+          genv, cenv, U.make_fun x @@ U.make_lets [b1,[],tb1; b2,[],tb2] t
       | Inter typs -> unsupported "Ref_type.generate: Inter"
       | Union typs -> unsupported "Ref_type.generate: Union"
       | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"

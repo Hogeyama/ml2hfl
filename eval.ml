@@ -62,7 +62,7 @@ let rec eval_print fm rands t =
       let x = Id.new_var Type.TUnit in
       List.tl rands, make_fun x (make_int (List.hd rands))
   | Const(RandInt true) -> assert false
-  | Const(RandValue _) -> assert false
+  | Const(RandValue _) -> unsupported "eval: RandValue"
   | Const c -> rands, t
   | Var y -> unsupported "error trace with external funcitons"
   | Fun _ -> rands, t

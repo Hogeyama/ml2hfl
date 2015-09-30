@@ -259,6 +259,9 @@ let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); 
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 let make_event_unit s = make_app (make_event s) [unit_term]
+let make_trywith t x pats =
+  let handler = make_fun x @@ make_match (make_var x) pats in
+  {desc=TryWith(t, handler); typ=t.typ; attr=[]}
 
 let make_imply t1 t2 = make_or (make_not t1) t2
 
