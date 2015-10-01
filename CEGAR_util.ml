@@ -543,7 +543,7 @@ let get_nonrec defs main orig_fun_list force =
 
 let print_prog_typ' orig_fun_list force fm {env;defs;main;info} =
   let nonrec = get_nonrec defs main orig_fun_list force in
-  let env' = List.filter (fun (f,_) -> not @@ List.mem_assoc f nonrec) env in
+  let env' = List.filter_out (fun (f,_) -> List.mem_assoc f nonrec) env in
   CEGAR_print.prog_typ fm {env=env';defs;main;info}
 
 
