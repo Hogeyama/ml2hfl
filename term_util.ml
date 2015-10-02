@@ -69,7 +69,7 @@ let make_randint_cps b =
   let r = Id.new_var TInt in
   let k = Id.new_var @@ TFun(r,typ_result) in
   let attr = if b then [AAbst_under] else [] in
-  {desc=Const(RandInt true); typ=TFun(u,TFun(k,typ_result)); attr}
+  {desc=Const(RandValue(TInt,true)); typ=TFun(u,TFun(k,typ_result)); attr}
 let rec make_app t ts =
   let check typ1 typ2 =
     if not (Flag.check_typ => Type.can_unify typ1 typ2)
@@ -255,7 +255,7 @@ let make_construct c ts =
 let make_record fields =
   let typ = Type_decl.field_typ @@ fst @@ List.hd fields in
   {desc=Record fields; typ; attr=[]}
-let randint_term = {desc=Const(RandInt false); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
+let randint_term = {desc=Const(RandValue(TInt,false)); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 let make_event_unit s = make_app (make_event s) [unit_term]

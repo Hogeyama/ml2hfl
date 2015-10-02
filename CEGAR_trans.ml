@@ -187,15 +187,14 @@ and trans_const c typ =
   | S.Int64 n -> Int64 n
   | S.Nativeint n -> Nativeint n
   | S.CPS_result -> CPS_result
-  | S.RandInt _ -> assert false
   | S.RandValue _ -> assert false
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
   match t.S.desc with
-  | S.Const(S.RandInt _) -> assert false
+  | S.Const(S.RandValue _) -> assert false
   | S.Const c -> [], Const (trans_const c t.S.typ)
-  | S.App({S.desc=S.Const(S.RandInt false); S.attr}, [{S.desc=S.Const S.Unit}]) ->
+  | S.App({S.desc=S.Const(S.RandValue(Type.TInt,false)); S.attr}, [{S.desc=S.Const S.Unit}]) ->
       let flag =
         if List.mem S.AAbst_under attr
         then Some 0
@@ -203,17 +202,6 @@ and trans_term post xs env t =
       in
       let k = new_id ("k" ^ post) in
       [k, TFun(typ_int, fun _ -> typ_int), ["n"], Const True, [], Var "n"], App(Const (RandInt flag), Var k)
-  | S.App({S.desc=S.Const(S.RandInt true); S.attr}, [t1;t2]) when List.mem S.AAbst_under attr ->
-      assert (t1.S.desc = S.Const S.Unit);
-      let defs1,t1' = trans_term post xs env t1 in
-      let defs2,t2' = trans_term post xs env t2 in
-      let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
-      defs1@defs2, make_app (Const (RandInt (Some 0))) (List.map _Var xs' @ [t2'])
-  | S.App({S.desc=S.Const(S.RandInt true)}, [t1;t2]) ->
-      assert (t1.S.desc = S.Const S.Unit);
-      let defs1,t1' = trans_term post xs env t1 in
-      let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(Const (RandInt None), t2')
   | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true)); S.attr}, [t1;t2]) ->
       let flag =
         if List.mem S.AAbst_under attr
@@ -303,8 +291,8 @@ and trans_term post xs env t =
 
 let rec formula_of t =
   match t.S.desc with
-  | S.Const(S.RandInt false) -> raise Not_found
-  | S.Const(S.RandInt true) -> assert false
+  | S.Const(S.RandValue(Type.TInt,false)) -> raise Not_found
+  | S.Const(S.RandValue(Type.TInt,true)) -> assert false
   | S.Const c -> Const (trans_const c t.S.typ)
   | S.Var x -> Var (trans_var x)
   | S.App(t, ts) -> raise Not_found

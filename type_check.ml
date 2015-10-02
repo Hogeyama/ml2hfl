@@ -24,9 +24,9 @@ let rec check t typ =
   | Const(True|False), TBool -> ()
   | Const(Int _), (TInt | TRInt _) -> ()
   | Const _, TData _ -> ()
-  | Const(RandInt false), TFun(x,TInt)->
+  | Const(RandValue(TInt,false)), TFun(x,TInt)->
       check_var x TUnit
-  | Const(RandInt true), TFun(x,TFun(k,rtyp)) ->
+  | Const(RandValue(TInt,true)), TFun(x,TFun(k,rtyp)) ->
       assert (rtyp = typ_result);
       check_var x TUnit;
       check_var k (TFun(Id.new_var TInt, typ_result))

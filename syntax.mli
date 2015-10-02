@@ -26,7 +26,6 @@ and const = (* only base type constants *)
   | Int64 of int64
   | Nativeint of nativeint
   | CPS_result
-  | RandInt of bool (** true denotes CPS-term *)
   | RandValue of typ * bool (** true denotes CPS-term *)
 and term =
   | Const of const

@@ -20,7 +20,6 @@ and const = (* only base type constants *)
   | Int64 of int64
   | Nativeint of nativeint
   | CPS_result
-  | RandInt of bool
   | RandValue of typ * bool
 
 and attr =
@@ -181,7 +180,6 @@ let trans_const trans = function
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
   | CPS_result -> CPS_result
-  | RandInt _ -> assert false
   | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
 
 let trans_desc trans = function
@@ -335,7 +333,6 @@ let trans2_gen_const tr env = function
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
   | CPS_result -> CPS_result
-  | RandInt b -> RandInt b
   | RandValue(typ,b) -> RandValue(tr.tr2_typ env typ, b)
 
 let trans2_gen_desc tr env = function

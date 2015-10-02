@@ -90,8 +90,8 @@ and print_const fm = function
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result -> fprintf fm "{end}"
-  | RandInt false -> fprintf fm "rand_int"
-  | RandInt true -> fprintf fm "rand_int_cps"
+  | RandValue(TInt,false) -> fprintf fm "rand_int"
+  | RandValue(TInt,true) -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 

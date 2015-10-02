@@ -411,7 +411,6 @@ let has_rand = make_col false (||)
 
 let has_rand_const c =
   match c with
-  | RandInt _ -> true
   | RandValue _ -> true
   | _ -> false
 

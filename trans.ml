@@ -818,8 +818,8 @@ let init_rand_int = make_trans ()
 
 let init_rand_int_term t =
   match t.desc with
-  | App({desc=Const(RandInt false)},[{desc=Const Unit}]) -> make_var @@ Id.new_var ~name:"_r" TInt
-  | Const(RandInt _) -> assert false
+  | App({desc=Const(RandValue(TInt,false))},[{desc=Const Unit}]) -> make_var @@ Id.new_var ~name:"_r" TInt
+  | Const(RandValue(TInt,_)) -> assert false
   | _ -> init_rand_int.tr_term_rec t
 
 let () = init_rand_int.tr_term <- init_rand_int_term
@@ -1724,7 +1724,7 @@ let replace_base_with_int_desc desc =
   match desc with
   | Const(Char c) -> Const (Int (int_of_char c))
   | Const(String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
-  | Const(RandValue(TData(s,_), b)) when is_base_typ s -> Const (RandInt b)
+  | Const(RandValue(TData(s,_), b)) when is_base_typ s -> Const (RandValue(TInt,b))
   | _ -> replace_base_with_int.tr_desc_rec desc
 
 let replace_base_with_int_typ typ =

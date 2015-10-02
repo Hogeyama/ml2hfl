@@ -179,8 +179,8 @@ let _TFunCPS(e, typ1, typ2) =
 
 let rec infer_effect env t =
   match t.desc with
-  | Const(RandInt true) -> assert false
-  | Const(RandInt false) ->
+  | Const(RandValue(TInt,true)) -> assert false
+  | Const(RandValue(TInt,false)) ->
       let e = new_evar () in
       let typ = _TFunCPS(e, TBaseCPS TUnit, TBaseCPS TInt) in
       constraints := CGeq(e, ECont) :: !constraints;
