@@ -297,7 +297,7 @@ let arg_spec =
      "-neg-pred-off", Arg.Unit (fun _ -> Flag.never_use_neg_pred := true),
      " Never use negative predicates for abstraction";
      (* higher-order model checking *)
-     "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted programa";
+     "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      "-bool-church", Arg.Set Flag.church_encode, " Use church-encoding for model checking";
      "-trecs", Arg.Unit (fun () -> Flag.mc:=Flag.TRecS), " Use TRecS as the model checker";
      "-horsat", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat), " Use HorSat as the model checker";

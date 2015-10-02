@@ -55,8 +55,7 @@ let rec print_value fm t =
 
 
 let rec eval_print fm rands t =
-  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." Print.term t
-                              (print_list Format.pp_print_int ";") rands;
+  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." Print.term t (print_list Format.pp_print_int ";") rands;
   match t.desc with
   | Const(RandInt false) ->
       let x = Id.new_var Type.TUnit in
@@ -246,10 +245,7 @@ let rec eval_print fm rands t =
   | Label(InfoId f, v) -> eval_print fm rands (subst f (fix f v) v)
   | Label(InfoString f, t) ->
       let args,t' = take_args t in
-      let () =
-        Format.fprintf fm "@\n@[<v 2>%s %a ->"
-                       f (print_list print_value " ") args
-      in
+      Format.fprintf fm "@\n@[<v 2>%s %a ->" f (print_list print_value " ") args;
       let r = eval_print fm rands t' in
       Format.fprintf fm "@]";
       r
@@ -260,5 +256,5 @@ let print fm (ce, t) =
     ignore (eval_print fm ce t);
     assert false
   with
-    RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@."
+  | RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@."
   | EventFail -> Format.fprintf fm "@\nFAIL!@."
