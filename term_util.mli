@@ -123,6 +123,7 @@ val int_of_term : typed_term -> int
 val bool_of_term : typed_term -> bool
 val pair_of_term : typed_term -> typed_term * typed_term
 val tuple_of_term : typed_term -> typed_term list
+val list_of_term : typed_term -> typed_term list
 val get_opt_typ : typ -> typ
 
 

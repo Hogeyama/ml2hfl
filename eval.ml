@@ -8,13 +8,13 @@ exception EventFail
 let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=[]}
 let rec fun_info args_rev f t =
   match t.desc with
-      Fun(x,t1) -> make_fun x (fun_info (x::args_rev) f t1)
-    | _ ->
-        if args_rev = []
-        then t
-        else
-          let t' = List.fold_left (fun t x -> make_label (InfoId x) t) t args_rev in
-            make_label (InfoString (Id.name f)) t'
+  | Fun(x,t1) -> make_fun x (fun_info (x::args_rev) f t1)
+  | _ ->
+      if args_rev = []
+      then t
+      else
+        let t' = List.fold_left (fun t x -> make_label (InfoId x) t) t args_rev in
+        make_label (InfoString (Id.name f)) t'
 let fun_info f v = fun_info [] f v
 
 
@@ -29,27 +29,20 @@ let subst_arg x t t' = subst_arg.tr2_term (x,t) t'
 
 
 let rec take_args = function
-    {desc=Label(InfoTerm t1, t2)} ->
+  | {desc=Label(InfoTerm t1, t2)} ->
       let args,t2' = take_args t2 in
-        t1 :: args, t2'
+      t1 :: args, t2'
   | t -> [], t
 
 
-let subst' x t t1 = subst x t (subst_arg x t t1)
+let subst' x t t1 = subst x t @@ subst_arg x t t1
 
 
 let rec print_value fm t =
   match t.desc with
   | Const (Int n) when n < 0 -> Format.fprintf fm "(%d)" n
   | Fun _ -> Format.pp_print_string fm "<fun>"
-  | Cons _ ->
-      let rec aux t =
-        match t.desc with
-        | Nil -> []
-        | Cons(t1,t2) -> t1 :: aux t2
-        | _ -> assert false
-      in
-      Format.fprintf fm "[%a]" (print_list print_value ";") (aux t)
+  | Cons _ -> Format.fprintf fm "[%a]" (List.print print_value) @@ list_of_term t
   | Tuple[t_1;t_2] -> Format.fprintf fm "(@[@[%a@],@ @[%a@]@])" print_value t_1 print_value t_2
   | _ -> Print.term fm t
 
@@ -59,7 +52,7 @@ let rec eval_print fm rands t =
   match t.desc with
   | Const(RandValue(Type.TInt,false)) ->
       let x = Id.new_var Type.TUnit in
-      List.tl rands, make_fun x (make_int (List.hd rands))
+      List.tl rands, make_fun x @@ make_int @@ List.hd rands
   | Const(RandValue(Type.TInt,true)) -> assert false
   | Const(RandValue(typ,_)) -> unsupported "eval: RandValue"
   | Const c -> rands, t
@@ -73,25 +66,18 @@ let rec eval_print fm rands t =
       let rands',vs = List.fold_right aux (t1::ts) (rands,[]) in
       begin
         match vs with
-          {desc=Fun(x,t)}::v1::vs' ->
-          eval_print fm rands' (make_app (subst' x v1 t) vs')
+        | {desc=Fun(x,t)}::v1::vs' -> eval_print fm rands' (make_app (subst' x v1 t) vs')
         | _ -> assert false
       end
   | If(t1, t2, t3) ->
       let rands', v = eval_print fm rands t1 in
-      let b =
-        match v.desc with
-          Const True -> true
-        | Const False -> false
-        | _ -> assert false
-      in
+      let b = bool_of_term v in
       Format.fprintf fm "@\nif %b then ... ->" b;
-      if b
-      then eval_print fm rands' t2
-      else eval_print fm rands' t3
+      let t' = if b then t2 else t3 in
+      eval_print fm rands' t'
   | Let(flag, bindings, t2) ->
       let aux (rands,vs) (f,xs,t) =
-        let rands',v = eval_print fm rands (List.fold_right make_fun xs t) in
+        let rands',v = eval_print fm rands @@ List.fold_right make_fun xs t in
         rands', vs@[f,v]
       in
       let rands',vs = List.fold_left aux (rands,[]) bindings in
@@ -100,48 +86,38 @@ let rec eval_print fm rands t =
         | Nonrecursive -> subst x (fun_info x v) t
         | Recursive -> subst x (fix x @@ fun_info x v) t
       in
-      eval_print fm rands' (List.fold_right subst' vs t2)
+      eval_print fm rands' @@ List.fold_right subst' vs t2
   | BinOp(And, t1, t2) ->
       let rands',v1 = eval_print fm rands t1 in
-      begin
-        match v1.desc with
-        | Const False -> rands', false_term
-        | Const True -> eval_print fm rands' t2
-        | _ -> assert false
-      end
+      if bool_of_term v1
+      then eval_print fm rands' t2
+      else rands', false_term
   | BinOp(Or, t1, t2) ->
       let rands',v1 = eval_print fm rands t1 in
-      begin
-        match v1.desc with
-        | Const True -> rands', true_term
-        | Const False -> eval_print fm rands' t2
-        | _ -> assert false
-      end
+      if bool_of_term v1
+      then rands', true_term
+      else eval_print fm rands' t2
   | BinOp(op, t1, t2) ->
       let rands',v2 = eval_print fm rands t2 in
       let rands'',v1 = eval_print fm rands' t1 in
+      let n1 = int_of_term v1 in
+      let n2 = int_of_term v2 in
       let v =
-        match op, v1.desc, v2.desc with
-        | Eq, v1, v2 -> if v1 = v2 then true_term else false_term
-        | Lt, Const (Int n1), Const (Int n2) -> if n1 < n2 then true_term else false_term
-        | Gt, Const (Int n1), Const (Int n2) -> if n1 > n2 then true_term else false_term
-        | Leq, Const (Int n1), Const (Int n2) -> if n1 <= n2 then true_term else false_term
-        | Geq, Const (Int n1), Const (Int n2) -> if n1 >= n2 then true_term else false_term
-        | Add, Const (Int n1), Const (Int n2) -> make_int (n1 + n2)
-        | Sub, Const (Int n1), Const (Int n2) -> make_int (n1 - n2)
-        | Mult, Const (Int n1), Const (Int n2) -> make_int (n1 * n2)
+        match op with
+        | Eq -> make_bool (n1 = n2)
+        | Lt -> make_bool (n1 < n2)
+        | Gt -> make_bool (n1 > n2)
+        | Leq -> make_bool (n1 <= n2)
+        | Geq -> make_bool (n1 >= n2)
+        | Add -> make_int (n1 + n2)
+        | Sub -> make_int (n1 - n2)
+        | Mult -> make_int (n1 * n2)
         | _ -> assert false
       in
       rands'', v
   | Not t1 ->
       let rands',v1 = eval_print fm rands t1 in
-      let v =
-        match v1.desc with
-        | Const True -> false_term
-        | Const False -> true_term
-        | _ -> assert false
-      in
-      rands', v
+      rands', make_bool @@ bool_of_term v1
   | Event("fail",false) -> raise EventFail
   | Event _ -> assert false
   | Record fields -> raise (Fatal "Not implemented: eval_print Record")
@@ -214,11 +190,9 @@ let rec eval_print fm rands t =
         match check v p with
         | None -> eval_print fm rands' (make_match v pats)
         | Some f ->
-            let rands'',v = eval_print fm rands' (f cond) in
-            match v.desc with
-            | Const True -> eval_print fm rands'' (f t)
-            | Const False -> eval_print fm rands'' (make_match v pats)
-            | _ -> assert false
+            let rands'',v = eval_print fm rands' @@ f cond in
+            let t' = if bool_of_term v then f t else make_match v pats in
+            eval_print fm rands'' t'
       end
   | Match(t1,[]) -> assert false
   | Raise t ->
@@ -253,7 +227,7 @@ let rec eval_print fm rands t =
 
 let print fm (ce, t) =
   try
-    ignore (eval_print fm ce t);
+    ignore @@ eval_print fm ce t;
     assert false
   with
   | RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@."
