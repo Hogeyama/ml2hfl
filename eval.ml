@@ -66,7 +66,7 @@ let rec eval_print fm rands t =
       let rands',vs = List.fold_right aux (t1::ts) (rands,[]) in
       begin
         match vs with
-        | {desc=Fun(x,t)}::v1::vs' -> eval_print fm rands' (make_app (subst' x v1 t) vs')
+        | {desc=Fun(x,t)}::v1::vs' -> eval_print fm rands' @@ make_app (subst' x v1 t) vs'
         | _ -> assert false
       end
   | If(t1, t2, t3) ->
@@ -188,7 +188,7 @@ let rec eval_print fm rands t =
       let p,cond,t = pat in
       begin
         match check v p with
-        | None -> eval_print fm rands' (make_match v pats)
+        | None -> eval_print fm rands' @@ make_match v pats
         | Some f ->
             let rands'',v = eval_print fm rands' @@ f cond in
             let t' = if bool_of_term v then f t else make_match v pats in
@@ -202,7 +202,7 @@ let rec eval_print fm rands t =
       begin
         try
           eval_print fm rands t1
-        with RaiseExcep(rands',e) -> eval_print fm rands' (make_app t2 [e])
+        with RaiseExcep(rands',e) -> eval_print fm rands' @@ make_app t2 [e]
       end
   | Tuple[t1;t2] ->
       let rands',v2 = eval_print fm rands t2 in
@@ -210,13 +210,9 @@ let rec eval_print fm rands t =
       rands'', make_pair v1 v2
   | Proj(i,t) ->
       let rands',v = eval_print fm rands t in
-      begin
-        match v.desc with
-        | Tuple vs -> rands', List.nth vs i
-        | _ -> assert false
-      end
+      rands', List.nth (tuple_of_term v) i
   | Bottom -> assert false
-  | Label(InfoId f, v) -> eval_print fm rands (subst f (fix f v) v)
+  | Label(InfoId f, v) -> eval_print fm rands @@ subst f (fix f v) v
   | Label(InfoString f, t) ->
       let args,t' = take_args t in
       Format.fprintf fm "@\n@[<v 2>%s %a ->" f (print_list print_value " ") args;
