@@ -2,7 +2,7 @@ include Makefile.config
 
 .PHONY: main all byte opt top clean doc test
 
-PACKAGES = fpat,str,unix,csisat,extlib,compiler-libs.common
+PACKAGES = fpat,str,unix,extlib,compiler-libs.common
 
 FPAT_SRC_DIR = ../fpat
 MOCHI_BIN_DIR = mochi_bin
