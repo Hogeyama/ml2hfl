@@ -61,6 +61,8 @@ AC_SUBST(GIT)
 
 OCAML_VER=`ocamlc -version`
 AC_SUBST(OCAML_VER)
+OCAML_MAJOR_VER=`ocamlc -version | cut -d . -f 1,2`
+AC_SUBST(OCAML_MAJOR_VER)
 
 AC_CONFIG_FILES([Makefile.config environment.ml])
 AC_OUTPUT

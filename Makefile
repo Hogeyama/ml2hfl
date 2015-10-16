@@ -111,7 +111,7 @@ CEGAR_parser.ml CEGAR_parser.mli: CEGAR_parser.mly
 CEGAR_lexer.ml: CEGAR_lexer.mll
 	$(OCAMLLEX) $<
 
-parser_wrapper.ml: parser_wrapper_$(OCAML_VER).ml
+parser_wrapper.ml: parser_wrapper_$(OCAML_MAJOR_VER).ml
 	cp -f $< $@
 	@chmod -w $@
 
@@ -181,6 +181,7 @@ doc:
 clean:
 	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *.output *~
 	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml horSat_parser.ml horSat_parser.mli horSat_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml
+	rm -f parser_wrapper.ml
 	rm -f $(NAME).byte $(NAME).opt $(NAME).top
 	rm -rf $(MOCHI_BIN_DIR)/bin $(MOCHI_BIN_DIR)/lib $(MOCHI_BIN_DIR)/stdlib
 
