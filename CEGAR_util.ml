@@ -533,17 +533,17 @@ let get_nonrec defs main orig_fun_list force =
      2 >= List.length defs')
   in
   let defs' = List.filter check defs in
-  let nonrec = List.rev_map (fun (f,_,_,_,_) -> f, assoc_fun_def defs f) defs' in
+  let non_rec = List.rev_map (fun (f,_,_,_,_) -> f, assoc_fun_def defs f) defs' in
   if !Flag.expand_nonrec_init
-  then nonrec
+  then non_rec
   else
     let orig_fun_list' = List.Set.diff orig_fun_list force in
-    List.filter_out (fun (f,_) -> List.mem f orig_fun_list') nonrec
+    List.filter_out (fun (f,_) -> List.mem f orig_fun_list') non_rec
 
 
 let print_prog_typ' orig_fun_list force fm {env;defs;main;info} =
-  let nonrec = get_nonrec defs main orig_fun_list force in
-  let env' = List.filter_out (fun (f,_) -> List.mem_assoc f nonrec) env in
+  let non_rec = get_nonrec defs main orig_fun_list force in
+  let env' = List.filter_out (fun (f,_) -> List.mem_assoc f non_rec) env in
   CEGAR_print.prog_typ fm {env=env';defs;main;info}
 
 

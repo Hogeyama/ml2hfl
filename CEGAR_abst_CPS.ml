@@ -45,17 +45,17 @@ let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
 let rec expand_nonrec orig_fun_list force {env;defs;main;info} =
-  let nonrec = get_nonrec defs main orig_fun_list force in
+  let non_rec = get_nonrec defs main orig_fun_list force in
   let cnt = ref 0 in
   let rec loop defs =
     if false then Format.printf "%d, %d@." (incr cnt; !cnt) @@ List.fold_left (fun acc (_,_,_,_,t) -> acc + size t) 0 defs;
-    let aux (f,xs,t1,e,t2) = f, xs, subst_map nonrec t1, e, subst_map nonrec t2 in
+    let aux (f,xs,t1,e,t2) = f, xs, subst_map non_rec t1, e, subst_map non_rec t2 in
     let defs' = List.map aux defs in
     if defs = defs'
     then defs
     else loop defs'
   in
-  let defs' = List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f nonrec) defs in
+  let defs' = List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f non_rec) defs in
   let defs'' = loop defs' in
   let defs''' = List.map beta_reduce_def defs'' in
   {env; defs=defs'''; main; info}

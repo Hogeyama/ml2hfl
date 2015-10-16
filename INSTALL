@@ -1,0 +1,51 @@
+LAST UPDATE: 2015/10/16
+
+- Install OPAM and OCaml 4.02
+    - We need ocamlc.opt for apron.20150518
+- Install m4 (for apron and MoCHi).
+- Install libgmp-dev and libmpfr-dev (for apron).
+- Install apron by OPAM.
+- Add an opam repositry by the following command (for Z3).
+    $ opam remote add termite https://github.com/termite-analyser/opam-termite.git
+- Install Z3 by OPAM.
+- Install autoconf (for FPAT and MoCHi).
+- Install extlib by OPAM (for FPAT and MoCHi).
+- Install camlp5 by OPAM (for FPAT).
+- Install FPAT by the following command
+    $ autoconf
+    $ ./configure --disable-csisat --disable-minisat
+    $ make install-lib
+    $ make
+    $ make install
+- Install ocamlgraph by OPAM (for MoCHi).
+- Compile MoCHi by the following command
+    $ aclocal -I m4
+    $ autoconf
+    $ ./configure
+    $ make
+- You can find the MoCHi executable "mochi.opt"
+
+
+# Here is an example of a list of commands for installing MoCHi on Ubuntu 15.04.
+# We assume that TRecS & HorSat are found in $PATH
+apt-get install opam m4 libgmp-dev libmpfr-dev autoconf
+opam init
+opam update
+opam switch 4.02.3
+opam remote add termite https://github.com/termite-analyser/opam-termite.git
+opam install apron.20150518 Z3 camlp5 extlib
+git clone git@bitbucket.org:uhiro/vhorn.git fpat
+cd fpat
+autoconf
+./configure --disable-csisat --disable-minisat
+cd ..
+wget http://www.cs.nyu.edu/acsys/cvc3/releases/2.4.1/linux64/cvc3-2.4.1-optimized-static.tar.gz
+tar xvzf cvc3-2.4.1-optimized-static.tar.gz
+git clone git@bitbucket.org:ryosu_sato/mochi.git
+cp cvc3-2.4.1-optimized-static/bin/cvc3 mochi
+cd mochi
+aclocal -I m4
+autoconf
+./configure
+make
+ls -l mochi.opt
