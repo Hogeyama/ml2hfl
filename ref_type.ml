@@ -102,7 +102,7 @@ let rec print fm = function
         then Format.fprintf fm "|%a|" Id.print x;
       Format.fprintf fm " list@])"
 
-let rec decomp_fun n typ =
+let rec decomp_funs n typ =
   match typ with
   | Base _
   | Tuple _
@@ -112,10 +112,10 @@ let rec decomp_fun n typ =
   | Fun _ when n <= 0 ->
       [], [], typ
   | Fun(x,typ1,typ2) ->
-      let exts,typs,typ' = decomp_fun (n-1) typ2 in
+      let exts,typs,typ' = decomp_funs (n-1) typ2 in
       exts, (x,typ1)::typs, typ'
   | ExtArg(x,typ1,typ2) ->
-      let exts,typs,typ' = decomp_fun n typ2 in
+      let exts,typs,typ' = decomp_funs n typ2 in
       (x,typ1)::exts, typs, typ'
 
 let rec arg_num = function
@@ -565,22 +565,21 @@ let rec simplify_typs constr and_or typs =
           typ :: aux typs'
   in
   let typs' = decomp @@ flatten @@ constr @@ aux @@ List.map simplify typs in
-  if List.for_all is_base typs' then
+  if typs'<>[] && List.for_all is_base typs' then
     let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
     let base = List.hd bs in
     assert (List.for_all ((=) base) bs);
     let x = List.hd xs in
     let ts' = List.map2 (U.subst_var -$- x) xs ts in
     Base(base, x, and_or ts')
-(*
-  else if List.for_all is_fun typs' then
-    let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
+  else if typs'<>[] && List.for_all is_fun typs' then
+    let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_fun) typs' in
     if List.for_all (same @@ List.hd typs1) @@ List.tl typs1 then
       let x = List.hd xs in
       let typs2' = List.map2 (subst_var -$- x) xs typs2 in
+      Fun(x, List.hd typs1, simplify_typs constr and_or typs2')
     else
       flatten @@ constr typs'
-*)
   else
      flatten @@ constr typs'
 

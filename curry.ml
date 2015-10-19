@@ -62,7 +62,7 @@ let rec uncurry_typ rtyp typ =
   | _, TFun(x,typ2) ->
       let typ1 = Id.typ x in
       let n = element_num typ1 in
-      let exts,xrtyps,rtyp2 = RT.decomp_fun n rtyp in
+      let exts,xrtyps,rtyp2 = RT.decomp_funs n rtyp in
       let rtyp1' = uncurry_typ_arg (List.map snd xrtyps) typ1 in
       let rtyp2' = uncurry_typ rtyp2 typ2 in
       let y =

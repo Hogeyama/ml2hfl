@@ -288,7 +288,7 @@ and print_desc pri typ fm desc =
   | TSome t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[Ref %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[Some %a@]%s" s1 (print_term p typ) t s2
 
 and print_info fm info =
   match info with

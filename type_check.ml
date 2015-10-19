@@ -1,8 +1,10 @@
-
+open Util
 open Syntax
 open Term_util
 open Type
 open Type_decl
+
+let debug () = List.mem "Type_check" !Flag.debug_module
 
 let check_var x typ =
   if Type.can_unify (Id.typ x) typ
@@ -10,7 +12,7 @@ let check_var x typ =
   else (Format.printf "check_var: (%a:%a), %a@." Id.print x Print.typ (Id.typ x) Print.typ typ; assert false)
 
 let rec check t typ =
-  if false then Format.printf "CHECK: %a, %a@." Print.term t Print.typ typ;
+  if !!debug then Format.printf "CHECK: %a, %a@." Print.term t Print.typ typ;
   if not (Type.can_unify t.typ typ)
   then (Format.printf "check: %a, %a@."
                       (Color.red Print.term') t
