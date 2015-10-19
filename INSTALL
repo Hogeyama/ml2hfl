@@ -12,7 +12,7 @@ LAST UPDATE: 2015/10/16
 - Install extlib by OPAM (for FPAT and MoCHi).
 - Install camlp5 by OPAM (for FPAT).
 - Compile CSIsat library
-- Install FPAT by the following command:
+- Install FPAT by the following commands:
     $ autoconf
     $ ./configure
     $ sed -i -e "s/linkopts.*/linkopts = \"-cclib -lcamlglpk -cclib -lglpk\"/" csisat/META
@@ -21,7 +21,7 @@ LAST UPDATE: 2015/10/16
     $ make
     $ make install
 - Install ocamlgraph by OPAM (for MoCHi).
-- Compile MoCHi by the following command:
+- Compile MoCHi by the following commands:
     $ aclocal -I m4
     $ autoconf
     $ ./configure
