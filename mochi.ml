@@ -216,7 +216,7 @@ let parse_fpat_arg arg =
   let args = Array.of_list @@ "FPAT" :: split_spaces arg in
   let usage = "Options for FPAT are:" in
   try
-    Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.Config.arg_spec) ignore usage
+    Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore usage
   with
   | Arg.Bad s
   | Arg.Help s -> Format.printf "%s" s; exit 0
@@ -372,8 +372,8 @@ let arg_spec =
 let () = print_option_and_exit := fun () -> print_string @@ String.join " " @@ List.map Triple.fst arg_spec; exit 0
 
 let string_of_exception = function
-  | e when Fpat.Config.is_fpat_exception e ->
-     Fpat.Config.string_of_fpat_exception e
+  | e when Fpat.FPATConfig.is_fpat_exception e ->
+     Fpat.FPATConfig.string_of_fpat_exception e
   | Syntaxerr.Error err -> "Syntaxerr.Error"
   | Typecore.Error(loc,env,err) -> "Typecore.Error"
   | Typemod.Error(loc,env,err) -> "Typemod.Error"
@@ -418,7 +418,7 @@ let parse_arg () =
 
 (* called before parsing options *)
 let fpat_init1 () =
-  Fpat.Config.set_default ()
+  Fpat.FPATConfig.set_default ()
 
 (* called after parsing options *)
 let fpat_init2 () =
@@ -462,8 +462,8 @@ let () =
         Format.printf "Verification failed:@.";
         Format.printf "  MoCHi could not refute an infeasible error path @.";
         Format.printf "  due to the incompleteness of the refinement type system@."
-    | e when Fpat.Config.is_fpat_exception e ->
-        Format.printf "FPAT: %a@." Fpat.Config.pr_exception e
+    | e when Fpat.FPATConfig.is_fpat_exception e ->
+        Format.printf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
     | Syntaxerr.Error err ->
         Format.printf "%a@." Syntaxerr.report_error err
     | Typecore.Error(loc,env,err) ->

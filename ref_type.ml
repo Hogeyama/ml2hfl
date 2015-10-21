@@ -34,9 +34,14 @@ let decomp_fun typ =
   match typ with
   | Fun(x,typ1,typ2) -> Some (x, typ1, typ2)
   | _ -> None
+let decomp_list typ =
+  match typ with
+  | List(x,p_len,y,p_i,typ2) -> Some (x, p_len, y, p_i, typ2)
+  | _ -> None
 
 let is_base = Option.is_some -| decomp_base
 let is_fun = Option.is_some -| decomp_fun
+let is_list = Option.is_some -| decomp_list
 
 let print_base fm = function
   | Unit -> Format.pp_print_string fm "unit"
@@ -267,10 +272,10 @@ let rec same typ1 typ2 =
   | Inter typs1, Inter typs2 -> List.eq ~cmp:same typs1 typs2
   | Union typs1, Union typs2 -> List.eq ~cmp:same typs1 typs2
   | ExtArg(x1,typ11,typ12), ExtArg(x2,typ21,typ22) -> same typ11 typ21 && same typ12 @@ subst_var x2 x1 typ22
-  | List(x1,p1_len,y1,p1_i,typ1), List(x2,p2_len,y2,p2_i,typ2) ->
+  | List(x1,p1_len,y1,p1_i,typ1'), List(x2,p2_len,y2,p2_i,typ2') ->
       U.same_term p1_len @@ U.subst_var x2 x1 p2_len &&
       U.same_term p1_i @@ U.subst_var x2 x1 @@ U.subst_var y2 y1 p2_i &&
-      same typ1 @@ subst_var x2 x1 @@ subst_var y2 y1 typ2
+      same typ1' @@ subst_var x2 x1 @@ subst_var y2 y1 typ2'
   | _ -> false
 
 let rec has_no_predicate typ =
@@ -565,14 +570,16 @@ let rec simplify_typs constr and_or typs =
           typ :: aux typs'
   in
   let typs' = decomp @@ flatten @@ constr @@ aux @@ List.map simplify typs in
-  if typs'<>[] && List.for_all is_base typs' then
+  if typs'=[] then
+    constr []
+  else if List.for_all is_base typs' then
     let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
     let base = List.hd bs in
     assert (List.for_all ((=) base) bs);
     let x = List.hd xs in
     let ts' = List.map2 (U.subst_var -$- x) xs ts in
     Base(base, x, and_or ts')
-  else if typs'<>[] && List.for_all is_fun typs' then
+  else if List.for_all is_fun typs' then
     let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_fun) typs' in
     if List.for_all (same @@ List.hd typs1) @@ List.tl typs1 then
       let x = List.hd xs in
@@ -580,6 +587,10 @@ let rec simplify_typs constr and_or typs =
       Fun(x, List.hd typs1, simplify_typs constr and_or typs2')
     else
       flatten @@ constr typs'
+(*
+  else if List.for_all is_list typs' then
+    let xs,p_lens,ys,p_is,typs'' = List.split3 @@ List.map (Option.get -| decomp_fun) typs' in
+*)
   else
      flatten @@ constr typs'
 

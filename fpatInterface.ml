@@ -323,7 +323,7 @@ let infer_with_ext
   Fpat.AbsType.split_equalities := true;
   Fpat.AbsType.extract_atomic_predicates := true;
   Fpat.HCCSSolver.link_solver
-    (Fpat.AEHCCSSolver.solve
+    (fst -| fst -| Fpat.AEHCCSSolver.solve
        (Fpat.EAHCCSSolver.solve [] [] [] Fpat.BwIPHCCSSolver.solve));
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
   Fpat.AbsType.split_equalities := old_split_eq;
