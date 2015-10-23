@@ -66,7 +66,7 @@ and print_typ_aux var fm = function
 
 and print_typ fm typ =
   counter := 1;
-  print_typ_aux None fm typ
+  Format.fprintf fm "@[%a@]" (print_typ_aux None) typ
 
 and print_env fm env =
   let add_rand_info f = match decomp_randint_name f with

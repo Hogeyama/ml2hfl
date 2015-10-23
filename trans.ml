@@ -156,72 +156,73 @@ let unify_pattern_var = unify_pattern_var.col_term
 
 
 
-let rec define_randvalue env defs typ =
+let rec define_randvalue (env, defs as ed) typ =
   if List.mem_assoc typ env
-  then env, defs, make_app (make_var @@ List.assoc typ env) [unit_term]
+  then (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
   else
     match typ with
-    | TUnit -> env, defs, unit_term
-    | TBool -> env, defs, randbool_unit_term
-    | TInt -> env, defs, randint_unit_term
-    | TVar({contents=None} as r) -> r := Some TUnit; define_randvalue env defs TUnit
-    | TVar{contents=Some typ} -> define_randvalue env defs typ
+    | TUnit -> (env, defs), unit_term
+    | TBool -> (env, defs), randbool_unit_term
+    | TInt -> (env, defs), randint_unit_term
+    | TVar({contents=None} as r) -> r := Some TUnit; define_randvalue ed TUnit
+    | TVar{contents=Some typ} -> define_randvalue ed typ
     | TFun(x,typ) ->
-        let env',defs',t = define_randvalue env defs typ in
-        env', defs', make_fun x t
+        let ed',t = define_randvalue ed typ in
+        ed', make_fun x t
     | TList (TVar({contents=None} as r)) ->
-        r := Some TUnit; define_randvalue env defs typ
+        r := Some TUnit;
+        define_randvalue ed typ
     | TList typ' ->
         let u = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
-        let env'',defs',t_typ' = define_randvalue env' defs typ' in
+        let (env'',defs'),t_typ' = define_randvalue (env', defs) typ' in
         let t_typ = make_br (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term])) in
-        env'', (f,[u],t_typ)::defs', make_app (make_var f) [unit_term]
+        (env'', (f,[u],t_typ)::defs'), make_app (make_var f) [unit_term]
     | TTuple xs ->
-        let aux x (env,defs,ts) =
-          let env',defs',t = define_randvalue env defs @@ Id.typ x in
-          env', defs', t::ts
+        let aux x (ed,ts) =
+          let ed',t = define_randvalue ed @@ Id.typ x in
+          ed', t::ts
         in
-        let env', defs', ts = List.fold_right aux xs (env,defs,[]) in
-        env', defs', make_tuple ts
-    | TData(s,false) -> env, defs, make_randvalue_unit typ
+        let (env', defs'), ts = List.fold_right aux xs ((env,defs),[]) in
+        (env', defs'), make_tuple ts
+    | TData(s,false) -> (env, defs), make_randvalue_unit typ
     | TData(s,true) ->
         let u = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
-        let env'',defs',t =
+        let (env'',defs'),t =
           match Type_decl.assoc s with
           | Type_decl.Primitive -> assert false
           | Type_decl.Abstract -> assert false
           | Type_decl.TKVariant stypss ->
               let n = List.length stypss in
-              let aux1 (s,typs) (env,defs,itss,i) =
-                let aux2 typ (env,defs,ts) =
-                  let env', defs',t = define_randvalue env defs typ in
-                  env', defs', t::ts
+              let aux1 (s,typs) (ed,itss,i) =
+                let aux2 typ (ed,ts) =
+                  let ed',t = define_randvalue ed typ in
+                  ed', t::ts
                 in
-                let env',defs',ts' = List.fold_right aux2 typs (env,defs,[]) in
-                env', defs', (i-1,ts')::itss, i-1
+                let ed',ts' = List.fold_right aux2 typs (ed,[]) in
+                ed', (i-1,ts')::itss, i-1
               in
-              let env'',defs',itss,_ = List.fold_right aux1 stypss (env',defs,[],n) in
+              let (env'',defs'),itss,_ = List.fold_right aux1 stypss ((env',defs),[],n) in
               let aux (s,typs) (i,ts) =
                 let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
                 p, true_term, {desc=Constr(s,ts); typ=typ; attr=[]}
               in
-              env'', defs', make_match randint_unit_term (List.map2 aux stypss itss)
+              (env'', defs'), make_match randint_unit_term (List.map2 aux stypss itss)
           | Type_decl.TKRecord sftyps ->
-              let aux (field,(flag,typ)) (env,defs,sfts) =
-                let env', defs', t = define_randvalue env defs typ in
-                env', defs', (field,t)::sfts
+              let aux (field,(flag,typ)) (ed,sfts) =
+                let ed', t = define_randvalue ed typ in
+                ed', (field,t)::sfts
               in
-              let env'',defs',sfts = List.fold_right aux sftyps (env',defs,[]) in
-              env'', defs', {desc=Record sfts; typ=typ; attr=[]}
+              let ed',sfts = List.fold_right aux sftyps ((env',defs),[]) in
+              ed', {desc=Record sfts; typ=typ; attr=[]}
         in
-        env'', (f,[u],t)::defs', make_app (make_var f) [unit_term]
+        (env'', (f,[u],t)::defs'), make_app (make_var f) [unit_term]
     | TRef typ ->
-        let env',defs',t = define_randvalue env defs typ in
-        env', defs', make_ref t
+        let ed',t = define_randvalue ed typ in
+        ed', make_ref t
     | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
 
 
@@ -229,13 +230,14 @@ let rec define_randvalue env defs typ =
 
 let inst_randval = make_fold_tr ()
 
-let inst_randval_term (env,defs) t =
+let inst_randval_term ed t =
   match t.desc with
-  | App({desc=Const(RandValue(typ,false))}, [t']) when t' = unit_term ->
-      let env',defs',t'' = define_randvalue env defs typ in
-      (env',defs'), t''
+  | App({desc=Const(RandValue(TInt,false));attr}, [t']) when t' = unit_term -> (* for disproving termination  *)
+      ed, t
+  | App({desc=Const(RandValue(typ,false));attr}, [t']) when t' = unit_term ->
+      define_randvalue ed typ
   | Const(RandValue _) -> assert false
-  | _ -> inst_randval.fold_tr_term_rec (env,defs) t
+  | _ -> inst_randval.fold_tr_term_rec ed t
 
 let () = inst_randval.fold_tr_term <- inst_randval_term
 let inst_randval t =
@@ -1241,11 +1243,11 @@ let make_ext_fun_def f =
   let xs' = List.map Id.new_var_id xs in
   let make_fun_arg_call f (env,defs,t) =
     let xs,typ = decomp_tfun @@ Id.typ f in
-    let aux typ (env,defs,args) =
-      let env',defs',arg = define_randvalue env defs typ in
-      env', defs', arg::args
+    let aux typ ((env,defs),args) =
+      let (env',defs'),arg = define_randvalue (env, defs) typ in
+      (env', defs'), arg::args
     in
-    let env',defs',args = List.fold_right aux (List.map Id.typ xs) (env,defs,[]) in
+    let (env',defs'),args = List.fold_right aux (List.map Id.typ xs) ((env,defs),[]) in
     let t'' =
       if xs = []
       then t
@@ -1253,7 +1255,7 @@ let make_ext_fun_def f =
     in
     env', defs', t''
   in
-  let env,defs,t = define_randvalue [] [] typ' in
+  let (env,defs),t = define_randvalue ([],[]) typ' in
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
   f, xs', make_letrec defs' t'
 
@@ -2337,7 +2339,12 @@ let beta_affine_fun_desc desc =
               | _ -> false
             in
             let used = List.Set.inter xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
-            if List.for_all size_1 ts && used = List.unique used
+            let not_rand_int t = (* for non-termination *)
+              match t.desc with
+              | App({desc=Const(RandValue(TInt,_))}, _) -> false
+              | _ -> true
+            in
+            if List.for_all size_1 ts && used = List.unique used && not_rand_int t1
             then
               let t2' = beta_affine_fun.tr_term t2 in
               let t2'' = beta_full_app (f, xs, t1') t2' in

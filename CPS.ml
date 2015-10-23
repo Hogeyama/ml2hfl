@@ -947,11 +947,16 @@ let inline_affine_term env t =
         with Not_found -> inline_affine.tr2_term_rec env t
       end
   | Let(flag, bindings, t1) ->
+      let not_rand_int t =
+        match t.desc with
+        | App({desc=Const(RandValue(TInt,_))}, _) -> false
+        | _ -> true
+      in
       let linear f xs t =
         let fv = get_fv ~cmp:(fun _ _ -> false) t in
         fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
       in
-      let env' = List.filter_map (fun (f,xs,t) -> if linear f xs t then Some (f,(xs,t)) else None) bindings @ env in
+      let env' = List.filter_map (fun (f,xs,t) -> if not_rand_int t && linear f xs t then Some (f,(xs,t)) else None) bindings @ env in
       let bindings' = List.map (Triple.map_trd @@ inline_affine.tr2_term env') bindings in
       make_let_f flag bindings' @@ inline_affine.tr2_term env' t1
   | _ -> inline_affine.tr2_term_rec env t

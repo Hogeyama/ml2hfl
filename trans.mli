@@ -5,7 +5,7 @@ val inst_tvar_tunit : typed_term -> typed_term
 val get_tvars : typ -> typ option ref list
 val rename_poly_funs : id -> typed_term -> (id * id) list * typed_term
 val copy_poly_funs : typed_term -> typed_term
-val define_randvalue : (typ * id) list -> (id * id list * typed_term) list -> typ -> (typ * id) list * (id * id list * typed_term) list * typed_term
+val define_randvalue : ((typ * id) list * (id * id list * typed_term) list) -> typ -> ((typ * id) list * (id * id list * typed_term) list) * typed_term
 val inst_randval : typed_term -> typed_term
 val ref_to_assert : Ref_type.env -> typed_term -> typed_term
 val replace_main : ?force:bool -> typed_term -> typed_term -> typed_term

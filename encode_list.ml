@@ -198,6 +198,9 @@ let rec make_rand typ =
 
 let abst_list_term post t =
   match t.desc with
+  | App({desc=Const(RandValue(TInt,false))}, t2) -> (* for disproving termination  *)
+      assert (t2 = [unit_term]);
+      t
   | App({desc=Const(RandValue(typ,false))}, t2) ->
       assert (t2 = [unit_term]);
       make_rand typ

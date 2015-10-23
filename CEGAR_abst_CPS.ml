@@ -166,7 +166,7 @@ let rec eta_expand_term_aux env t typ =
   | _ -> assert false
 
 let rec eta_expand_term env t typ =
-  if false && debug() then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if debug() then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
   | Const (RandInt _)
@@ -197,7 +197,7 @@ let rec eta_expand_term env t typ =
           let env' = (x,typ1)::env in
           let t'' = eta_expand_term env' t' (typ2 (Var x)) in
           Fun(x, Some typ1, t'')
-      | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
+      | _ -> Format.printf "%a, %a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
 let eta_expand_def env (f,xs,t1,e,t2) =
   let rec decomp_typ typ xs =
     match xs with

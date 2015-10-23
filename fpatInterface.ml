@@ -313,6 +313,12 @@ let infer_with_ext
     (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
     (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
   =
+  Format.printf "labeled %a@." (Util.List.print Format.pp_print_string) labeled;
+  Format.printf "cexs %a@." (Util.List.print @@ Util.List.print Format.pp_print_int) cexs;
+let pr ppf (tenv, phi) =
+  Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
+                 in
+  Format.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
   let debug = !Flag.debug_level > 0 in
   let prog = conv_prog prog in
 
