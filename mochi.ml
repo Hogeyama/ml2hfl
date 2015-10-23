@@ -346,11 +346,17 @@ let arg_spec =
        Arg.Set Flag.add_closure_exparam,
        " Infer extra ranking parameters for closures for termination verification";
      "-non-termination",
-       Arg.Unit (fun _ ->
+     Arg.Unit (fun _ ->
                  Flag.mode := Flag.NonTermination;
                  Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
-       " Check non-termination";
+     " Check non-termination";
+     "-fair-non-termination",
+     Arg.Unit (fun _ ->
+       Flag.mode := Flag.FairNonTermination;
+       Flag.church_encode := true;
+       Flag.mc := Flag.HorSatP),
+     " Check fair-non-termination";
      "-merge-paths",
        Arg.Unit (fun _ ->
                  Flag.merge_paths_of_same_branch := true),
@@ -431,6 +437,7 @@ let check_env () =
   match !Flag.mc with
   | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found"
   | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found"
+  | Flag.HorSatP -> if not Environment.horsatp_available then fatal "HorSatP not found"
 
 let () =
   if !Sys.interactive

@@ -8,6 +8,7 @@ let debug () = List.mem "ModelCheck" !Flag.debug_module
 
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
 type counterexample = CESafety of TrecsInterface.counterexample | CENonTerm of HorSatInterface.counterexample_apt
+                      | CEDummy
 type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
 
 type spec =
@@ -334,6 +335,15 @@ let check abst prog =
           | HorSatInterface.Unsafe ce -> Unsafe (CESafety ce)
           | HorSatInterface.UnsafeAPT _ -> assert false
         end
+    | Flag.HorSatP, Flag.FairNonTermination ->
+        let spec = HorSatPInterface.make_fair_nonterm_spec ["a"; "b"] [("a","b")]  in (*TODO Streett condition *)
+        begin
+          match HorSatPInterface.check (abst',spec) with
+          | HorSatPInterface.Safe -> Safe []
+          | HorSatPInterface.Unsafe -> Unsafe CEDummy
+        end
+    | Flag.HorSatP, _ ->
+       assert false
   in
   add_time tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
