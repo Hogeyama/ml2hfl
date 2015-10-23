@@ -135,7 +135,7 @@ let get_pair s =
   let q = String.sub s 1 (n1-1) in
   let n = int_of_string (String.sub s (n1+1) (n2-n1-1)) in
   let s' = String.sub s (n2+1) (String.length s-n2-1) in
-    (q, n), s'
+  (q, n), s'
 
 
 type path =

@@ -67,7 +67,7 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	CEGAR_abst.cmo CEGAR_parser.cmo CEGAR_lexer.cmo			\
 	trecs_syntax.cmo trecs_parser.cmo trecs_lexer.cmo		\
 	trecsInterface.cmo horSat_syntax.cmo horSat_parser.cmo		\
-	horSat_lexer.cmo horSatInterface.cmo horSatPInterface.cmo ModelCheck.cmo		\
+	horSat_lexer.cmo horSatInterface.cmo horSatP_syntax.cmo horSatPInterface.cmo ModelCheck.cmo		\
 	feasibility.cmo refine.cmo CEGAR_non_term.cmo CEGAR.cmo		\
 	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo		\
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo	\
