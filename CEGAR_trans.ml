@@ -195,13 +195,18 @@ and trans_term post xs env t =
   | S.Const(S.RandValue _) -> assert false
   | S.Const c -> [], Const (trans_const c t.S.typ)
   | S.App({S.desc=S.Const(S.RandValue(Type.TInt,false)); S.attr}, [{S.desc=S.Const S.Unit}]) when List.mem S.AAbst_under attr ->
-      unsupported "trans_term RandValue"
-  | S.App({S.desc=S.Const(S.RandValue(Type.TInt,true)); S.attr}, [t1;t2]) when List.mem S.AAbst_under attr ->
-      assert (t1 = Term_util.unit_term);
+      unsupported "trans_term RandInt"
+  | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true)); S.attr}, [t1;t2]) ->
+      let flag =
+        if List.mem S.AAbst_under attr
+        then Some 0
+        else None
+      in
+      assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
-      defs1@defs2, make_app (Const (RandInt (Some 0))) (List.map _Var xs' @ [t2'])
+      defs1@defs2, make_app (Const (RandInt flag)) (List.map _Var xs' @ [t2'])
   | S.App({S.desc=S.Const(S.RandValue(Type.TData(s,false), true))}, [t1]) ->
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
