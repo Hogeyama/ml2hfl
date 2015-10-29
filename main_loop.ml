@@ -110,7 +110,12 @@ let preprocess t spec =
       List.filter_map aux fun_list
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
-    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined}
+    let fairness =
+      if !Flag.mode = Flag.FairNonTermination then
+        Some spec.Spec.fairness
+      else
+        None in
+    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
   in
   prog, rmap, get_rtyp, info
 

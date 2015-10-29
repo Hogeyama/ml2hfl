@@ -52,8 +52,11 @@ AC_SUBST(TRECS)
 AC_PATH_TOOL(HORSAT, horsat, [no], [$PATH:$PWD])
 AC_SUBST(HORSAT)
 
-if test "$TRECS" = "no" -a "$HORSAT" = "no"; then
-  AC_MSG_ERROR([TRecS and HorSat not found])
+AC_PATH_TOOL(HORSATP, horsatp, [no], [$PATH:$PWD])
+AC_SUBST(HORSATP)
+
+if test "$TRECS" = "no" -a "$HORSAT" = "no" -a "$HORSATP" = "no"; then
+  AC_MSG_ERROR([no model checker found])
 fi
 
 AC_CHECK_PROG(GIT, git, git)

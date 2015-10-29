@@ -11,9 +11,13 @@ type counterexample = CESafety of TrecsInterface.counterexample | CENonTerm of H
                       | CEDummy
 type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
 
-type spec =
+type mc_spec =
   | SpecTRecS of TrecsInterface.spec
   | SpecHorSat of HorSatInterface.spec
+
+type spec =
+  | Fairness of Fair_termination_type.fairness
+  | Other
 
 let make_file_spec () =
   [0, "unit", [];
@@ -300,7 +304,7 @@ let preprocess_cps prog =
   |&Flag.beta_reduce&> beta_reduce
   |& !Flag.church_encode&> church_encode
 
-let check abst prog =
+let check abst prog spec =
   let tmp = get_time () in
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
@@ -336,7 +340,13 @@ let check abst prog =
           | HorSatInterface.UnsafeAPT _ -> assert false
         end
     | Flag.HorSatP, Flag.FairNonTermination ->
-        let spec = HorSatPInterface.make_fair_nonterm_spec ["a"; "b"] [("a","b")]  in (*TODO Streett condition *)
+       let fairness =
+         match spec with
+         | Fairness x -> x
+         | Other -> assert false in
+       Format.printf "FAIRNESS: %a@.@." Fair_termination_util.print_fairness fairness;
+       let event_list = ["A"; "B"] in (* TODO gather_events prog *)
+       let spec = HorSatPInterface.make_fair_nonterm_spec event_list fairness  in
         begin
           match HorSatPInterface.check (abst',spec) with
           | HorSatPInterface.Safe -> Safe []

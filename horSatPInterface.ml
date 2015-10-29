@@ -120,7 +120,7 @@ let rec verifyFile_aux filename =
 
 let verifyFile filename =
   let r = verifyFile_aux filename in
-  Printf.eprintf "[Info] HorSP returned \"%s\"\n" r;
+  Printf.eprintf "[Info] HorSatP returned \"%s\"\n" r;
   match r with
   | "Satisfied" -> Safe
   | "Unsatisfied" -> Unsafe
@@ -140,7 +140,7 @@ let trans_spec (delta, priority) =
   ]
 
 let trans ({defs}, spec) =
-  let defs':Syntax.prerules = List.map (trans_fun_def "br") defs in
+  let defs':Syntax.prerules = List.map (trans_fun_def "br_forall") defs in
   let spec' = trans_spec spec in
   Syntax.string_of_prerules defs' ^ spec'
 

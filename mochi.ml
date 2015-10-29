@@ -181,7 +181,7 @@ let main in_channel =
     let n = my_input in_channel s 0 Flag.max_input_size in
     if n = Flag.max_input_size then raise LongInput;
     let s' = String.sub s 0 n in
-    if !Flag.mode = Flag.FairTermination
+    if !Flag.mode = Flag.FairTermination || !Flag.mode = Flag.FairNonTermination
     then Fair_termination_util.add_event s'
     else s'
   in

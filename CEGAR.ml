@@ -19,7 +19,7 @@ let print_non_CPS_abst abst prog =
   if !Flag.just_print_non_CPS_abst then
     let result =
       try
-	Some (MC.check abst prog)
+        Some (MC.check abst prog Other)
       with _ -> None
     in
     let s =
@@ -52,7 +52,11 @@ let rec loop prog0 is_cp ces info =
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   print_non_CPS_abst abst prog;
-  let result = MC.check abst prog in
+  let spec =
+    match info.CEGAR_syntax.fairness with
+    | Some x -> MC.Fairness x
+    | None -> MC.Other in
+  let result = MC.check abst prog spec in
   match result, !Flag.mode with
   | MC.Safe env, _ ->
       if Flag.print_ref_typ_debug
