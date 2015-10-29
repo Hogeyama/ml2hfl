@@ -198,7 +198,7 @@ let rec make_rand typ =
 
 let abst_list_term post t =
   match t.desc with
-  | App({desc=Const(RandValue(TInt,false))}, t2) -> (* for disproving termination  *)
+  | App({desc=Const(RandValue(TInt,false)); attr}, t2) when List.mem AAbst_under attr -> (* for disproving termination  *)
       assert (t2 = [unit_term]);
       t
   | App({desc=Const(RandValue(typ,false))}, t2) ->

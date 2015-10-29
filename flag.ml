@@ -49,6 +49,7 @@ let lift_fv_only = ref false
 let use_filter = ref false
 let disable_predicate_accumulation = ref false
 let relative_complete = ref false
+let never_use_relative_complete = ref true
 let no_exparam = ref false
 let expand_nonrec = ref true
 let expand_nonrec_init = ref true

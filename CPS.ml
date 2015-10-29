@@ -949,7 +949,7 @@ let inline_affine_term env t =
   | Let(flag, bindings, t1) ->
       let not_rand_int t =
         match t.desc with
-        | App({desc=Const(RandValue(TInt,_))}, _) -> false
+        | App({desc=Const(RandValue(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
         | _ -> true
       in
       let linear f xs t =
