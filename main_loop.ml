@@ -95,8 +95,8 @@ let preprocess t spec =
     else None
   in
   (**********************)
-
-  let abst_cegar_env = Spec.get_abst_cegar_env spec t |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
+  (*let abst_cegar_env = Spec.get_abst_cegar_env spec t |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in*)
+  let abst_cegar_env = spec.Spec.abst_cegar_env in
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:abst_cegar_env t in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
