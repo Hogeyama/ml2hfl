@@ -20,7 +20,7 @@ type label =
   | End
 
 let string_of_label = function
-  | Ev x -> "event_"^x
+  | Ev x -> x
   | Br_A -> "br_forall"
   | Br_E -> "br_exists"
   | Call -> "call"
@@ -161,7 +161,9 @@ let check target =
 let make_apt events (a, b) =
   let q0, q1, q2 = "q0", "q1", "q2" in
   let rec trans = function
-    | Ev x -> Label (1, if x = a then q1 else q2)
+    | Ev x when x = a -> Label (1, q1)
+    | Ev x when x = b -> Label (1, q2)
+    | Ev _ -> Label (1, q0)
     | Br_A -> And (Label (1, q0), Label (2, q0))
     | Br_E -> Or  (Label (1, q0), Label (2, q0))
     | Call
@@ -194,4 +196,4 @@ let make_fair_nonterm_spec labels streett : spec =
       else
         None)
     labels in
-  make_apt events (a, b)
+  make_apt events (ev_a, ev_b)
