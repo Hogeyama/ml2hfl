@@ -7,8 +7,8 @@ PACKAGES = fpat,str,unix,extlib,compiler-libs.common
 FPAT_SRC_DIR = ../fpat
 MOCHI_BIN_DIR = mochi_bin
 
-OCAMLCFLAGS = -g -annot -package $(PACKAGES)
-OCAMLOPTFLAGS = -g -annot -package $(PACKAGES)
+OCAMLCFLAGS = -g -annot -bin-annot -package $(PACKAGES)
+OCAMLOPTFLAGS = -g -annot -bin-annot -package $(PACKAGES)
 
 DOC = doc
 

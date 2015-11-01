@@ -1,5 +1,7 @@
 cvc3
 trecs
+horsat
+horsatp
 Makefile.config
 DONE
 COMMIT

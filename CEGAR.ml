@@ -19,7 +19,7 @@ let print_non_CPS_abst abst prog =
   if !Flag.just_print_non_CPS_abst then
     let result =
       try
-        Some (MC.check abst prog Other)
+        Some (MC.check abst prog MC.Other)
       with _ -> None
     in
     let s =
@@ -160,7 +160,8 @@ let run prog info =
   if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
   let add_fail_to_end ds =
     match !Flag.mode with
-    | Flag.NonTermination ->
+    | Flag.NonTermination
+    | Flag.FairNonTermination ->
         List.map (fun (f, args, cond, e, t) -> if t=Const(CPS_result) then (f, args, cond, [Event "fail"], t) else (f, args, cond, e, t)) ds
     | _ -> ds
   in

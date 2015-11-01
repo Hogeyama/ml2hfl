@@ -323,8 +323,8 @@ let check abst prog spec =
           | TrecsInterface.Unsafe ce -> Unsafe (CESafety ce)
         end
     | Flag.HorSat, Flag.NonTermination ->
-        let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
-        let spec = HorSatInterface.make_spec_nonterm labels in
+       let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
+       let spec = HorSatInterface.make_spec_nonterm labels in
         begin
           match HorSatInterface.check_apt (abst',spec) with
           | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
@@ -345,8 +345,10 @@ let check abst prog spec =
          | Fairness x -> x
          | Other -> assert false in
        Format.printf "FAIRNESS: %a@.@." Fair_termination_util.print_fairness fairness;
-       let event_list = ["A"; "B"] in (* TODO gather_events prog *)
-       let spec = HorSatPInterface.make_fair_nonterm_spec event_list fairness  in
+       let randint_labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
+       let labels = ["event_A"; "event_B"] @ randint_labels in (* TODO gather_events prog *)
+       Format.printf "%a@." (print_list Format.pp_print_string "; ") labels;
+       let spec = HorSatPInterface.make_fair_nonterm_spec labels fairness  in
         begin
           match HorSatPInterface.check (abst',spec) with
           | HorSatPInterface.Safe -> Safe []

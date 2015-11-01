@@ -183,8 +183,15 @@ let make_apt events (a, b) =
   let delta' = List.sort (List.flatten delta) in
   delta', omega
 
-let make_fair_nonterm_spec events streett : spec =
+let make_fair_nonterm_spec labels streett : spec =
   assert (List.length streett = 1); (* TODO *)
-  let (a, b) = List.hd streett in
-  let es = List.map (fun e -> Ev e) (List.filter (fun e -> e <> a && e <> b) events) in
-  make_apt es (a, b)
+  let a, b = List.hd streett in
+  let ev_a, ev_b = "event_"^a, "event_"^b in
+  let events = List.filter_map
+    (fun e ->
+      if e <> ev_a && e <> ev_b then
+        Some (Ev e)
+      else
+        None)
+    labels in
+  make_apt events (a, b)
