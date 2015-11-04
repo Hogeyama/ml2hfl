@@ -2,6 +2,7 @@ cvc3
 trecs
 horsat
 horsatp
+oc
 Makefile.config
 DONE
 COMMIT

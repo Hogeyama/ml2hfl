@@ -59,6 +59,9 @@ if test "$TRECS" = "no" -a "$HORSAT" = "no" -a "$HORSATP" = "no"; then
   AC_MSG_ERROR([no model checker found])
 fi
 
+AC_PATH_TOOL(OMEGA, oc, [no], [$PATH:$PWD])
+AC_SUBST(OMEGA)
+
 AC_CHECK_PROG(GIT, git, git)
 AC_SUBST(GIT)
 
