@@ -235,11 +235,11 @@ let arg_spec =
      "<dir>  Add <dir> to the list of include directories";
      "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
      "-only-result",
-     Arg.Unit (fun () ->
-               Flag.only_result := true;
-               Flag.debug_level := 0;
-               Flag.print_progress := false),
-     " Show only result";
+       Arg.Unit (fun () ->
+                 Flag.only_result := true;
+                 Flag.debug_level := 0;
+                 Flag.print_progress := false),
+       " Show only result";
      "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
      "-debug-module",
      Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module),
@@ -249,17 +249,17 @@ let arg_spec =
      "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
      "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
      "-exp",
-     Arg.Unit (fun () ->
-               Flag.only_result := true;
-               Flag.debug_level := 0;
-               Flag.print_progress := false;
-               Flag.exp := true),
-     " For experiments";
+       Arg.Unit (fun () ->
+                 Flag.only_result := true;
+                 Flag.debug_level := 0;
+                 Flag.print_progress := false;
+                 Flag.exp := true),
+       " For experiments";
      "-exp2",
-     Arg.Unit (fun () ->
-               Flag.debug_level := 0;
-               Flag.exp2 := true),
-     " Experiment mode (output mochi_exp.csv)";
+       Arg.Unit (fun () ->
+                 Flag.debug_level := 0;
+                 Flag.exp2 := true),
+       " Experiment mode (output mochi_exp.csv)";
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
@@ -296,7 +296,7 @@ let arg_spec =
      "-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
       " Expand non-recursive functions except those in the original program";
      "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
-     "-neg-pred-off", Arg.Unit (fun _ -> Flag.never_use_neg_pred := true),
+     "-neg-pred-off", Arg.Set Flag.never_use_neg_pred,
      " Never use negative predicates for abstraction";
      (* higher-order model checking *)
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
