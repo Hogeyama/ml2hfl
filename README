@@ -1,3 +1,10 @@
+How to build MoCHi
+==================
+
+ Follow the instruction in the INSTALL file,
+ or install the required tools/libraries below and run 'aclocal -I m4 && autoconf && ./configure && make'.
+
+
 What do you need?
 =================
 
@@ -6,9 +13,3 @@ What do you need?
 - Fpat library
 - CVC3 binary
 - TRecS binary
-
-
-How to build MoCHi
-==================
-
- Run 'aclocal -I m4 && autoconf && ./configure && make'
