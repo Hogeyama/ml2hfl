@@ -196,8 +196,9 @@ let inv_formula t = t |> Fpat.Formula.term_of |> inv_term
 let conv_event e = (***)
   match e with
   | Event(x) ->
-     assert (x = "fail");
-     Fpat.Term.mk_const (Fpat.Const.Event(x))
+    if x <> "fail" && !Flag.mode <> Flag.FairNonTermination then
+      Format.eprintf "Warning: fpat does not support general events.";
+    Fpat.Term.mk_const (Fpat.Const.Event(x))
   | Branch(_) -> assert false
 
 let conv_fdef typs (f, args, guard, events, body) =

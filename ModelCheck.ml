@@ -344,10 +344,10 @@ let check abst prog spec =
          match spec with
          | Fairness x -> x
          | Other -> assert false in
-       Format.printf "FAIRNESS: %a@.@." Fair_termination_util.print_fairness fairness;
+       Format.printf "\nFAIRNESS: %a@." Fair_termination_util.print_fairness fairness;
        let randint_labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
-       let labels = ["event_A"; "event_B"] @ randint_labels in (* TODO gather_events prog *)
-       Format.printf "%a@." (print_list Format.pp_print_string "; ") labels;
+       let events = HorSatPInterface.gather_events prog.defs in
+       let labels = events @ randint_labels in
        let spec = HorSatPInterface.make_fair_nonterm_spec labels fairness  in
         begin
           match HorSatPInterface.check (abst',spec) with

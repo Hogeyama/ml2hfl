@@ -15,7 +15,6 @@ type label =
   | Ev of string
   | Br_A
   | Br_E
-  | Call
   | L of int
   | End
 
@@ -23,7 +22,6 @@ let string_of_label = function
   | Ev x -> x
   | Br_A -> "br_forall"
   | Br_E -> "br_exists"
-  | Call -> "call"
   | L i  -> "l"^(string_of_int i)
   | End  -> "unit"
 
@@ -158,19 +156,28 @@ let check target =
     verifyFile input
   with Failure("lex error") -> raise UnknownOutput
 
+let gather_events defs =
+  let aux (_,_,_,es,_) =
+    let aux' = function
+      | Event s -> "event_"^s
+      | _ -> assert false in
+    List.map aux' es in
+  List.flatten_map aux defs
+
 let make_apt events (a, b) =
   let q0, q1, q2 = "q0", "q1", "q2" in
   let rec trans = function
     | Ev x when x = a -> Label (1, q1)
     | Ev x when x = b -> Label (1, q2)
+    | Ev x when x = "event_fail" -> Ff
     | Ev _ -> Label (1, q0)
     | Br_A -> And (Label (1, q0), Label (2, q0))
     | Br_E -> Or  (Label (1, q0), Label (2, q0))
-    | Call
     | L _  -> Label (1, q0)
     | End  -> Ff
   in
-  let syms  = events @ [Ev a; Ev b; Br_A; Br_E; Call; L 0; L 1; End] in
+  let default_sym = [Br_A; Br_E; L 0; L 1; End] in
+  let syms  = [Ev a; Ev b] @ events @ default_sym in
   let states = [q0; q1; q2] in
   let omega = List.sort [(q0, 0); (q1, 1); (q2, 2)] in
   let delta =
@@ -186,7 +193,9 @@ let make_apt events (a, b) =
   delta', omega
 
 let make_fair_nonterm_spec labels streett : spec =
-  assert (List.length streett = 1); (* TODO *)
+  if List.length streett <> 1 then
+    (Format.eprintf "Error: size of fairness constraints list must be 1";
+     assert false);
   let a, b = List.hd streett in
   let ev_a, ev_b = "event_"^a, "event_"^b in
   let events = List.filter_map

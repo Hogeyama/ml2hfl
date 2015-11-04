@@ -65,6 +65,7 @@ let conv_primitive_app t ts typ =
           (make_var x)
   | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
   | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_event_unit "close"
+  | Var {Id.name="event"}, [{desc=Const(String s)}] -> make_event_unit s
   | _ -> make_app t ts
 
 let venv = ref []

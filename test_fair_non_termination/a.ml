@@ -12,9 +12,9 @@ val loop :
   unit
 
 valcegar #randint_1 :
-  (int -> (x:int[x = 0] -> X) -> X)
+  (unit -> int -> (x:int[x = 0] -> X) -> X)
 
-valcegar loop_1011 :
+valcegar loop_1013 :
   ((x_3:int[x_3 > 42] -> (x_5:int[x_5 > 1] -> (unit -> X) -> X) -> (unit -> X) -> X) ->
     x_14:int[x_14 > 1] -> (unit -> X) -> X)
 
