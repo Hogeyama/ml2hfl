@@ -175,6 +175,7 @@ let make_or t1 t2 =
   match t1,t2 with
   | Const False, t
   | t, Const False -> t
+  | Var _, _ when t1 = t2 -> t1
   | _ -> make_app (Const Or) [t1; t2]
 let make_not t = App(Const Not, t)
 let make_lt t1 t2 = make_app (Const Lt) [t1; t2]

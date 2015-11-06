@@ -95,9 +95,9 @@ let preprocess t spec =
     else None
   in
   (**********************)
-  (*let abst_cegar_env = Spec.get_abst_cegar_env spec t |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in*)
-  let abst_cegar_env = spec.Spec.abst_cegar_env in
-  let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:abst_cegar_env t in
+  let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog (*~spec:abst_cegar_env*) t in
+  let abst_cegar_env = Spec.get_abst_cegar_env spec prog |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
+  let prog = CEGAR_trans.add_env abst_cegar_env prog in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
     if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;

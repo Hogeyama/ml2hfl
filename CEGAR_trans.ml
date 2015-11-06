@@ -531,8 +531,9 @@ let trans_prog ?(spec=[]) t =
         (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
   in
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
+  let env' = uniq_env env in
   let attr = if is_cps then [ACPS] else [] in
-  let prog = {env; defs=defs''; main; info={init_info with attr}} in
+  let prog = {env=env'; defs=defs''; main; info={init_info with attr}} in
   pr2 "PROG_A" prog;
   let prog = event_of_temp prog in
   pr2 "PROG_B" prog;
@@ -545,12 +546,13 @@ let trans_prog ?(spec=[]) t =
   let prog,map,rmap = id_prog prog in
   pr2 "PROG_F" prog;
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
-  let env' =
-    let spec' = List.map (Pair.map trans_var trans_typ) spec in
-    let aux (f,typ) = try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
-    uniq_env (ext_env @@@ List.map aux prog.env)
-  in
-  {prog with env=env'},map,rmap,get_rtyp
+  prog,map,rmap,get_rtyp
+
+let add_env spec prog =
+  let spec' = List.map (Pair.map trans_var trans_typ) spec in
+  let aux (f,typ) = Format.printf "%s: %a@." f CEGAR_print.typ typ; try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
+  let env = uniq_env @@ List.map aux prog.env in
+  {prog with env}
 
 
 let assoc_def_aux defs n t =
