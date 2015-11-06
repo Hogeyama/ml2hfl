@@ -162,6 +162,9 @@ let report_safe env rmap get_rtyp orig t0 =
     | Flag.NonTermination ->
         Color.printf Color.Bright "Non-terminating!";
         Format.printf "@.@."
+    | Flag.FairNonTermination ->
+        Color.printf Color.Bright "Fair Infinite Execution found!";
+        Format.printf "@.@."
     | Flag.Termination when !Flag.debug_level <= 0 ->
         Color.printf Color.Bright "Safe!";
         Format.printf "@.@."

@@ -16,6 +16,8 @@ type label =
   | Br_A
   | Br_E
   | L of int
+  | Tt
+  | Ff
   | End
 
 let string_of_label = function
@@ -23,17 +25,19 @@ let string_of_label = function
   | Br_A -> "br_forall"
   | Br_E -> "br_exists"
   | L i  -> "l"^(string_of_int i)
+  | Tt   -> "tt"
+  | Ff   -> "ff"
   | End  -> "unit"
 
 type formula =
-  | Tt | Ff
+  | True | False
   | Label of int * symbol
   | And of formula * formula
   | Or  of formula * formula
 
 let rec string_of_formula = function
-  | Tt -> "true"
-  | Ff -> "false"
+  | True  -> "true"
+  | False -> "false"
   | Label (i, q) -> "(" ^ string_of_int i ^ ", " ^ q ^ ")"
   | And (f1, f2) -> "(" ^ string_of_formula f1 ^ " /\\ " ^ string_of_formula f2 ^ ")"
   | Or  (f1, f2) -> "(" ^ string_of_formula f1 ^ " \\/ " ^ string_of_formula f2 ^ ")"
@@ -169,14 +173,14 @@ let make_apt events (a, b) =
   let rec trans = function
     | Ev x when x = a -> Label (1, q1)
     | Ev x when x = b -> Label (1, q2)
-    | Ev x when x = "event_fail" -> Ff
+    | Ev x when x = "event_fail" -> False
     | Ev _ -> Label (1, q0)
     | Br_A -> And (Label (1, q0), Label (2, q0))
     | Br_E -> Or  (Label (1, q0), Label (2, q0))
-    | L _  -> Label (1, q0)
-    | End  -> Ff
+    | L _ | Tt | Ff -> Label (1, q0)
+    | End  -> False
   in
-  let default_sym = [Br_A; Br_E; L 0; L 1; End] in
+  let default_sym = [Br_A; Br_E; L 0; L 1; End; Tt; Ff] in
   let syms  = [Ev a; Ev b] @ events @ default_sym in
   let states = [q0; q1; q2] in
   let omega = List.sort [(q0, 0); (q1, 1); (q2, 2)] in

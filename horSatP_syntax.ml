@@ -12,9 +12,10 @@ type prerule = string * string list * preterm
 type prerules = prerule list
 
 
-let string_of_head h =
-  match h with
-    Name(s) -> s
+let string_of_head = function
+  | Name(s) when s = "true"  -> "tt"
+  | Name(s) when s = "false" -> "ff"
+  | Name(s) -> s
   | NT(s) -> s
   | FD(n) -> (string_of_int n)
   | CASE(n) -> "_case "^(string_of_int n)
