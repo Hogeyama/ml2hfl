@@ -49,3 +49,7 @@ parser_wrapper.ml
 wiki/
 mochi_bin/bin/
 mochi_bin/lib/
+*.oc
+*.oc_out
+*.test_out
+*.horsatp_out

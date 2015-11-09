@@ -115,7 +115,7 @@ let rec verifyFile_aux filename =
   let oc = open_out result_file in
   output_string oc default;
   close_out oc;
-  let cmd = Format.sprintf "%s < %s > %s 2>/dev/null" !Flag.horsatp filename result_file in
+  let cmd = Format.sprintf "%s --iter=10000 < %s > %s 2>/dev/null" !Flag.horsatp filename result_file in
   ignore @@ Sys.command cmd;
   let ic = open_in result_file in
   read_as_string ic
