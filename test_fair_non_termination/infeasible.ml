@@ -1,9 +1,10 @@
 (*{SPEC}
-  valcegar f_f:
-  (x:int[x>0; x<=0] -> (unit -> X) -> unit -> X)
 
-  valcegar f_f:
-  (x:int[x>0; x <= 0] -> (unit -> X) -> X)
+  valcegar #randint_1:
+  (unit -> (x:int[x > 0; x <= 0] -> X) -> X)
+
+  valcegar f_2038:
+  (x:int[x>0; x<=0] -> (unit -> X) -> X)
 
   fairness: (A, Never)
 
@@ -18,4 +19,4 @@ let rec f n =
 
 let main () = f (read_int ())
 
-(* TODO *)
+(* found *)

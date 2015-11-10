@@ -1,10 +1,13 @@
 (*{SPEC}
 
   valcegar #randint_1 :
-  (unit -> (x:int[x > 0; x <= 0] -> X) -> X)
+  (unit -> (int -> X) -> X)
 
   valcegar #randint_2 :
   (unit -> x:int -> (y:int[x < y; x >= y] -> X) -> X)
+
+  valcegar f_f_2276:
+  (unit -> x:int -> (unit -> X) -> y:int[x < y; x >= y] -> X)
 
   fairness: (A, Never)
 
@@ -19,4 +22,4 @@ let rec f () =
   else
     ()
 
-(* TODO *)
+(* found *)

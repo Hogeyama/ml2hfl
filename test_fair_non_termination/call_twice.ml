@@ -1,10 +1,10 @@
 (*{SPEC}
 
   valcegar #randint_1 :
-  (unit -> (x:int[x > 0; x <= 0] -> X) -> X)
+  (unit -> (x:int[x < 0; x >= 0] -> X) -> X)
 
   valcegar f_f :
-  (unit -> (unit -> X) -> x:int[x > 0; x <= 0] -> X)
+  (unit -> (unit -> X) -> x:int[x < 0; x >= 0] -> X)
 
   fairness: (A, B)
 
@@ -20,4 +20,4 @@ let rec f () =
     (event "A";
      f();f())
 
-(* TODO *)
+(* found *)
