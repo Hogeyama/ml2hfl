@@ -126,7 +126,12 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
   let rename_id f = (* temporal implementation *)
     if CEGAR_syntax.is_randint_var (Id.name f)
     then f
-    else List.find_eq_on Id.name f vars
+    else
+      try
+        List.find_eq_on Id.to_string f vars
+      with Not_found ->
+        List.find_eq_on Id.name f vars
+
   in
   let aux_ref (f,typ) =
     try
@@ -167,6 +172,7 @@ let get_inlined_f spec t = (rename [Inlined_f] spec @@ get_vars t).inlined_f
 
 
 let read parser lexer =
+  Id.save_counter ();
   let spec1 =
     begin
       if !Flag.use_spec && !Flag.spec_file = ""
@@ -182,4 +188,6 @@ let read parser lexer =
     else init
   in
   if spec2 <> init then Flag.use_filter := true;
-  merge spec1 spec2
+  let m = merge spec1 spec2 in
+  Id.reset_counter ();
+  m
