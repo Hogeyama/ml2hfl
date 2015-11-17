@@ -26,44 +26,61 @@ let rec subst (x, ex1) ex2 =
   | Abst (s, e1) ->
      Abst (s, subst (x, e1) ex2)
 
-let rec eval env n i expr =
+let rec expand_tree env n expr =
   let get_fun f =
     try
       Some (List.assoc f env)
     with Not_found ->
       None in
 
-  if i >= n then
-    (Leaf, expr)
+  let rec eval = function
+    | Var s ->
+       begin match get_fun s with
+       | None -> Var s
+       | Some e -> eval e
+       end
+    | Apply (e1, e2) ->
+       begin match eval e1 with
+       | Abst (x, e1') ->
+          eval (subst(x, e1') e2)
+       | Var s ->
+          Apply(Var s, e2)
+       | _ ->
+          assert false
+       end
+    | Abst (x, e) -> Abst (x, e) in
+
+  if n <= 0 then
+    Leaf
   else match expr with
   | Var s ->
      begin match get_fun s with
      | None ->
-        (Leaf, expr)
+        Leaf
      | Some e ->
-        eval env n (i + 1) e
+        expand_tree env (n - 1) e
      end
   | Apply (e1, e2) ->
-     begin
-       match eval env n (i+1) e1 with
-       | (l, Var s) when s = "br_exists" ->
-          failwith "TODO"
-       | (l, Var s) ->
-          let (t, e) = eval env n (i+1) e2 in
-          (Node (s, t), e)
-       | (l, Abst (x, e)) ->
-          eval env n (i + 1) (subst (x, e) e2)
-       | _ -> assert false
+     begin match eval e1 with
+       | Var s ->
+          let t = expand_tree env (n - 1) e2 in
+          Node (s, t)
+       | Abst (x, e) ->
+          expand_tree env n (subst (x, e) e2)
+       | Apply(Var s, e) when s = "br_exists" ->
+          begin
+            let t1 = expand_tree env (n/2) e in
+            let t2 = expand_tree env (n/2) e2 in
+            Branch ("br_exists", t1, t2)
+          end
+       | e ->
+          begin
+            Format.printf "exp:%a@." pp_expr e;
+            assert false
+          end
      end
   | Abst _ ->
-     (Leaf, expr)
-
-let expand n env =
-  let (l, _) = eval env n 0 (Var "Main") in
-  l
-
-
-
+     Leaf
 
 let show_pos fname filebuf =
   let pos = filebuf.Lexing.lex_start_p in
@@ -85,7 +102,7 @@ let cegar () =
   try
     let rules = HORS_parser.top HORS_lexer.token filebuf in
     Format.printf "%a@." (Format.pp_print_list HORS_syntax.pp_rule) rules;
-    let labels = expand 100 rules in
+    let labels = expand_tree rules 100 (Var "Main") in
     Format.printf "Result: %a@." pp_tree labels
   with
   | HORS_lexer.LexerError msg ->
