@@ -61,7 +61,7 @@ let rec make_tree x bb =
   let children = List.mapi (fun i _ -> find_proj i x bb) @@ Option.get @@ decomp_tfun_ttuple @@ Id.typ x in
   if List.for_all Option.is_some children
   then
-    Rose_tree.Node (List.map (make_tree -$- bb) @@ List.map Option.get children)
+    Rose_tree.Node ((None, []), List.map (make_tree -$- bb) @@ List.map Option.get children)
   else
     if List.for_all Option.is_none children
     then
@@ -71,17 +71,17 @@ let rec make_tree x bb =
         with Invalid_argument _ -> None
       in
       let args = find_app x bb in
-      Rose_tree.Leaf(typ, args)
+      Rose_tree.leaf (typ, args)
     else
       unsupported "not implemented: make_tree"
 
 let rec make_trees tree =
   match tree with
-  | Rose_tree.Leaf(None, []) -> assert false
-  | Rose_tree.Leaf(None, _) -> assert false
-  | Rose_tree.Leaf(Some typ, []) -> [Rose_tree.Leaf (make_none typ)]
-  | Rose_tree.Leaf(Some _, args) -> List.map (fun t -> Rose_tree.Leaf (make_some t)) args
-  | Rose_tree.Node ts ->
+  | Rose_tree.Node((None, []), []) -> assert false
+  | Rose_tree.Node((None, _), []) -> assert false
+  | Rose_tree.Node((Some typ, []), []) -> [Rose_tree.leaf (make_none typ)]
+  | Rose_tree.Node((Some _, args), []) -> List.map (fun t -> Rose_tree.leaf (make_some t)) args
+  | Rose_tree.Node (_, ts) ->
       let rec pick xss =
         match xss with
         | [] -> []
@@ -90,12 +90,12 @@ let rec make_trees tree =
             let yss = pick xss' in
             List.rev_map_flatten (fun x -> List.map (List.cons x) yss) xs
       in
-      List.map (fun ts -> Rose_tree.Node ts) @@ pick @@ List.map make_trees ts
+      List.map (fun ts -> Rose_tree.Node (unit_term, ts)) @@ pick @@ List.map make_trees ts
 
 let rec term_of_tree tree =
   match tree with
-  | Rose_tree.Leaf t -> t
-  | Rose_tree.Node ts -> make_tuple @@ List.map term_of_tree ts
+  | Rose_tree.Node(t, [])  -> t
+  | Rose_tree.Node(_, ts) -> make_tuple @@ List.map term_of_tree ts
 
 
 let rec proj_of_path top path t =
@@ -112,11 +112,11 @@ let make_some' t =
 
 let rec same_arg path_rev t1 t2 =
   match t1,t2 with
-  | Rose_tree.Leaf t1', Rose_tree.Leaf t2' when t1' = t2' -> List.rev path_rev
-  | Rose_tree.Leaf t1', Rose_tree.Leaf t2' -> []
-  | Rose_tree.Node ts1, Rose_tree.Node ts2 ->
-      List.rev_flatten @@ List.mapi2 (fun i -> same_arg @@ i::path_rev) ts1 ts2
-  | _ -> assert false
+  | Rose_tree.Node(t1', []), Rose_tree.Node(t2', []) when t1' = t2' -> List.rev path_rev
+  | Rose_tree.Node(t1', []), Rose_tree.Node(t2', []) -> []
+  | Rose_tree.Node(_, ts1), Rose_tree.Node(_, ts2) ->
+     List.rev_flatten @@ List.mapi2 (fun i -> same_arg @@ i::path_rev) ts1 ts2
+
 let same_arg t1 t2 = same_arg [] t1 t2
 
 let inst_var_fun x tt bb t =
@@ -132,7 +132,7 @@ let inst_var_fun x tt bb t =
       else
         let () = if debug() then Format.printf "THIS IS NOT ROOT@." in
         let tree = make_tree r bb in
-        let tree' = Rose_tree.update path (Rose_tree.Leaf(Some (Id.typ y'), [make_var y'])) tree in
+        let tree' = Rose_tree.update path (Rose_tree.leaf(Some (Id.typ y'), [make_var y'])) tree in
         let r' = trans.tr2_var (tt,bb) r in
         let pr _ (_,ts) =
           Format.printf "[%a]" (print_list Print.term' "; ") ts
@@ -187,8 +187,8 @@ Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.
 
 let rec tree_of_typ typ =
   match typ with
-  | TTuple xs -> Rose_tree.Node (List.map (tree_of_typ -| Id.typ) xs)
-  | _ -> Rose_tree.Leaf typ
+  | TTuple xs -> Rose_tree.Node (TUnit, List.map (tree_of_typ -| Id.typ) xs)
+  | _ -> Rose_tree.leaf typ
 
 let trans_typ ttbb typ =
   match typ with
