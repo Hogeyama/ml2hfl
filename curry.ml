@@ -105,19 +105,19 @@ let uncurry_rtyp t f rtyp =
   rtyp'
 
 let rec remove_pair_typ = function
-  | TUnit -> Leaf TUnit
-  | TBool -> Leaf TBool
-  | TAbsBool -> Leaf TAbsBool
-  | TInt -> Leaf TInt
-  | TRInt p -> Leaf (TRInt p)
+  | TUnit -> leaf TUnit
+  | TBool -> leaf TBool
+  | TAbsBool -> leaf TAbsBool
+  | TInt -> leaf TInt
+  | TRInt p -> leaf (TRInt p)
   | TVar _ -> assert false
   | TFun _ as typ ->
       let xs,typ' = decomp_tfun typ in
       let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
-      Leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
-  | TTuple xs -> Node (List.map (remove_pair_typ -| Id.typ) xs)
-  | TList typ -> Leaf (TList (root (remove_pair_typ typ)))
-  | TData(s,b) -> Leaf (TData(s,b))
+      leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
+  | TTuple xs -> Node (TUnit, List.map (remove_pair_typ -| Id.typ) xs)
+  | TList typ -> leaf (TList (root (remove_pair_typ typ)))
+  | TData(s,b) -> leaf (TData(s,b))
   | TPred({Id.typ=TTuple[x; {Id.typ=typ}]} as y, ps) ->
       begin
         match typ with (* Function types cannot have predicates *)
@@ -139,10 +139,10 @@ let rec remove_pair_typ = function
       let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ (Id.typ x) with
-        | Leaf typ -> typ
+        | Node (typ, []) -> typ
         | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
-      Leaf (TPred(Id.set_typ x typ', ps'))
+      leaf (TPred(Id.set_typ x typ', ps'))
   | typ -> Format.printf "remove_pair_typ: %a@." Print.typ typ; assert false
 
 and remove_pair_var x =
@@ -155,25 +155,25 @@ and remove_pair_aux t typ_opt =
   let typs = remove_pair_typ typ in
   match t.desc with
   | Const _
-  | Event _ -> Leaf t
+  | Event _ -> leaf t
   | Bottom -> map (Fun.const make_bottom) typs
   | Var x -> map (Fun.const make_var) (remove_pair_var x)
   | Fun(x, t) ->
       let xs = flatten @@ remove_pair_var x in
       let t' = root @@ remove_pair_aux t None in
-      Leaf (List.fold_right make_fun xs t')
+      leaf (List.fold_right make_fun xs t')
   | App(t1, ts) ->
       let typs = get_argtyps t1.typ in
       assert (List.length typs >= List.length ts);
       let typs' = List.take (List.length ts) typs in
       let t' = root (remove_pair_aux t1 None) in
       let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t @@ Some typ)) ts typs') in
-      Leaf (make_app t' ts')
+      leaf (make_app t' ts')
   | If(t1, t2, t3) ->
       let t1' = root @@ remove_pair_aux t1 None in
       let t2' = root @@ remove_pair_aux t2 None in
       let t3' = root @@ remove_pair_aux t3 None in
-      Leaf (make_if t1' t2' t3')
+      leaf (make_if t1' t2' t3')
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) =
         let f' = root @@ remove_pair_var f in
@@ -183,7 +183,7 @@ and remove_pair_aux t typ_opt =
       in
       let bindings' = List.map aux bindings in
       let t' = root @@ remove_pair_aux t None in
-      Leaf (make_let_f flag bindings' t')
+      leaf (make_let_f flag bindings' t')
   | BinOp(op, t1, t2) ->
       begin
         match op, elim_tpred t1.typ with
@@ -197,10 +197,10 @@ and remove_pair_aux t typ_opt =
       end;
       let t1' = root @@ remove_pair_aux t1 None in
       let t2' = root @@ remove_pair_aux t2 None in
-      Leaf {desc=BinOp(op, t1', t2'); typ=root typs; attr=[]}
+      leaf {desc=BinOp(op, t1', t2'); typ=root typs; attr=[]}
   | Not t1 ->
       let t1' = root @@ remove_pair_aux t1 None in
-      Leaf (make_not t1')
+      leaf (make_not t1')
   | Record fields -> assert false
   | Field(s,t1) -> assert false
   | SetField(s,t1,t2) -> assert false
@@ -209,13 +209,12 @@ and remove_pair_aux t typ_opt =
   | Constr(s,ts) -> assert false
   | Match(t1,pats) -> assert false
   | TryWith(t1,t2) -> assert false
-  | Tuple ts -> Node (List.map (remove_pair_aux -$- None) ts)
-  | Proj(i, {desc=Var x}) when x = abst_var -> Leaf (make_var x) (* for predicates *)
+  | Tuple ts -> Node (unit_term, List.map (remove_pair_aux -$- None) ts)
+  | Proj(i, {desc=Var x}) when x = abst_var -> leaf (make_var x) (* for predicates *)
   | Proj(i,t) ->
       begin
         match remove_pair_aux t None with
-        | Leaf _ -> Format.printf "%a@." Print.term t; assert false
-        | Node ts -> List.nth ts i
+        | Node (_, ts) -> List.nth ts i
       end
   | _ ->
       Format.printf "%a@." Print.term t;
