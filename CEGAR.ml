@@ -78,9 +78,13 @@ let rec loop prog0 is_cp ces info =
       let prog' = CEGAR_non_term.cegar prog0 labeled info is_cp ce prog in
       post ();
       loop prog' is_cp (ce::ces) info
-  | MC.Unsafe _, Flag.FairNonTermination ->
+  | MC.Unsafe ce, Flag.FairNonTermination ->
      begin
-       CEGAR_fair_non_term.cegar ();
+       let ce_file =
+         match ce with
+         | ModelCheck.CEFairNonTerm f -> f
+         | _ -> assert false in
+       CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_file prog;
        assert false
      end
   | MC.Unsafe ce, _ ->

@@ -683,21 +683,24 @@ let assoc_def labeled defs ce acc t =
   let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
   if List.mem f labeled
   then
-    let c = List.hd ce in
-    let ce' = List.tl ce in
-    let acc' = c::acc in
-    let def = List.nth defs' c in
-    ce', acc', def
+    if ce = [] then
+      None
+    else
+      let c = List.hd ce in
+      let ce' = List.tl ce in
+      let acc' = c::acc in
+      let def = List.nth defs' c in
+      Some (ce', acc', def)
   else
     let acc' = 0::acc in
     let def = List.hd defs' in
     assert (List.length defs' = 1);
-    ce, acc', def
+    Some(ce, acc', def)
 
 let init_cont _ acc _ = List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
-  if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
+  if true && debug () then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
   | Const (RandInt _) -> assert false
   | Const c -> k ce acc (Const c)
@@ -722,14 +725,17 @@ let rec trans_ce_aux labeled ce acc defs t k =
       if List.length xs > List.length ts
       then k ce acc (App(t1,t2))
       else
-        let ce',acc',(f,xs,tf1,e,tf2) = assoc_def labeled defs ce acc t1' in
-        let ts1,ts2 = List.split_nth (List.length xs) ts in
-        let aux = List.fold_right2 subst xs ts1 in
-        let tf2' = make_app (aux tf2) ts2 in
-        assert (List.length xs = List.length ts);
-        if e = [Event "fail"]
-        then init_cont ce' acc' tf2'
-        else trans_ce_aux labeled ce' acc' defs tf2' k))
+         match assoc_def labeled defs ce acc t1' with
+          | None ->
+             init_cont ce acc t1'
+          | Some (ce',acc',(f,xs,tf1,e,tf2)) ->
+             let ts1,ts2 = List.split_nth (List.length xs) ts in
+             let aux = List.fold_right2 subst xs ts1 in
+             let tf2' = make_app (aux tf2) ts2 in
+             assert (List.length xs = List.length ts);
+             if e = [Event "fail"]
+             then init_cont ce' acc' tf2'
+             else trans_ce_aux labeled ce' acc' defs tf2' k))
   | Let _ -> assert false
   | Fun _ -> assert false
 

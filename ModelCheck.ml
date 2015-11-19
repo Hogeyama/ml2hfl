@@ -6,9 +6,10 @@ open ModelCheck_util
 
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
+type filename = string
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
 type counterexample = CESafety of TrecsInterface.counterexample | CENonTerm of HorSatInterface.counterexample_apt
-                      | CEDummy
+                      | CEFairNonTerm of filename
 type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
 
 type mc_spec =
@@ -352,7 +353,11 @@ let check abst prog spec =
         begin
           match HorSatPInterface.check (abst',spec) with
           | HorSatPInterface.Safe -> Safe []
-          | HorSatPInterface.Unsafe -> Unsafe CEDummy
+          | HorSatPInterface.Unsafe ->
+             begin
+               let fname = (Filename.chop_extension !Flag.filename) ^ "_error.hors" in
+               Unsafe (CEFairNonTerm fname)
+             end
         end
     | Flag.HorSatP, _ ->
        assert false
