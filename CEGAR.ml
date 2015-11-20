@@ -80,8 +80,9 @@ let rec loop prog0 is_cp ces info =
       loop prog' is_cp ((MC.CENonTerm ce_tree)::ces) info
   | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.FairNonTermination ->
      begin
-       CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_rules prog;
-       assert false
+       let prog' = CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_rules prog in
+       post ();
+       loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces) info
      end
   | MC.Unsafe ce, _ ->
       let ce_orig =

@@ -350,13 +350,13 @@ let check abst prog spec =
          | Other -> assert false in
        Format.printf "\nFAIRNESS: %a@." Fair_termination_util.print_fairness fairness;
        let randint_labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
-       let events = HorSatPInterface.gather_events prog.defs in
+       let events = List.map (fun s -> "event_" ^ s) @@ gather_events prog.defs in
        let labels = events @ randint_labels in
        let spec = HorSatPInterface.make_fair_nonterm_spec labels fairness  in
         begin
           match HorSatPInterface.check (abst',spec) with
-          | HorSatPInterface.Safe -> Safe []
-          | HorSatPInterface.Unsafe ->
+          | HorSatPInterface.Satisfied -> Safe []
+          | HorSatPInterface.Unsatisfied ->
              let fname = (Filename.chop_extension !Flag.filename) ^ "_error.hors" in
              let rules = HorSatPInterface.read_HORS_file fname in
              Unsafe (CEFairNonTerm rules)

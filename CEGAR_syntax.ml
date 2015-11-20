@@ -316,3 +316,13 @@ let rec make_ID_map_fd = function
   | [] -> ()
   | (r,_,_,_,body)::ds -> add_ID_map r (is_rand body); make_ID_map_fd ds
 let make_ID_map {defs=defs} = make_ID_map_fd defs
+
+
+(** collect events that appear in HORS *)
+let gather_events defs =
+  let aux (_,_,_,es,_) =
+    let aux' = function
+      | Event s -> s
+      | _ -> assert false in
+    List.map aux' es in
+  List.flatten_map aux defs
