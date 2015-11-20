@@ -11,7 +11,7 @@
 %left APPLY
 
 %start top
-%type <HORS_syntax.top> top
+%type <HORS_syntax.rules> top
 %%
 
 top:

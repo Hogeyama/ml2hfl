@@ -210,3 +210,27 @@ let make_fair_nonterm_spec labels streett : spec =
         None)
     labels in
   make_apt events (ev_a, ev_b)
+
+
+(* read HORS that generate counter-example tree *)
+let read_HORS_file filename =
+
+  let show_error_pos fname filebuf =
+    let pos = filebuf.Lexing.lex_start_p in
+    Printf.eprintf "File \"%s\", line %d, character %d:\n"
+      fname
+    pos.Lexing.pos_lnum
+      (pos.Lexing.pos_cnum - pos.Lexing.pos_bol + 1) in
+
+  let inchan = open_in filename in
+  let filebuf = Lexing.from_channel inchan in
+  try
+    let rules = HORS_parser.top HORS_lexer.token filebuf in
+    rules
+  with _ ->
+    show_error_pos filename filebuf;
+    let s = Lexing.lexeme filebuf in
+    Format.eprintf "error: syntax error near '%s'@." s;
+    if s = "->" then
+      Format.eprintf "Did you forget '.' at end of line?@.";
+    assert false

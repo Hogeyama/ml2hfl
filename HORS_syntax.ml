@@ -8,7 +8,7 @@ type expr =
 
 type rule = symbol * expr
 
-type top = rule list
+type rules = rule list
 
 let rec pp_rule fm (sym, v) =
   Format.fprintf fm "%s => %a@." sym pp_expr v

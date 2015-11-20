@@ -74,17 +74,13 @@ let rec loop prog0 is_cp ces info =
       let env' = List.rev_map_flatten aux env in
       post ();
       prog, Safe env'
-  | MC.Unsafe ce, Flag.NonTermination ->
-      let prog' = CEGAR_non_term.cegar prog0 labeled info is_cp ce prog in
+  | MC.Unsafe (MC.CENonTerm ce_tree), Flag.NonTermination ->
+      let prog' = CEGAR_non_term.cegar prog0 labeled info is_cp ce_tree prog in
       post ();
-      loop prog' is_cp (ce::ces) info
-  | MC.Unsafe ce, Flag.FairNonTermination ->
+      loop prog' is_cp ((MC.CENonTerm ce_tree)::ces) info
+  | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.FairNonTermination ->
      begin
-       let ce_file =
-         match ce with
-         | ModelCheck.CEFairNonTerm f -> f
-         | _ -> assert false in
-       CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_file prog;
+       CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_rules prog;
        assert false
      end
   | MC.Unsafe ce, _ ->
