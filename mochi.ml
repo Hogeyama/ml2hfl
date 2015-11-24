@@ -270,6 +270,7 @@ let arg_spec =
      "-fail-as-excep", Arg.Set Flag.fail_as_exception, " Treat fail as an exception";
      "-replace-const", Arg.Set Flag.replace_const, " Replace unchanging variables with constants";
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
+     "-use-exparam", Arg.Clear Flag.no_exparam, " Add extra parameters when CEGAR fails";
      "-list-option", Arg.Set Flag.encode_list_opt, " Encode list using options not pairs";
      "-disable-preprocess", Arg.Clear Flag.init_trans, " Disable encoding of recursive data structures, CPS transformation, etc.";
      "-lift-fv", Arg.Set Flag.lift_fv_only, " Lift variables which occur in a body";
