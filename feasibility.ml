@@ -32,9 +32,10 @@ let add_randint_precondition map_randint_to_preds ext_ce rand_precond r = functi
     let _rand_var = FpatInterface.conv_var r in
     match ext_ce with
     | (m, bs)::ext_ce' when m=n ->
-	let asm_cond = List.fold_left2 (fun acc p b -> make_and (if b then p else make_not p) acc) (Const True) abst_preds bs in
-	make_and rand_precond asm_cond, ext_ce'
-      | _ -> assert false
+       Format.printf "add_randint %d %d@." (List.length abst_preds) (List.length bs);
+       let asm_cond = List.fold_left2 (fun acc p b -> make_and (if b then p else make_not p) acc) (Const True) abst_preds bs in
+       make_and rand_precond asm_cond, ext_ce'
+    | _ -> assert false
 
 let map_randint_to_preds_ref = ref []
 let ext_ce_ref = ref []
@@ -64,16 +65,19 @@ let rec check_aux pr ce sat n constr env defs t k =
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       k ce sat n constr env (make_app (Const op) [t1;t2])))
   | App _ when is_app_randint t ->
+     if !ext_ce_ref = [] then
+       init_cont ce sat n constr env t
+     else
      let t',randnum =
-        let t_rand,ts = decomp_app t in
-        match t_rand with
-        | Const (RandInt randnum) -> List.last ts, randnum
-        | _ -> assert false
-      in
-      let r = new_id "r" in
-      add_randint_precondition r randnum;
-      let env' = (r,typ_int)::env in
-      check_aux pr ce sat n constr env' defs (App(t',Var r)) k
+       let t_rand,ts = decomp_app t in
+       match t_rand with
+       | Const (RandInt randnum) -> List.last ts, randnum
+       | _ -> assert false
+     in
+     let r = new_id "r" in
+     add_randint_precondition r randnum;
+     let env' = (r,typ_int)::env in
+     check_aux pr ce sat n constr env' defs (App(t',Var r)) k
   | App(t1,t2) ->
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
@@ -91,7 +95,7 @@ let rec check_aux pr ce sat n constr env defs t k =
           let num,(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' in
           let ts1,ts2 = List.split_nth (List.length xs) ts in
           let aux = List.fold_right2 subst xs ts1 in
-	  rand_precond_ref := aux !rand_precond_ref;
+          rand_precond_ref := aux !rand_precond_ref;
           let tf1' = aux tf1 in
           let tf2' = make_app (aux tf2) ts2 in
           let constr' = make_and tf1' constr in
