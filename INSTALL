@@ -1,4 +1,6 @@
-LAST UPDATE: 2015/10/16
+LAST UPDATE: 2015/11/25
+
+To Ubuntu users: try the commands listed in the latter half of this file.
 
 - Install OPAM and OCaml 4.02
     - You need ocamlc.opt for apron.20150518
@@ -45,7 +47,7 @@ make lib
 cd ../..
 git clone git@bitbucket.org:uhiro/vhorn.git fpat
 cd fpat
-git checkout b650e53
+git checkout 8a8b830d
 autoconf
 ./configure
 sed -i -e "s/linkopts.*/linkopts = \"-cclib -lcamlglpk -cclib -lglpk\"/" csisat/META
