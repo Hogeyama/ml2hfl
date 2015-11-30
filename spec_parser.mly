@@ -125,7 +125,7 @@ exp:
 | exp MINUS exp
   { make_sub $1 $3 }
 | exp TIMES exp
-  { make_sub $1 $3 }
+  { make_mul $1 $3 }
 | NOT exp
   { make_not $2 }
 | id id /* for length */
