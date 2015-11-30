@@ -4,7 +4,6 @@ include Makefile.config
 
 PACKAGES = fpat,str,unix,extlib,compiler-libs.common
 
-FPAT_SRC_DIR = ../fpat
 MOCHI_BIN_DIR = mochi_bin
 
 OCAMLCFLAGS = -g -annot -package $(PACKAGES)
@@ -36,7 +35,7 @@ COMMIT: depend .git/index $(FPAT_LIB)
 	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
 	@$(GIT) log --date=iso --pretty=format:"%ad" -1 >> COMMIT
 	@echo ')' >> COMMIT
-	@-(cd $(FPAT_SRC_DIR) 2> /dev/null; echo -n `$(GIT) rev-parse --short HEAD`) >> COMMIT
+	@-(if [ -e $(FPAT_SRC_DIR) ]; then cd $(FPAT_SRC_DIR); echo `$(GIT) rev-parse --short HEAD`; fi) >> COMMIT
 endif
 
 
