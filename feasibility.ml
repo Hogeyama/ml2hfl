@@ -65,7 +65,7 @@ let rec check_aux pr ce sat n constr env defs t k =
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       k ce sat n constr env (make_app (Const op) [t1;t2])))
   | App _ when is_app_randint t ->
-     if !ext_ce_ref = [] then
+     if !Flag.mode = Flag.FairNonTermination && !ext_ce_ref = [] then
        init_cont ce sat n constr env t
      else
      let t',randnum =
