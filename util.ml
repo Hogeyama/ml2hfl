@@ -379,11 +379,14 @@ end
 
 module Filename = struct
   include Filename
-  let change_extension filename ext =
-    let ext' = "." ^ ext in
+
+  let chop_extension_if_any filename =
     try
-      chop_extension filename ^ ext'
-    with Invalid_argument "Filename.chop_extension" -> filename ^ ext'
+      chop_extension filename
+    with Invalid_argument "Filename.chop_extension" -> filename
+
+  let change_extension filename ext =
+    chop_extension_if_any filename ^ "." ^ ext
 end
 
 module Ref = struct
