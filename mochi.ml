@@ -12,7 +12,7 @@ let output_csv result =
   Format.fprintf
     ocf
     "%s,\"%s\",%d,%f,%f,%f,%f@,"
-    (Filename.chop_extension (Filename.basename !Flag.filename))
+    (Filename.chop_extension_if_any @@ Filename.basename !Flag.filename)
     (String.replace_chars
        (function '"' -> "\"\"" | c -> String.of_char c)
        result)
