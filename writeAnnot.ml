@@ -160,7 +160,7 @@ let process_top_level_phrase env = function
 
 
 let f filename orig env =
-  let filename = Util.Filename.change_extension filename ".annot" in
+  let filename = Util.Filename.change_extension filename "annot" in
   let oc = Format.formatter_of_out_channel (open_out filename) in
     List.iter
       (fun (loc, typ) ->
