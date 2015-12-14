@@ -32,6 +32,24 @@ let print_non_CPS_abst abst prog =
     Format.printf "RESULT: %s@." s;
     exit 0
 
+let improve_precision () =
+  match () with
+  | _ when not !Flag.use_filter ->
+      if !Flag.print_progress then Format.printf "Filter option enabled.@.";
+      if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+      Flag.use_filter := true
+  | _ when not !Flag.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred ->
+      if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
+      if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+      Fpat.PredAbst.use_neg_pred := true
+  | _ when !Fpat.PredAbst.wp_max_num < Flag.wp_max_max ->
+      incr Fpat.PredAbst.wp_max_num;
+      CEGAR_abst.incr_wp_max := true;
+      if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
+      if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+  | _ ->
+      raise NoProgress
+
 let rec loop prog0 is_cp ces info =
   pre ();
   let prog =
@@ -82,41 +100,20 @@ let rec loop prog0 is_cp ces info =
       in
       if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_orig;
       let ce' = CEGAR_trans.trans_ce labeled prog ce_orig in
-      let ce_pre =
+      let same_counterexample =
         match ces with
-        | [] -> None
-        | MC.CESafety ce_pre :: _ -> Some (CEGAR_trans.trans_ce labeled prog ce_pre)
+        | [] -> false
+        | MC.CESafety ce_pre :: _ -> ce' = CEGAR_trans.trans_ce labeled prog ce_pre
         | _ -> assert false
       in
-      if Some ce' = ce_pre then
-        if not !Flag.use_filter then
-          begin
-            if !Flag.print_progress then Format.printf "Filter option enabled.@.";
-            if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-            Flag.use_filter := true;
-            loop prog is_cp ces info
-          end
-        else if not !Flag.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred then
-          begin
-            if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
-            if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-            Fpat.PredAbst.use_neg_pred := true;
-            loop prog is_cp ces info
-          end
-        else if !Fpat.PredAbst.wp_max_num < Flag.wp_max_max then
-          begin
-            incr Fpat.PredAbst.wp_max_num;
-            CEGAR_abst.incr_wp_max := true;
-            if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
-            if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-            loop prog is_cp ces info
-          end
-        else
-          begin
-            post ();
-            if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
-            raise NoProgress
-          end
+      if same_counterexample then
+        try
+          improve_precision ();
+          loop prog is_cp ces info
+        with NoProgress ->
+          post ();
+          if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
+          raise NoProgress
       else
         begin
           if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
@@ -140,12 +137,13 @@ let rec loop prog0 is_cp ces info =
                 | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce'
                 | _ -> assert false
               in
-              let ces'' = List.map aux ces' in
-              let ext_ces = List.make (List.length ces'') [] in
-              let _,prog' = Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0 in
+              let prog' =
+                let ces'' = List.map aux ces' in
+                let ext_ces = List.make (List.length ces'') [] in
+                snd @@ Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
+              in
               if !Flag.debug_level > 0 then
-                Format.printf "Prefix of spurious counterexample::@.%a@.@."
-                              CEGAR_print.ce prefix;
+                Format.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
               post ();
               loop prog' is_cp ces' info
         end

@@ -411,7 +411,7 @@ let parse_arg () =
   Arg.parse arg_spec set_file usage;
   Flag.args := Array.to_list Sys.argv;
   if not !Flag.ignore_conf then read_option_conf ();
-  if String.ends_with !Flag.filename ".cegar" then Flag.input_cegar := true;
+  Flag.input_cegar := String.ends_with !Flag.filename ".cegar";
   match !Flag.filename with
   | "" | "-" -> Flag.filename := "stdin"; stdin
   | _ -> open_in !Flag.filename
