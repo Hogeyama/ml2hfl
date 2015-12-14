@@ -392,6 +392,15 @@ end
 module Ref = struct
   let map f x =
     x := f !x
+
+  let set = (:=)
+
+  let tmp_set x v f =
+    let prev = !x in
+    x := v;
+    let r = f () in
+    x := prev;
+    r
 end
 
 let is_uppercase c = 'A' <= c && c <= 'Z'

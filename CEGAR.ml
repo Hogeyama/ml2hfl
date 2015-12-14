@@ -82,10 +82,17 @@ let rec loop prog0 is_cp ces info =
         end;
       let aux (x,ityp) =
         try
-          [x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp]
-        with Not_found -> []
+          Some (x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp)
+        with Not_found -> None
       in
-      let env' = List.rev_map_flatten aux env in
+      let env' = List.filter_map aux env in
+      if Flag.print_ref_typ_debug
+      then
+        begin
+          Format.printf "Refinement types:@.";
+          List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f CEGAR_ref_type.print typ) env';
+          Format.printf "@."
+        end;
       post ();
       prog, Safe env'
   | MC.Unsafe ce, Flag.NonTermination ->
@@ -162,7 +169,7 @@ let run prog info =
   make_ID_map prog;
   try
     let is_cp = FpatInterface.is_cp prog in
-    loop prog is_cp [] info
+    snd @@ loop prog is_cp [] info
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress
