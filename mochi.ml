@@ -222,12 +222,11 @@ let parse_fpat_arg arg =
   | Arg.Help s -> Format.printf "%s" s; exit 0
 
 
-let print_option_and_exit = ref (fun () -> ())
 
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
-let arg_spec =
+let rec arg_spec () =
   Arg.align
     ["-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
      "<dir>  Add <dir> to the list of include directories";
@@ -261,7 +260,7 @@ let arg_spec =
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
-     "-option-list", Arg.Unit (fun () -> !print_option_and_exit ()), " Print list of options (for completion)";
+     "-option-list", Arg.Unit print_option_and_exit, " Print list of options (for completion)";
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      (* preprocessing *)
@@ -340,8 +339,7 @@ let arg_spec =
                  Flag.split_callsite := true),
        " Check termination for each callsite of functions";
      "-add-cd",
-       Arg.Unit (fun _ ->
-                 Flag.add_closure_depth := true),
+       Arg.Set Flag.add_closure_depth,
        " Insert extra parameters for representing depth of closures";
      "-infer-ranking-exparam",
        Arg.Set Flag.add_closure_exparam,
@@ -353,24 +351,20 @@ let arg_spec =
                  Flag.mc := Flag.HorSat),
        " Check non-termination";
      "-merge-paths",
-       Arg.Unit (fun _ ->
-                 Flag.merge_paths_of_same_branch := true),
+       Arg.Set Flag.merge_paths_of_same_branch,
        " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
      "-refinement-log",
-       Arg.Unit (fun _ ->
-                 Flag.randint_refinement_log := true),
+       Arg.Set Flag.randint_refinement_log,
        " (Option for non-termination checking) Write refinement types into log file (./refinement/[input file].refinement)";
      "-no-use-omega",
-       Arg.Unit (fun _ ->
-                 Flag.use_omega := false),
+       Arg.Clear Flag.use_omega,
        " (Option for non-termination checking) Do not use omega solver for under-approximation";
      "-use-omega-first",
-       Arg.Unit (fun _ ->
-                 Flag.use_omega_first := true),
+       Arg.Set Flag.use_omega_first,
        " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)"
     ]
-
-let () = print_option_and_exit := fun () -> print_string @@ String.join " " @@ List.map Triple.fst arg_spec; exit 0
+and print_option_and_exit () = print_string @@ String.join " " @@ List.map Triple.fst (arg_spec ()); exit 0
+let arg_spec = arg_spec ()
 
 let string_of_exception = function
   | e when Fpat.FPATConfig.is_fpat_exception e ->
