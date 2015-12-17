@@ -522,13 +522,8 @@ let trans_prog ?(spec=[]) t =
   let defs_t,t_main' = trans_term t_main in
   let is_cps = List.mem S.ACPS t.S.attr in
   let defs' =
-    match !Flag.cegar with
-    | Flag.CEGAR_InteractionType ->
-        let typ = TFun(typ_unit, fun _ -> typ_unit) in
-        (main,typ,["u"],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
-    | Flag.CEGAR_DependentType ->
-        let typ = if is_cps then typ_result else typ_unit in
-        (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
+    let typ = if is_cps then typ_result else typ_unit in
+    (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
   in
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
   let env' =

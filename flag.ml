@@ -7,7 +7,6 @@ let filename = ref ""
 let spec_file = ref ""
 
 type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination
-type cegar = CEGAR_InteractionType | CEGAR_DependentType
 type model_checker = TRecS | HorSat
 
 (* TRecS option *)
@@ -63,7 +62,6 @@ let base_to_int = ref false
 let exists_unknown_false = true
 let replace_const = ref false
 let mode = ref Reachability
-let cegar = ref CEGAR_DependentType
 let mc = ref TRecS
 let use_spec = ref false
 let comment_spec = ref true

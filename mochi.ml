@@ -41,7 +41,7 @@ let print_info () =
             !Termination_loop.lrf;
           Format.printf " \"_\":{} }, "
         end;
-      Format.printf "\"total\": \"%.3f\", " (get_time());
+      Format.printf "\"total\": \"%.3f\", " !!get_time;
       Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
       Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
       Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
@@ -66,7 +66,7 @@ let print_info () =
       if !Flag.mode = Flag.FairTermination
       then Format.printf "cycles: %d@." !Flag.fair_term_loop_count;
       Format.printf "CEGAR-cycles: %d@." !Flag.cegar_loop;
-      Format.printf "total: %.3f sec@." @@ get_time();
+      Format.printf "total: %.3f sec@." !!get_time;
       Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
       Format.printf "  mc: %.3f sec@." !Flag.time_mc;
       Format.printf "  refine: %.3f sec@." !Flag.time_cegar;
@@ -279,15 +279,14 @@ let rec arg_spec () =
      "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
      (* verifier *)
      "-modular", Arg.Set Flag.modular, " Modular verification";
-     "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
      "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.comment_spec, " disable {SPEC} on comments";
      (* CEGAR *)
      "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs (each program has only one assertion)";
-     "-dpa", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
+     "-disable-predicate-accumulation", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
      (* relatively complete verification *)
-     "-rc", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
+     "-relative-complete", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
      (* predicate abstraction *)
      "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
      "-no-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := false; Flag.expand_nonrec_init := false), " Do not expand non-recursive functions";
@@ -449,7 +448,7 @@ let () =
         Format.printf "\"filename\": %S, " !Flag.filename;
         Format.printf "\"result\": %S, " @@ string_of_exception e;
         Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
-        Format.printf "\"total\": \"(%.3f)\"" (get_time());
+        Format.printf "\"total\": \"(%.3f)\"" !!get_time;
         Format.printf "}@."
     | e when !Flag.exp2 ->
         output_csv (string_of_exception e)

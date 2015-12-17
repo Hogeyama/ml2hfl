@@ -1,7 +1,6 @@
 open Util
 
-let init () =
-  Term_util.typ_excep := Type.TData("exn",true)
+type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
 let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
   let b = false in
@@ -184,66 +183,75 @@ let report_unsafe main ce set_target =
 
 
 let rec run_cegar prog =
-  init ();
-  match !Flag.cegar with
-  | Flag.CEGAR_InteractionType ->
-      assert false;
-  | Flag.CEGAR_DependentType ->
-      try
-        match CEGAR.run prog CEGAR_syntax.empty_cegar_info with
-        | CEGAR.Safe env ->
-            Flag.result := "Safe";
-            Color.printf Color.Bright "Safe!@.@.";
-            true
-        | CEGAR.Unsafe ce ->
-            Flag.result := "Unsafe";
-            Color.printf Color.Bright "Unsafe!@.@.";
-            false
-      with
-      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam ->
-          Flag.insert_param_funarg := true;
-          run_cegar prog
-      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
-          if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
-          if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
-          Flag.relative_complete := true;
-          run_cegar prog
-      | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
-          Fpat.RefTypInfer.params := [];
-          Fpat.RefTypInfer.prev_sol := [];
-          Fpat.RefTypInfer.prev_constrs := [];
-          incr Fpat.RefTypInfer.number_of_extra_params;
-          run_cegar prog
+  try
+    match CEGAR.run prog CEGAR_syntax.empty_cegar_info with
+    | CEGAR.Safe env ->
+        Flag.result := "Safe";
+        Color.printf Color.Bright "Safe!@.@.";
+        true
+    | CEGAR.Unsafe ce ->
+        Flag.result := "Unsafe";
+        Color.printf Color.Bright "Unsafe!@.@.";
+        false
+  with
+  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam ->
+      Flag.insert_param_funarg := true;
+      run_cegar prog
+  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
+      if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
+      if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
+      Flag.relative_complete := true;
+      run_cegar prog
+  | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
+      Fpat.RefTypInfer.params := [];
+      Fpat.RefTypInfer.prev_sol := [];
+      Fpat.RefTypInfer.prev_constrs := [];
+      incr Fpat.RefTypInfer.number_of_extra_params;
+      run_cegar prog
 
 
-let rec loop orig exparam_sol ?(spec=Spec.init) parsed =
-  init ();
-  let main,set_target =
-    match !Flag.cegar with
-    | Flag.CEGAR_DependentType ->
-        if spec.Spec.ref_env = []
-        then trans_and_print Trans.set_main "set_main" snd parsed
-        else
-          let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
-          None, trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id parsed
-    | _ -> None, parsed
+let init_typ_excep () =
+  Term_util.typ_excep := Type.TData("exn",true)
+
+let insert_extra_param t =
+  let t' =
+    t
+    |> Trans.lift_fst_snd
+    |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
   in
+  if true && !Flag.debug_level > 0 then
+    Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+                  (List.length !Fpat.RefTypInfer.params) Print.term t' Print.term' t';
+  t'
+
+let improve_precision e =
+  match e with
+  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
+      Flag.insert_param_funarg := true
+  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
+      if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
+      if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
+      Flag.relative_complete := true
+  | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
+      Fpat.RefTypInfer.params := [];
+      Fpat.RefTypInfer.prev_sol := [];
+      Fpat.RefTypInfer.prev_constrs := [];
+      incr Fpat.RefTypInfer.number_of_extra_params
+  | _ -> raise e
+
+let rec loop exparam_sol ?(spec=Spec.init) parsed set_target =
+  init_typ_excep ();
   (** Unno: I temporally placed the following code here
             so that we can infer refinement types for a safe program
             with extra parameters added *)
-  let t0 =
+  let set_target' =
     if !Flag.relative_complete then
-      let t = Trans.lift_fst_snd set_target in
-      let t = FpatInterface.insert_extra_param t in (* THERE IS A BUG in exception handling *)
-      if true && !Flag.debug_level > 0 then
-        Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
-                      (List.length !Fpat.RefTypInfer.params) Print.term t Print.term' t;
-      t
-      else
-        set_target
+      insert_extra_param set_target
+    else
+      set_target
   in
   (**)
-  let prog, rmap, get_rtyp, info = preprocess t0 spec in
+  let prog, rmap, get_rtyp, info = preprocess set_target' spec in
   let prog' =
     if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
     then
@@ -257,59 +265,59 @@ let rec loop orig exparam_sol ?(spec=Spec.init) parsed =
       prog
   in
   if !Flag.trans_to_CPS then FpatInterface.init prog';
-  match !Flag.cegar with
-  | Flag.CEGAR_InteractionType ->
-      (*
-      FpatInterface.verify [] prog';
-       *)
-      assert false;
-  | Flag.CEGAR_DependentType ->
+  try
+    let result = CEGAR.run prog' info in
+    result, rmap, get_rtyp, set_target'
+  with e ->
+       improve_precision e;
+       loop exparam_sol ~spec parsed set_target
+
+
+let trans_env rmap get_rtyp env : (Syntax.id * Ref_type.t) list =
+  if !Flag.insert_param_funarg
+  then []
+  else
+    let aux (f,rtyp) =
       try
-        let result = CEGAR.run prog' info in
-        result, rmap, get_rtyp, t0, main, set_target
+        let f' = List.assoc f rmap in
+        Some (f', Ref_type.rename @@ get_rtyp f' rtyp)
       with
-      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
-          Flag.insert_param_funarg := true;
-          loop orig exparam_sol ~spec parsed
-      | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
-          if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
-          if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
-          Flag.relative_complete := true;
-          loop orig exparam_sol ~spec parsed
-      | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
-          Fpat.RefTypInfer.params := [];
-          Fpat.RefTypInfer.prev_sol := [];
-          Fpat.RefTypInfer.prev_constrs := [];
-          incr Fpat.RefTypInfer.number_of_extra_params;
-          loop orig exparam_sol ~spec parsed
+      | Not_found -> None
+      | _ ->
+          Format.printf "Some refinement types cannot be shown (unimplemented)@.@.";
+          None
+    in
+    List.filter_map aux env
+
+let verify exparam_sol spec parsed =
+  let main,set_target =
+    if spec.Spec.ref_env = []
+    then trans_and_print Trans.set_main "set_main" snd parsed
+    else
+      let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
+      None, trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id parsed
+  in
+  loop exparam_sol ~spec parsed set_target, main, set_target
 
 
 let run orig exparam_sol ?(spec=Spec.init) parsed =
-  let result, rmap, get_rtyp, t0, main, set_target = loop orig exparam_sol ~spec parsed in
+  let (result, rmap, get_rtyp, set_target'), main, set_target = verify exparam_sol spec parsed in
   match result with
   | CEGAR.Safe env ->
       Flag.result := "Safe";
-      let env' : (Syntax.id * Ref_type.t) list =
-        if !Flag.insert_param_funarg
-        then []
-        else
-          let aux (f,rtyp) =
-            try
-              let f' = List.assoc f rmap in
-              Some (f', Ref_type.rename @@ get_rtyp f' rtyp)
-            with
-            | Not_found -> None
-            | _ ->
-                if not !Flag.tupling then Format.printf "Some refinement types cannot be shown (unimplemented)@.@.";
-                None
-          in
-          List.filter_map aux env
-      in
-      if not !Flag.exp && (!Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0))
-      then report_safe env' orig t0;
+      let env' = trans_env rmap get_rtyp env in
+      if not !Flag.exp && !Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0)
+      then report_safe env' orig set_target';
       true
   | CEGAR.Unsafe ce ->
       Flag.result := "Unsafe";
       if not !Flag.exp
       then report_unsafe main ce set_target;
       false
+
+let check_refinement_type spec parsed =
+  assert (spec.Spec.ref_env <> []);
+  let (result, rmap, get_rtyp, _), _, _ = verify [] spec parsed in
+  match result with
+  | CEGAR.Safe env -> Safe (trans_env rmap get_rtyp env)
+  | CEGAR.Unsafe ce -> Unsafe ce

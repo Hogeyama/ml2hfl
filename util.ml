@@ -163,6 +163,8 @@ module Fun = struct
     else repeat f (n-1) (f x)
   let const x _ = x
   let const2 x _ _ = x
+  let fst x y = x
+  let snd x y = y
 end
 
 module List = struct
@@ -199,7 +201,7 @@ module List = struct
     else init n f (i+1) (f i :: acc_rev)
   let init n f = init n f 0 []
 
-  let make n x = init n (fun _ -> x)
+  let make n x = init n @@ Fun.const x
 
   (*** returns a list of integers [m;...;n-1] ***)
   let fromto m n = init (n-m) ((+) m)
