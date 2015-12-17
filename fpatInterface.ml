@@ -292,7 +292,7 @@ let verify fs (*cexs*) prog =
   assert false(*Verifier.verify fs prog;
   Format.printf "END verification@,@]"*)
 
-let is_cp {env=env;defs=defs;main=main} =
+let is_cp {env; defs; main} =
   let prog = conv_prog (env, defs, main) in
   Fpat.RefTypInfer.is_cut_point prog
 

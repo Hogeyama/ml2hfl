@@ -81,7 +81,7 @@ let preprocess t spec =
 
   if !Flag.exp2 then
     begin
-      let oc = open_out (Filename.change_extension !Flag.filename "pml") in
+      let oc = open_out @@ Filename.change_extension !Flag.filename "pml" in
       let ocf = Format.formatter_of_out_channel oc in
       Format.fprintf ocf "%a@." Print.term_typ t;
       close_out oc
@@ -314,10 +314,3 @@ let run orig exparam_sol ?(spec=Spec.init) parsed =
       if not !Flag.exp
       then report_unsafe main ce set_target;
       false
-
-let check_refinement_type spec parsed =
-  assert (spec.Spec.ref_env <> []);
-  let (result, rmap, get_rtyp, _), _, _ = verify [] spec parsed in
-  match result with
-  | CEGAR.Safe env -> Safe (trans_env rmap get_rtyp env)
-  | CEGAR.Unsafe ce -> Unsafe ce

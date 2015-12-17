@@ -67,48 +67,49 @@ let rec add_pred n path typ =
 
 let refine labeled is_cp prefix ces ext_ces {env;defs;main;info} =
   let tmp = get_time () in
+  let post () =
+    Fpat.SMTProver.close ();
+    Fpat.SMTProver.open_ ();
+    add_time tmp Flag.time_cegar
+  in
   try
     if !Flag.print_progress then
       Color.printf
-            Color.Green
-            "(%d-4) Discovering predicates (infeasible case) ... @."
-            !Flag.cegar_loop;
+        Color.Green
+        "(%d-4) Discovering predicates (infeasible case) ... @."
+        !Flag.cegar_loop;
     if Flag.use_prefix_trace then
-      raise (Fatal "Not implemented: Flag.use_prefix_trace");
+      fatal "Not implemented: Flag.use_prefix_trace";
     let map =
-      Format.printf "@[<v>";
       let ces,ext_ces =
         if !Flag.use_multiple_paths then
-          ces,ext_ces
+          ces, ext_ces
         else
           [List.hd ces], [List.hd ext_ces]
       in
+      Format.printf "@[<v>";
       let map =
-            FpatInterface.infer
-              labeled
-              is_cp
-              ces
+        FpatInterface.infer
+          labeled
+          is_cp
+          ces
           ext_ces
-              (env, defs, main)
-          in
+          (env, defs, main)
+      in
       Format.printf "@]";
       map
     in
     let env' =
-          if !Flag.disable_predicate_accumulation then
-            map
-          else
-            add_preds_env map env
+      if !Flag.disable_predicate_accumulation then
+        map
+      else
+        add_preds_env map env
     in
     if !Flag.print_progress then Format.printf "DONE!@.@.";
-    Fpat.SMTProver.close ();
-    Fpat.SMTProver.open_ ();
-    add_time tmp Flag.time_cegar;
+    post ();
     map, {env=env';defs;main;info}
   with e ->
-    Fpat.SMTProver.close ();
-    Fpat.SMTProver.open_ ();
-    add_time tmp Flag.time_cegar;
+    post ();
     raise e
 
 let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;info} =

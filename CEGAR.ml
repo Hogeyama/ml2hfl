@@ -146,7 +146,7 @@ let rec loop prog0 is_cp ces info =
               in
               let prog' =
                 let ces'' = List.map aux ces' in
-                let ext_ces = List.make (List.length ces'') [] in
+                let ext_ces = List.map (Fun.const []) ces'' in
                 snd @@ Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
               in
               if !Flag.debug_level > 0 then
@@ -156,16 +156,13 @@ let rec loop prog0 is_cp ces info =
         end
 
 
-
 let run prog info =
   if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
-  let add_fail_to_end ds =
+  let prog =
     match !Flag.mode with
-    | Flag.NonTermination ->
-        List.map (fun (f, args, cond, e, t) -> if t=Const(CPS_result) then (f, args, cond, [Event "fail"], t) else (f, args, cond, e, t)) ds
-    | _ -> ds
+    | Flag.NonTermination -> CEGAR_trans.add_fail_to_end prog
+    | _ -> prog
   in
-  let prog = {prog with defs=add_fail_to_end prog.defs} in
   make_ID_map prog;
   try
     let is_cp = FpatInterface.is_cp prog in

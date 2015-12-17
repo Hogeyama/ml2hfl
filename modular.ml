@@ -56,3 +56,23 @@ let main orig spec parsed =
   |> List.map verify
   |@> Format.printf "RESULT: %a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_bool)
   |> List.for_all snd
+
+
+
+
+
+(************************************************************************************************************)
+(************************************************************************************************************)
+(************************************************************************************************************)
+
+let infer_ref_type spec ce parsed =
+  assert (spec.Spec.ref_env <> []);
+  let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
+  let t = Trans.ref_to_assert ref_env parsed in
+  Main_loop.init_typ_excep ();
+  let prog, rmap, get_rtyp, info = Main_loop.preprocess t spec in
+  FpatInterface.init prog;
+  let result = CEGAR.run prog info in
+  let is_cp = FpatInterface.is_cp prog in
+  let inlined_functions = CEGAR_util.inlined_functions info.orig_fun_list info.inlined prog in
+  Refine.refine inlined_functions is_cp [] [ce] [[]] prog

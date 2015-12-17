@@ -396,6 +396,7 @@ module Ref = struct
     x := f !x
 
   let set = (:=)
+  let deref = (!)
 
   let tmp_set x v f =
     let prev = !x in

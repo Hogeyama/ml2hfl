@@ -755,3 +755,12 @@ let rec simplify_if_term t =
 let simplify_if {env; defs; main; info} =
   let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term t1, e, simplify_if_term t2) defs in
   {env; defs=defs'; main; info}
+
+
+let add_fail_to_end prog =
+  let aux (f, args, cond, e, t) =
+    if t = Const(CPS_result)
+    then (f, args, cond, [Event "fail"], t)
+    else (f, args, cond, e, t)
+  in
+  map_def_prog aux prog

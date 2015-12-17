@@ -83,3 +83,5 @@ val trans_ce :
   CEGAR_syntax.var list -> CEGAR_syntax.prog -> int list -> int list
 
 val simplify_if : CEGAR_syntax.prog -> CEGAR_syntax.prog
+
+val add_fail_to_end : CEGAR_syntax.prog -> CEGAR_syntax.prog
