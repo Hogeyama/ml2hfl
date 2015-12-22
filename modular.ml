@@ -65,6 +65,63 @@ let main orig spec parsed =
 (************************************************************************************************************)
 (************************************************************************************************************)
 
+module RefTypInfer = struct
+  open Fpat
+  open Util
+  open Combinator
+
+  let infer_etrs fs is_cp prog etrs =
+    etrs
+    |> Fpat.RefTypInfer.infer_etrs fs is_cp prog
+    |@> Format.printf "refinement types:@,  %a@," Fpat.RefType.pr_env
+    |> List.map (Pair.map_snd Fpat.AbsType.of_refinement_type)
+(*
+    |> Fpat.Util.List.classify (Fpat.Combinator.comp2 (=) fst fst)
+    |> List.map
+         (function
+           | (f, sty) :: fstys ->
+              f, Fpat.AbsType.merge (sty :: List.map snd fstys)
+           | _ -> assert false)
+*)
+  let refine prog fs is_cp cexs feasible ext_cexs =
+      let etrs =
+        Fpat.Util.List.concat_map2
+          (fun cex ext_cex ->
+           let penv =
+             List.map
+               (fun (p, ps) ->
+                let cnt = ref 0 in
+                p,
+                fun ts ->
+                let (tenv, phi) = List.nth ps !cnt in
+                let tenv = tenv @ [p, Type.mk_int] in
+                cnt := !cnt + 1;
+                Logger.debug_assert
+                  (fun () -> List.length tenv = List.length ts)
+                  ~on_failure:
+                  (fun () ->
+                   Format.printf
+                     "AbsTypInfer.refine: the lengths of %a and %a are different"
+                     TypEnv.pr tenv
+                     Term.pr_list ts);
+                let tsub = List.map2 (fun (x, _) t -> x, t) tenv ts in
+                let tts = List.map2 (fun (_, ty) t -> t, ty) tenv ts in
+                PredVarApp.make
+                  (Idnt.T(Idnt.T(p, !cnt, List.length tenv - 1), -1, 0))
+                  tts,
+                Formula.subst tsub phi)
+               ext_cex
+           in
+           CompTreeExpander.error_traces_of prog feasible penv [cex])
+          cexs ext_cexs
+      in
+      infer_etrs fs is_cp prog etrs
+end
+
+type program = (id * typed_term) list
+
+let infer_ref_type spec (ces: (id * int list) list) = ces
+
 let infer_ref_type spec ce parsed =
   assert (spec.Spec.ref_env <> []);
   let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
@@ -72,7 +129,16 @@ let infer_ref_type spec ce parsed =
   Main_loop.init_typ_excep ();
   let prog, rmap, get_rtyp, info = Main_loop.preprocess t spec in
   FpatInterface.init prog;
-  let result = CEGAR.run prog info in
+  let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
   let inlined_functions = CEGAR_util.inlined_functions info.orig_fun_list info.inlined prog in
-  Refine.refine inlined_functions is_cp [] [ce] [[]] prog
+  let ce' = CEGAR_trans.trans_ce labeled prog ce in
+  let _,prog' = Refine.refine inlined_functions is_cp [] [ce'] [[]] prog in
+(*
+  let env = Main_loop.trans_env rmap get_rtyp prog'.env in
+ *)
+  let prog_fpat = FpatInterface.conv_prog prog in
+(*
+  let env = RefTypInfer.refine rmap get_rtyp prog'.env in
+ *)
+  Format.printf "%a@." CEGAR_print.prog_typ prog'

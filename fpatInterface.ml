@@ -219,7 +219,10 @@ let inv_fdef fdef =
   [],
   inv_term fdef.Fpat.Fdef.body
 
-let conv_prog (typs, fdefs, main) =
+let conv_prog prog =
+  let typs = prog.CEGAR_syntax.env in
+  let fdefs = prog.CEGAR_syntax.defs in
+  let main = prog.CEGAR_syntax.main in
   { Fpat.Prog.fdefs =
       List.map (conv_fdef typs) fdefs;
     Fpat.Prog.types =
@@ -266,13 +269,8 @@ let rec inv_abst_type aty =
 
 
 let init prog =
-  let prog =
-    conv_prog
-      (prog.CEGAR_syntax.env,
-       prog.CEGAR_syntax.defs,
-       prog.CEGAR_syntax.main)
-  in
   prog
+  |> conv_prog
   |> Fpat.RefTypJudge.mk_temp_env
   |> List.map snd
   |> List.concat_map Fpat.RefType.pvars
@@ -282,19 +280,15 @@ let init prog =
   |> Fpat.HCCSSolver.init_rsrefine
 
 let verify fs (*cexs*) prog =
-  let prog =
-    conv_prog
-      (prog.CEGAR_syntax.env,
-       prog.CEGAR_syntax.defs,
-       prog.CEGAR_syntax.main)
-  in
+  let prog = conv_prog prog in
   Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
   assert false(*Verifier.verify fs prog;
   Format.printf "END verification@,@]"*)
 
-let is_cp {env; defs; main} =
-  let prog = conv_prog (env, defs, main) in
-  Fpat.RefTypInfer.is_cut_point prog
+let is_cp prog =
+  prog
+  |> conv_prog
+  |> Fpat.RefTypInfer.is_cut_point
 
 let infer labeled is_cp cexs ext_cexs prog =
   let prog = conv_prog prog in
@@ -311,13 +305,13 @@ let infer_with_ext
     (is_cp: Fpat.Idnt.t -> bool)
     (cexs: int list list)
     (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
-    (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
+    (prog: CEGAR_syntax.prog)
   =
   Format.printf "labeled %a@." (Util.List.print Format.pp_print_string) labeled;
   Format.printf "cexs %a@." (Util.List.print @@ Util.List.print Format.pp_print_int) cexs;
-let pr ppf (tenv, phi) =
-  Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
-                 in
+  let pr ppf (tenv, phi) =
+    Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
+  in
   Format.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
   let debug = !Flag.debug_level > 0 in
   let prog = conv_prog prog in
@@ -603,8 +597,11 @@ let insert_extra_param t =
   let _ = add_time tmp Flag.time_parameter_inference in
   res
 
-let instantiate_param (typs, fdefs, main as prog) =
+let instantiate_param prog =
   let tmp = get_time() in
+  let typs = prog.CEGAR_syntax.env in
+  let fdefs = prog.CEGAR_syntax.defs in
+  let main = prog.CEGAR_syntax.main in
   (if !Fpat.RefTypInfer.prev_sol = [] then
      Fpat.RefTypInfer.init_sol (conv_prog prog));
   let map =

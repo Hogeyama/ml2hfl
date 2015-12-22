@@ -65,7 +65,7 @@ let rec add_pred n path typ =
 
 
 
-let refine labeled is_cp prefix ces ext_ces {env;defs;main;info} =
+let refine labeled is_cp prefix ces ext_ces prog =
   let tmp = get_time () in
   let post () =
     Fpat.SMTProver.close ();
@@ -88,31 +88,24 @@ let refine labeled is_cp prefix ces ext_ces {env;defs;main;info} =
           [List.hd ces], [List.hd ext_ces]
       in
       Format.printf "@[<v>";
-      let map =
-        FpatInterface.infer
-          labeled
-          is_cp
-          ces
-          ext_ces
-          (env, defs, main)
-      in
+      let map = FpatInterface.infer labeled is_cp ces ext_ces prog in
       Format.printf "@]";
       map
     in
-    let env' =
+    let env =
       if !Flag.disable_predicate_accumulation then
         map
       else
-        add_preds_env map env
+        add_preds_env map prog.env
     in
     if !Flag.print_progress then Format.printf "DONE!@.@.";
     post ();
-    map, {env=env';defs;main;info}
+    map, {prog with env}
   with e ->
     post ();
     raise e
 
-let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;info} =
+let refine_with_ext labeled is_cp prefix ces ext_ces prog =
   let tmp = get_time () in
   try
     if !Flag.print_progress then
@@ -122,30 +115,20 @@ let refine_with_ext labeled is_cp prefix ces ext_ces {env;defs;main;info} =
         !Flag.cegar_loop;
     if Flag.use_prefix_trace then
       raise (Fatal "Not implemented: Flag.use_prefix_trace");
-    let map =
-      Format.printf "@[<v>";
-      let map =
-        FpatInterface.infer_with_ext
-          labeled
-          is_cp
-          ces
-          ext_ces
-          (env, defs, main)
-      in
-      Format.printf "@]";
-      map
-    in
-    let env' =
+    Format.printf "@[<v>";
+    let map = FpatInterface.infer_with_ext labeled is_cp ces ext_ces prog in
+    Format.printf "@]";
+    let env =
       if !Flag.disable_predicate_accumulation then
         map
       else
-        add_preds_env map env
+        add_preds_env map prog.env
     in
     if !Flag.print_progress then Format.printf "DONE!@.@.";
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
     add_time tmp Flag.time_cegar;
-    map, {env=env';defs;main;info}
+    map, {prog with env}
   with e ->
     Fpat.SMTProver.close ();
     Fpat.SMTProver.open_ ();
@@ -163,7 +146,7 @@ let print_list fm = function
     in
     Format.fprintf fm "[%d%s]@." x (iter xs)
 
-let refine_rank_fun ce ex_ce { env; defs; main; info } =
+let refine_rank_fun ce ex_ce prog =
   let tmp = get_time () in
   try
     (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
@@ -171,7 +154,7 @@ let refine_rank_fun ce ex_ce { env; defs; main; info } =
     if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
     let env, spc =
       Format.printf "@[<v>";
-      let env, spc = FpatInterface.compute_strongest_post (env, defs, main) ce ex_ce in
+      let env, spc = FpatInterface.compute_strongest_post prog ce ex_ce in
       Format.printf "@]";
       env, spc
     in
@@ -179,10 +162,10 @@ let refine_rank_fun ce ex_ce { env; defs; main; info } =
     let spcWithExparam =
       if !Flag.add_closure_exparam
       then
-        let {env=envWithExparam; defs=defsWithExparam; main=mainWithExparam} = Option.get info.exparam_orig in
-        if false then Format.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get info.exparam_orig;
+        let progWithExparam = Option.get prog.info.exparam_orig in
+        if false then Format.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
         Format.printf "@[<v>";
-        let _, spcWithExparam = FpatInterface.compute_strongest_post (envWithExparam, defsWithExparam, mainWithExparam) ce ex_ce in
+        let _, spcWithExparam = FpatInterface.compute_strongest_post progWithExparam ce ex_ce in
         Format.printf "@]";
         if false then Format.printf "REFINE: %a@." Fpat.Formula.pr spcWithExparam;
         spcWithExparam

@@ -55,7 +55,7 @@ let rec loop prog0 is_cp ces info =
   let prog =
     if !Flag.relative_complete
     then
-      let env,defs,main = FpatInterface.instantiate_param (prog0.env,prog0.defs,prog0.main) in
+      let env,defs,main = FpatInterface.instantiate_param prog0 in
       {env; defs; main; info=init_info}
     else prog0
   in

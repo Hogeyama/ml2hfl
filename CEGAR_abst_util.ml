@@ -191,7 +191,18 @@ let make_arg_let prog =
 
 
 
-let rec add_label {env;defs;main;info} =
+let has_branch {defs} =
+  let fs = List.sort @@ List.map (fun (f,_,_,_,_) -> f) defs in
+  let rec aux fs =
+    match fs with
+    | [] -> []
+    | [f] -> []
+    | f::g::fs' when f = g -> f :: aux fs'
+    | f::fs' -> aux fs'
+  in
+  List.unique @@ aux fs
+
+let rec add_label prog =
   let merge = function
     | [] -> assert false
     | [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, e, t2]
@@ -211,9 +222,10 @@ let rec add_label {env;defs;main;info} =
         let defs' = merge ((f,xs,t1,e,t2)::defs1) in
         defs' @ aux defs2
   in
-  let defs' = aux defs in
-  let labeled = List.unique @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs' in
-  labeled, {env;defs=defs';main;info}
+  let defs = aux prog.defs in
+  let labeled = List.unique @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs in
+  assert (List.Set.eq labeled @@ has_branch prog);
+  labeled, {prog with defs=defs}
 
 
 
@@ -243,31 +255,15 @@ let add_ext_funs prog =
   {prog with defs=defs'}
 
 
-let rec theta xps t =
-  match t with
-  | Var x when List.mem_assoc x xps -> List.assoc x xps
-  | Var x -> Var x
-  | Const c -> Const c
-  | App(t1, t2) -> App(theta xps t1, theta xps t2)
-  | Fun _ -> assert false
-  | Let _ -> assert false
-
-let theta pbs t =
-  List.iter (function (_, Var _) -> () | _ -> assert false) pbs;
-  let xps = List.map (function (t, Var x) -> x, t | _ -> assert false) pbs in
-  theta xps t
-
 let check_exist env cond x p =
   if debug() then Format.printf "check_exists:@.";
   if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
   if debug() then Format.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
   let xs = List.filter_out ((=) x) @@ (get_fv_list (p::cond)) in
   if !Flag.use_omega_first then
-    begin
     try
-      let b = OmegaInterface.is_valid_forall_exists xs [x] cond p in
-      if debug() then Format.printf "check_exists: %b@." b;
-      b
+      OmegaInterface.is_valid_forall_exists xs [x] cond p
+      |@ !!debug &> Format.printf "check_exists: %b@."
     with OmegaInterface.Unknown ->
       if debug() then Format.printf "check_exists: OmegaInterface.Unknown@.";
       if debug() then Format.printf "Try checking by z3...@.";
@@ -281,32 +277,28 @@ let check_exist env cond x p =
         if Flag.exists_unknown_false
         then false
         else raise Fpat.SMTProver.Unknown
-    end
   else
     try
-      let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
-      if debug() then Format.printf "check_exists: %b@." b;
-      b
-    with Fpat.SMTProver.Unknown ->
-      if !Flag.use_omega then
-        begin
+      FpatInterface.is_valid_forall_exists xs [x] cond p
+      |@ !!debug &> Format.printf "check_exists: %b@."
+    with
+    | Fpat.SMTProver.Unknown when !Flag.use_omega ->
         if debug() then Format.printf "check_exists: Fpat.SMTProver.Unknown@.";
         if debug() then Format.printf "Try checking by omega...@.";
-        try
-          let b = OmegaInterface.is_valid_forall_exists xs [x] cond p in
-          if debug() then Format.printf "check_exists: %b@." b;
-          if debug() then (let _ = read_line() in ());
-          b
-        with OmegaInterface.Unknown ->
-          if debug() then Format.printf "check_exists: OmegaInterface.Unknown@.";
-          if Flag.exists_unknown_false
-          then false
-          else raise Fpat.SMTProver.Unknown
-        end
-      else
         begin
+          try
+            let b = OmegaInterface.is_valid_forall_exists xs [x] cond p in
+            if debug() then Format.printf "check_exists: %b@." b;
+            if debug() then (let _ = read_line() in ());
+            b
+          with OmegaInterface.Unknown ->
+               if debug() then Format.printf "check_exists: OmegaInterface.Unknown@.";
+               if Flag.exists_unknown_false
+               then false
+               else raise Fpat.SMTProver.Unknown
+        end
+    | Fpat.SMTProver.Unknown when !Flag.use_omega ->
         if debug() then Format.printf "check_exists: Fpat.SMTProver.Unknown@.";
         if Flag.exists_unknown_false
         then false
         else raise Fpat.SMTProver.Unknown
-        end

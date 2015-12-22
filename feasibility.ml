@@ -108,10 +108,10 @@ let rec get_prefix ce n =
   | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce {defs; main} =
-  let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
+  if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
   let time_tmp = get_time () in
-  let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
-  let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
+  if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop;
+  if false then Format.printf "ce:	  %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr _ _ _ _ = () in
@@ -130,10 +130,10 @@ let check ce {defs; main} =
 
 let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   (* List.iter (fun (n, bs) -> Format.printf "C.E.: %d: %a@." n (print_list Format.pp_print_bool ",") bs) ext_ce; *)
-  let () = if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce in
+  if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
   let time_tmp = get_time () in
-  let () = if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop in
-  let () = if false then Format.printf "ce:        %a@." CEGAR_print.ce ce in
+  if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop;
+  if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   let pr _ _ _ _ = () in
