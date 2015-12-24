@@ -74,8 +74,8 @@ module RefTypInfer = struct
     etrs
     |> Fpat.RefTypInfer.infer_etrs fs is_cp prog
     |@> Format.printf "refinement types:@,  %a@," Fpat.RefType.pr_env
-    |> List.map (Pair.map_snd Fpat.AbsType.of_refinement_type)
 (*
+    |> List.map (Pair.map_snd Fpat.AbsType.of_refinement_type)
     |> Fpat.Util.List.classify (Fpat.Combinator.comp2 (=) fst fst)
     |> List.map
          (function
@@ -83,44 +83,49 @@ module RefTypInfer = struct
               f, Fpat.AbsType.merge (sty :: List.map snd fstys)
            | _ -> assert false)
 *)
+
   let refine prog fs is_cp cexs feasible ext_cexs =
-      let etrs =
-        Fpat.Util.List.concat_map2
-          (fun cex ext_cex ->
-           let penv =
-             List.map
-               (fun (p, ps) ->
-                let cnt = ref 0 in
-                p,
-                fun ts ->
-                let (tenv, phi) = List.nth ps !cnt in
-                let tenv = tenv @ [p, Type.mk_int] in
-                cnt := !cnt + 1;
-                Logger.debug_assert
-                  (fun () -> List.length tenv = List.length ts)
-                  ~on_failure:
-                  (fun () ->
-                   Format.printf
-                     "AbsTypInfer.refine: the lengths of %a and %a are different"
-                     TypEnv.pr tenv
-                     Term.pr_list ts);
-                let tsub = List.map2 (fun (x, _) t -> x, t) tenv ts in
-                let tts = List.map2 (fun (_, ty) t -> t, ty) tenv ts in
-                PredVarApp.make
-                  (Idnt.T(Idnt.T(p, !cnt, List.length tenv - 1), -1, 0))
-                  tts,
-                Formula.subst tsub phi)
-               ext_cex
-           in
-           CompTreeExpander.error_traces_of prog feasible penv [cex])
-          cexs ext_cexs
-      in
-      infer_etrs fs is_cp prog etrs
+    let etrs =
+      Fpat.Util.List.concat_map2
+        (fun cex ext_cex ->
+         let penv =
+           List.map
+             (fun (p, ps) ->
+              let cnt = ref 0 in
+              p,
+              fun ts ->
+              let (tenv, phi) = List.nth ps !cnt in
+              let tenv = tenv @ [p, Type.mk_int] in
+              cnt := !cnt + 1;
+              Logger.debug_assert
+                (fun () -> List.length tenv = List.length ts)
+                ~on_failure:
+                (fun () ->
+                 Format.printf
+                   "AbsTypInfer.refine: the lengths of %a and %a are different"
+                   TypEnv.pr tenv
+                   Term.pr_list ts);
+              let tsub = List.map2 (fun (x, _) t -> x, t) tenv ts in
+              let tts = List.map2 (fun (_, ty) t -> t, ty) tenv ts in
+              PredVarApp.make
+                (Idnt.T(Idnt.T(p, !cnt, List.length tenv - 1), -1, 0))
+                tts,
+              Formula.subst tsub phi)
+             ext_cex
+         in
+         CompTreeExpander.error_traces_of prog feasible penv [cex])
+        cexs ext_cexs
+    in
+    infer_etrs fs is_cp prog etrs
 end
+
+
 
 type program = (id * typed_term) list
 
-let infer_ref_type spec (ces: (id * int list) list) = ces
+let print_ce_set fm ce_set =
+  let pr fm (f, ce) = Format.fprintf fm "%a: %a" Id.print f (List.print Format.pp_print_int) ce in
+  Format.fprintf fm "%a" (print_list pr ",@ ") ce_set
 
 let infer_ref_type spec ce parsed =
   assert (spec.Spec.ref_env <> []);
@@ -133,12 +138,66 @@ let infer_ref_type spec ce parsed =
   let is_cp = FpatInterface.is_cp prog in
   let inlined_functions = CEGAR_util.inlined_functions info.orig_fun_list info.inlined prog in
   let ce' = CEGAR_trans.trans_ce labeled prog ce in
-  let _,prog' = Refine.refine inlined_functions is_cp [] [ce'] [[]] prog in
-(*
-  let env = Main_loop.trans_env rmap get_rtyp prog'.env in
- *)
-  let prog_fpat = FpatInterface.conv_prog prog in
-(*
-  let env = RefTypInfer.refine rmap get_rtyp prog'.env in
- *)
-  Format.printf "%a@." CEGAR_print.prog_typ prog'
+  let prog = FpatInterface.conv_prog prog in
+  RefTypInfer.refine prog inlined_functions is_cp [ce'] false [[]]
+  |@false&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
+
+let rec eval fun_env ce_set ce_env t =
+  match t with
+  | Const _ -> t, ce_env, [[]]
+  | Var x -> assert false
+  | Fun _ -> t, ce_env, [[]]
+  | App(t1, t2::ts) -> assert false
+  | If(t1, t2, t3) ->
+      let _, ce_env1, path1 = eval fun_env ce_set ce_env t1 in
+      let ce,ce_env1' = List.assoc_map (get_id t) List.tl ce_env1 in
+      let t23 =
+        if List.hd ce = 0
+        then t2
+        else t3
+      in
+      let r, ce_env23, path23 = eval fun_env ce_set ce_env1' t2 in
+      r, ce_env23, path1@path23
+  | Let(f, bindings, t) ->
+      51=
+  | BinOp(And, t1, t2) ->
+      let r1, ce_env', path = eval fun_env ce_set ce_env t1 in
+      if not @@ bool_of_term r1
+      then false_term, ce_env', path
+      else eval fun_env ce_set ce_env' t2 |> Triple.map_trd ((@) path)
+  | BinOp(Or, t1, t2) ->
+      let r1, ce_env', path = eval fun_env ce_set ce_env t1 in
+      if bool_of_term r1
+      then true_term, ce_env', path
+      else eval fun_env ce_set ce_env' t2 |> Triple.map_trd ((@) path)
+  | BinOp(op, t1, t2) ->
+      let r1, ce_env1, path1 = eval fun_env ce_set ce_env t1 in
+      let r2, ce_env2, path2 = eval fun_env ce_set ce_env t2 in
+      let n1 = int_of_term r1 in
+      let n2 = int_of_term r2 in
+      let v =
+        match op with
+        | Eq -> make_bool (n1 = n2)
+        | Lt -> make_bool (n1 < n2)
+        | Gt -> make_bool (n1 > n2)
+        | Leq -> make_bool (n1 <= n2)
+        | Geq -> make_bool (n1 >= n2)
+        | Add -> make_int (n1 + n2)
+        | Sub -> make_int (n1 - n2)
+        | Mult -> make_int (n1 * n2)
+        | _ -> assert false
+      in
+      v, ce_env2, path1@path2
+  | Not t ->
+      let r, ce_env', path = eval fun_env ce_set ce_env t in
+      make_not r, ce_env', path
+
+let expand_counterexamples (prog:program) (ce_set:(id*int list) list) : int list list =
+  Format.printf "ce_set: %a@." print_ce_set ce_set;
+  [List.flatten_map snd ce_set]
+
+let infer spec parsed (ce_set: (id * int list) list) =
+  let prog = [] in
+  let ces = expand_counterexamples prog ce_set in
+  let envs = List.map (infer_ref_type spec -$- parsed) ces in
+  List.flatten envs

@@ -319,6 +319,14 @@ module List = struct
       Some (assoc ~cmp k tbl)
     with Not_found -> None
 
+  let rec assoc_map ?(cmp=(=)) k f tbl =
+    match tbl with
+    | [] -> raise Not_found
+    | (k',x)::tbl' ->
+        if cmp k k'
+        then x, (k', f x) :: tbl'
+        else assoc_map ~cmp k f tbl |> Pair.map_snd @@ cons (k', x)
+
   let eq ?(cmp=(=)) xs ys = length xs = length ys && for_all2 cmp xs ys
 
   module Set = struct
