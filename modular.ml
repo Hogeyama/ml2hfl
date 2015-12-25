@@ -142,12 +142,27 @@ let infer_ref_type spec ce parsed =
   RefTypInfer.refine prog inlined_functions is_cp [ce'] false [[]]
   |@false&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
 
+let make_fix f xs t =
+  make_letrec [f, xs, t] @@ make_var f
+let decomp_fix t =
+  match t.desc with
+  | Let(Recursive, [f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
+  | _ -> None
+let is_fix t = decomp_fix t <> None
+
+let get_arg_num = List.length -| fst -| decomp_funs
+
+
 let rec eval fun_env ce_set ce_env t =
-  match t with
+  match t.desc with
   | Const _ -> t, ce_env, [[]]
-  | Var x -> assert false
+  | Var x ->
+      assert (List.mem_assoc x fun_env);
+      t, ce_env, [[]]
   | Fun _ -> t, ce_env, [[]]
-  | App(t1, t2::ts) -> assert false
+  | App(t1, t2::ts) ->
+      (match t1.desc with App _ -> assert false | _ -> ());
+
   | If(t1, t2, t3) ->
       let _, ce_env1, path1 = eval fun_env ce_set ce_env t1 in
       let ce,ce_env1' = List.assoc_map (get_id t) List.tl ce_env1 in
@@ -158,8 +173,18 @@ let rec eval fun_env ce_set ce_env t =
       in
       let r, ce_env23, path23 = eval fun_env ce_set ce_env1' t2 in
       r, ce_env23, path1@path23
-  | Let(f, bindings, t) ->
-      51=
+  | Let _ when is_fix t -> t, ce_env, [[]]
+  | Let(flag, bindings, t) ->
+      let sbst, ce_env', path =
+        let aux (sbst, ce_env, path) (f, xs, t1) =
+          let t1' = make_funs xs @@ sbst t1 in
+          let r,ce_env',path' = eval fun_env ce_set ce_env t1' in
+          subst f r -| sbst, ce_env', path@path'
+        in
+        List.fold_left aux (Fun.id, ce_env, []) bindings
+      in
+      let r, ce_env'', path' = eval fun_env ce_set ce_env' @@ sbst t in
+      r, ce_env'', path@path'
   | BinOp(And, t1, t2) ->
       let r1, ce_env', path = eval fun_env ce_set ce_env t1 in
       if not @@ bool_of_term r1
