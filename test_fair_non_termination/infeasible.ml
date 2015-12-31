@@ -3,7 +3,7 @@
   valcegar #randint_1:
   (unit -> (x:int[x > 0; x <= 0] -> X) -> X)
 
-  valcegar f_2038:
+  valcegar f_2032:
   (x:int[x>0; x<=0] -> (unit -> X) -> X)
 
   fairness: (A, Never)
