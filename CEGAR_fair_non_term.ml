@@ -47,6 +47,10 @@ let rec expand_tree rules n expr =
        end
     | Abst (x, e) -> Abst (x, e) in
 
+  let is_dummy = function
+    | Var "_" -> true
+    | _ -> false in
+
   match expr with
   | Var s ->
      begin match get_fun s with
@@ -73,13 +77,20 @@ let rec expand_tree rules n expr =
         let t1 = expand_tree rules (n/2) e in
         let t2 = expand_tree rules (n/2) e2 in
         branch "br_exists" t1 t2
+     | Apply(Var s, e), _ when is_dummy e || is_dummy e2 ->
+        let child =
+          if is_dummy e then e2
+          else e in
+        let t = expand_tree rules (n - 1) child in
+        node s t
      | e, _ ->
         Format.printf "exp:%a@." pp_expr e;
         assert false
      end
 
 let cegar prog0 labeled info is_cp ce_rules prog =
-  let ce_tree = expand_tree ce_rules 100 (Var "Main") in
+  let start_symbol = fst @@ List.hd ce_rules in
+  let ce_tree = expand_tree ce_rules 50 (Var start_symbol) in
   Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
 
   (*feasiblity check and refinement is common with that of non-termination*)
