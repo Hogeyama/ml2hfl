@@ -210,7 +210,7 @@ let conv_fdef typs (f, args, guard, events, body) =
         (fun e t ->
          Fpat.Term.mk_app
            (conv_event e)
-           [Fpat.Term.mk_const Fpat.Const.Unit])
+           [t])
         events (conv_term typs body) } (***)
 
 let inv_fdef fdef =
