@@ -77,12 +77,13 @@ let rec expand_tree rules n expr =
         let t1 = expand_tree rules (n/2) e in
         let t2 = expand_tree rules (n/2) e2 in
         branch "br_exists" t1 t2
-     | Apply(Var s, e), _ when is_dummy e || is_dummy e2 ->
-        let child =
-          if is_dummy e then e2
-          else e in
-        let t = expand_tree rules (n - 1) child in
-        node s t
+     | Apply(Var s, e), _ when s = "br_forall" ->
+        assert (is_dummy e || is_dummy e2);
+        let e' = if is_dummy e then e2 else e in
+        let t = expand_tree rules (n - 1) e' in
+        node "br_forall" t
+     | Apply(v, _), _ when is_dummy v ->
+        leaf ()
      | e, _ ->
         Format.printf "exp:%a@." pp_expr e;
         assert false

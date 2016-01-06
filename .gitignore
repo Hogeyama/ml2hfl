@@ -53,3 +53,4 @@ mochi_bin/lib/
 *.oc_out
 *.test_out
 *.horsatp_out
+*.error_out
