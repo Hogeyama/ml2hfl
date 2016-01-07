@@ -91,7 +91,7 @@ let rec expand_tree rules n expr =
 
 let cegar prog0 labeled info is_cp ce_rules prog =
   let start_symbol = fst @@ List.hd ce_rules in
-  let ce_tree = expand_tree ce_rules 50 (Var start_symbol) in
+  let ce_tree = expand_tree ce_rules !Flag.expand_ce_count (Var start_symbol) in
   Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
 
   (*feasiblity check and refinement is common with that of non-termination*)
