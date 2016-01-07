@@ -414,6 +414,16 @@ module Ref = struct
     r
 end
 
+module Counter = struct
+  type t = int ref
+
+  let init = 0
+  let create () : t = ref init
+  let peep (c:t) = !c
+  let gen (c:t) = incr c; !c
+  let reset (c:t) = c := init
+end
+
 let is_uppercase c = 'A' <= c && c <= 'Z'
 
 

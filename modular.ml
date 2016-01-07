@@ -107,7 +107,7 @@ module RefTypInfer = struct
                    Term.pr_list ts);
               let tsub = List.map2 (fun (x, _) t -> x, t) tenv ts in
               let tts = List.map2 (fun (_, ty) t -> t, ty) tenv ts in
-              PredVarApp.make
+              Pva.make
                 (Idnt.T(Idnt.T(p, !cnt, List.length tenv - 1), -1, 0))
                 tts,
               Formula.subst tsub phi)
@@ -153,6 +153,9 @@ let is_fix t = decomp_fix t <> None
 let get_arg_num = List.length -| fst -| decomp_funs
 
 
+let counter = Counter.create ()
+let new_label () = Counter.gen counter
+
 let rec eval fun_env ce_set ce_env t =
   match t.desc with
   | Const _ -> t, ce_env, [[]]
@@ -160,9 +163,17 @@ let rec eval fun_env ce_set ce_env t =
       assert (List.mem_assoc x fun_env);
       t, ce_env, [[]]
   | Fun _ -> t, ce_env, [[]]
-  | App(t1, t2::ts) ->
-      (match t1.desc with App _ -> assert false | _ -> ());
-
+  | App(t1, ts) ->
+      let f = match t1.desc with Var f -> f | _ -> assert false in
+      let t1', ce_env', path = eval fun_env ce_set ce_env t1 in
+      let ts', ce_env'', path' =
+        let aux t (ts,ce_env,path) =
+          let t',ce_env',path' = eval fun_env ce_set ce_env t in
+          t'::ts, ce_env', path@path'
+        in
+        List.fold_right aux ts ([],ce_env,[])
+      in
+      let label = new_label () in
   | If(t1, t2, t3) ->
       let _, ce_env1, path1 = eval fun_env ce_set ce_env t1 in
       let ce,ce_env1' = List.assoc_map (get_id t) List.tl ce_env1 in
