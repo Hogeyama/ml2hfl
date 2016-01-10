@@ -21,7 +21,9 @@ let rec subst (x, ex1) ex2 =
   | Abst (s, e1) ->
      Abst (s, subst (x, e1) ex2)
 
-(** generate counter-example tree *)
+(**
+   exprをn回くらい展開して、反例木を生成する
+*)
 let rec expand_tree rules n expr =
   let get_fun f =
     try
@@ -51,7 +53,9 @@ let rec expand_tree rules n expr =
     | Var "_" -> true
     | _ -> false in
 
-  match expr with
+  if n < - !Flag.expand_ce_count then
+    leaf () (* 打ち切れる場所が現れないときの無限ループ防止 *)
+  else match expr with
   | Var s ->
      begin match get_fun s with
      | Some e when n > 0 ->
@@ -62,29 +66,26 @@ let rec expand_tree rules n expr =
   | Abst _ ->
      leaf ()
   | Apply (e1, e2) ->
-     begin match eval e1, n > 0 with
-     | Var s, false when s = "tt" || s = "ff" ->  (* expansion is continued when label is "tt" or "ff" *)
-        let t = expand_tree rules (n - 1) e2 in
-        node s t
-     | _, false ->
+     begin match eval e1 with
+     | Var s when n < 0 && (s = "l0" || s = "l1") -> (* n回展開済みで、分岐の直前なら、展開を打ち切る*)
         leaf ()
-     | Var s, _ ->
+     | Var s ->
         let t = expand_tree rules (n - 1) e2 in
         node s t
-     | Abst (x, e), _ ->
+     | Abst (x, e) ->
         expand_tree rules n (subst (x, e) e2)
-     | Apply(Var s, e), _ when s = "br_exists" ->
+     | Apply(Var s, e) when s = "br_exists" ->
         let t1 = expand_tree rules (n/2) e in
         let t2 = expand_tree rules (n/2) e2 in
         branch "br_exists" t1 t2
-     | Apply(Var s, e), _ when s = "br_forall" ->
+     | Apply(Var s, e) when s = "br_forall" ->
         assert (is_dummy e || is_dummy e2);
         let e' = if is_dummy e then e2 else e in
         let t = expand_tree rules (n - 1) e' in
         node "br_forall" t
-     | Apply(v, _), _ when is_dummy v ->
+     | Apply(v, _) when is_dummy v ->
         leaf ()
-     | e, _ ->
+     | e ->
         Format.printf "exp:%a@." pp_expr e;
         assert false
      end
