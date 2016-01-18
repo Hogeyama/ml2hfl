@@ -54,3 +54,4 @@ mochi_bin/lib/
 *.test_out
 *.horsatp_out
 *.error_out
+*.error_hors

@@ -1,14 +1,5 @@
 (*{SPEC}
 
-  valcegar #randint_1 :
-  (unit -> (int -> X) -> X)
-
-  valcegar #randint_2 :
-  (unit -> x:int -> (y:int[x < y; x >= y] -> X) -> X)
-
-  valcegar f_f_2270:
-  (unit -> x:int -> (unit -> X) -> y:int[x < y; x >= y] -> X)
-
   fairness: (A, Never)
 
   {SPEC}*)
