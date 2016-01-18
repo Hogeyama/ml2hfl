@@ -297,8 +297,32 @@ let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in
   Fpat.RefTypInfer.is_cut_point prog
 
-let infer labeled is_cp cexs ext_cexs prog =
-  let prog = conv_prog prog in
+let infer labeled is_cp cexs ext_cexs (env, defs, main) =
+  let fs = List.map fst env in
+  let defs' =
+    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
+      let aux f =
+        if CEGAR_syntax.is_randint_var f then
+          []
+        else
+          let argss =
+            List.filter_map (fun (g, args, _, _, _) ->
+              if f = g then
+                Some args
+              else
+                None
+            ) defs in
+          let n = List.length argss in
+          List.make (3 - n) (f, List.hd argss, Const True, [Event "fail"], Const Unit) in
+      defs @ List.concat_map aux fs
+    else
+      defs in
+  let prog = conv_prog (env, defs', main) in
+  let cexs =
+    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
+      List.map (flip (@) [2]) cexs
+    else
+      cexs in
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
