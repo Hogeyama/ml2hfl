@@ -1614,7 +1614,11 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 let elim_unused_let = make_trans2 ()
 
 let elim_unused_let_desc cbv desc =
-  let has_no_effect t = has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr in
+  let has_no_effect t =
+    if false
+    then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
+    else has_no_effect t
+  in
   match desc with
   | Let(Nonrecursive, bindings, t) ->
       let t' = elim_unused_let.tr2_term cbv t in

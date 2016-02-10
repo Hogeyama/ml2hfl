@@ -136,6 +136,12 @@ let rec eval_print fm rands t =
       let rands',vs = List.fold_right aux ts (rands,[]) in
       rands', {desc=Constr(s,vs); typ=t.typ; attr=[]}
   | Match(t1,pat::pats) ->
+      let merge r1 r2 =
+        match r1, r2 with
+        | None, _
+        | _, None -> None
+        | Some f1, Some f2 -> Some (f1 -| f2)
+      in
       let rec check v p =
         match v.desc, p.pat_desc with
         | _, PAny -> Some Fun.id
@@ -168,13 +174,11 @@ let rec eval_print fm rands t =
               | _, None -> None
               | Some f1, Some f2 -> Some (f1 -| f2)
             end
-        | Tuple[v1;v2], PTuple[p1;p2] ->
-            begin
-              match check v1 p1, check v2 p2 with
-              | None, _
-              | _, None -> None
-              | Some f1, Some f2 -> Some (f1 -| f2)
-            end
+        | Nil, PCons _ -> None
+        | Cons _, PNil -> None
+        | Tuple vs, PTuple ps ->
+            let rs = List.map2 check vs ps in
+            List.fold_right merge rs @@ Some Fun.id
         | Record _, PRecord _ -> assert false
         | _, POr(p1, p2) ->
             begin
@@ -182,7 +186,10 @@ let rec eval_print fm rands t =
               | None -> check v p2
               | Some f -> Some f
             end
-        | _ -> assert false
+        | _ ->
+            Format.printf "@.v: %a@." Print.term v;
+            Format.printf "p: %a@." Print.pattern p;
+            assert false
       in
       let rands',v = eval_print fm rands t1 in
       let p,cond,t = pat in
