@@ -216,6 +216,7 @@ and print_desc pri typ fm desc =
   | Match(t,pats) ->
       let p = 10 in
       let s1,s2 = paren pri p in
+      let first = ref true in
       let aux (pat,cond,t) =
         let print_cond fm =
           match cond.desc with
@@ -223,7 +224,8 @@ and print_desc pri typ fm desc =
           | _ -> fprintf fm "when@ @[<hov 2>%a@]@ " (print_term p typ) cond
         in
         fprintf fm "@ @[<hov 4>";
-        pp_print_if_newline fm ();
+        if !first then pp_print_if_newline fm ();
+        first := false;
         pp_print_string fm "| ";
         fprintf fm "@[<hov 2>%a %t->@ %a@]@]" print_pattern pat print_cond (print_term p typ) t
       in

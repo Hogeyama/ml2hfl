@@ -117,7 +117,7 @@ let rec eval_print fm rands t =
       rands'', v
   | Not t1 ->
       let rands',v1 = eval_print fm rands t1 in
-      rands', make_bool @@ bool_of_term v1
+      rands', make_bool @@ not @@ bool_of_term v1
   | Event("fail",false) -> raise EventFail
   | Event _ -> assert false
   | Record fields -> raise (Fatal "Not implemented: eval_print Record")
