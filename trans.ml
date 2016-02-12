@@ -164,7 +164,7 @@ let rec define_randvalue (env, defs as ed) typ =
     | TUnit -> (env, defs), unit_term
     | TBool -> (env, defs), randbool_unit_term
     | TInt -> (env, defs), randint_unit_term
-    | TVar({contents=None} as r) -> r := Some TUnit; define_randvalue ed TUnit
+    | TVar({contents=None} as r) -> r := Some TInt; define_randvalue ed TInt
     | TVar{contents=Some typ} -> define_randvalue ed typ
     | TFun(x,typ) ->
         let ed',t = define_randvalue ed typ in

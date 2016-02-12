@@ -419,7 +419,8 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
               | false, false ->
                   [None, reduce xns1 + reduce xns2]
             end
-        | _ -> Format.eprintf "Unsupported: %a @ CEGAR_util.normalize_bool_term" CEGAR_print.term @@ make_app op [t1;t2]; assert false
+        | _ ->
+            unsupported @@ Format.asprintf  "CEGAR_util.normalize_bool_term: %a" CEGAR_print.term @@ make_app op [t1;t2]
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in
