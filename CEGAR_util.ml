@@ -58,7 +58,7 @@ let rec subst_typ x t = function
 
 let rec subst_typ_map map = function
   | TBase(b,ps) ->
-      (** ASSUME: y does not contain x **)
+      (** ASSUME: y does not contain an element in Dom(map) **)
       let ps' y = List.map (subst_map map) (ps y) in
       TBase(b, ps')
   | TFun(typ1,typ2) -> TFun(subst_typ_map map typ1, fun y -> subst_typ_map map (typ2 y))
@@ -407,9 +407,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
             begin
               match not_const xns1, not_const xns2 with
               | true, true ->
-                  Format.eprintf "Nonlinear expression not supported: %a@."
-                                CEGAR_print.term (make_app op [t1;t2]);
-                  assert false
+                  unsupported @@ Format.asprintf "Nonlinear expression not supported: %a@." CEGAR_print.term (make_app op [t1;t2])
               | false, true ->
                   let k = reduce xns1 in
                   List.rev_map (fun (x,n) -> x,n*k) xns2
@@ -420,7 +418,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
                   [None, reduce xns1 + reduce xns2]
             end
         | _ ->
-            unsupported @@ Format.asprintf  "CEGAR_util.normalize_bool_term: %a" CEGAR_print.term @@ make_app op [t1;t2]
+            unsupported @@ Format.asprintf "CEGAR_util.normalize_bool_term: %a" CEGAR_print.term @@ make_app op [t1;t2]
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in
@@ -433,7 +431,7 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
           in
           compare (aux x2) (aux x1)
         in
-        List.sort ~cmp:compare (xns1 @@@ (neg xns2))
+        List.sort ~cmp:compare (xns1 @@@ neg xns2)
       in
       let d = List.fold_left (fun d (_,n) -> Math.gcd d (abs n)) 0 xns in
       if d = 0
@@ -448,7 +446,8 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
                 let n' = List.fold_left (fun acc (_,n) -> acc+n) 0 ((x,n)::xns1) in
                 (x,n') :: aux xns2
           in
-          aux xns' in
+          aux xns'
+        in
         let xns''' = List.filter (fun (_,n) -> n<>0) xns'' in
         if xns''' = []
         then
