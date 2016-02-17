@@ -124,7 +124,8 @@ let make_ignore t =
     t
   else
     make_seq t unit_term
-let make_fail typ = make_seq (make_app fail_term [unit_term]) @@ make_bottom typ
+let fail_unit_term = make_app fail_term [unit_term]
+let make_fail typ = make_seq fail_unit_term @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_funs = List.fold_right make_fun
 let make_not t =
@@ -620,7 +621,7 @@ let make_if t1 t2 t3 =
   | Const False -> t3
   | _ when List.Set.subset [ANotFail;ATerminate] t2.attr && same_term' t2 t3 -> t2
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
-let make_assert t = make_if t unit_term (make_app fail_term [unit_term])
+let make_assert t = make_if t unit_term fail_unit_term
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
 let make_br t2 t3 = make_if randbool_unit_term t2 t3
 

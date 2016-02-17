@@ -419,7 +419,8 @@ let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
               | false, false ->
                   [None, reduce xns1 + reduce xns2]
             end
-        | _ -> Format.eprintf "Unsupported: %a @ CEGAR_util.normalize_bool_term" CEGAR_print.term @@ make_app op [t1;t2]; assert false
+        | _ ->
+            unsupported @@ Format.asprintf  "CEGAR_util.normalize_bool_term: %a" CEGAR_print.term @@ make_app op [t1;t2]
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in
@@ -526,7 +527,7 @@ let get_nonrec defs main orig_fun_list force =
   let check (f,xs,t1,e,t2) =
     let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
     let used = List.count (fun (_,_,_,_,t2) -> List.mem f @@ get_fv t2) defs in
-    List.for_all (fun (_,_,t1,e,_) -> e = [] && t1 = Const True) defs' &&
+    List.for_all (fun (_,_,t1,e,_) -> e = []) defs' &&
     f <> main &&
     (List.for_all (fun (_,xs,_,_,t2) -> List.Set.subset (get_fv t2) xs) defs' ||
      (1 >= used || List.mem f force) &&

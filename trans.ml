@@ -164,7 +164,7 @@ let rec define_randvalue (env, defs as ed) typ =
     | TUnit -> (env, defs), unit_term
     | TBool -> (env, defs), randbool_unit_term
     | TInt -> (env, defs), randint_unit_term
-    | TVar({contents=None} as r) -> r := Some TUnit; define_randvalue ed TUnit
+    | TVar({contents=None} as r) -> r := Some TInt; define_randvalue ed TInt
     | TVar{contents=Some typ} -> define_randvalue ed typ
     | TFun(x,typ) ->
         let ed',t = define_randvalue ed typ in
@@ -1620,7 +1620,11 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 let elim_unused_let = make_trans2 ()
 
 let elim_unused_let_desc cbv desc =
-  let has_no_effect t = has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr in
+  let has_no_effect t =
+    if false
+    then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
+    else has_no_effect t
+  in
   match desc with
   | Let(Nonrecursive, bindings, t) ->
       let t' = elim_unused_let.tr2_term cbv t in

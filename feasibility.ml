@@ -16,7 +16,24 @@ let checksat env t =
   Fpat.SMTProver.is_sat_dyn (FpatInterface.conv_formula t)
 
 let get_solution env t =
-  t |> FpatInterface.conv_formula |> Fpat.PolyConstrSolver.solve |> List.sort |> List.map snd |> List.map Fpat.IntTerm.int_of
+  let sol =
+    t
+    |> FpatInterface.conv_formula
+    |> Fpat.PolyConstrSolver.solve
+    |> List.map (Pair.map Fpat.Idnt.string_of Fpat.IntTerm.int_of)
+  in
+  let sol' =
+    let assoc (x,_) =
+      let r =
+        try
+          List.assoc x sol
+        with Not_found -> 0
+      in
+      x, r
+    in
+    List.map assoc env
+  in
+  List.map snd @@ List.sort sol'
 
 let init_cont ce sat n constr env _ = assert (ce=[]); constr, n, env
 
