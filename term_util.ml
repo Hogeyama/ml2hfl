@@ -841,9 +841,6 @@ let rec list_of_term t =
   | Cons(t1,t2) -> t1 :: list_of_term t2
   | _ -> invalid_argument "list_of_term"
 
-let add_comment s t =
-  {t with attr = AComment s :: t.attr}
-
 let rec get_last_definition f t =
   match t.desc with
   | Let(_, bindings, t2) ->
@@ -862,6 +859,8 @@ let count_occurrence x t =
   List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t
 
 let add_attr attr t = {t with attr=attr::t.attr}
+let add_comment s t = add_attr (AComment s) t
+let add_id id t = add_attr (AId id) t
 
 let get_id t =
   try
@@ -880,3 +879,11 @@ let get_id_map t =
   let map = Hashtbl.create 0 in
   get_id_map.col2_term map t;
   map
+
+
+
+let rec decomp_prog t =
+  match t.desc with
+  | Let(flag, bindings, t') ->
+      Pair.map_fst (List.cons (flag,bindings)) @@ decomp_prog t'
+  | _ -> [], t

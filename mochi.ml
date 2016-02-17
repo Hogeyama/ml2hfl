@@ -210,8 +210,8 @@ let main in_channel =
       main_fair_termination orig spec parsed
     else
 
-let _ = Modular.infer spec parsed [Option.get @@ Term_util.get_last_definition parsed, [0;1]] in
-assert false;
+      let _ = Modular.infer spec parsed [Option.get @@ Term_util.get_last_definition parsed, [0;1]] in
+      let _ = assert_false () in
 
       Main_loop.run orig [] ~spec parsed
 

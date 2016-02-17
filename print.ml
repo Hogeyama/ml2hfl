@@ -163,7 +163,7 @@ and print_desc pri typ fm desc =
           fprintf fm "@ else@ ";
           pp_print_if_newline fm ();
           pp_print_string fm "  ";
-          fprintf fm "@[%a@]" (print_term p typ) t3;
+          fprintf fm "@[%a@]" (print_term p typ) t3
         end;
       fprintf fm "@]%s" s2
   | Let(_, [], _) -> assert false

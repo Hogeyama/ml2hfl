@@ -1515,15 +1515,21 @@ let normalize_let_term t =
       let x2,post2 = normalize_let_aux t2 in
       post1 @@ post2 @@ {desc=BinOp(op, make_var x1, make_var x2); typ=t.typ; attr=[]}
   | App(t, ts) ->
-     let ts' = List.map normalize_let.tr_term ts in
+     let xs,posts = List.split_map normalize_let_aux ts in
      let x,post = normalize_let_aux t in
-     post @@ make_app (make_var x) ts'
+     let post' = List.fold_left (|-) post posts in
+     post' @@ make_app (make_var x) @@ List.map make_var xs
   | Tuple ts ->
       let xs,posts = List.split_map normalize_let_aux ts in
       List.fold_right (@@) posts @@ make_tuple @@ List.map make_var xs
   | Proj(i,t) ->
      let x,post = normalize_let_aux t in
      post @@ make_proj i @@ make_var x
+  | If(t1, t2, t3) ->
+      let x,post = normalize_let_aux t1 in
+      let t2'  = normalize_let.tr_term t2 in
+      let t3'  = normalize_let.tr_term t3 in
+      post @@ make_if (make_var x) t2' t3'
   | Let(flag,bindings,t1) ->
       let aux (f,xs,t) = f, xs, normalize_let.tr_term t in
       let bindings' = List.map aux bindings in

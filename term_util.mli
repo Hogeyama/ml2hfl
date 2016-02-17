@@ -164,11 +164,13 @@ val col_info_id : typed_term -> id list
 val is_bottom_def : Syntax.rec_flag -> id -> id list -> Syntax.typed_term -> bool
 val decomp_bexp : typed_term -> typed_term list
 val merge_typ : typ -> typ -> typ
-val add_comment : string -> typed_term -> typed_term
 val get_last_definition : typed_term -> id option
 val get_body : typed_term -> typed_term
 val count_occurrence : id -> typed_term -> int
 val add_attr : attr -> typed_term -> typed_term
+val add_comment : string -> typed_term -> typed_term
+val add_id : int -> typed_term -> typed_term
 val get_bound_variables : typed_term -> id list
 val get_id : typed_term -> int
 val get_id_map : typed_term -> (int, typed_term) Hashtbl.t
+val decomp_prog : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term

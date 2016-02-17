@@ -261,7 +261,7 @@ module List = struct
         rev_filter_map acc' f xs'
   let rev_filter_map f xs = rev_filter_map [] f xs
   let filter_map2 f xs ys = rev_filter_map Std.identity @@ rev_map2 f xs ys
-  let rec filter_out f xs = filter (not -| f) xs
+  let filter_out f xs = filter (not -| f) xs
 
   let rev_split xs = fold_left (fun (acc1,acc2) (x,y) -> x::acc1, y::acc2) ([],[]) xs
   let split_map f = rev_split -| rev_map f
@@ -326,6 +326,8 @@ module List = struct
         if cmp k k'
         then x, (k', f x) :: tbl'
         else assoc_map ~cmp k f tbl |> Pair.map_snd @@ cons (k', x)
+
+  let assoc_all k tbl = filter_map (fun (k',x) -> if k=k then Some x else None) tbl
 
   let eq ?(cmp=(=)) xs ys = length xs = length ys && for_all2 cmp xs ys
 
@@ -422,6 +424,15 @@ module Counter = struct
   let peep (c:t) = !c
   let gen (c:t) = incr c; !c
   let reset (c:t) = c := init
+end
+
+module Combination = struct
+  let rec take_each xxs =
+    match xxs with
+    | [] -> [[]]
+    | xs::xxs' ->
+        let cmb = take_each xxs' in
+        List.flatten_map (fun x -> List.map (List.cons x) cmb) xs
 end
 
 let is_uppercase c = 'A' <= c && c <= 'Z'

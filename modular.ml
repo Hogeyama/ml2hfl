@@ -136,7 +136,7 @@ let infer_ref_type spec ce parsed =
   FpatInterface.init prog;
   let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
-  let inlined_functions = CEGAR_util.inlined_functions info.orig_fun_list info.inlined prog in
+  let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
   let ce' = CEGAR_trans.trans_ce labeled prog ce in
   let prog = FpatInterface.conv_prog prog in
   RefTypInfer.refine prog inlined_functions is_cp [ce'] false [[]]
@@ -150,89 +150,123 @@ let decomp_fix t =
   | _ -> None
 let is_fix t = decomp_fix t <> None
 
-let get_arg_num = List.length -| fst -| decomp_funs
+let get_arg_num = List.length -| Triple.snd -| Option.get -| decomp_fix
 
 
 let counter = Counter.create ()
 let new_label () = Counter.gen counter
 
-let rec eval fun_env ce_set ce_env t =
+let add_label = make_trans2 ()
+let add_label_term l t =
+  let t' = add_label.tr2_term_rec l t in
   match t.desc with
-  | Const _ -> t, ce_env, [[]]
-  | Var x ->
-      assert (List.mem_assoc x fun_env);
-      t, ce_env, [[]]
-  | Fun _ -> t, ce_env, [[]]
-  | App(t1, ts) ->
-      let f = match t1.desc with Var f -> f | _ -> assert false in
-      let t1', ce_env', path = eval fun_env ce_set ce_env t1 in
-      let ts', ce_env'', path' =
-        let aux t (ts,ce_env,path) =
-          let t',ce_env',path' = eval fun_env ce_set ce_env t in
-          t'::ts, ce_env', path@path'
-        in
-        List.fold_right aux ts ([],ce_env,[])
-      in
-      let label = new_label () in
-  | If(t1, t2, t3) ->
-      let _, ce_env1, path1 = eval fun_env ce_set ce_env t1 in
-      let ce,ce_env1' = List.assoc_map (get_id t) List.tl ce_env1 in
-      let t23 =
-        if List.hd ce = 0
-        then t2
-        else t3
-      in
-      let r, ce_env23, path23 = eval fun_env ce_set ce_env1' t2 in
-      r, ce_env23, path1@path23
-  | Let _ when is_fix t -> t, ce_env, [[]]
-  | Let(flag, bindings, t) ->
-      let sbst, ce_env', path =
-        let aux (sbst, ce_env, path) (f, xs, t1) =
-          let t1' = make_funs xs @@ sbst t1 in
-          let r,ce_env',path' = eval fun_env ce_set ce_env t1' in
-          subst f r -| sbst, ce_env', path@path'
-        in
-        List.fold_left aux (Fun.id, ce_env, []) bindings
-      in
-      let r, ce_env'', path' = eval fun_env ce_set ce_env' @@ sbst t in
-      r, ce_env'', path@path'
-  | BinOp(And, t1, t2) ->
-      let r1, ce_env', path = eval fun_env ce_set ce_env t1 in
-      if not @@ bool_of_term r1
-      then false_term, ce_env', path
-      else eval fun_env ce_set ce_env' t2 |> Triple.map_trd ((@) path)
-  | BinOp(Or, t1, t2) ->
-      let r1, ce_env', path = eval fun_env ce_set ce_env t1 in
-      if bool_of_term r1
-      then true_term, ce_env', path
-      else eval fun_env ce_set ce_env' t2 |> Triple.map_trd ((@) path)
-  | BinOp(op, t1, t2) ->
-      let r1, ce_env1, path1 = eval fun_env ce_set ce_env t1 in
-      let r2, ce_env2, path2 = eval fun_env ce_set ce_env t2 in
-      let n1 = int_of_term r1 in
-      let n2 = int_of_term r2 in
-      let v =
-        match op with
-        | Eq -> make_bool (n1 = n2)
-        | Lt -> make_bool (n1 < n2)
-        | Gt -> make_bool (n1 > n2)
-        | Leq -> make_bool (n1 <= n2)
-        | Geq -> make_bool (n1 >= n2)
-        | Add -> make_int (n1 + n2)
-        | Sub -> make_int (n1 - n2)
-        | Mult -> make_int (n1 * n2)
-        | _ -> assert false
-      in
-      v, ce_env2, path1@path2
-  | Not t ->
-      let r, ce_env', path = eval fun_env ce_set ce_env t in
-      make_not r, ce_env', path
+  | If(t1, t2, t3) -> add_id l t'
+  | _ -> t'
+let () = add_label.tr2_term <- add_label_term
+let add_label = add_label.tr2_term
+let get_label t = get_id t
 
+let bool_of_term' t = Option.try_ (fun _ -> bool_of_term t)
+
+let is_fail t =
+  match t.desc with
+  | App({desc=Event("fail",_)}, [{desc=Const Unit}]) -> true
+  | _ -> false
+
+let exists_fail ts = List.exists is_fail ts
+
+let append_path path rs =
+  List.map (Triple.map_trd @@ (@) path) rs
+
+exception EvalBottom
+exception EvalFail
+
+(* ASSUME: Input must be normal form *)
+let rec eval fun_env ce_set ce_env t =
+  let r =
+  match t.desc with
+  | BinOp(And, _, _) -> assert false
+  | BinOp(Or, _, _) -> assert false
+  | Const _
+  | Var _
+  | BinOp _
+  | Not _
+  | Fun _ -> [t, ce_env, []]
+  | _ when is_fail t -> [t, ce_env, []]
+  | Bottom -> []
+  | App(t1, ts) when is_fix t1 ->
+      let n = get_arg_num t1 in
+      if n < List.length ts then
+        [t, ce_env, []]
+      else if n > List.length ts then
+        unsupported "Modular.eval: App(fix, _)"
+      else
+        let f,xs,t1' = Option.get @@ decomp_fix t1 in
+        let t' = List.fold_right2 subst xs ts t1' in
+        eval fun_env ce_set ce_env t'
+  | App(t1, ts) ->
+      let f = var_of_term t1 in
+      let xs = List.map var_of_term ts in
+      let ys,t_f = Id.assoc f fun_env in
+      assert (List.length xs <= List.length ys);
+      if List.length xs < List.length ys
+      then [t, ce_env, []]
+      else
+        let label = new_label () in
+        Format.printf "LABEL: %a, %d@." Id.print f label;
+        let t_f' = add_label label t_f in
+        let paths = List.assoc_all f ce_set in
+        let aux path =
+          let t' = make_app (make_fix f xs t_f') ts in
+          let ce_env' = (label,path)::ce_env in
+          eval fun_env ce_set ce_env' t'
+        in
+        List.flatten_map aux paths
+  | If(_, t2, t3) ->
+      let aux ce =
+        match ce with
+        | [] -> assert false
+        | br::ce' ->
+            let t23 = if br = 0 then t2 else t3 in
+            append_path [br] @@ eval fun_env ce_set ce_env t23
+      in
+      let label = get_label t in
+      let ce = List.assoc label ce_env in
+      aux ce
+  | Let _ when is_fix t -> [t, ce_env, []]
+  | Let(flag, [], t2) -> eval fun_env ce_set ce_env t2
+  | Let(Nonrecursive, [f,xs,t1], t2) ->
+      if xs = []
+      then
+        let rs = eval fun_env ce_set ce_env t1 in
+        let aux (v,ce_env,path) =
+          t2
+          |> (if is_base_typ t1.typ then Fun.id else subst f v)
+          |> eval fun_env ce_set ce_env
+          |> append_path path
+        in
+        List.flatten_map aux rs
+      else
+        let t2' = subst f (make_funs xs t1) t2 in
+        eval fun_env ce_set ce_env t2'
+  | _ ->
+      Format.printf "%a@." Print.term t;
+      unsupported "Modular.eval"
+  in Format.printf"ORIG: %a@.RESULT: %a@.@." Print.term t (List.print Print.term) @@ List.map Triple.fst r;r
 let expand_counterexamples (prog:program) (ce_set:(id*int list) list) : int list list =
   Format.printf "ce_set: %a@." print_ce_set ce_set;
   [List.flatten_map snd ce_set]
 
 let infer spec parsed (ce_set: (id * int list) list) =
+  Format.printf "NORM: %a@." Print.term @@ Trans.flatten_let @@ Trans.normalize_let parsed;
+  let fbindings,main = decomp_prog parsed in
+  assert (main.desc = Const Unit);
+  List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
+  let fun_env = List.flatten_map (fun (_,bindings) -> List.map (fun (f,xs,t) -> f, (xs,t)) bindings) fbindings in
+  let ce_set = List.mapi (fun i (f,_) -> match i with 0 -> f, [0] | 1 -> f, [0;1] | _ -> assert false) fun_env in
+  let main = Option.get @@ get_last_definition parsed in
+  ignore@@eval fun_env ce_set [] (make_app (make_var main) [make_var @@ Id.new_var ~name:"v0" TInt]);
+  let _ = assert false in
   let prog = [] in
   let ces = expand_counterexamples prog ce_set in
   let envs = List.map (infer_ref_type spec -$- parsed) ces in
