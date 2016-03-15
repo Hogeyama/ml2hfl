@@ -328,8 +328,6 @@ let rec has_bottom = function
   | _ -> assert false
 
 
-
-
 let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
   match t with
   | Const c -> Const c

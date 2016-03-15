@@ -35,7 +35,7 @@ COMMIT: depend .git/index $(FPAT_LIB)
 	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
 	@$(GIT) log --date=iso --pretty=format:"%ad" -1 >> COMMIT
 	@echo ')' >> COMMIT
-	@-(if [ -e $(FPAT_SRC_DIR) ]; then cd $(FPAT_SRC_DIR); echo `$(GIT) rev-parse --short HEAD`; fi) >> COMMIT
+	@-(cd $(FPAT_SRC_DIR) && echo `$(GIT) rev-parse --short HEAD`) >> COMMIT
 endif
 
 
