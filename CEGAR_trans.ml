@@ -767,7 +767,7 @@ let rec simplify_if_term env t =
         else if t1''' = Const False || List.mem (make_not t1''') env then
           t3''
         else
-          make_if t1''' t2' t3'
+          make_if t1''' t2'' t3''
       end
   | App(t1,t2) -> App(simplify_if_term env t1, simplify_if_term env t2)
   | Let(x, t1, t2) -> Let(x, simplify_if_term env t1, simplify_if_term env t2)

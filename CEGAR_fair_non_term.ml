@@ -44,8 +44,10 @@ let rec expand_tree rules n expr =
           eval (subst(x, e1') e2)
        | Var s ->
           Apply(Var s, e2)
-       | _ ->
-          assert false
+       | e1' ->
+           if false
+           then assert false
+           else e1'
        end
     | Abst (x, e) -> Abst (x, e) in
 
@@ -87,10 +89,13 @@ let rec expand_tree rules n expr =
         leaf ()
      | e ->
         Format.printf "exp:%a@." pp_expr e;
-        assert false
+        if false
+        then assert false
+        else expand_tree rules (n-1) e
      end
 
 let cegar prog0 labeled info is_cp ce_rules prog =
+  Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules;
   let start_symbol = fst @@ List.hd ce_rules in
   let ce_tree = expand_tree ce_rules !Flag.expand_ce_count (Var start_symbol) in
   Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
