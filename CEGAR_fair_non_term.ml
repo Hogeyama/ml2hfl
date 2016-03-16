@@ -81,7 +81,7 @@ let rec expand_tree rules n expr =
         let t2 = expand_tree rules (n/2) e2 in
         branch "br_exists" t1 t2
      | Apply(Var s, e) when s = "br_forall" ->
-        assert (is_dummy e || is_dummy e2);
+         (*        assert (is_dummy e || is_dummy e2);*)
         let e' = if is_dummy e then e2 else e in
         let t = expand_tree rules (n - 1) e' in
         node "br_forall" t

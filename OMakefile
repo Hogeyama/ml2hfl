@@ -25,7 +25,7 @@ FILES = Makefile trans.mli lift.mli CPS.mli curry.mli encode_rec.mli	\
 	omegaInterface.ml spec_parser.mly spec_lexer.mll		\
 	fair_termination.ml fair_termination_type.mli			\
 	fair_termination_util.ml uncurry.ml CFA.ml			\
-	CEGAR_fair_non_term.ml HORS_syntax.ml
+	CEGAR_fair_non_term.ml HORS_syntax.ml horSatPInterface.ml
 
 
 DONE: $(FILES)

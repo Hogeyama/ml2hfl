@@ -62,14 +62,14 @@ type result =
 
 let make_apt events (a, b) =
   let q0, q1, q2 = "q0", "q1", "q2" in
-  let rec trans = function
+  let rec trans state = function
     | Ev x when x = a -> Label (1, q1)
     | Ev x when x = b -> Label (1, q2)
     | Ev x when x = "event_fail" -> False
-    | Ev _ -> Label (1, q0)
-    | Br_A -> And (Label (1, q0), Label (2, q0))
-    | Br_E -> Or  (Label (1, q0), Label (2, q0))
-    | L _ | Tt | Ff -> Label (1, q0)
+    | Ev _ -> Label (1, state)
+    | Br_A -> And (Label (1, state), Label (2, state))
+    | Br_E -> Or  (Label (1, state), Label (2, state))
+    | L _ | Tt | Ff -> Label (1, state)
     | End  -> False
   in
   let default_sym = [Br_A; Br_E; L 0; L 1; End; Tt; Ff] in
@@ -81,7 +81,7 @@ let make_apt events (a, b) =
       (fun state ->
         List.map
           (fun sym ->
-            (state, string_of_label sym, trans sym))
+            (state, string_of_label sym, trans state sym))
           syms
       )
       states in
