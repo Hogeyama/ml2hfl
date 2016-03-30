@@ -410,12 +410,12 @@ let rec decomp_let_app_option f t =
   match t.desc with
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g ->
       let ts' = List.map decomp_some ts in
-      if not @@ List.for_all2 (fun t t' -> Option.is_some t' || is_none t) ts ts' then invalid_argument "decomp_let_app_option";
+      if not @@ List.for_all2 (fun t t' -> Option.is_some t' || is_none t) ts ts' then invalid_arg "decomp_let_app_option";
       let args = List.filter_map Std.identity @@ List.mapi (fun i t -> Option.map (fun t' -> i, x, t') t) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
   | Let(Nonrecursive, [x, [], {desc=App({desc=Var g}, [_])}], t2) when Id.same f g ->
-      invalid_argument "decomp_let_app_option"
+      invalid_arg "decomp_let_app_option"
   | _ -> [], [], t
 
 let replace_app_term env t =
@@ -448,7 +448,7 @@ let replace_app_term env t =
             end;
           let y = Id.new_var_id x in
           let sbst, arg =
-            List.iteri (fun i _ -> if 1 < List.length @@ List.filter ((=) i -| Triple.fst) used then raise (Invalid_argument "replace_app")) @@ decomp_ttuple t1.typ;
+            List.iteri (fun i _ -> if 1 < List.length @@ List.filter ((=) i -| Triple.fst) used then raise (invalid_arg "replace_app")) @@ decomp_ttuple t1.typ;
             let aux sbst (i,x,_) = sbst |- replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) in
             let sbst = List.fold_left aux Std.identity used in
             let aux i typ =

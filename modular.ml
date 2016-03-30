@@ -73,7 +73,7 @@ module RefTypInfer = struct
   let infer_etrs fs is_cp prog etrs =
     etrs
     |> Fpat.RefTypInfer.infer_etrs fs is_cp prog
-    |@> Format.printf "refinement types:@,  %a@," Fpat.RefType.pr_env
+    |*@> Format.printf "refinement types:@,  %a@." Fpat.RefType.pr_env
 (*
     |> List.map (Pair.map_snd Fpat.AbsType.of_refinement_type)
     |> Fpat.Util.List.classify (Fpat.Combinator.comp2 (=) fst fst)
@@ -127,7 +127,7 @@ let print_ce_set fm ce_set =
   let pr fm (f, ce) = Format.fprintf fm "%a: %a" Id.print f (List.print Format.pp_print_int) ce in
   Format.fprintf fm "%a" (print_list pr ",@ ") ce_set
 
-let infer_ref_type spec ce parsed =
+let infer_ref_type spec ces parsed =
   assert (spec.Spec.ref_env <> []);
   let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
   let t = Trans.ref_to_assert ref_env parsed in
@@ -137,9 +137,24 @@ let infer_ref_type spec ce parsed =
   let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
   let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
-  let ce' = CEGAR_trans.trans_ce labeled prog ce in
+  let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
   let prog = FpatInterface.conv_prog prog in
-  RefTypInfer.refine prog inlined_functions is_cp [ce'] false [[]]
+  RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
+  |@false&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
+
+let infer_abs_type spec ces parsed =
+  assert (spec.Spec.ref_env <> []);
+  let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
+  let t = Trans.ref_to_assert ref_env parsed in
+  Main_loop.init_typ_excep ();
+  let prog, rmap, get_rtyp, info = Main_loop.preprocess t spec in
+  FpatInterface.init prog;
+  let labeled = CEGAR_abst_util.has_branch prog in
+  let is_cp = FpatInterface.is_cp prog in
+  let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
+  let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
+  let prog = FpatInterface.conv_prog prog in
+  RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
   |@false&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
 
 let make_fix f xs t =
@@ -170,7 +185,7 @@ let bool_of_term' t = Option.try_ (fun _ -> bool_of_term t)
 
 let is_fail t =
   match t.desc with
-  | App({desc=Event("fail",_)}, [{desc=Const Unit}]) -> true
+  | App({desc=Event("fail",_)}, [_]) -> true
   | _ -> false
 
 let exists_fail ts = List.exists is_fail ts
@@ -178,11 +193,9 @@ let exists_fail ts = List.exists is_fail ts
 let append_path path rs =
   List.map (Triple.map_trd @@ (@) path) rs
 
-exception EvalBottom
-exception EvalFail
-
 (* ASSUME: Input must be normal form *)
 let rec eval fun_env ce_set ce_env t =
+  Format.printf"@[ORIG(%d): %a@\n  @[" (List.length ce_set) Print.term t;
   let r =
   match t.desc with
   | BinOp(And, _, _) -> assert false
@@ -191,7 +204,8 @@ let rec eval fun_env ce_set ce_env t =
   | Var _
   | BinOp _
   | Not _
-  | Fun _ -> [t, ce_env, []]
+  | Fun _
+  | Event _ -> [t, ce_env, []]
   | _ when is_fail t -> [t, ce_env, []]
   | Bottom -> []
   | App(t1, ts) when is_fix t1 ->
@@ -206,33 +220,36 @@ let rec eval fun_env ce_set ce_env t =
         eval fun_env ce_set ce_env t'
   | App(t1, ts) ->
       let f = var_of_term t1 in
-      let xs = List.map var_of_term ts in
       let ys,t_f = Id.assoc f fun_env in
-      assert (List.length xs <= List.length ys);
-      if List.length xs < List.length ys
+      assert (List.length ts <= List.length ys);
+      if List.length ts < List.length ys
       then [t, ce_env, []]
       else
         let label = new_label () in
-        Format.printf "LABEL: %a, %d@." Id.print f label;
+        Format.printf "LABEL: %a, %d@\n  @[" Id.print f label;
         let t_f' = add_label label t_f in
-        let paths = List.assoc_all f ce_set in
+        let paths = List.assoc_all ~cmp:Id.eq f ce_set in
         let aux path =
-          let t' = make_app (make_fix f xs t_f') ts in
+          Format.printf "PATH: %d, %a@\n" label (List.print Format.pp_print_int) path;
+          let t' = make_app (make_fix f ys t_f') ts in
           let ce_env' = (label,path)::ce_env in
           eval fun_env ce_set ce_env' t'
         in
-        List.flatten_map aux paths
+        let r = List.flatten_map aux paths in
+        Format.printf "@]";
+        r
   | If(_, t2, t3) ->
-      let aux ce =
-        match ce with
-        | [] -> assert false
-        | br::ce' ->
-            let t23 = if br = 0 then t2 else t3 in
-            append_path [br] @@ eval fun_env ce_set ce_env t23
-      in
       let label = get_label t in
-      let ce = List.assoc label ce_env in
-      aux ce
+      let ce,ce_env' = List.decomp_assoc label ce_env in
+      begin
+        match ce with
+        | [] -> []
+        | br::ce' ->
+            Format.printf "CE[%d]: %a@\n" label (List.print Format.pp_print_int) ce;
+            let t23 = if br = 0 then t2 else t3 in
+            let ce_env'' = (label,ce')::ce_env' in
+            append_path [br] @@ eval fun_env ce_set ce_env'' t23
+      end
   | Let _ when is_fix t -> [t, ce_env, []]
   | Let(flag, [], t2) -> eval fun_env ce_set ce_env t2
   | Let(Nonrecursive, [f,xs,t1], t2) ->
@@ -240,10 +257,13 @@ let rec eval fun_env ce_set ce_env t =
       then
         let rs = eval fun_env ce_set ce_env t1 in
         let aux (v,ce_env,path) =
-          t2
-          |> (if is_base_typ t1.typ then Fun.id else subst f v)
-          |> eval fun_env ce_set ce_env
-          |> append_path path
+          if is_fail v then
+            [fail_unit_term, ce_env, path]
+          else
+            t2
+            |> (if is_base_typ t1.typ then Fun.id else subst f v)
+            |> eval fun_env ce_set ce_env
+            |> append_path path
         in
         List.flatten_map aux rs
       else
@@ -252,22 +272,27 @@ let rec eval fun_env ce_set ce_env t =
   | _ ->
       Format.printf "%a@." Print.term t;
       unsupported "Modular.eval"
-  in Format.printf"ORIG: %a@.RESULT: %a@.@." Print.term t (List.print Print.term) @@ List.map Triple.fst r;r
-let expand_counterexamples (prog:program) (ce_set:(id*int list) list) : int list list =
-  Format.printf "ce_set: %a@." print_ce_set ce_set;
-  [List.flatten_map snd ce_set]
+  in
+  Format.printf"@]@\nRESULT: %a@]@," (List.print (Pair.print Print.term (List.print Format.pp_print_int))) @@ List.map (fun (x,y,z) -> x,z) r;r
 
 let infer spec parsed (ce_set: (id * int list) list) =
-  Format.printf "NORM: %a@." Print.term @@ Trans.flatten_let @@ Trans.normalize_let parsed;
-  let fbindings,main = decomp_prog parsed in
+  let normalized = Trans.inline_var @@ Trans.flatten_let @@ Trans.normalize_let parsed in
+  Format.printf "NORM: %a@." Print.term normalized;
+  let fbindings,main = decomp_prog normalized in
   assert (main.desc = Const Unit);
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
   let fun_env = List.flatten_map (fun (_,bindings) -> List.map (fun (f,xs,t) -> f, (xs,t)) bindings) fbindings in
-  let ce_set = List.mapi (fun i (f,_) -> match i with 0 -> f, [0] | 1 -> f, [0;1] | _ -> assert false) fun_env in
-  let main = Option.get @@ get_last_definition parsed in
-  ignore@@eval fun_env ce_set [] (make_app (make_var main) [make_var @@ Id.new_var ~name:"v0" TInt]);
-  let _ = assert false in
-  let prog = [] in
-  let ces = expand_counterexamples prog ce_set in
-  let envs = List.map (infer_ref_type spec -$- parsed) ces in
-  List.flatten envs
+  let ce_set = List.flatten @@ List.mapi (fun i (f,_) -> match i with 0 -> [(*f, [0];*) f, [1]] | 1 -> [f, [0;1](*; f, [1;0;1]*)] | _ -> assert false) fun_env in
+  Format.printf "CE_SET: %a@." (List.print @@ Pair.print Id.print (List.print Format.pp_print_int)) ce_set;
+  let main = Option.get @@ get_last_definition normalized in
+  let rs = eval fun_env ce_set [] (make_app (make_var main) [make_var @@ Id.new_var ~name:"v0" TInt]) in
+  let rs' = List.filter (is_fail -| Triple.fst) rs in
+  Format.printf "@.Counterexamples: %a@." (List.print (List.print Format.pp_print_int)) @@ List.map (Triple.trd) rs';
+  let ces = List.map (Triple.trd) rs' in
+  let env = infer_ref_type spec ces normalized in
+  let env' = List.filter ((Id.mem_assoc -$- fun_env) -| CEGAR_trans.trans_inv_var -| Fpat.Idnt.string_of -| fst) env in
+  assert (env'<>[]);
+  Format.printf "@.refinement types:@,  %a@," Fpat.RefType.pr_env env';(*
+  let aenv = infer_abs_type spec ces normalized in*)
+  assert false;
+  env'

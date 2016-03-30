@@ -25,6 +25,7 @@ val fail_term_cps : typed_term
 val randint_term : typed_term
 val randbool_unit_term : typed_term
 val randint_unit_term : typed_term
+val fail_unit_term : typed_term
 val make_bool : bool -> typed_term
 val make_bottom : typ -> typed_term
 val make_event : string -> typed_term

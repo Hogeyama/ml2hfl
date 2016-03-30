@@ -234,7 +234,7 @@ let rec get_top_fun_typ f t =
           xs, t.typ
         with Not_found -> get_top_fun_typ f t1
       end
-  | _ -> invalid_argument "get_top_fun_typ"
+  | _ -> invalid_arg "get_top_fun_typ"
 
 let trans target fairness t =
   let states = List.unique @@ List.Set.inter (get_states t) @@ List.flatten_map Pair.to_list fairness in

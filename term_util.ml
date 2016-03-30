@@ -813,34 +813,34 @@ let rec decomp_bexp t =
 let var_of_term t =
   match t.desc with
   | Var x -> x
-  | _ -> invalid_argument "var_of_term"
+  | _ -> invalid_arg "var_of_term"
 
 let int_of_term t =
   match t.desc with
   | Const (Int n) -> n
-  | _ -> invalid_argument "int_of_term"
+  | _ -> invalid_arg "int_of_term"
 
 let bool_of_term t =
   match t.desc with
   | Const True -> true
   | Const False -> false
-  | _ -> invalid_argument "bool_of_term"
+  | _ -> invalid_arg "bool_of_term"
 
 let pair_of_term t =
   match t.desc with
   | Tuple [t1; t2] -> t1, t2
-  | _ -> invalid_argument "pair_of_term"
+  | _ -> invalid_arg "pair_of_term"
 
 let tuple_of_term t =
   match t.desc with
   | Tuple ts -> ts
-  | _ -> invalid_argument "tuple_of_term"
+  | _ -> invalid_arg "tuple_of_term"
 
 let rec list_of_term t =
   match t.desc with
   | Nil -> []
   | Cons(t1,t2) -> t1 :: list_of_term t2
-  | _ -> invalid_argument "list_of_term"
+  | _ -> invalid_arg "list_of_term"
 
 let rec get_last_definition f t =
   match t.desc with
@@ -866,7 +866,7 @@ let add_id id t = add_attr (AId id) t
 let get_id t =
   try
     List.find_map (function AId n -> Some n | _ -> None) t.attr
-  with Not_found -> invalid_argument "get_id"
+  with Not_found -> invalid_arg "get_id"
 
 
 let get_id_map = make_col2 () (Fun.const2 ())

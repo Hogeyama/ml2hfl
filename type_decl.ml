@@ -32,7 +32,7 @@ let print_kind fm = function
 
 let from_type_kind kind =
   match kind with
-  | KAbstract -> invalid_argument "Type_decl.from_type_kind"
+  | KAbstract -> invalid_arg "Type_decl.from_type_kind"
   | KVariant decls -> TKVariant decls
   | KRecord decls -> TKRecord decls
   | KOpen -> Abstract
@@ -171,13 +171,13 @@ let is_mutable c =
 let get_mutable_flag s =
   match kind_of_field s with
   | _, TKRecord sftyps -> fst @@ List.assoc s sftyps
-  | _ -> invalid_argument "get_mutable_flag"
+  | _ -> invalid_arg "get_mutable_flag"
 
 let get_pos s =
   match kind_of_field s with
   | _, TKRecord sftyps ->
       List.assoc s @@ List.mapi (fun i (s,(f,typ)) -> s, i) sftyps
-  | _ -> invalid_argument "get_mutable_flag"
+  | _ -> invalid_arg "get_mutable_flag"
 
 let rec can_reach acc s1 s2 =
   let aux (b,acc) typ =

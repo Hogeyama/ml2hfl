@@ -3,7 +3,6 @@ exception Unsupported of string
 
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
-let invalid_argument s = raise (Invalid_argument s)
 
 let (!!) f = f ()
 let (-|) f g x = f (g x)
@@ -73,7 +72,7 @@ module Option = struct
     match xs with
     | [] -> None
     | [x] -> Some x
-    | _ -> invalid_argument "Option.of_list"
+    | _ -> invalid_arg "Option.of_list"
 
   let print pr fm x =
     match x with
@@ -110,7 +109,7 @@ module Pair = struct
   let of_list xs =
     match xs with
     | [x;y] -> x,y
-    | _ -> invalid_argument "Pair.of_list"
+    | _ -> invalid_arg "Pair.of_list"
   let print f g ppf (x,y) = Format.fprintf ppf "@[(@[%a,@ %a@])@]" f x g y
 end
 
@@ -128,7 +127,9 @@ module Triple = struct
   let of_list xs =
     match xs with
     | [x;y;z] -> x,y,z
-    | _ -> invalid_argument "Triple.of_list"
+    | _ -> invalid_arg "Triple.of_list"
+  let to_pair_r (x,y,z) = x, (y, z)
+  let to_pair_l (x,y,z) = (x, y), z
   let print f g h ppf (x,y,w) = Format.fprintf ppf "@[(@[%a,@ %a,@ %a@])@]" f x g y h w
 end
 
@@ -143,11 +144,17 @@ module Quadruple = struct
   let of_list xs =
     match xs with
     | [x;y;z;w] -> x,y,z,w
-    | _ -> invalid_argument "Quadruple.of_list"
+    | _ -> invalid_arg "Quadruple.of_list"
+  let to_pair_r (x,y,z,w) = x, (y, (z, w))
+  let to_pair_m (x,y,z,w) = (x, y), (z, w)
+  let to_pair_l (x,y,z,w) = ((x, y), z), w
+  let to_13 (x,y,z,w) = x, (y, z, w)
+  let to_22 (x,y,z,w) = (x, y), (z, w)
+  let to_31 (x,y,z,w) = (x, y, z), w
 end
 
 module Fun = struct
-  let id x = x
+  external id : 'a -> 'a = "%identity"
   let flip f x y = f y x
   let curry2 = Pair.curry
   let uncurry2 = Pair.uncurry
@@ -163,8 +170,6 @@ module Fun = struct
     else repeat f (n-1) (f x)
   let const x _ = x
   let const2 x _ _ = x
-  let fst x y = x
-  let snd x y = y
 end
 
 module List = struct
@@ -214,7 +219,7 @@ module List = struct
 
   let rec tabulate n f rev_acc =
     if n < 0 then
-      invalid_argument "tabulate"
+      invalid_arg "tabulate"
     else if n = 0 then
       rev rev_acc
     else
@@ -225,7 +230,7 @@ module List = struct
     fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
   let rec decomp_snoc = function
-    | [] -> invalid_argument "decomp_snoc"
+    | [] -> invalid_arg "decomp_snoc"
     | [x] -> [], x
     | x::xs -> Pair.map_fst (cons x) @@ decomp_snoc xs
 
@@ -233,21 +238,21 @@ module List = struct
     match xs,ys with
     | [],[] -> []
     | x::xs',y::ys' -> f i x y :: mapi2 f (i+1) xs' ys'
-    | _ -> invalid_argument "List.mapi2"
+    | _ -> invalid_arg "List.mapi2"
   let mapi2 f xs ys = mapi2 f 0 xs ys
 
   let rec rev_map2 f acc xs ys =
     match xs,ys with
     | [],[] -> acc
     | x::xs',y::ys' -> rev_map2 f (f x y::acc) xs' ys'
-    | _ -> invalid_argument "List.rev_map2"
+    | _ -> invalid_arg "List.rev_map2"
   let rev_map2 f xs ys = rev_map2 f [] xs ys
 
   let rec map3 f xs ys zs =
     match xs,ys,zs with
     | [],[],[] -> []
     | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
-    | _ -> invalid_argument "List.map3"
+    | _ -> invalid_arg "List.map3"
 
   let rec rev_filter_map acc f xs =
     match xs with
@@ -285,7 +290,8 @@ module List = struct
     snd @@ find (cmp x -| fst) xs
 
   let assoc_on ?(cmp=(=)) f x xs =
-    snd @@ find_eq_on ~cmp fst x xs
+    let x' = f x in
+    snd @@ find_eq_on ~cmp (f -| fst) x' xs
 
   let mem_assoc ?(cmp=(=)) x xs =
     try
@@ -325,9 +331,17 @@ module List = struct
     | (k',x)::tbl' ->
         if cmp k k'
         then x, (k', f x) :: tbl'
-        else assoc_map ~cmp k f tbl |> Pair.map_snd @@ cons (k', x)
+        else assoc_map ~cmp k f tbl' |> Pair.map_snd @@ cons (k', x)
 
-  let assoc_all k tbl = filter_map (fun (k',x) -> if k=k then Some x else None) tbl
+  let rec decomp_assoc ?(cmp=(=)) k tbl =
+    match tbl with
+    | [] -> raise Not_found
+    | (k',x)::tbl' ->
+        if cmp k k'
+        then x, tbl'
+        else decomp_assoc ~cmp k tbl' |> Pair.map_snd @@ cons (k', x)
+
+  let assoc_all ?(cmp=(=)) k tbl = filter_map (fun (k',x) -> if cmp k k' then Some x else None) tbl
 
   let eq ?(cmp=(=)) xs ys = length xs = length ys && for_all2 cmp xs ys
 
@@ -510,7 +524,7 @@ let split_spaces ?(spaces=[' ';'\t';'\n']) s =
     if s = ""
     then
       begin
-        if Option.is_some quot then invalid_argument "split_spaces";
+        if Option.is_some quot then invalid_arg "split_spaces";
         String.implode @@ List.rev acc_rev, ""
       end
     else

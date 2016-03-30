@@ -1846,23 +1846,23 @@ let expand_let_val t =
 let rec eval_aexp t =
   match t.desc with
   | Const (Int n) -> n
-  | Var _ -> invalid_argument "eval_aexp"
+  | Var _ -> invalid_arg "eval_aexp"
   | BinOp(op, t1, t2) ->
       let f =
         match op with
         | Add -> (+)
         | Sub -> (-)
         | Mult -> ( * )
-        | _ -> invalid_argument "eval_aexp"
+        | _ -> invalid_arg "eval_aexp"
       in
       f (eval_aexp t1) (eval_aexp t2)
-  | _ -> invalid_argument "eval_aexp"
+  | _ -> invalid_arg "eval_aexp"
 
 let rec eval_bexp t =
   match t.desc with
   | Const True -> true
   | Const False -> false
-  | Var _ -> invalid_argument "eval_bexp"
+  | Var _ -> invalid_arg "eval_bexp"
   | BinOp((Eq|Lt|Gt|Leq|Geq) as op, t1, t2) ->
       let f =
         match op with
@@ -1870,7 +1870,7 @@ let rec eval_bexp t =
         | Lt -> (<)
         | Gt -> (>)
         | Leq -> (<=)
-        | _ -> invalid_argument "eval_bexp"
+        | _ -> invalid_arg "eval_bexp"
       in
       f (eval_aexp t1) (eval_aexp t2)
   | BinOp((And|Or) as op, t1, t2) ->
@@ -1878,7 +1878,7 @@ let rec eval_bexp t =
         match op with
         | And -> (&&)
         | Or -> (||)
-        | _ -> invalid_argument "eval_bexp"
+        | _ -> invalid_arg "eval_bexp"
       in
       f (eval_bexp t1) (eval_bexp t2)
   | Not t -> not @@ eval_bexp t
@@ -2499,10 +2499,10 @@ let inline_specified = make_trans2 ()
 let inline_specified_term (f,xs,t1) t =
   match t.desc with
   | Var g when Id.same f g ->
-      if xs <> [] then invalid_argument "inline_specified?";
+      if xs <> [] then invalid_arg "inline_specified?";
       t1
   | App({desc=Var g}, ts) when Id.same f g ->
-      if List.length xs <> List.length ts then invalid_argument "inline_specified!";
+      if List.length xs <> List.length ts then invalid_arg "inline_specified!";
       subst_map (List.combine xs ts) t1
   | _ -> inline_specified.tr2_term_rec (f,xs,t1) t
 let () = inline_specified.tr2_term <- inline_specified_term

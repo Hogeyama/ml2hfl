@@ -71,7 +71,7 @@ let rec decomp_tfun = function
 
 let rec decomp_tfuns = function
   | TFuns(xs, typ) -> xs, typ
-  | _ -> invalid_argument "decomp_tfuns"
+  | _ -> invalid_arg "decomp_tfuns"
 
 let rec print occur print_pred fm typ =
   let print' = print occur print_pred in
@@ -327,14 +327,14 @@ let rec order typ =
 let arg_var typ =
   match typ with
   | TFun(x,_) -> x
-  | _ -> invalid_argument "arg_var"
+  | _ -> invalid_arg "arg_var"
 
 let result_typ typ =
   match typ with
   | TFun(_,typ') -> typ'
-  | _ -> invalid_argument "result_typ"
+  | _ -> invalid_arg "result_typ"
 
 let decomp_ttuple typ =
   match typ with
   | TTuple xs -> List.map Id.typ xs
-  | _ -> invalid_argument "decomp_ttuple"
+  | _ -> invalid_arg "decomp_ttuple"
