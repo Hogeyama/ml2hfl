@@ -32,7 +32,7 @@ let rec proj path t =
 
 let rec print pr fm t =
   match t with
-  | Node (l, ts) -> Format.fprintf fm "(%a, [%a])" pr l (print_list (print pr) ";") ts
+  | Node (l, ts) -> Format.fprintf fm "(@[%a,@ [%a]@])" pr l (print_list (print pr) ";@ ") ts
 
 let rec update path t' t =
   match path,t with
