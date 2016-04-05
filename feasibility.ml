@@ -19,7 +19,7 @@ let get_solution env t =
   let sol =
     t
     |> FpatInterface.conv_formula
-    |> Fpat.PolyConstrSolver.solve
+    |> Fpat.PolyConstrSolver.solve_dyn
     |> List.map (Pair.map Fpat.Idnt.string_of Fpat.IntTerm.int_of)
   in
   let sol' =
