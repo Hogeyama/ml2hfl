@@ -317,7 +317,7 @@ let arg_spec =
                   Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
      (* fair termination mode *)
      "-fair-termination", Arg.Unit (fun _ -> Flag.mode := Flag.FairTermination), " Check fair termination";
-     "-expand-set-flag", Arg.Set Flag.expand_set_flag, " ";
+     "-expand-set-flag", Arg.Set Flag.expand_set_flag, "";
      "-rank-widen", Arg.Set Fpat.RankFunInfer.rank_widen, " Use widening for ranking function synthesis";
      (* termination mode *)
      "-termination-disj",
