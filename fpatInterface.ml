@@ -325,16 +325,16 @@ let pr ppf (tenv, phi) =
   if debug then Format.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
   let old_split_eq = !Fpat.AbsType.split_equalities in
   let old_eap = !Fpat.AbsType.extract_atomic_predicates in
-  let old_hccs_solver = Fpat.HCCSSolver.get_solver () in
+  let old_hccs_solver = Fpat.HCCSSolver.get_dyn () in
   Fpat.AbsType.split_equalities := true;
   Fpat.AbsType.extract_atomic_predicates := true;
-  Fpat.HCCSSolver.link_solver
+  Fpat.HCCSSolver.link_dyn
     (fst -| fst -| Fpat.AEHCCSSolver.solve
        (Fpat.EAHCCSSolver.solve [] [] [] Fpat.BwIPHCCSSolver.solve));
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
   Fpat.AbsType.split_equalities := old_split_eq;
   Fpat.AbsType.extract_atomic_predicates := old_eap;
-  Fpat.HCCSSolver.link_solver old_hccs_solver;
+  Fpat.HCCSSolver.link_dyn old_hccs_solver;
   if debug then Format.printf "END refinement@,@]";
 
   Flag.time_parameter_inference :=

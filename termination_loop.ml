@@ -41,12 +41,10 @@ let verify_with holed pred =
 
 let inferCoeffs argumentVariables linear_templates constraints =
   (* reduce to linear constraint solving *)
-  let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:true in
-  try
+  let generate = Fpat.PolyConstrSolver.gen_coeff_constr ~pos:false ~linear:true in
   let debug = !Flag.debug_level > 0 in
   (** solve constraint and obtain coefficients **)
-  let correspondenceVars = constraints |> Fpat.RankFunInfer.generate |> Fpat.RankFunInfer.solve in
-  let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:false in
+  let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
     if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
@@ -68,17 +66,12 @@ let inferCoeffs argumentVariables linear_templates constraints =
       {coeffs = coefficients; constant = Fpat.IntTerm.int_of const_part}
     ) linear_templates
   end
-  with
-    | e ->
-      begin
-	let _ = Fpat.RankFunInfer.ext_generate := Fpat.PolyConstrSolver.gen_coeff_constr ~nat:false ~linear:false in
-	raise e
-      end
 
 let inferCoeffsAndExparams argumentVariables linear_templates constraints =
   let debug = !Flag.debug_level > 0 in
+  let generate = Fpat.PolyConstrSolver.gen_coeff_constr ~pos:false ~linear:false in
   (** solve constraint and obtain coefficients **)
-  let correspondenceVars = constraints |> Fpat.RankFunInfer.generate |> Fpat.RankFunInfer.solve in
+  let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
     if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
