@@ -38,17 +38,17 @@ counterexample_apt:
   LPAREN counterexample_apt RPAREN
   { $2 }
 | BR_EXISTS counterexample_apt counterexample_apt
-  { HorSat_syntax.Exists($2, $3) }
+  { HorSat_syntax.br_exists $2 $3 }
 | BR_FORALL counterexample_apt BOT
-  { HorSat_syntax.Forall(0, $2) }
+  { HorSat_syntax.node "br_forall" $2 }
 | BR_FORALL BOT counterexample_apt
-  { HorSat_syntax.Forall(1, $3) }
+  { HorSat_syntax.node "br_forall" $3 }
 | IDENT counterexample_apt
-  { HorSat_syntax.Label($1, $2) }
+  { HorSat_syntax.node $1 $2 }
 | UNIT
-  { HorSat_syntax.End }
+  { HorSat_syntax.leaf () }
 | FAIL BOT
-  { HorSat_syntax.Fail }
+  { HorSat_syntax.leaf () }
 
 output:
   SATISFIED EOF { Satisfied }

@@ -77,11 +77,14 @@ and attr = ACPS
 and prog = {env:env; defs:fun_def list; main:var; info:info}
 and info = {attr:attr list; exparam_orig:prog option}
 
-type cegar_info = {orig_fun_list:var list; inlined:var list}
+type cegar_info =
+  {orig_fun_list:var list;
+   inlined:var list;
+   fairness:Fair_termination_type.fairness option}
 
 let init_info = {attr=[]; exparam_orig=None}
 
-let empty_cegar_info = {orig_fun_list=[]; inlined=[]}
+let empty_cegar_info = {orig_fun_list=[]; inlined=[]; fairness=None}
 let prefix_randint = "#randint"
 let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
 let decomp_randint_name s =
@@ -172,6 +175,7 @@ let make_or t1 t2 =
   match t1,t2 with
   | Const False, t
   | t, Const False -> t
+  | Var _, _ when t1 = t2 -> t1
   | _ -> make_app (Const Or) [t1; t2]
 let make_not t = App(Const Not, t)
 let make_lt t1 t2 = make_app (Const Lt) [t1; t2]
@@ -312,3 +316,13 @@ let rec make_ID_map_fd = function
   | [] -> ()
   | (r,_,_,_,body)::ds -> add_ID_map r (is_rand body); make_ID_map_fd ds
 let make_ID_map {defs=defs} = make_ID_map_fd defs
+
+
+(** collect events that appear in HORS *)
+let gather_events defs =
+  let aux (_,_,_,es,_) =
+    let aux' = function
+      | Event s -> s
+      | _ -> assert false in
+    List.map aux' es in
+  List.flatten_map aux defs

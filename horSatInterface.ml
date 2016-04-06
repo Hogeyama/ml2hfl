@@ -13,7 +13,7 @@ type apt_transition =
 
 type spec = (string * int) list * (int * string * apt_transition) list
 
-type counterexample_apt = int list list * ((int * bool list) list) list
+type counterexample_apt = string Rose_tree.t
 type counterexample = int list
 
 type result =
@@ -94,8 +94,8 @@ let trans_spec_apt (q,e,qs) =
   let aux q = "q" ^ string_of_int q in
   let parens s = "(" ^ s ^ ")" in
   let rec apt_transition_to_string is_top = function
-    | APT_True -> "true"
-    | APT_False -> "false"
+    | APT_True -> "tt"
+    | APT_False -> "ff"
     | APT_State(br, q) -> parens (string_of_int br ^ "," ^ aux q)
     | APT_And ts -> let s = String.join "/\\" (List.map (apt_transition_to_string false) ts) in if is_top then s else parens s
     | APT_Or ts -> let s = String.join "\\/" (List.map (apt_transition_to_string false) ts) in if is_top then s else parens s
@@ -135,31 +135,7 @@ let get_pair s =
   let q = String.sub s 1 (n1-1) in
   let n = int_of_string (String.sub s (n1+1) (n2-n1-1)) in
   let s' = String.sub s (n2+1) (String.length s-n2-1) in
-    (q, n), s'
-
-
-type path =
-    int list (* branch info. *)
-    * bool list (* partially constructed external input info. *)
-    * ((int * (bool list)) list) (* external input info. *)
-let add_next_rand_info r (branch,bs,ext) = (branch, [], (decomp_randint_label r, bs) :: ext)
-let add_tf_info b (branch,bs,ext) = (branch,b::bs,ext)
-let add_branch_info b (branch,bs,ext) = (b::branch,bs,ext)
-
-(* gather error paths *)
-let rec error_trace_aux = function
-  | HS.Forall(_, t) -> error_trace_aux t
-  | HS.Exists(t1, t2) -> error_trace_aux t1 @ error_trace_aux t2
-  | HS.Label("l0", t) -> List.map (add_branch_info 0) @@ error_trace_aux t
-  | HS.Label("l1", t) -> List.map (add_branch_info 1) @@ error_trace_aux t
-  | HS.Label("true", t) -> List.map (add_tf_info true) @@ error_trace_aux t
-  | HS.Label("false", t) -> List.map (add_tf_info false) @@ error_trace_aux t
-  | HS.Label(r, t) when is_randint_label r -> List.map (add_next_rand_info r) @@ error_trace_aux t
-  | HS.Label(_, t) -> error_trace_aux t
-  | HS.End | HS.Fail -> [([],[],[])]
-
-let error_trace tr =
-  List.fold_left (fun (xs,ys) (x,_,y) -> (x::xs, y::ys)) ([],[]) @@ error_trace_aux tr
+  (q, n), s'
 
 let rec verifyFile_aux filename =
   let default = "empty" in
@@ -201,13 +177,15 @@ let rec verifyFile parser filename =
   | HS.Satisfied ->
       Safe []
   | HS.UnsatisfiedAPT ce ->
+      (*
       let debug = !Flag.debug_level > 0 in
       if debug then Format.printf "Unsatisfied non-terminating condition.@. Counter-example:@. %s@." (HS.string_of_result_tree ce);
       let cexs, ext_cexs = error_trace ce in
       let ppppp fm (n, l) = Format.fprintf fm "[%d: %a]" n (print_list Format.pp_print_bool ",") l in
       if debug then List.iter2 (fun c1 c2 -> Format.printf "FOUND:  %a | %a@." (print_list (fun fm n -> Format.fprintf fm (if n=0 then "then" else "else")) ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
       (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
-      UnsafeAPT (cexs, ext_cexs)
+      *)
+      UnsafeAPT ce
   | HS.Unsatisfied ce ->
       Unsafe (trans_ce ce)
 
@@ -247,15 +225,15 @@ let make_apt_spec labels =
     ::(0,"unit", APT_True)
     ::(0, "l0", APT_State(1, 0))
     ::(0, "l1", APT_State(1, 0))
-    ::(0, "true", APT_State(1, 0))
-    ::(0, "false", APT_State(1, 0))
+    ::(0, "tt", APT_State(1, 0))
+    ::(0, "ff", APT_State(1, 0))
     ::(0,"br_forall", APT_And([APT_State(1, 0); APT_State(2, 0)]))
     ::(0,"br_exists", APT_Or([APT_State(1, 0); APT_State(2, 0)]))::make_label_spec labels
   in
   List.sort spec
 
 let make_arity_map labels =
-  let init = [("br_forall", 2); ("br_exists", 2); ("event_fail", 1); ("unit", 0); ("true", 1); ("false", 1); ("l0", 1); ("l1", 1)] in
+  let init = [("br_forall", 2); ("br_exists", 2); ("event_fail", 1); ("unit", 0); ("tt", 1); ("ff", 1); ("l0", 1); ("l1", 1)] in
   let funs_map = List.map (fun l -> (l, 1)) labels in
   init @ funs_map
 

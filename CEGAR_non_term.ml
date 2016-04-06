@@ -3,12 +3,36 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
-let cegar prog0 labeled info is_cp ce prog =
-  let (cexs, ext_cexs) =
-    match ce with
-    | ModelCheck.CENonTerm(cexs, ext_cexs) -> cexs, ext_cexs
-    | _ -> assert false
-  in
+
+(* gather error paths *)
+type path =
+    int list (* branch info. *)
+    * bool list (* partially constructed external input info. *)
+    * ((int * (bool list)) list) (* external input info. *)
+let add_next_rand_info r (branch,bs,ext) = (branch, [], (decomp_randint_label r, bs) :: ext)
+let add_tf_info b (branch,bs,ext) = (branch,b::bs,ext)
+let add_branch_info b (branch,bs,ext) = (b::branch,bs,ext)
+let rec error_trace_aux : (string Rose_tree.t) -> path list = function
+  | Rose_tree.Node ("br_exists", [t1; t2]) ->
+     error_trace_aux t1 @ error_trace_aux t2
+  | Rose_tree.Node ("l0", [t]) -> List.map (add_branch_info 0) @@ error_trace_aux t
+  | Rose_tree.Node ("l1", [t]) -> List.map (add_branch_info 1) @@ error_trace_aux t
+  | Rose_tree.Node ("tt", [t]) -> List.map (add_tf_info true)  @@ error_trace_aux t
+  | Rose_tree.Node ("ff", [t]) -> List.map (add_tf_info false) @@ error_trace_aux t
+  | Rose_tree.Node (r, [t]) when CEGAR_syntax.is_randint_label r ->
+     List.map (add_next_rand_info r) @@ error_trace_aux t
+  | Rose_tree.Node (_, [t]) -> error_trace_aux t
+  | Rose_tree.Node (_, []) -> (* Leaf *)
+     [([], [], [])]
+  | _ -> assert false
+
+let error_trace tr =
+  List.fold_left (fun (xs,ys) (x,_,y) -> (x::xs, y::ys)) ([],[]) @@ error_trace_aux tr
+
+let cegar prog0 labeled info is_cp ce_tree prog =
+  let (cexs, ext_cexs) = error_trace ce_tree in
+  Format.printf "cexs: %a@." (List.print (List.print Format.pp_print_int)) cexs;
+  Format.printf "ext_cexs: %a@." (List.print (List.print (fun fm (a, bs)-> Format.fprintf fm "(%a, %a)" Format.pp_print_int a (List.print Format.pp_print_bool) bs))) @@ ext_cexs;
   let map_randint_to_preds = make_map_randint_to_preds prog0 in
   let renv = get_renv prog in
   let path_counter = ref 0 in

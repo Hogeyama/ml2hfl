@@ -320,9 +320,9 @@ let let_normalize = let_normalize.tr_term
 
 let rec tree_of_tuple t =
   match t.desc with
-  | Tuple [t1;t2] when t1 = none_flag || t1 = some_flag -> Rose_tree.Leaf t
-  | Tuple ts -> Rose_tree.Node (List.map tree_of_tuple ts)
-  | _ -> Rose_tree.Leaf t
+  | Tuple [t1;t2] when t1 = none_flag || t1 = some_flag -> Rose_tree.leaf t
+  | Tuple ts -> Rose_tree.Node (unit_term, List.map tree_of_tuple ts)
+  | _ -> Rose_tree.leaf t
 
 let is_subsumed t1 t2 =
   if debug() then Color.printf Color.Yellow "is_subsumed: %a, %a@." Print.term t1 Print.term t2;

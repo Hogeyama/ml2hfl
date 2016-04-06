@@ -94,11 +94,13 @@ let print_env cmd =
   let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   let horsat_version = HorSatInterface.version () in
+  let horsatp_version = HorSatPInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
   if horsat_version <> "" then Format.printf "  HorSat version: %s@." horsat_version;
+  if horsat_version <> "" then Format.printf "  HorSatP version: %s@." horsatp_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   let args = List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s) !Flag.args in
   if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") args
@@ -179,7 +181,7 @@ let main in_channel =
     let n = my_input in_channel s 0 Flag.max_input_size in
     if n = Flag.max_input_size then raise LongInput;
     let s' = String.sub s 0 n in
-    if !Flag.mode = Flag.FairTermination
+    if !Flag.mode = Flag.FairTermination || !Flag.mode = Flag.FairNonTermination
     then Fair_termination_util.add_event s'
     else s'
   in
@@ -347,11 +349,17 @@ let arg_spec =
        Arg.Set Flag.add_closure_exparam,
        " Infer extra ranking parameters for closures for termination verification";
      "-non-termination",
-       Arg.Unit (fun _ ->
+     Arg.Unit (fun _ ->
                  Flag.mode := Flag.NonTermination;
                  Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
-       " Check non-termination";
+     " Check non-termination";
+     "-fair-non-termination",
+     Arg.Unit (fun _ ->
+       Flag.mode := Flag.FairNonTermination;
+       Flag.church_encode := true;
+       Flag.mc := Flag.HorSatP),
+     " Check fair-non-termination";
      "-merge-paths",
        Arg.Unit (fun _ ->
                  Flag.merge_paths_of_same_branch := true),
@@ -432,6 +440,7 @@ let check_env () =
   match !Flag.mc with
   | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found"
   | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found"
+  | Flag.HorSatP -> if not Environment.horsatp_available then fatal "HorSatP not found"
 
 let () =
   if !Sys.interactive

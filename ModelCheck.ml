@@ -6,13 +6,22 @@ open ModelCheck_util
 
 let debug () = List.mem "ModelCheck" !Flag.debug_module
 
+type filename = string
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
-type counterexample = CESafety of TrecsInterface.counterexample | CENonTerm of HorSatInterface.counterexample_apt
+type counterexample =
+  | CESafety of TrecsInterface.counterexample
+  | CENonTerm of HorSatInterface.counterexample_apt
+  | CEFairNonTerm of HORS_syntax.rules
+
 type result = Safe of (var * Inter_type.t) list | Unsafe of counterexample
 
-type spec =
+type mc_spec =
   | SpecTRecS of TrecsInterface.spec
   | SpecHorSat of HorSatInterface.spec
+
+type spec =
+  | Fairness of Fair_termination_type.fairness
+  | Other
 
 let make_file_spec () =
   [0, "unit", [];
@@ -299,7 +308,7 @@ let preprocess_cps prog =
   |&Flag.beta_reduce&> beta_reduce
   |& !Flag.church_encode&> church_encode
 
-let check abst prog =
+let check abst prog spec =
   let tmp = get_time () in
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
@@ -318,8 +327,8 @@ let check abst prog =
           | TrecsInterface.Unsafe ce -> Unsafe (CESafety ce)
         end
     | Flag.HorSat, Flag.NonTermination ->
-        let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
-        let spec = HorSatInterface.make_spec_nonterm labels in
+       let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
+       let spec = HorSatInterface.make_spec_nonterm labels in
         begin
           match HorSatInterface.check_apt (abst',spec) with
           | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
@@ -334,6 +343,26 @@ let check abst prog =
           | HorSatInterface.Unsafe ce -> Unsafe (CESafety ce)
           | HorSatInterface.UnsafeAPT _ -> assert false
         end
+    | Flag.HorSatP, Flag.FairNonTermination ->
+       let fairness =
+         match spec with
+         | Fairness x -> x
+         | Other -> assert false in
+       Format.printf "\nFAIRNESS: %a@." Fair_termination_util.print_fairness fairness;
+       let randint_labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
+       let events = List.map (fun s -> "event_" ^ s) @@ gather_events prog.defs in
+       let labels = events @ randint_labels in
+       let spec = HorSatPInterface.make_fair_nonterm_spec labels fairness  in
+        begin
+          match HorSatPInterface.check (abst',spec) with
+          | HorSatPInterface.Satisfied -> Safe []
+          | HorSatPInterface.Unsatisfied ->
+             let fname = (Filename.chop_extension !Flag.filename) ^ ".error_hors" in
+             let rules = HorSatPInterface.read_HORS_file fname in
+             Unsafe (CEFairNonTerm rules)
+        end
+    | Flag.HorSatP, _ ->
+       assert false
   in
   add_time tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
