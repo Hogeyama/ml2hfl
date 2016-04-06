@@ -144,3 +144,6 @@ let use_omega_first = ref false
 (* fair-termination-mode option *)
 let expand_set_flag = ref false
 let fair_term_loop_count = ref 0
+
+(* fair-non-termination-mode option *)
+let expand_ce_count = ref 30

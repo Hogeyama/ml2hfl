@@ -24,7 +24,7 @@ def run_mochi(fname):
   mochi = cd + "/../mochi.opt"
   (r, e) = os.path.splitext(fname)
   ofile = r + ".test_out"
-  cmd = "{0} -fair-non-termination {1} >/dev/null 2>{2}".format(mochi, fname, ofile)
+  cmd = "{0} -fair-non-termination {1} 1>/dev/null 2>{2}".format(mochi, fname, ofile)
   print(cmd)
   subprocess.call(cmd, shell=True)
   return ofile
@@ -44,11 +44,11 @@ def parse_result(ofile):
     with open(ofile, "r") as f:
       result = f.readline().split()[-1]
       r = Result.unknown
-      if result == "\"Satisfied\"":
+      if result in ['"Satisfied"', '"safe"']:
         r = Result.found
-      elif result == "\"Unsatisfied\"":
+      elif result in ['"Unsatisfied"', '"unsafe"']:
         r = Result.not_found
-      elif result == "\"timeout\"":
+      elif result == '"timeout"':
         r = Result.timeout
       return (r, result)
   except:

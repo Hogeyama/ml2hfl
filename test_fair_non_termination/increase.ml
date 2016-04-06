@@ -4,17 +4,15 @@
 
   {SPEC}*)
 
-let rec f () =
-  let x = read_int () in
+let rec f x =
   let y = read_int () in
   if x < y then
-    if x >= y then
-      ()
-    else
-      (event "B";
-       f ())
+    (event "B";
+     f y)
   else
     (event "A";
-     f ())
+     f x)
+let main () =
+  f (read_int ())
 
 (* found *)
