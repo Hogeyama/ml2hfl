@@ -56,38 +56,6 @@ module IntSet =
 
 module StringSet = Set.Make(String)
 
-module Option = struct
-  include Option
-
-  let some x = Some x
-  let iter = may
-  let apply = map
-
-  let to_list x =
-    match x with
-    | None -> []
-    | Some x' -> [x']
-
-  let of_list xs =
-    match xs with
-    | [] -> None
-    | [x] -> Some x
-    | _ -> invalid_arg "Option.of_list"
-
-  let print pr fm x =
-    match x with
-    | None -> Format.fprintf fm "None"
-    | Some x' -> Format.fprintf fm "Some %a" pr x'
-
-  let try_ f = try Some (f ()) with _ -> None
-  let try_with f e = try Some (f ()) with e' when e=e' -> None
-
-  let for_all f x =
-    match x with
-    | None -> true
-    | Some y -> f y
-end
-
 module Pair = struct
   let fst = fst
   let snd = snd
@@ -170,6 +138,38 @@ module Fun = struct
     else repeat f (n-1) (f x)
   let const x _ = x
   let const2 x _ _ = x
+end
+
+module Option = struct
+  include Option
+
+  let some x = Some x
+  let iter = may
+  let apply = map
+
+  let to_list x =
+    match x with
+    | None -> []
+    | Some x' -> [x']
+
+  let of_list xs =
+    match xs with
+    | [] -> None
+    | [x] -> Some x
+    | _ -> invalid_arg "Option.of_list"
+
+  let print pr fm x =
+    match x with
+    | None -> Format.fprintf fm "None"
+    | Some x' -> Format.fprintf fm "Some %a" pr x'
+
+  let try_with f h = try Some !!f with e when h e -> None
+  let try_any f = try_with f (Fun.const true)
+
+  let for_all f x =
+    match x with
+    | None -> true
+    | Some y -> f y
 end
 
 module List = struct

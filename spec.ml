@@ -141,8 +141,8 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
       Some (f', typ)
     with Not_found -> None
   in
-  let aux_typ (f,typ) = Option.try_with (fun () -> rename_id f, typ) Not_found in
-  let aux_id f = Option.try_with (fun () -> rename_id f) Not_found in
+  let aux_typ (f,typ) = Option.try_with (fun () -> rename_id f, typ) ((=) Not_found) in
+  let aux_id f = Option.try_with (fun () -> rename_id f) ((=) Not_found) in
   {ref_env = if List.mem Ref_env ks then List.filter_map aux_ref ref_env else ref_env;
    ext_ref_env = if List.mem Ext_ref_env ks then List.filter_map aux_ref ext_ref_env else ext_ref_env;
    abst_env = if List.mem Abst_env ks then List.filter_map aux_typ abst_env else abst_env;

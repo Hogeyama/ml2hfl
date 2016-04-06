@@ -181,7 +181,7 @@ let () = add_label.tr2_term <- add_label_term
 let add_label = add_label.tr2_term
 let get_label t = get_id t
 
-let bool_of_term' t = Option.try_ (fun _ -> bool_of_term t)
+let bool_of_term' t = Option.try_with (fun _ -> bool_of_term t) ((=) (Invalid_argument "bool_of_term"))
 
 let is_fail t =
   match t.desc with
