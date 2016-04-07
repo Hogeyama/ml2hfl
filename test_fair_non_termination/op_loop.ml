@@ -4,16 +4,20 @@
 
   {SPEC}*)
 
-let app_unit f = f ()
-let rec loop () =
+let succ x = x + 1
+
+let rec op_loop op =
   let x = read_int () in
-  if x > 0 then
+  let y = op x in
+  if y > 0 then
     (event "A";
-     app_unit loop)
+     op_loop succ)
   else
     (event "B";
-     app_unit loop)
-let main () = loop ()
+     op_loop succ)
+
+let main () =
+  op_loop succ
 
 (* option: {-expand-ce-count 10} *)
 (* found *)

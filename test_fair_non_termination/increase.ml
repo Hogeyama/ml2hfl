@@ -15,4 +15,5 @@ let rec f x =
 let main () =
   f (read_int ())
 
+(* option: {-expand-ce-count 10} *)
 (* found *)

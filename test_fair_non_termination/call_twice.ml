@@ -4,7 +4,7 @@
 
   {SPEC}*)
 
-
+let call_twice f = f (); f ()
 let rec f () =
   let x = read_int () in
   if x < 0 then
@@ -12,6 +12,6 @@ let rec f () =
      ())
   else
     (event "A";
-     f();f())
-
+     call_twice f)
+let main () = f ()
 (* found *)

@@ -4,14 +4,18 @@
 
   {SPEC}*)
 
+let app x f = f x
 let ev_a (k:unit->unit) = event "A"; k ()
 let ev_b (k:unit->unit) = event "B"; k ()
 let rec cont () =
   let x = read_int () in
   if x > 0 then
-    loop ev_a
+    app ev_a loop
   else
-    loop ev_b
+    app ev_b loop
 and loop ev =
   ev cont
 let main = loop ev_a
+
+(* option: {-expand-ce-count 10} *)
+(* found *)

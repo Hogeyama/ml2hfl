@@ -17,3 +17,6 @@ let rec f ev =
 
 let main () =
   f ev_a
+
+(* option: {-expand-ce-count 10} *)
+(* found *)
