@@ -170,6 +170,10 @@ module Option = struct
     match x with
     | None -> true
     | Some y -> f y
+  let exists f x =
+    match x with
+    | None -> false
+    | Some y -> f y
 end
 
 module List = struct
@@ -508,6 +512,7 @@ let rec my_input ic s ofs len acc =
 let my_input ic s ofs len = my_input ic s ofs len 0
 
 
+(* This function uses '\b' *)
 let print_begin_end ?(fm=Format.std_formatter) =
   let pre fm = Format.fprintf fm "%s" "BEGIN" in
   let post fm r = Format.fprintf fm "%s" "END" in

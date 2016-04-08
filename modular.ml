@@ -150,34 +150,114 @@ let infer spec parsed (ce_set: (id * int list) list) =
 
 
 
-type constr = True | False | And of constr * constr | Imply of typed_term * constr | Sub of typ * typ
+type constr =
+  | True
+  | False
+  | And of constr * constr
+  | Imply of typed_term * constr
+  | Sub of typ_tmp * typ_tmp
+and typ_tmp =
+  | Var of id (* Not used *)
+  | Arg of int * fun_id
+  | App of typ_tmp * typed_term list
+  | Singleton of typed_term
+  | Const of Ref_type.t
+and fun_id = id * (tid * int option) option
+and tid = int
 
-let rec generate_constraints comp_tree =
-  let (Rose_tree.Node(label, children)) = comp_tree in
-  let constr = List.fold_right (fun ct constr -> And(generate_constraints ct, constr)) children True in
+let rec print_constr fm = function
+  | True -> Format.fprintf fm "true"
+  | False -> Format.fprintf fm "false"
+  | And(c1, c2) -> Format.fprintf fm "(@[%a@ /\\@ %a@])" print_constr c1 print_constr c2
+  | Imply(t, c) -> Format.fprintf fm "(@[%a@ =>@ %a@])" Print.term t print_constr c
+  | Sub(typ1, typ2) -> Format.fprintf fm "(@[%a@ <:@ %a@])" print_typ_tmp typ1 print_typ_tmp typ2
+and print_typ_tmp fm = function
+  | Var f -> Id.print fm f
+  | Arg(i, f) -> Format.fprintf fm "#%d(%a)" i print_fun_id f
+  | App(typ, ts) -> Format.fprintf fm "%a%a" print_typ_tmp typ (List.print Print.term) ts
+  | Singleton t -> Format.fprintf fm "{%a}" Print.term t
+  | Const typ -> Format.fprintf fm "%a" Ref_type.print typ
+and print_fun_id fm (f, tidn) =
+  match tidn with
+  | None -> Format.fprintf fm "%a" Id.print f
+  | Some (tid, None) -> Format.fprintf fm "%a:%a" Id.print f print_tid tid
+  | Some (tid, Some n) -> Format.fprintf fm "%a:%a-%d" Id.print f print_tid tid n
+and print_tid = Format.pp_print_int
+
+let _And c1 c2 =
+  if c1 = True then
+    c2
+  else if c2 = True then
+    c1
+  else
+    And(c1, c2)
+let _Ands constrs = List.fold_right _And constrs True
+
+let typ_of t =
+  match t.desc with
+  | Syntax.Var f -> Var f
+  | _ -> Singleton t
+
+let rec generate_constraints tid_env (Rose_tree.Node(label, children)) =
   let open Comp_tree in
+  let constr () = _Ands @@ List.map (generate_constraints tid_env) children in
   match label with
   | Term t ->
       begin
         match t.desc with
-        | If _ -> constr
-        | App _ ->
-            let subtrees =
-              assert false
+        | If _ -> !!constr
+        | App(t1, ts) ->
+            let f = try Option.get @@ decomp_var t1 with _ -> Format.printf "%a@." Print.term t1; assert false in
+            let tid = Option.try_with (fun () -> get_id t1) ((=) @@ Invalid_argument "get_id") in
+            let constr1 =
+              let fun_id = f, Option.map (fun tid -> tid, List.assoc_option tid tid_env) tid in
+              let _,_,typs = List.fold_left (fun (i,map,typs) t -> i+1, map@[t], typs@[App(Arg(i, fun_id), map)]) (0,[],[]) ts in
+              _Ands @@ List.map2 (fun typ t -> Sub(typ_of t, typ)) typs ts
             in
-            subtrees
+            let constr2 =
+              if Option.for_all (List.mem_assoc -$- tid_env) tid then
+                !!constr
+              else
+                let tid = try Option.get tid with _ -> assert false in
+                _Ands @@ List.mapi (fun i child -> generate_constraints ((tid,i)::tid_env) child) children
+            in
+            And(constr1, constr2)
         | _ -> assert false
       end
-  | Arg map -> Imply(List.fold_right make_and (List.map (fun (x,v) -> make_eq (make_var x) v) map) true_term, constr)
-  | Assume t -> Imply(t, constr)
+  | Bind map -> Imply(List.fold_right make_and (List.map (fun (x,v) -> make_eq (make_var x) v) map) true_term, !!constr)
+  | Assume t -> Imply(t, !!constr)
   | Fail ->
       assert (children = []);
       False
+let generate_constraints comp_tree = generate_constraints [] comp_tree
+
+
+let normalize = make_trans ()
+let normalize_term t =
+  let t' = normalize.tr_term_rec t in
+  match t'.desc with
+  | App(t1, ts) ->
+      let ts',binds =
+        let aux t2 =
+          match t2.desc with
+          | Fun _ ->
+              let x = new_var_of_term t2 in
+              make_var x, Some (x, [], t2)
+          | _ -> t2, None
+        in
+        let ts',binds = List.split_map aux ts in
+        ts', List.filter_map Fun.id binds
+      in
+      make_lets binds {t' with desc=App(t1, ts')}
+  | _ -> t'
+let () = normalize.tr_term <- normalize_term
+let normalize = normalize.tr_term
+
 
 let infer spec parsed ce_set =
   let normalized =
     if true
-    then parsed
+    then normalize parsed
     else Trans.inline_var @@ Trans.flatten_let @@ Trans.normalize_let parsed
   in
   Format.printf "INPUT: %a@." Print.term normalized;
@@ -196,4 +276,5 @@ let infer spec parsed ce_set =
   in
   let main = Option.get @@ get_last_definition normalized in
   let comp_tree = Comp_tree.from_program fun_env ce_set main in
+  Format.printf "%a@." print_constr @@ generate_constraints comp_tree;
   comp_tree
