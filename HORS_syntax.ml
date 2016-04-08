@@ -14,6 +14,8 @@ let rec pp_rule fm (sym, v) =
   Format.fprintf fm "%s => %a@." sym pp_expr v
 
 and pp_expr fm = function
+  | Var "_" ->
+     Format.fprintf fm "[DUMMY]"
   | Var name ->
      Format.fprintf fm "%s" name
   | Apply (e1, e2) ->

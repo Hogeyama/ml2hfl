@@ -1,14 +1,5 @@
 (*{SPEC}
 
-  valcegar #randint_1:
-  ((int -> X) -> X)
-
-  valcegar #randint_2:
-  (a:int -> (b:int[a < b; a >= b] -> X) -> X)
-
-  valcegar f_2061:
-  (a:int -> b:int[a < b; a >= b] -> (unit -> X) -> X)
-
   fairness: (A, B)
 
   {SPEC}*)
