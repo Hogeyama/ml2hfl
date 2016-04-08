@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import os
 import sys
+import re
 import subprocess
 from enum import Enum
 
@@ -18,13 +19,27 @@ def ok(i, s):
 def ng(i, s):
   print("not ok {0} - {1}".format(i, s))
 
+def parse_options(fname):
+  options = []
+  with open(fname, "r") as f:
+    for l in f.readlines():
+      if l.find("option:") > 0:
+        m = re.search("\{.*\}", l)
+        if m != None:
+          options.append(m.group(0)[1:-1])
+  return options
 
 def run_mochi(fname):
   cd = os.path.abspath(os.path.dirname(__file__))
   mochi = cd + "/../mochi.opt"
   (r, e) = os.path.splitext(fname)
   ofile = r + ".test_out"
+<<<<<<< HEAD
+  opts = " ".join(parse_options(fname))
+  cmd = "timeout -s 9 30 {0} -fair-non-termination {1} {2} 1>/dev/null 2>{3}".format(mochi, opts, fname, ofile)
+=======
   cmd = "{0} -fair-non-termination {1} >/dev/null 2>{2}".format(mochi, fname, ofile)
+>>>>>>> parent of fbee9e9... Merge remote-tracking branch 'origin/fair_non_termination'
   print(cmd)
   subprocess.call(cmd, shell=True)
   return ofile
@@ -42,13 +57,17 @@ def parse_expect(fname):
 def parse_result(ofile):
   try:
     with open(ofile, "r") as f:
-      result = f.readline().split()[-1]
+      result = f.readlines()[-1].split()[-1]
       r = Result.unknown
       if result == "\"Satisfied\"":
         r = Result.found
       elif result == "\"Unsatisfied\"":
         r = Result.not_found
+<<<<<<< HEAD
+      else:
+=======
       elif result == "\"timeout\"":
+>>>>>>> parent of fbee9e9... Merge remote-tracking branch 'origin/fair_non_termination'
         r = Result.timeout
       return (r, result)
   except:

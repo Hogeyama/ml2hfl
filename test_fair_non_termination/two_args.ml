@@ -13,17 +13,17 @@
 
   {SPEC}*)
 
-
-let rec f a b =
-  if a < b then
-    (event "A";
-     f b a)
-  else
-    (event "B";
-     f b a)
-let main =
-  let x = read_int () in
+let rec update_max x =
   let y = read_int () in
-  f x y
+  if x < y then
+    (event "B";
+     update_max y)
+  else
+    (event "A";
+     update_max x)
+let main () =
+  let x = read_int () in
+  update_max x
 
+(* option: {-expand-ce-count 10} *)
 (* found *)
