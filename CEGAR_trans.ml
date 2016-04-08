@@ -550,7 +550,7 @@ let trans_prog ?(spec=[]) t =
 
 let add_env spec prog =
   let spec' = List.map (Pair.map trans_var trans_typ) spec in
-  let aux (f,typ) = Format.printf "%s: %a@." f CEGAR_print.typ typ; try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
+  let aux (f,typ) = try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
   let env = uniq_env @@ List.map aux prog.env in
   {prog with env}
 
