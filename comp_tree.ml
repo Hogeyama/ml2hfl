@@ -7,7 +7,11 @@ module RT = Rose_tree
 
 let debug () = List.mem "Comp_tree" !Flag.debug_module
 
-type label = Term of typed_term | Arg of (id * typed_term) list | Assume of typed_term | Fail
+type label =
+  | Term of typed_term
+  | Arg of (id * typed_term) list
+  | Assume of typed_term
+  | Fail
 type t = label RT.t
 
 let print_label fm = function
@@ -17,6 +21,8 @@ let print_label fm = function
       Format.fprintf fm "%a" (List.print pr) map
   | Assume t -> Format.fprintf fm "Assume: %a" Print.term t
   | Fail -> Format.fprintf fm "Fail"
+let rec print fm (Rose_tree.Node(l,ts)) =
+  Format.fprintf fm "(@[<hov 2>%a,@ %a@])" print_label l (List.print print) ts
 
 let make_fix f xs t =
   make_letrec [f, xs, t] @@ make_var f
@@ -42,7 +48,7 @@ let () = add_label.tr2_term <- add_label_term
 let add_label = add_label.tr2_term
 let get_label t = get_id t
 
-let bool_of_term' t = Option.try_with (fun _ -> bool_of_term t) ((=) (Invalid_argument "bool_of_term"))
+let bool_of_term' t = Option.try_with (fun () -> bool_of_term t) ((=) (Invalid_argument "bool_of_term"))
 
 let is_fail t =
   match t.desc with
@@ -73,7 +79,8 @@ let rec from_term fun_env v_env ce_set ce_env t : t list =
       if !!debug then Format.printf "[APP1: %a@\n" Print.term t;
       let ys,t_f = Id.assoc f v_env in
       if ys = [] then
-        [RT.Node(Term t, from_term fun_env v_env ce_set ce_env @@ make_app t_f ts)]
+        (assert (Option.is_some @@ decomp_var t_f);
+        [RT.Node(Term t, from_term fun_env v_env ce_set ce_env @@ make_app t_f ts)])
       else
         let ys' = List.map Id.new_var_id ys in
         if !!debug then Format.printf "[APP1: %a, %d@\n" Print.term t_f (List.length ts);
@@ -124,27 +131,13 @@ let rec from_term fun_env v_env ce_set ce_env t : t list =
       if !!debug then Format.printf "%a@." Print.term t;
       unsupported "Comp_tree.from_term"
   in
-  Format.printf "@]";r
+  if !!debug then Format.printf "@]";r
 let from_term fun_env ce_set t = from_term fun_env [] ce_set [] t
 
 
 
-let infer spec parsed (ce_set: (id * int list) list) =
-  (*  let normalized = Trans.inline_var @@ Trans.flatten_let @@ Trans.normalize_let parsed in*)
-  let normalized =  parsed  in
-  Format.printf "INPUT: %a@." Print.term normalized;
-  let fbindings,main = decomp_prog normalized in
-  assert (main.desc = Const Unit);
-  List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
-  let fun_env = List.flatten_map (snd |- List.map Triple.to_pair_r) fbindings in
-  let ce_set = List.flatten @@ List.map (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "fsum" -> [f, [0]; f, [1;0]] | "double" -> [f, [0]; f, [1;0]] | _ -> assert false) fun_env in
-  Format.printf "CE_SET: %a@." (List.print @@ Pair.print Id.print (List.print Format.pp_print_int)) ce_set;
-  let main = Option.get @@ get_last_definition normalized in
-  let t = from_term fun_env ce_set (make_app (make_var main) [make_var @@ Id.new_var ~name:"v0" TInt]) in
-  assert (List.length t = 1);
-  let rec pr fm t =
-    let Rose_tree.Node(l,ts) = t in
-    Format.fprintf fm "(@[<hov 2>%a,@ %a@])" print_label l (List.print pr) ts
-  in
-  Format.printf "@.@.%a@." pr (List.hd t);
-  assert false
+let from_program fun_env (ce_set: (id * int list) list) main =
+  make_app (make_var main) [make_var @@ Id.new_var ~name:"v0" TInt]
+  |> from_term fun_env ce_set
+  |> List.get
+  |@> Format.printf "@.@.%a@." print

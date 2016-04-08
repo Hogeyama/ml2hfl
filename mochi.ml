@@ -94,11 +94,13 @@ let print_env cmd =
   let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   let horsat_version = HorSatInterface.version () in
+  let horsatp_version = HorSatPInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
   if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
   if horsat_version <> "" then Format.printf "  HorSat version: %s@." horsat_version;
+  if horsat_version <> "" then Format.printf "  HorSatP version: %s@." horsatp_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   let args = List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s) !Flag.args in
   if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") args
@@ -179,7 +181,7 @@ let main in_channel =
     let n = my_input in_channel s 0 Flag.max_input_size in
     if n = Flag.max_input_size then raise LongInput;
     let s' = String.sub s 0 n in
-    if !Flag.mode = Flag.FairTermination
+    if !Flag.mode = Flag.FairTermination || !Flag.mode = Flag.FairNonTermination
     then Fair_termination_util.add_event s'
     else s'
   in
@@ -210,8 +212,8 @@ let main in_channel =
       main_fair_termination orig spec parsed
     else
 
-      let _ = Comp_tree.infer spec parsed [Option.get @@ Term_util.get_last_definition parsed, [0;1]] in
-      let _ = assert_false () in
+      let _ = Modular.infer spec parsed [Option.get @@ Term_util.get_last_definition parsed, [0;1]] in
+      let _ = assert false in
 
       Main_loop.run orig [] ~spec parsed
 
@@ -319,7 +321,7 @@ let rec arg_spec () =
                   Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
      (* fair termination mode *)
      "-fair-termination", Arg.Unit (fun _ -> Flag.mode := Flag.FairTermination), " Check fair termination";
-     "-expand-set-flag", Arg.Set Flag.expand_set_flag, " ";
+     "-expand-set-flag", Arg.Set Flag.expand_set_flag, "";
      "-rank-widen", Arg.Set Fpat.RankFunInfer.rank_widen, " Use widening for ranking function synthesis";
      (* termination mode *)
      "-termination-disj",
@@ -348,11 +350,17 @@ let rec arg_spec () =
        Arg.Set Flag.add_closure_exparam,
        " Infer extra ranking parameters for closures for termination verification";
      "-non-termination",
-       Arg.Unit (fun _ ->
+     Arg.Unit (fun _ ->
                  Flag.mode := Flag.NonTermination;
                  Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
-       " Check non-termination";
+     " Check non-termination";
+     "-fair-non-termination",
+     Arg.Unit (fun _ ->
+       Flag.mode := Flag.FairNonTermination;
+       Flag.church_encode := true;
+       Flag.mc := Flag.HorSatP),
+     " Check fair-non-termination";
      "-merge-paths",
        Arg.Set Flag.merge_paths_of_same_branch,
        " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
@@ -429,6 +437,7 @@ let check_env () =
   match !Flag.mc with
   | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found"
   | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found"
+  | Flag.HorSatP -> if not Environment.horsatp_available then fatal "HorSatP not found"
 
 let () =
   if !Sys.interactive

@@ -19,7 +19,7 @@ let print_non_CPS_abst abst prog =
   if !Flag.just_print_non_CPS_abst then
     let result =
       try
-	Some (MC.check abst prog)
+        Some (MC.check abst prog MC.Other)
       with _ -> None
     in
     let s =
@@ -70,7 +70,11 @@ let rec loop prog0 is_cp ces info =
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
   let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
   print_non_CPS_abst abst prog;
-  let result = MC.check abst prog in
+  let spec =
+    match info.CEGAR_syntax.fairness with
+    | Some x -> MC.Fairness x
+    | None -> MC.Other in
+  let result = MC.check abst prog spec in
   match result, !Flag.mode with
   | MC.Safe env, _ ->
       if Flag.print_ref_typ_debug
@@ -95,10 +99,16 @@ let rec loop prog0 is_cp ces info =
         end;
       post ();
       prog, Safe env'
-  | MC.Unsafe ce, Flag.NonTermination ->
-      let prog' = CEGAR_non_term.cegar prog0 labeled info is_cp ce prog in
+  | MC.Unsafe (MC.CENonTerm ce_tree), Flag.NonTermination ->
+      let prog' = CEGAR_non_term.cegar prog0 labeled info is_cp ce_tree prog in
       post ();
-      loop prog' is_cp (ce::ces) info
+      loop prog' is_cp ((MC.CENonTerm ce_tree)::ces) info
+  | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.FairNonTermination ->
+     begin
+       let prog' = CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_rules prog in
+       post ();
+       loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces) info
+     end
   | MC.Unsafe ce, _ ->
       let ce_orig =
         match ce with
@@ -160,7 +170,8 @@ let run prog info =
   if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
   let prog =
     match !Flag.mode with
-    | Flag.NonTermination -> CEGAR_trans.add_fail_to_end prog
+    | Flag.NonTermination
+    | Flag.FairNonTermination -> CEGAR_trans.add_fail_to_end prog
     | _ -> prog
   in
   make_ID_map prog;

@@ -186,6 +186,10 @@ module List = struct
     match xs with
     | [] -> x
     | y::_ -> y
+  let get xs =
+    match xs with
+    | [x] -> x
+    | _ -> invalid_arg "List.get"
 
   let print pr fm xs = Format.fprintf fm "@[<hov 1>[%a]@]" (print_list pr ";@ ") xs
 
@@ -219,7 +223,7 @@ module List = struct
 
   let rec tabulate n f rev_acc =
     if n < 0 then
-      invalid_arg "tabulate"
+      invalid_arg "List.tabulate"
     else if n = 0 then
       rev rev_acc
     else
@@ -230,7 +234,7 @@ module List = struct
     fold_left (fun acc n -> if f n then acc+1 else acc) 0 xs
 
   let rec decomp_snoc = function
-    | [] -> invalid_arg "decomp_snoc"
+    | [] -> invalid_arg "List.decomp_snoc"
     | [x] -> [], x
     | x::xs -> Pair.map_fst (cons x) @@ decomp_snoc xs
 

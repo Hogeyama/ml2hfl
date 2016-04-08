@@ -526,11 +526,7 @@ let trans_prog ?(spec=[]) t =
     (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
   in
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
-  let env' =
-    let spec' = List.map (Pair.map trans_var trans_typ) spec in
-    let aux (f,typ) = try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
-    uniq_env (ext_env @@@ List.map aux env)
-  in
+  let env' = uniq_env env in
   let attr = if is_cps then [ACPS] else [] in
   let prog = {env=env'; defs=defs''; main; info={init_info with attr}} in
   pr2 "PROG_A" prog;
@@ -546,6 +542,12 @@ let trans_prog ?(spec=[]) t =
   pr2 "PROG_F" prog;
   let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
   prog,map,rmap,get_rtyp
+
+let add_env spec prog =
+  let spec' = List.map (Pair.map trans_var trans_typ) spec in
+  let aux (f,typ) = Format.printf "%s: %a@." f CEGAR_print.typ typ; try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
+  let env = uniq_env @@ List.map aux prog.env in
+  {prog with env}
 
 
 let assoc_def_aux defs n t =
@@ -676,21 +678,24 @@ let assoc_def labeled defs ce acc t =
   let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
   if List.mem f labeled
   then
-    let c = List.hd ce in
-    let ce' = List.tl ce in
-    let acc' = c::acc in
-    let def = List.nth defs' c in
-    ce', acc', def
+    if ce = [] then
+      None
+    else
+      let c = List.hd ce in
+      let ce' = List.tl ce in
+      let acc' = c::acc in
+      let def = List.nth defs' c in
+      Some (ce', acc', def)
   else
     let acc' = 0::acc in
     let def = List.hd defs' in
     assert (List.length defs' = 1);
-    ce, acc', def
+    Some(ce, acc', def)
 
 let init_cont _ acc _ = List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
-  if false then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
+  if true && debug () then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
   | Const (RandInt _) -> assert false
   | Const c -> k ce acc (Const c)
@@ -715,14 +720,17 @@ let rec trans_ce_aux labeled ce acc defs t k =
       if List.length xs > List.length ts
       then k ce acc (App(t1,t2))
       else
-        let ce',acc',(f,xs,tf1,e,tf2) = assoc_def labeled defs ce acc t1' in
-        let ts1,ts2 = List.split_nth (List.length xs) ts in
-        let aux = List.fold_right2 subst xs ts1 in
-        let tf2' = make_app (aux tf2) ts2 in
-        assert (List.length xs = List.length ts);
-        if e = [Event "fail"]
-        then init_cont ce' acc' tf2'
-        else trans_ce_aux labeled ce' acc' defs tf2' k))
+         match assoc_def labeled defs ce acc t1' with
+          | None ->
+             init_cont ce acc t1'
+          | Some (ce',acc',(f,xs,tf1,e,tf2)) ->
+             let ts1,ts2 = List.split_nth (List.length xs) ts in
+             let aux = List.fold_right2 subst xs ts1 in
+             let tf2' = make_app (aux tf2) ts2 in
+             assert (List.length xs = List.length ts);
+             if e = [Event "fail"]
+             then init_cont ce' acc' tf2'
+             else trans_ce_aux labeled ce' acc' defs tf2' k))
   | Let _ -> assert false
   | Fun _ -> assert false
 

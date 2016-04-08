@@ -1,4 +1,5 @@
 let horsat = ref Environment.horsat
+let horsatp = ref Environment.horsatp
 let omega = ref Environment.omega
 let trecs = ref Environment.trecs
 let cvc3 = ref Environment.cvc3
@@ -6,8 +7,8 @@ let cvc3 = ref Environment.cvc3
 let filename = ref ""
 let spec_file = ref ""
 
-type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination
-type model_checker = TRecS | HorSat
+type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination
+type model_checker = TRecS | HorSat | HorSatP
 
 (* TRecS option *)
 let trecs_param1 = ref 1000

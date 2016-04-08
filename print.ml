@@ -40,9 +40,10 @@ and print_id_typ fm x = fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_ty
    30 : Or
    40 : And
    50 : Eq, Lt, Gt, Leq, Geq
-   60 : Add, Sub
-   70 : Cons, Raise
-   80 : App, Not, Ref, SetRef
+   60 : Cons
+   65 : Add, Sub
+   70 : Mult
+   80 : Raise, App, Not, Ref, SetRef
    90 : Deref
  *)
 
@@ -184,11 +185,11 @@ and print_desc pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | BinOp(Mult, {desc=Const (Int -1)}, {desc=Var x}) ->
-      let p = 60 in
+      let p = 70 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[-%a@]%s" s1 print_id x s2
   | BinOp(op, t1, t2) ->
-      let p = match op with Add|Sub|Mult -> 60 | And -> 40 | Or -> 30 | _ -> 50 in
+      let p = match op with Mult -> 70 | Add|Sub -> 65 | And -> 40 | Or -> 30 | _ -> 50 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ %a@ %a@]%s" s1 (print_term p typ) t1 print_binop op (print_term p typ) t2 s2
   | Not t ->
@@ -204,7 +205,7 @@ and print_desc pri typ fm desc =
   | SetField(s,t1,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
-      let p = 70 in
+      let p = 60 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | Constr(s,ts) ->
@@ -233,7 +234,7 @@ and print_desc pri typ fm desc =
       List.iter aux pats;
       fprintf fm "@]%s" s2
   | Raise t ->
-      let p = 70 in
+      let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[raise@ %a@]%s" s1 (print_term p typ) t s2
   | TryWith(t1,{desc=Fun(e,{desc=Match({desc=Var e'},pats)})})

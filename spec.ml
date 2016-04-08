@@ -96,20 +96,19 @@ let merge spec1 spec2 =
    fairness = spec1.fairness @ spec2.fairness}
 
 
-let get_def_vars = make_col2 [] (@@@)
+let get_def_vars = make_col [] (@@@)
 
-let get_def_vars_term vars t =
+let get_def_vars_term t =
   match t.desc with
-  | Let(flag, defs, t2) ->
+  | Let(_, defs, t2) ->
       let xs = List.map Triple.fst defs in
-      let xs' = List.filter_out (fun x -> List.exists (fun y -> Id.name x = Id.name y) vars) xs in
-      let vars1 = List.rev_flatten_map (fun (_,ys,t) -> get_def_vars.col2_term (ys@@@vars) t) defs in
-      let vars2 = get_def_vars.col2_term (xs'@@@vars) t2 in
-      xs'@@@vars1@@@vars2
-  | _ -> get_def_vars.col2_term_rec vars t
+      let vars1 = List.rev_flatten_map (Triple.trd |- get_def_vars.col_term) defs in
+      let vars2 = get_def_vars.col_term t2 in
+      xs@@@vars1@@@vars2
+  | _ -> get_def_vars.col_term_rec t
 
-let () = get_def_vars.col2_term <- get_def_vars_term
-let get_def_vars = get_def_vars.col2_term []
+let () = get_def_vars.col_term <- get_def_vars_term
+let get_def_vars = get_def_vars.col_term
 
 
 exception My_not_found of id
@@ -123,10 +122,16 @@ type kind =
   | Inlined
   | Inlined_f
 
-let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f; fairness} t =
-  let vars = get_def_vars t @ get_fv t in
+let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f; fairness} vars =
   let rename_id f = (* temporal implementation *)
-    List.find_eq_on Id.name f vars
+    if CEGAR_syntax.is_randint_var (Id.name f)
+    then f
+    else
+      try
+        List.find_eq_on Id.to_string f vars
+      with Not_found ->
+        List.find_eq_on Id.name f vars
+
   in
   let aux_ref (f,typ) =
     try
@@ -152,18 +157,22 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
    inlined_f = if List.mem Inlined_f ks then List.filter_map aux_id inlined_f else inlined_f;
    fairness}
 
-let get_ref_env spec t = (rename [Ref_env] spec t).ref_env
-let get_ext_ref_env spec t = (rename [Ext_ref_env] spec t).ext_ref_env
-let get_abst_env spec t = (rename [Abst_env] spec t).abst_env
-let get_abst_cps_env spec t = (rename [Abst_cps_env] spec t).abst_cps_env
-let get_abst_cegar_env spec t = (rename [Abst_cegar_env] spec t).abst_cegar_env
-let get_inlined spec t = (rename [Inlined] spec t).inlined
-let get_inlined_f spec t = (rename [Inlined_f] spec t).inlined_f
+let get_vars t = get_def_vars t @ get_fv t
+let get_vars_cegar prog = List.map (fun (f,_,_,_,_) -> CEGAR_trans.trans_inv_var f) prog.CEGAR_syntax.defs
+
+let get_ref_env spec t = (rename [Ref_env] spec @@ get_vars t).ref_env
+let get_ext_ref_env spec t = (rename [Ext_ref_env] spec @@ get_vars t).ext_ref_env
+let get_abst_env spec t = (rename [Abst_env] spec @@ get_vars t).abst_env
+let get_abst_cps_env spec t = (rename [Abst_cps_env] spec @@ get_vars t).abst_cps_env
+let get_abst_cegar_env spec prog = (rename [Abst_cegar_env] spec @@ get_vars_cegar prog).abst_cegar_env
+let get_inlined spec t = (rename [Inlined] spec @@ get_vars t).inlined
+let get_inlined_f spec t = (rename [Inlined_f] spec @@ get_vars t).inlined_f
 
 
 
 
 let read parser lexer =
+  Id.save_counter ();
   let spec1 =
     begin
       if !Flag.use_spec && !Flag.spec_file = ""
@@ -179,4 +188,6 @@ let read parser lexer =
     else init
   in
   if spec2 <> init then Flag.use_filter := true;
-  merge spec1 spec2
+  let m = merge spec1 spec2 in
+  Id.reset_counter ();
+  m

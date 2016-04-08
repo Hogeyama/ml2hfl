@@ -94,9 +94,9 @@ let preprocess t spec =
     else None
   in
   (**********************)
-
-  let abst_cegar_env = Spec.get_abst_cegar_env spec t |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
-  let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog ~spec:abst_cegar_env t in
+  let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog (*~spec:abst_cegar_env*) t in
+  let abst_cegar_env = Spec.get_abst_cegar_env spec prog |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
+  let prog = CEGAR_trans.add_env abst_cegar_env prog in
   let get_rtyp = get_rtyp -|| get_rtyp_trans in
    (*
     if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
@@ -109,7 +109,12 @@ let preprocess t spec =
       List.filter_map aux fun_list
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
-    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined}
+    let fairness =
+      if !Flag.mode = Flag.FairNonTermination then
+        Some spec.Spec.fairness
+      else
+        None in
+    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
   in
   prog, rmap, get_rtyp, info
 
@@ -125,6 +130,9 @@ let report_safe env orig t0 =
     match !Flag.mode with
     | Flag.NonTermination ->
         Color.printf Color.Bright "Non-terminating!";
+        Format.printf "@.@."
+    | Flag.FairNonTermination ->
+        Color.printf Color.Bright "Fair Infinite Execution found!";
         Format.printf "@.@."
     | Flag.Termination when !Flag.debug_level <= 0 ->
         Color.printf Color.Bright "Safe!";

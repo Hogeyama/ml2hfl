@@ -43,3 +43,11 @@ let rec update path t' t =
 let rec zip t1 t2 =
   match t1, t2 with
   | Node (l1, ts1), Node (l2, ts2) -> Node ((l1, l2), List.map2 (fun t1 t2 -> zip t1 t2) ts1 ts2)
+
+let rec find_all_label f (Node(l,ts)) =
+  let ls = List.flatten_map (find_all_label f) ts in
+  if f l then l::ls else ls
+
+let rec find_all_subtree f (Node(l,ts)) =
+  let trees = List.flatten_map (find_all_subtree f) ts in
+  if f (Node(l,ts)) then Node(l,ts)::trees else trees

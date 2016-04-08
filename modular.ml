@@ -65,62 +65,9 @@ let main orig spec parsed =
 (************************************************************************************************************)
 (************************************************************************************************************)
 
-module RefTypInfer = struct
-  open Fpat
-  open Util
-  open Combinator
 
-  let infer_etrs fs is_cp prog etrs =
-    etrs
-    |> Fpat.RefTypInfer.infer_etrs fs is_cp prog
-    |*@> Format.printf "refinement types:@,  %a@." Fpat.RefType.pr_env
+
 (*
-    |> List.map (Pair.map_snd Fpat.AbsType.of_refinement_type)
-    |> Fpat.Util.List.classify (Fpat.Combinator.comp2 (=) fst fst)
-    |> List.map
-         (function
-           | (f, sty) :: fstys ->
-              f, Fpat.AbsType.merge (sty :: List.map snd fstys)
-           | _ -> assert false)
-*)
-
-  let refine prog fs is_cp cexs feasible ext_cexs =
-    let etrs =
-      Fpat.Util.List.concat_map2
-        (fun cex ext_cex ->
-         let penv =
-           List.map
-             (fun (p, ps) ->
-              let cnt = ref 0 in
-              p,
-              fun ts ->
-              let (tenv, phi) = List.nth ps !cnt in
-              let tenv = tenv @ [p, Type.mk_int] in
-              cnt := !cnt + 1;
-              Logger.debug_assert
-                (fun () -> List.length tenv = List.length ts)
-                ~on_failure:
-                (fun () ->
-                 Format.printf
-                   "AbsTypInfer.refine: the lengths of %a and %a are different"
-                   TypEnv.pr tenv
-                   Term.pr_list ts);
-              let tsub = List.map2 (fun (x, _) t -> x, t) tenv ts in
-              let tts = List.map2 (fun (_, ty) t -> t, ty) tenv ts in
-              Pva.make
-                (Idnt.T(Idnt.T(p, !cnt, List.length tenv - 1), -1, 0))
-                tts,
-              Formula.subst tsub phi)
-             ext_cex
-         in
-         CompTreeExpander.error_traces_of prog feasible penv [cex])
-        cexs ext_cexs
-    in
-    infer_etrs fs is_cp prog etrs
-end
-
-
-
 type program = (id * typed_term) list
 
 let print_ce_set fm ce_set =
@@ -142,20 +89,7 @@ let infer_ref_type spec ces parsed =
   RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
   |@false&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
 
-let infer_abs_type spec ces parsed =
-  assert (spec.Spec.ref_env <> []);
-  let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
-  let t = Trans.ref_to_assert ref_env parsed in
-  Main_loop.init_typ_excep ();
-  let prog, rmap, get_rtyp, info = Main_loop.preprocess t spec in
-  FpatInterface.init prog;
-  let labeled = CEGAR_abst_util.has_branch prog in
-  let is_cp = FpatInterface.is_cp prog in
-  let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
-  let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
-  let prog = FpatInterface.conv_prog prog in
-  RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
-  |@false&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
+
 
 let make_fix f xs t =
   make_letrec [f, xs, t] @@ make_var f
@@ -181,8 +115,6 @@ let () = add_label.tr2_term <- add_label_term
 let add_label = add_label.tr2_term
 let get_label t = get_id t
 
-let bool_of_term' t = Option.try_with (fun _ -> bool_of_term t) ((=) (Invalid_argument "bool_of_term"))
-
 let is_fail t =
   match t.desc with
   | App({desc=Event("fail",_)}, [_]) -> true
@@ -192,88 +124,6 @@ let exists_fail ts = List.exists is_fail ts
 
 let append_path path rs =
   List.map (Triple.map_trd @@ (@) path) rs
-
-(* ASSUME: Input must be normal form *)
-let rec eval fun_env ce_set ce_env t =
-  Format.printf"@[ORIG(%d): %a@\n  @[" (List.length ce_set) Print.term t;
-  let r =
-  match t.desc with
-  | BinOp(And, _, _) -> assert false
-  | BinOp(Or, _, _) -> assert false
-  | Const _
-  | Var _
-  | BinOp _
-  | Not _
-  | Fun _
-  | Event _ -> [t, ce_env, []]
-  | _ when is_fail t -> [t, ce_env, []]
-  | Bottom -> []
-  | App(t1, ts) when is_fix t1 ->
-      let n = get_arg_num t1 in
-      if n < List.length ts then
-        [t, ce_env, []]
-      else if n > List.length ts then
-        unsupported "Modular.eval: App(fix, _)"
-      else
-        let f,xs,t1' = Option.get @@ decomp_fix t1 in
-        let t' = List.fold_right2 subst xs ts t1' in
-        eval fun_env ce_set ce_env t'
-  | App(t1, ts) ->
-      let f = var_of_term t1 in
-      let ys,t_f = Id.assoc f fun_env in
-      assert (List.length ts <= List.length ys);
-      if List.length ts < List.length ys
-      then [t, ce_env, []]
-      else
-        let label = new_label () in
-        Format.printf "LABEL: %a, %d@\n  @[" Id.print f label;
-        let t_f' = add_label label t_f in
-        let paths = List.assoc_all ~cmp:Id.eq f ce_set in
-        let aux path =
-          Format.printf "PATH: %d, %a@\n" label (List.print Format.pp_print_int) path;
-          let t' = make_app (make_fix f ys t_f') ts in
-          let ce_env' = (label,path)::ce_env in
-          eval fun_env ce_set ce_env' t'
-        in
-        let r = List.flatten_map aux paths in
-        Format.printf "@]";
-        r
-  | If(_, t2, t3) ->
-      let label = get_label t in
-      let ce,ce_env' = List.decomp_assoc label ce_env in
-      begin
-        match ce with
-        | [] -> []
-        | br::ce' ->
-            Format.printf "CE[%d]: %a@\n" label (List.print Format.pp_print_int) ce;
-            let t23 = if br = 0 then t2 else t3 in
-            let ce_env'' = (label,ce')::ce_env' in
-            append_path [br] @@ eval fun_env ce_set ce_env'' t23
-      end
-  | Let _ when is_fix t -> [t, ce_env, []]
-  | Let(flag, [], t2) -> eval fun_env ce_set ce_env t2
-  | Let(Nonrecursive, [f,xs,t1], t2) ->
-      if xs = []
-      then
-        let rs = eval fun_env ce_set ce_env t1 in
-        let aux (v,ce_env,path) =
-          if is_fail v then
-            [fail_unit_term, ce_env, path]
-          else
-            t2
-            |> (if is_base_typ t1.typ then Fun.id else subst f v)
-            |> eval fun_env ce_set ce_env
-            |> append_path path
-        in
-        List.flatten_map aux rs
-      else
-        let t2' = subst f (make_funs xs t1) t2 in
-        eval fun_env ce_set ce_env t2'
-  | _ ->
-      Format.printf "%a@." Print.term t;
-      unsupported "Modular.eval"
-  in
-  Format.printf"@]@\nRESULT: %a@]@," (List.print (Pair.print Print.term (List.print Format.pp_print_int))) @@ List.map (fun (x,y,z) -> x,z) r;r
 
 let infer spec parsed (ce_set: (id * int list) list) =
   let normalized = Trans.inline_var @@ Trans.flatten_let @@ Trans.normalize_let parsed in
@@ -296,3 +146,54 @@ let infer spec parsed (ce_set: (id * int list) list) =
   let aenv = infer_abs_type spec ces normalized in*)
   assert false;
   env'
+*)
+
+
+
+type constr = True | False | And of constr * constr | Imply of typed_term * constr | Sub of typ * typ
+
+let rec generate_constraints comp_tree =
+  let (Rose_tree.Node(label, children)) = comp_tree in
+  let constr = List.fold_right (fun ct constr -> And(generate_constraints ct, constr)) children True in
+  let open Comp_tree in
+  match label with
+  | Term t ->
+      begin
+        match t.desc with
+        | If _ -> constr
+        | App _ ->
+            let subtrees =
+              assert false
+            in
+            subtrees
+        | _ -> assert false
+      end
+  | Arg map -> Imply(List.fold_right make_and (List.map (fun (x,v) -> make_eq (make_var x) v) map) true_term, constr)
+  | Assume t -> Imply(t, constr)
+  | Fail ->
+      assert (children = []);
+      False
+
+let infer spec parsed ce_set =
+  let normalized =
+    if true
+    then parsed
+    else Trans.inline_var @@ Trans.flatten_let @@ Trans.normalize_let parsed
+  in
+  Format.printf "INPUT: %a@." Print.term normalized;
+  let fbindings,main = decomp_prog normalized in
+  assert (main.desc = Const Unit);
+  List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
+  let fun_env = List.flatten_map (snd |- List.map Triple.to_pair_r) fbindings in
+  let ce_set =
+    let aux =
+      match !Flag.filename with
+      | "test.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]; f, [1;0]] | _ -> assert false)
+      | "test2.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "fsum" -> [f, [0]; f, [1;0]] | "double" -> [f, [0]; f, [1;0]] | _ -> assert false)
+      | _ -> assert false
+    in
+    List.flatten @@ List.map aux fun_env
+  in
+  let main = Option.get @@ get_last_definition normalized in
+  let comp_tree = Comp_tree.from_program fun_env ce_set main in
+  comp_tree

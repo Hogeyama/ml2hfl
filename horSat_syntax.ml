@@ -1,24 +1,15 @@
 open Util
-
-type result_tree =
-  | Exists of (result_tree * result_tree)
-  | Forall of (int * result_tree)
-  | Label of string * result_tree
-  | End | Fail
+let br_exists t1 t2 =
+  Rose_tree.Node ("br_exists", [t1; t2])
+let node label t =
+  Rose_tree.Node (label, [t])
+let leaf () =
+  Rose_tree.leaf "end"
 
 type result =
   | Satisfied
-  | UnsatisfiedAPT of result_tree
+  | UnsatisfiedAPT of string Rose_tree.t
   | Unsatisfied of (string * int) list
-
-let rec string_of_result_tree = function
-  | Exists(r1, r2) -> String.join " " ["(br_exists"; (string_of_result_tree r1); (string_of_result_tree r2); ")"]
-  | Forall(0, r) -> String.join " " ["(br_forall _"; (string_of_result_tree r); ")"]
-  | Forall(1, r) -> String.join " " ["(br_forall"; (string_of_result_tree r); "_ )"]
-  | Forall _ -> assert false
-  | Label(l, r) -> "(" ^ l ^ " " ^ string_of_result_tree r ^ ")"
-  | End -> "unit"
-  | Fail -> "fail"
 
 (* from trecs-1.22/syntax.ml *)
 
@@ -31,7 +22,9 @@ type transitions = transition list
 
 let string_of_head h =
   match h with
-    Name(s) -> s
+  | Name(s) when s = "true"  -> "tt"
+  | Name(s) when s = "false" -> "ff"
+  | Name(s) -> s
   | NT(s) -> s
   | FD(n) -> (string_of_int n)
   | CASE(n) -> "_case "^(string_of_int n)
