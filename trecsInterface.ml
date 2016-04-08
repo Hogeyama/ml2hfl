@@ -149,9 +149,9 @@ let version () =
     try
       let s = input_line cin in
       if Str.string_match (Str.regexp "TRecS \\([.0-9]+\\)") s 0
-      then String.sub s (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1)
-      else ""
-    with Sys_error _ | End_of_file -> ""
+      then Some (String.sub s (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1))
+      else None
+    with Sys_error _ | End_of_file -> None
   in
   ignore @@ Unix.close_process (cin, cout);
   v

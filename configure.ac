@@ -56,7 +56,7 @@ AC_PATH_TOOL(HORSATP, horsatp, [no], [$PATH:$PWD])
 AC_SUBST(HORSATP)
 
 if test "$TRECS" = "no" -a "$HORSAT" = "no" -a "$HORSATP" = "no"; then
-  AC_MSG_ERROR([no model checker found])
+  AC_MSG_ERROR([No model checker found])
 fi
 
 AC_PATH_TOOL(OMEGA, oc, [no], [$PATH:$PWD])

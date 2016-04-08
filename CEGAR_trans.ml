@@ -513,7 +513,7 @@ let trans_prog ?(spec=[]) t =
   let pr p s t = if debug () then Format.printf "##[trans_prog] %s:@.%a@.@." s p t in
   let pr1 = pr Print.term' in
   let pr2 = pr CEGAR_print.prog_typ in
-  let ext_env = List.map (Pair.map trans_var trans_typ) @@ Trans.make_ext_env t in
+  let _ext_env = List.map (Pair.map trans_var trans_typ) @@ Trans.make_ext_env t in
   pr1 "BEFORE" t;
   let t = Trans.trans_let t in
   pr1 "AFTER" t;
@@ -545,7 +545,7 @@ let trans_prog ?(spec=[]) t =
 
 let add_env spec prog =
   let spec' = List.map (Pair.map trans_var trans_typ) spec in
-  let aux (f,typ) = Format.printf "%s: %a@." f CEGAR_print.typ typ; try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
+  let aux (f,typ) = try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
   let env = uniq_env @@ List.map aux prog.env in
   {prog with env}
 
@@ -740,28 +740,36 @@ let trans_ce labeled {defs; main} ce =
   assert (not (List.mem main labeled));
   0::ce'
 
+let eq_not t1 t2 = t1 = make_not t2 || make_not t1 = t2
 
-let rec simplify_if_term t =
+let rec simplify_if_term env t =
   match t with
   | Const c -> Const c
   | Var x -> Var x
   | App(App(App(Const If, t1), t2), t3) ->
-      let t1' = simplify_if_term t1 in
-      let t2' = simplify_if_term t2 in
-      let t3' = simplify_if_term t3 in
+      let t1' = simplify_if_term env t1 in
+      let t1'' = normalize_bool_term t1' in
+      let t2' = simplify_if_term (t1''::env) t2 in
+      let t3' = simplify_if_term (make_not t1''::env) t3 in
+      let t1''',t2'',t3'' =
+        match t1'' with
+        | App(Const Not, t1''') -> t1''', t3', t2'
+        | _ -> t1'', t2', t3'
+      in
       begin
-        match normalize_bool_term t1' with
-        | Const True -> t2'
-        | Const False -> t3'
-        | App(Const Not, t1'') -> make_if t1'' t3' t2'
-        | t1'' -> make_if t1'' t2' t3'
+        if t1''' = Const True || List.mem t1''' env then
+          t2''
+        else if t1''' = Const False || List.mem (make_not t1''') env then
+          t3''
+        else
+          make_if t1''' t2'' t3''
       end
-  | App(t1,t2) -> App(simplify_if_term t1, simplify_if_term t2)
-  | Let _ -> assert false
-  | Fun(x,typ,t) -> Fun(x, typ, simplify_if_term t)
+  | App(t1,t2) -> App(simplify_if_term env t1, simplify_if_term env t2)
+  | Let(x, t1, t2) -> Let(x, simplify_if_term env t1, simplify_if_term env t2)
+  | Fun(x,typ,t) -> Fun(x, typ, simplify_if_term env t)
 
 let simplify_if {env; defs; main; info} =
-  let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term t1, e, simplify_if_term t2) defs in
+  let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term [] t1, e, simplify_if_term [] t2) defs in
   {env; defs=defs'; main; info}
 
 

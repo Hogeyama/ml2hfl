@@ -232,11 +232,12 @@ let inst_randval = make_fold_tr ()
 
 let inst_randval_term ed t =
   match t.desc with
-  | App({desc=Const(RandValue(TInt,false));attr}, [t']) when t' = unit_term && List.mem AAbst_under attr -> (* for disproving termination  *)
+  | App({desc=Const(RandValue(TInt,false));attr}, [t']) when t'.desc = Const Unit && List.mem AAbst_under attr -> (* for disproving termination  *)
       ed, t
-  | App({desc=Const(RandValue(typ,false))}, [t']) when t' = unit_term ->
+  | App({desc=Const(RandValue(typ,false))}, [t']) when t'.desc = Const Unit ->
       define_randvalue ed typ
-  | Const(RandValue _) -> assert false
+  | Const(RandValue _) ->
+      assert false
   | _ -> inst_randval.fold_tr_term_rec ed t
 
 let () = inst_randval.fold_tr_term <- inst_randval_term

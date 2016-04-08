@@ -157,7 +157,7 @@ type constr =
   | Imply of typed_term * constr
   | Sub of typ_tmp * typ_tmp
 and typ_tmp =
-  | Var of id (* Not used *)
+  | Var of id
   | Arg of int * fun_id
   | App of typ_tmp * typed_term list
   | Singleton of typed_term

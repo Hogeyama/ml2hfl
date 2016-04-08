@@ -98,9 +98,9 @@ let print_env cmd =
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
-  if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
-  if horsat_version <> "" then Format.printf "  HorSat version: %s@." horsat_version;
-  if horsat_version <> "" then Format.printf "  HorSatP version: %s@." horsatp_version;
+  Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
+  Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;
+  Option.iter (Format.printf "  HorSatP version: %s@.") horsatp_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   let args = List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s) !Flag.args in
   if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") args
@@ -355,12 +355,17 @@ let rec arg_spec () =
                  Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
      " Check non-termination";
+     (* fair non-termination mode *)
      "-fair-non-termination",
      Arg.Unit (fun _ ->
        Flag.mode := Flag.FairNonTermination;
        Flag.church_encode := true;
        Flag.mc := Flag.HorSatP),
      " Check fair-non-termination";
+     "-expand-ce-count",
+     Arg.Int (fun c ->
+       Flag.expand_ce_count := c),
+     " Set the number of counterexample expansion for fair-non-termination-mode";
      "-merge-paths",
        Arg.Set Flag.merge_paths_of_same_branch,
        " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
