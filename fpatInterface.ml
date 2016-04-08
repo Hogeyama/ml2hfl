@@ -208,9 +208,14 @@ let conv_fdef typs (f, args, guard, events, body) =
     Fpat.Fdef.body =
       List.fold_right
         (fun e t ->
-         Fpat.Term.mk_app
-           (conv_event e)
-           [Fpat.Term.mk_const Fpat.Const.Unit])
+          let t' =
+            if List.mem !Flag.mode  [Flag.FairTermination; Flag.FairNonTermination] then
+              t
+            else
+              Fpat.Term.mk_const Fpat.Const.Unit in
+          Fpat.Term.mk_app
+            (conv_event e)
+            [t'])
         events (conv_term typs body) } (***)
 
 let inv_fdef fdef =
