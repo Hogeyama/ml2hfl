@@ -34,8 +34,12 @@ def run_mochi(fname):
   mochi = cd + "/../mochi.opt"
   (r, e) = os.path.splitext(fname)
   ofile = r + ".test_out"
+<<<<<<< HEAD
   opts = " ".join(parse_options(fname))
   cmd = "timeout -s 9 30 {0} -fair-non-termination {1} {2} 1>/dev/null 2>{3}".format(mochi, opts, fname, ofile)
+=======
+  cmd = "{0} -fair-non-termination {1} >/dev/null 2>{2}".format(mochi, fname, ofile)
+>>>>>>> parent of fbee9e9... Merge remote-tracking branch 'origin/fair_non_termination'
   print(cmd)
   subprocess.call(cmd, shell=True)
   return ofile
@@ -55,11 +59,15 @@ def parse_result(ofile):
     with open(ofile, "r") as f:
       result = f.readlines()[-1].split()[-1]
       r = Result.unknown
-      if result in ['"Satisfied"', '"safe"']:
+      if result == "\"Satisfied\"":
         r = Result.found
-      elif result in ['"Unsatisfied"', '"unsafe"']:
+      elif result == "\"Unsatisfied\"":
         r = Result.not_found
+<<<<<<< HEAD
       else:
+=======
+      elif result == "\"timeout\"":
+>>>>>>> parent of fbee9e9... Merge remote-tracking branch 'origin/fair_non_termination'
         r = Result.timeout
       return (r, result)
   except:

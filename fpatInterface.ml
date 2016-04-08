@@ -210,7 +210,7 @@ let conv_fdef typs (f, args, guard, events, body) =
         (fun e t ->
          Fpat.Term.mk_app
            (conv_event e)
-           [t])
+           [Fpat.Term.mk_const Fpat.Const.Unit])
         events (conv_term typs body) } (***)
 
 let inv_fdef fdef =
@@ -297,32 +297,8 @@ let is_cp {env=env;defs=defs;main=main} =
   let prog = conv_prog (env, defs, main) in
   Fpat.RefTypInfer.is_cut_point prog
 
-let infer labeled is_cp cexs ext_cexs (env, defs, main) =
-  let fs = List.map fst env in
-  let defs' =
-    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
-      let aux f =
-        if CEGAR_syntax.is_randint_var f then
-          []
-        else
-          let argss =
-            List.filter_map (fun (g, args, _, _, _) ->
-              if f = g then
-                Some args
-              else
-                None
-            ) defs in
-          let n = List.length argss in
-          List.make (3 - n) (f, List.hd argss, Const True, [Event "fail"], Const Unit) in
-      defs @ List.concat_map aux fs
-    else
-      defs in
-  let prog = conv_prog (env, defs', main) in
-  let cexs =
-    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
-      List.map (flip (@) [2]) cexs
-    else
-      cexs in
+let infer labeled is_cp cexs ext_cexs prog =
+  let prog = conv_prog prog in
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
@@ -336,42 +312,17 @@ let infer_with_ext
     (is_cp: Fpat.Idnt.t -> bool)
     (cexs: int list list)
     (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
-    ((env, defs, main): (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
+    (prog: (string * CEGAR_syntax.typ) list * (string * string list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list * string)
   =
   Format.printf "labeled %a@." (Util.List.print Format.pp_print_string) labeled;
   Format.printf "cexs %a@." (Util.List.print @@ Util.List.print Format.pp_print_int) cexs;
-  let pr ppf (tenv, phi) =
-    Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
-  in
+let pr ppf (tenv, phi) =
+  Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
+                 in
   Format.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
   let debug = !Flag.debug_level > 0 in
-  let fs = List.map fst env in
-  let defs' =
-    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
-      let aux f =
-        if CEGAR_syntax.is_randint_var f then
-          []
-        else
-          let argss =
-          List.filter_map (fun (g, args, _, _, _) ->
-            if f = g then
-              Some args
-            else
-              None
-          ) defs in
-          let n = List.length argss in
-          List.make (3 - n) (f, List.hd argss, Const True, [Event "fail"], Const Unit) in
-      defs @ List.concat_map aux fs
-    else
-      defs in
+  let prog = conv_prog prog in
 
-  let prog = conv_prog (env, defs', main) in
-
-  let cexs =
-    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
-      List.map (flip (@) [2]) cexs
-    else
-      cexs in
   if debug then Format.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
   let old_split_eq = !Fpat.AbsType.split_equalities in
   let old_eap = !Fpat.AbsType.extract_atomic_predicates in
@@ -380,7 +331,7 @@ let infer_with_ext
   Fpat.AbsType.extract_atomic_predicates := true;
   Fpat.HCCSSolver.link_dyn
     (fst -| fst -| Fpat.AEHCCSSolver.solve
-        (Fpat.EAHCCSSolver.solve [] [] [] Fpat.BwIPHCCSSolver.solve));
+       (Fpat.EAHCCSSolver.solve [] [] [] Fpat.BwIPHCCSSolver.solve));
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
   Fpat.AbsType.split_equalities := old_split_eq;
   Fpat.AbsType.extract_atomic_predicates := old_eap;

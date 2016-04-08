@@ -5,8 +5,6 @@ open CEGAR_util
 
 exception UnknownOutput
 
-exception HorSatPVersionError
-
 let version () =
   let cin,cout = Unix.open_process (Format.sprintf "%s --version" !Flag.horsatp) in
   let v =
@@ -16,7 +14,6 @@ let version () =
   ignore(Unix.close_process (cin, cout));
   v
 
-let required_ver = "1.1.0"
 
 (* Syntax for Alternating Parity Tree automata *)
 type state = string
@@ -152,11 +149,7 @@ let rec verifyFile_aux filename =
   let oc = open_out result_file in
   output_string oc default;
   close_out oc;
-  let ver = version () in
-  if ver < required_ver then
-    (Format.printf "HorSatP: minimum version required is %s, but %s@." required_ver ver;
-     raise HorSatPVersionError);
-  let cmd = Format.sprintf "%s --iter=10000 %s > %s 2>/dev/null" !Flag.horsatp filename result_file in
+  let cmd = Format.sprintf "%s --iter=10000 < %s > %s 2>/dev/null" !Flag.horsatp filename result_file in
   ignore @@ Sys.command cmd;
   let ic = open_in result_file in
   read_as_string ic
@@ -164,10 +157,10 @@ let rec verifyFile_aux filename =
 (** run HorSatP on `filename` *)
 let verifyFile filename =
   let r = verifyFile_aux filename in
-  Format.eprintf "[Info] HorSatP returned \"%s\"@." r;
+  Printf.eprintf "[Info] HorSatP returned \"%s\"\n" r;
   match r with
-  | "Satisfied"   | "safe"   -> Satisfied
-  | "Unsatisfied" | "unsafe" -> Unsatisfied
+  | "Satisfied" -> Satisfied
+  | "Unsatisfied" -> Unsatisfied
   | _ -> assert false
 
 (**
@@ -192,7 +185,7 @@ let read_HORS_file filename =
 
   let show_error_pos fname filebuf =
     let pos = filebuf.Lexing.lex_start_p in
-    Format.eprintf "File \"%s\", line %d, character %d:@."
+    Printf.eprintf "File \"%s\", line %d, character %d:\n"
       fname
     pos.Lexing.pos_lnum
       (pos.Lexing.pos_cnum - pos.Lexing.pos_bol + 1) in

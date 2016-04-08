@@ -354,17 +354,12 @@ let arg_spec =
                  Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
      " Check non-termination";
-     (* fair non-termination mode *)
      "-fair-non-termination",
      Arg.Unit (fun _ ->
        Flag.mode := Flag.FairNonTermination;
        Flag.church_encode := true;
        Flag.mc := Flag.HorSatP),
      " Check fair-non-termination";
-     "-expand-ce-count",
-     Arg.Int (fun c ->
-       Flag.expand_ce_count := c),
-     " Set the number of counterexample expansion for fair-non-termination-mode";
      "-merge-paths",
        Arg.Unit (fun _ ->
                  Flag.merge_paths_of_same_branch := true),

@@ -1,4 +1,0 @@
-PKG extlib
-PKG compiler-libs.common
-PKG unix
-PKG fpat

@@ -35,11 +35,6 @@ let print_pbs fm pbs =
   print_list print_pb ";@\n" fm pbs
 
 let min_unsat_cores _ cond ds =
-  let ds =
-    if !Fpat.PredAbst.use_neg_pred then (* TODO: remove this if statement after Fpat is fixed *)
-      List.map (Pair.map make_not make_not) ds @ ds
-    else
-      ds in
   let cond' = List.map FpatInterface.conv_formula cond in
   let ds' = List.map (Fpat.Pair.lift FpatInterface.conv_formula) ds in
   FpatInterface.inv_formula @@ Fpat.PredAbst.min_unsat_cores cond' ds'

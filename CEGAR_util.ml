@@ -328,7 +328,9 @@ let rec has_bottom = function
   | _ -> assert false
 
 
-let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
+
+
+let rec normalize_bool_term ?(imply = fun _ _ -> false) t =
   match t with
   | Const c -> Const c
   | Var x -> Var x
@@ -368,8 +370,6 @@ let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
       begin
         match ts' with
         | [] -> Const True
-        | [App(Const Not, t1); t2] when t1 = t2 -> Const False
-        | [t1; App(Const Not, t2)] when t1 = t2 -> Const False
         | t'::ts'' -> List.fold_left make_and t' ts''
       end
   | App(App(Const Or, _), _) as t ->

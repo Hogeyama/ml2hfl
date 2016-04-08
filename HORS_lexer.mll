@@ -5,9 +5,8 @@
 
 let digit = ['0'-'9']
 let space = [' ' '\t' '\r']
-let char  = ['a'-'z' 'A'-'Z' '$' '_']
-let symbol = ['{' '}' '[' ']' '\\' '/' '-' '>']
-let ident = char (char | digit | symbol)*
+let char  = ['a'-'z' 'A'-'Z' '_' ]
+let ident = char (char | digit)*
 
 rule token = parse
 | space+

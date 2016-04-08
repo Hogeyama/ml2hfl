@@ -478,7 +478,6 @@ let abstract orig_fun_list force prog top_funs =
   |> eta_expand
   |@> pr "ETA_EXPAND"
   |> abstract_prog
-  |> CEGAR_trans.simplify_if
   |@> pr "ABST"
   |> Typing.infer -| initialize_env
   |@!Flag.debug_abst&> eval_step_by_step

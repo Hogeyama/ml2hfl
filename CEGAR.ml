@@ -82,7 +82,6 @@ let rec loop prog0 is_cp ces info =
      begin
        let prog' = CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_rules prog in
        post ();
-       Fpat.PredAbst.use_neg_pred := true;
        loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces) info
      end
   | MC.Unsafe ce, _ ->
