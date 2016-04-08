@@ -9,8 +9,8 @@ let version () =
   let cin,cout = Unix.open_process (Format.sprintf "%s --version" !Flag.horsatp) in
   let v =
     try
-      input_line cin
-    with Sys_error _ | End_of_file -> "" in
+      Some (input_line cin)
+    with Sys_error _ | End_of_file -> None in
   ignore(Unix.close_process (cin, cout));
   v
 

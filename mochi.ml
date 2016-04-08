@@ -98,9 +98,9 @@ let print_env cmd =
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
-  if trecs_version <> "" then Format.printf "  TRecS version: %s@." trecs_version;
-  if horsat_version <> "" then Format.printf "  HorSat version: %s@." horsat_version;
-  if horsat_version <> "" then Format.printf "  HorSatP version: %s@." horsatp_version;
+  Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
+  Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;
+  Option.iter (Format.printf "  HorSatP version: %s@.") horsatp_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   let args = List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s) !Flag.args in
   if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") args
