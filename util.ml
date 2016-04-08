@@ -508,11 +508,13 @@ let rec my_input ic s ofs len acc =
 let my_input ic s ofs len = my_input ic s ofs len 0
 
 
-let print_begin_end ?(str1="BEGIN\n") ?(str2="END\n") f =
-  Format.printf "%s@?" str1;
-  let r = f () in
-  Format.printf "%s@?" str2;
-  r
+let print_begin_end ?(fm=Format.std_formatter) =
+  let pre fm = Format.fprintf fm "%s" "BEGIN" in
+  let post fm r = Format.fprintf fm "%s" "END" in
+  fun ?(pre=pre) ?(post=post) f ->
+    Format.fprintf fm "@[<v 2>%t@ " pre;
+    f ()
+    |@> Format.fprintf fm "@]\b\b%a@\n" post
 
 
 (* TODO: support escaping *)
