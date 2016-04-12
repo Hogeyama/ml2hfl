@@ -213,6 +213,7 @@ let rec make_template fun_env cnt (Rose_tree.Node(label, children)) =
       let aux (Rose_tree.Node(label', children')) =
         match label', children' with
         | Bind map, [child]  ->
+(*
             let maps =
               let aux' = function
                 | Rose_tree.Node(Term {desc=App({desc=Var g},_)}, children) ->
@@ -243,29 +244,20 @@ let rec make_template fun_env cnt (Rose_tree.Node(label, children)) =
               Format.printf "  argss: %a@." (List.print @@ List.print Id.print) argss;
               Format.printf "  typ: %a@." print_template r;
               r
-(*            let argss =
-              let aux' g = function
-                | Rose_tree.Node(Term {desc=App({desc=Var h},_)}, children) ->
-                    if Id.same g h
-                    then Some (List.flatten_map (function Rose_tree.Node(Bind map, _) -> List.map Triple.fst map | _ -> assert false) children)
-                    else None
-                | _ -> None
-              in
-              List.map (fun (g,_,_) -> Rose_tree.filter_map_subtree (aux' g) child) map
-            in
-            let aux' args =
-              if is_fun_typ (List.hd args).typ then
+ *)
+            let aux' x =
+              if is_fun_typ @@ Id.typ x then
                 Inter (List.map (fun (g,_,_) -> Id.assoc g templates) map)
               else
                 Base (Counter.gen cnt)
             in
-            let r = List.fold_right2 (fun t args tmp  -> Fun(new_var_of_term t, aux' args, tmp)) ts argss (Base(-1)) in
-            Format.printf "  argss: %a@." (List.print @@ List.print Id.print) argss;
+            let r = List.fold_right2 (fun t (x,_,_) tmp  -> Fun(new_var_of_term t, aux' x, tmp)) ts map (Base(-1)) in
+            Format.printf "  map: %a@." (List.print Id.print) @@ List.map Triple.fst map;
             Format.printf "  typ: %a@." print_template r;
             r
         | _ ->
             Format.printf "%a@." print_label label;
-            assert false*)
+            assert false
       in
       (f, Inter (List.map aux children))::templates
   | Term {desc=App _} -> mk_templates fun_env
