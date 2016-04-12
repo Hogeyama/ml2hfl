@@ -5,12 +5,17 @@ type path = int list
 
 let leaf a = Node (a, [])
 
+let decomp (Node(l,ts)) = l, ts
+
+let label t = fst @@ decomp t
+let children t = snd @@ decomp t
+
 let root = function
   | Node (l, []) -> l
   | _ -> raise (Invalid_argument "Rose_tree.root")
 
 let rec flatten = function
-  | Node (l, ts) -> l::(List.flatten @@ List.map flatten ts)
+  | Node (l, ts) -> l::(List.flatten_map flatten ts)
 
 let rec map f path = function
   | Node (l, ts) -> Node(f path l, List.mapi (fun i t -> map f (path@[i]) t) ts)
@@ -42,12 +47,20 @@ let rec update path t' t =
 
 let rec zip t1 t2 =
   match t1, t2 with
-  | Node (l1, ts1), Node (l2, ts2) -> Node ((l1, l2), List.map2 (fun t1 t2 -> zip t1 t2) ts1 ts2)
+  | Node (l1, ts1), Node (l2, ts2) -> Node ((l1, l2), List.map2 zip ts1 ts2)
+
+let rec find_all_subtree f (Node(l,ts)) =
+  let trees = List.flatten_map (find_all_subtree f) ts in
+  if f (Node(l,ts)) then Node(l,ts)::trees else trees
 
 let rec find_all_label f (Node(l,ts)) =
   let ls = List.flatten_map (find_all_label f) ts in
   if f l then l::ls else ls
 
-let rec find_all_subtree f (Node(l,ts)) =
-  let trees = List.flatten_map (find_all_subtree f) ts in
-  if f (Node(l,ts)) then Node(l,ts)::trees else trees
+let rec filter_map_subtree f (Node(l,ts)) =
+  let ls = List.flatten_map (filter_map_subtree f) ts in
+  match f (Node(l,ts)) with
+  | None -> ls
+  | Some r -> r::ls
+
+let filter_map_label f t = filter_map_subtree (f -| label) t

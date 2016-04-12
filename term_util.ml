@@ -867,6 +867,8 @@ let get_id t =
   try
     List.find_map (function AId n -> Some n | _ -> None) t.attr
   with Not_found -> invalid_arg "get_id"
+let get_id_option t =
+   Option.try_with (fun () -> get_id t) ((=) @@ Invalid_argument "get_id")
 
 
 let get_id_map = make_col2 () (Fun.const2 ())

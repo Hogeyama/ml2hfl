@@ -173,5 +173,6 @@ val add_comment : string -> typed_term -> typed_term
 val add_id : int -> typed_term -> typed_term
 val get_bound_variables : typed_term -> id list
 val get_id : typed_term -> int
+val get_id_option : typed_term -> int option
 val get_id_map : typed_term -> (int, typed_term) Hashtbl.t
 val decomp_prog : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term

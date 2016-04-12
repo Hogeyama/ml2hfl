@@ -67,88 +67,6 @@ let main orig spec parsed =
 
 
 
-(*
-type program = (id * typed_term) list
-
-let print_ce_set fm ce_set =
-  let pr fm (f, ce) = Format.fprintf fm "%a: %a" Id.print f (List.print Format.pp_print_int) ce in
-  Format.fprintf fm "%a" (print_list pr ",@ ") ce_set
-
-let infer_ref_type spec ces parsed =
-  assert (spec.Spec.ref_env <> []);
-  let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
-  let t = Trans.ref_to_assert ref_env parsed in
-  Main_loop.init_typ_excep ();
-  let prog, rmap, get_rtyp, info = Main_loop.preprocess t spec in
-  FpatInterface.init prog;
-  let labeled = CEGAR_abst_util.has_branch prog in
-  let is_cp = FpatInterface.is_cp prog in
-  let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
-  let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
-  let prog = FpatInterface.conv_prog prog in
-  RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
-  |@false&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
-
-
-
-let make_fix f xs t =
-  make_letrec [f, xs, t] @@ make_var f
-let decomp_fix t =
-  match t.desc with
-  | Let(Recursive, [f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
-  | _ -> None
-let is_fix t = decomp_fix t <> None
-
-let get_arg_num = List.length -| Triple.snd -| Option.get -| decomp_fix
-
-
-let counter = Counter.create ()
-let new_label () = Counter.gen counter
-
-let add_label = make_trans2 ()
-let add_label_term l t =
-  let t' = add_label.tr2_term_rec l t in
-  match t.desc with
-  | If(t1, t2, t3) -> add_id l t'
-  | _ -> t'
-let () = add_label.tr2_term <- add_label_term
-let add_label = add_label.tr2_term
-let get_label t = get_id t
-
-let is_fail t =
-  match t.desc with
-  | App({desc=Event("fail",_)}, [_]) -> true
-  | _ -> false
-
-let exists_fail ts = List.exists is_fail ts
-
-let append_path path rs =
-  List.map (Triple.map_trd @@ (@) path) rs
-
-let infer spec parsed (ce_set: (id * int list) list) =
-  let normalized = Trans.inline_var @@ Trans.flatten_let @@ Trans.normalize_let parsed in
-  Format.printf "NORM: %a@." Print.term normalized;
-  let fbindings,main = decomp_prog normalized in
-  assert (main.desc = Const Unit);
-  List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
-  let fun_env = List.flatten_map (fun (_,bindings) -> List.map (fun (f,xs,t) -> f, (xs,t)) bindings) fbindings in
-  let ce_set = List.flatten @@ List.mapi (fun i (f,_) -> match i with 0 -> [(*f, [0];*) f, [1]] | 1 -> [f, [0;1](*; f, [1;0;1]*)] | _ -> assert false) fun_env in
-  Format.printf "CE_SET: %a@." (List.print @@ Pair.print Id.print (List.print Format.pp_print_int)) ce_set;
-  let main = Option.get @@ get_last_definition normalized in
-  let rs = eval fun_env ce_set [] (make_app (make_var main) [make_var @@ Id.new_var ~name:"v0" TInt]) in
-  let rs' = List.filter (is_fail -| Triple.fst) rs in
-  Format.printf "@.Counterexamples: %a@." (List.print (List.print Format.pp_print_int)) @@ List.map (Triple.trd) rs';
-  let ces = List.map (Triple.trd) rs' in
-  let env = infer_ref_type spec ces normalized in
-  let env' = List.filter ((Id.mem_assoc -$- fun_env) -| CEGAR_trans.trans_inv_var -| Fpat.Idnt.string_of -| fst) env in
-  assert (env'<>[]);
-  Format.printf "@.refinement types:@,  %a@," Fpat.RefType.pr_env env';(*
-  let aenv = infer_abs_type spec ces normalized in*)
-  assert false;
-  env'
-*)
-
-
 
 type constr =
   | True
@@ -157,13 +75,21 @@ type constr =
   | Imply of typed_term * constr
   | Sub of typ_tmp * typ_tmp
 and typ_tmp =
-  | Var of id
-  | Arg of int * fun_id
+  | Var of fun_id
+  | Arg of int * typ_tmp
   | App of typ_tmp * typed_term list
   | Singleton of typed_term
   | Const of Ref_type.t
-and fun_id = id * (tid * int option) option
+and fun_id = id * (tid * int option * int option) option
 and tid = int
+
+
+type type_template =
+  | Base of pred_var
+  | Fun of id * type_template * type_template
+  | Inter of type_template list
+and pred_var = int
+
 
 let rec print_constr fm = function
   | True -> Format.fprintf fm "true"
@@ -172,17 +98,26 @@ let rec print_constr fm = function
   | Imply(t, c) -> Format.fprintf fm "(@[%a@ =>@ %a@])" Print.term t print_constr c
   | Sub(typ1, typ2) -> Format.fprintf fm "(@[%a@ <:@ %a@])" print_typ_tmp typ1 print_typ_tmp typ2
 and print_typ_tmp fm = function
-  | Var f -> Id.print fm f
-  | Arg(i, f) -> Format.fprintf fm "#%d(%a)" i print_fun_id f
+  | Var f -> print_fun_id fm f
+  | Arg(i, typ) -> Format.fprintf fm "#%d(%a)" i print_typ_tmp typ
   | App(typ, ts) -> Format.fprintf fm "%a%a" print_typ_tmp typ (List.print Print.term) ts
   | Singleton t -> Format.fprintf fm "{%a}" Print.term t
   | Const typ -> Format.fprintf fm "%a" Ref_type.print typ
 and print_fun_id fm (f, tidn) =
   match tidn with
   | None -> Format.fprintf fm "%a" Id.print f
-  | Some (tid, None) -> Format.fprintf fm "%a:%a" Id.print f print_tid tid
-  | Some (tid, Some n) -> Format.fprintf fm "%a:%a-%d" Id.print f print_tid tid n
+  | Some (tid, None, None) -> Format.fprintf fm "%a:%a" Id.print f print_tid tid
+  | Some (tid, None, Some n) -> Format.fprintf fm "%a:%a*%d" Id.print f print_tid tid n
+  | Some (tid, Some i, None) -> Format.fprintf fm "%a:%a-%d" Id.print f print_tid tid i
+  | Some (tid, Some _, Some _) -> assert false
 and print_tid = Format.pp_print_int
+
+let rec print_template fm = function
+  | Base p when p<0 -> Format.fprintf fm "*"
+  | Base p -> Format.fprintf fm "P%d" p
+  | Fun(x, tmp1, tmp2) -> Format.fprintf fm "@[(%a:%a ->@ %a)@]" Id.print x print_template tmp1 print_template tmp2
+  | Inter [] -> Format.fprintf fm "T"
+  | Inter tmps -> Format.fprintf fm "@[%a@]" (print_list print_template " /\\@ ") tmps
 
 let _And c1 c2 =
   if c1 = True then
@@ -192,11 +127,31 @@ let _And c1 c2 =
   else
     And(c1, c2)
 let _Ands constrs = List.fold_right _And constrs True
+let _App typ map = if map=[] then typ else App(typ, map)
+
+
+let rec add_bind f map typ =
+  match typ with
+  | Var(g, _) -> if Id.same f g then _App typ map else typ
+  | Arg(i, typ) -> Arg(i, add_bind f map typ)
+  | App(typ1, map1) -> _App (add_bind f map typ1) map1
+  | Singleton _ -> typ
+  | Const _ -> typ
+let add_bind f map typ =
+  let map' = List.filter_out (is_fun_typ -| Id.typ) map in
+  add_bind f (List.map make_var map') typ
 
 let typ_of t =
   match t.desc with
-  | Syntax.Var f -> Var f
+  | Syntax.Var f -> Var (f, None)
   | _ -> Singleton t
+
+let rec apply f = function
+  | True -> True
+  | False -> False
+  | And(c1,c2) -> And(apply f c1, apply f c2)
+  | Imply(t, c) -> Imply(t, apply f c)
+  | Sub(typ1, typ2) -> Sub(f typ1, f typ2)
 
 let rec generate_constraints tid_env (Rose_tree.Node(label, children)) =
   let open Comp_tree in
@@ -207,29 +162,121 @@ let rec generate_constraints tid_env (Rose_tree.Node(label, children)) =
         match t.desc with
         | If _ -> !!constr
         | App(t1, ts) ->
-            let f = try Option.get @@ decomp_var t1 with _ -> Format.printf "%a@." Print.term t1; assert false in
-            let tid = Option.try_with (fun () -> get_id t1) ((=) @@ Invalid_argument "get_id") in
+            let f = Option.get @@ decomp_var t1 in
+            let tid = get_id_option t1 in
             let constr1 =
-              let fun_id = f, Option.map (fun tid -> tid, List.assoc_option tid tid_env) tid in
-              let _,_,typs = List.fold_left (fun (i,map,typs) t -> i+1, map@[t], typs@[App(Arg(i, fun_id), map)]) (0,[],[]) ts in
+              let n = if Option.exists (List.mem_assoc -$- tid_env) tid then None else Some (List.length children) in
+              let fun_id = f, Option.map (fun tid -> tid, List.assoc_option tid tid_env, n) tid in
+              let _,_,typs =
+                let aux (i,map,typs) t =
+                  i+1,
+                  (if is_fun_typ t.typ then map else map@[t]),
+                  typs@[App(Arg(i, Var fun_id), map)]
+                in
+                List.fold_left aux (0,[],[]) ts
+              in
               _Ands @@ List.map2 (fun typ t -> Sub(typ_of t, typ)) typs ts
             in
             let constr2 =
               if Option.for_all (List.mem_assoc -$- tid_env) tid then
                 !!constr
               else
-                let tid = try Option.get tid with _ -> assert false in
+                let tid = Option.get tid in
                 _Ands @@ List.mapi (fun i child -> generate_constraints ((tid,i)::tid_env) child) children
             in
             And(constr1, constr2)
         | _ -> assert false
       end
-  | Bind map -> Imply(List.fold_right make_and (List.map (fun (x,v) -> make_eq (make_var x) v) map) true_term, !!constr)
+  | Bind map ->
+      let add typ = List.fold_left (fun typ (x,env,_) -> add_bind x env typ) typ map in
+      Imply(List.fold_right make_and (List.map (fun (x,_,v) -> make_eq (make_var x) v) map) true_term, apply add !!constr)
   | Assume t -> Imply(t, !!constr)
   | Fail ->
       assert (children = []);
       False
 let generate_constraints comp_tree = generate_constraints [] comp_tree
+
+
+let merge_template ts = List.flatten ts
+let rec make_template fun_env cnt (Rose_tree.Node(label, children)) =
+  let r=
+  let mk_templates env = merge_template @@ List.map (make_template env cnt) children in
+  let open Comp_tree in
+  match label with
+  | Term {desc=If _} -> mk_templates fun_env
+  | Term {desc=App({desc=Var f} as t1, ts)} when not @@ List.mem (f, get_id_option t1) fun_env ->
+      let f = Option.get @@ decomp_var t1 in
+      let fun_env' = (f, get_id_option t1)::fun_env in
+      let templates = mk_templates fun_env' in
+      Format.printf "APP: %a@." print_label label;
+      Format.printf "  TEMPLATE: %a@." (List.print @@ Pair.print Id.print print_template) templates;
+      let aux (Rose_tree.Node(label', children')) =
+        match label', children' with
+        | Bind map, [child]  ->
+            let maps =
+              let aux' = function
+                | Rose_tree.Node(Term {desc=App({desc=Var g},_)}, children) ->
+                    if Id.same f g
+                    then Some (List.flatten_map (function Rose_tree.Node(Bind map, _) -> List.map Triple.fst map | _ -> assert false) children)
+                    else None
+                | _ -> None
+              in
+              Rose_tree.filter_map_subtree aux' child
+            in
+            let maps' =
+              if Option.is_none @@ get_id_option t1 then
+                List.map new_var_of_term ts::maps
+              else
+                maps
+            in
+            if maps' = [] then
+              Inter []
+            else
+              let argss = List.fold_right (List.map2 List.cons) maps' @@ List.map (Fun.const []) @@ List.hd maps' in
+              let aux' args =
+                if is_fun_typ @@ Id.typ @@ List.hd args then
+                  Inter (List.map (Id.assoc -$- templates) args)
+                else
+                  Base (Counter.gen cnt)
+              in
+              let r = List.fold_right (fun args tmp  -> Fun(Id.new_var_id @@ List.hd args, aux' args, tmp)) argss (Base(-1)) in
+              Format.printf "  argss: %a@." (List.print @@ List.print Id.print) argss;
+              Format.printf "  typ: %a@." print_template r;
+              r
+(*            let argss =
+              let aux' g = function
+                | Rose_tree.Node(Term {desc=App({desc=Var h},_)}, children) ->
+                    if Id.same g h
+                    then Some (List.flatten_map (function Rose_tree.Node(Bind map, _) -> List.map Triple.fst map | _ -> assert false) children)
+                    else None
+                | _ -> None
+              in
+              List.map (fun (g,_,_) -> Rose_tree.filter_map_subtree (aux' g) child) map
+            in
+            let aux' args =
+              if is_fun_typ (List.hd args).typ then
+                Inter (List.map (fun (g,_,_) -> Id.assoc g templates) map)
+              else
+                Base (Counter.gen cnt)
+            in
+            let r = List.fold_right2 (fun t args tmp  -> Fun(new_var_of_term t, aux' args, tmp)) ts argss (Base(-1)) in
+            Format.printf "  argss: %a@." (List.print @@ List.print Id.print) argss;
+            Format.printf "  typ: %a@." print_template r;
+            r
+        | _ ->
+            Format.printf "%a@." print_label label;
+            assert false*)
+      in
+      (f, Inter (List.map aux children))::templates
+  | Term {desc=App _} -> mk_templates fun_env
+  | Term _ -> assert false
+  | Bind _ -> mk_templates fun_env
+  | Assume _ -> mk_templates fun_env
+  | Fail -> []
+  in
+  Format.printf "  %a@." Comp_tree.print_label label;
+  Format.printf "  LEN: %d@." (List.length r); r
+let make_template t = make_template [] (Counter.create()) t
 
 
 let normalize = make_trans ()
@@ -277,4 +324,7 @@ let infer spec parsed ce_set =
   let main = Option.get @@ get_last_definition normalized in
   let comp_tree = Comp_tree.from_program fun_env ce_set main in
   Format.printf "%a@." print_constr @@ generate_constraints comp_tree;
+(if !!debug then
+  let tmp = make_template comp_tree in
+  Format.printf "%a@." (List.print @@ Pair.print Id.print print_template) tmp);
   comp_tree

@@ -10,7 +10,7 @@ let debug () = List.mem "Comp_tree" !Flag.debug_module
 type label =
   | Term of typed_term
   | Assume of typed_term
-  | Bind of (id * typed_term) list
+  | Bind of (id * id list * typed_term) list
   | Fail
 type t = label RT.t
 
@@ -18,7 +18,7 @@ let print_label fm = function
   | Term t -> Print.term fm t
   | Assume t -> Format.fprintf fm "Assume: %a" Print.term t
   | Bind map ->
-      let pr fm (x,t) = Format.fprintf fm "%a := %a" Id.print x Print.term t in
+      let pr fm (x,var_env,t) = Format.fprintf fm "%a%a := %a" Id.print x (List.print Id.print) var_env Print.term t in
       Format.fprintf fm "%a" (List.print pr) map
   | Fail -> Format.fprintf fm "Fail"
 let rec print fm (Rose_tree.Node(l,ts)) =
@@ -54,13 +54,18 @@ let is_fail t =
   | App({desc=Event("fail",_)}, [_]) -> true
   | _ -> false
 
-let exists_fail ts = List.exists is_fail ts
+let normalize_val_env x env ys t =
+  let zs,t' = decomp_funs t in
+  let ws =
+    t
+    |> decomp_var
+    |> Option.map (Id.typ |- decomp_tfun |- fst)
+    |> Option.default []
+  in
+  let t'' = make_app t' @@ List.map make_var ws in
+  x, (env, (ys@zs@ws, t''))
 
-let append_path path rs =
-  List.map (Triple.map_trd @@ (@) path) rs
-
-(* check v_env for fix *)
-let rec from_term fun_env v_env ce_set ce_env t : t list =
+let rec from_term fun_env var_env val_env ce_set ce_env t : t list =
   let f = if !!debug then fun f -> print_begin_end f else (!!) in
   f (fun () ->
   match t.desc with
@@ -74,22 +79,23 @@ let rec from_term fun_env v_env ce_set ce_env t : t list =
   | Event _
   | Bottom -> [RT.leaf (Term t)]
   | _ when is_fail t -> [RT.leaf Fail]
-  | App({desc=Var f}, ts) when Id.mem_assoc f v_env ->
+  | App({desc=Var f}, ts) when Id.mem_assoc f val_env ->
       if !!debug then Format.printf "[APP1: %a@\n" Print.term t;
-      let ys,t_f = Id.assoc f v_env in
+      let var_env',(ys,t_f) = Id.assoc f val_env in
       if ys = [] then
         (assert (Option.is_some @@ decomp_var t_f);
-        [RT.Node(Term t, from_term fun_env v_env ce_set ce_env @@ make_app t_f ts)])
+         [RT.Node(Term t, from_term fun_env var_env val_env ce_set ce_env @@ make_app t_f ts)])
       else
         let ys' = List.map Id.new_var_id ys in
         if !!debug then Format.printf "[APP1: %a, %d@\n" Print.term t_f (List.length ts);
         let t_f' = List.fold_right2 subst_var ys ys' t_f in
-        let arg_map = List.combine ys' ts in
-        let v_env' = List.map (Pair.map_snd decomp_funs) arg_map @ v_env in
-        [RT.Node(Term t, [RT.Node(Bind arg_map, from_term fun_env v_env' ce_set ce_env t_f')])]
+        let var_env'',arg_map = List.fold_left2 (fun (env,map) y t -> (if is_fun_typ @@ Id.typ y then env else y::env), map@[y,env,t]) (var_env',[]) ys' ts in
+        let val_env' = List.map (fun (y,env,t) -> normalize_val_env y env [] t) arg_map @ val_env in
+        [RT.Node(Term t, [RT.Node(Bind arg_map, from_term fun_env var_env'' val_env' ce_set ce_env t_f')])]
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env ->
       if !!debug then Format.printf "[APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
+      let var_env' = [] in
       assert (List.length ys = List.length ts);
       let label = new_label () in
       if !!debug then Format.printf "[label: %d@\n" label;
@@ -97,16 +103,19 @@ let rec from_term fun_env v_env ce_set ce_env t : t list =
       let t_f' = add_label (f',label) @@ subst_var f f' t_f in
       let t' = make_app (add_id label @@ make_var f') ts in
       let aux path =
-        let v_env' = (f',(ys,t_f'))::v_env in
+        let val_env' = normalize_val_env f' var_env' ys t_f'::val_env in
         let ce_env' = (label,path)::ce_env in
-        from_term fun_env v_env' ce_set ce_env' t'
+        from_term fun_env var_env' val_env' ce_set ce_env' t'
       in
       let paths = List.assoc_all ~cmp:Id.eq f ce_set in
-      let merge children (RT.Node(t'',children')) =
-        assert (Term t' = t'');
-        children @ children'
-      in
-      [RT.Node(Term t', List.fold_left merge [] @@ List.flatten_map aux paths)]
+      if false
+      then List.flatten_map aux paths
+      else
+        let merge children (RT.Node(t'',children')) =
+          assert (Term t' = t'');
+          children @ children'
+        in
+        [RT.Node(Term t', List.fold_left merge [] @@ List.flatten_map aux paths)]
   | App _ ->
       assert false
   | If(t1, t2, t3) ->
@@ -121,16 +130,16 @@ let rec from_term fun_env v_env ce_set ce_env t : t list =
             let cond,t23 = if br = 0 then t1, t2 else make_not t1, t3 in
             let ce_env'' = (label,ce')::ce_env' in
             if !!debug then Format.printf "[t23: %a@\n" Print.term t23;
-            [RT.Node(Term t, [RT.Node(Assume cond, from_term fun_env v_env ce_set ce_env'' t23)])]
+            [RT.Node(Term t, [RT.Node(Assume cond, from_term fun_env var_env val_env ce_set ce_env'' t23)])]
       end
   | Let(flag, [f,xs,t1], t2) ->
-      let v_env' = (f,(xs,t1))::v_env in
-      [RT.Node(Bind [f, make_funs xs t1], from_term fun_env v_env' ce_set ce_env t2)]
+      let val_env' = normalize_val_env f var_env xs t1::val_env in
+      [RT.Node(Bind [f, var_env, make_funs xs t1], from_term fun_env var_env val_env' ce_set ce_env t2)]
   | _ ->
       if !!debug then Format.printf "%a@." Print.term t;
       unsupported "Comp_tree.from_term"
   )
-let from_term fun_env ce_set t = from_term fun_env [] ce_set [] t
+let from_term fun_env ce_set t = from_term fun_env [] [] ce_set [] t
 
 
 
