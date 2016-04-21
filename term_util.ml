@@ -132,6 +132,8 @@ let fail_unit_term = make_app fail_term [unit_term]
 let make_fail typ = make_seq fail_unit_term @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_funs = List.fold_right make_fun
+let make_tfun typ1 typ2 =
+  TFun(Id.new_var typ1, typ2)
 let make_not t =
   match t.desc with
   | Const True -> false_term

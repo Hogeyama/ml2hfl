@@ -68,7 +68,6 @@ val make_leq : typed_term -> typed_term -> typed_term
 val make_geq : typed_term -> typed_term -> typed_term
 val make_fst : typed_term -> typed_term
 val make_snd : typed_term -> typed_term
-val make_tpair : typ -> typ -> typ
 val make_pair : typed_term -> typed_term -> typed_term
 val make_tuple : typed_term list -> typed_term
 val make_nil : typ -> typed_term
@@ -91,7 +90,6 @@ val make_pcons : typed_pattern -> typed_pattern -> typed_pattern
 val make_imply : typed_term -> typed_term -> typed_term
 val none_flag : typed_term
 val some_flag : typed_term
-val opt_typ : typ -> typ
 val make_none : typ -> typed_term
 val make_some : typed_term -> typed_term
 val make_is_none : typed_term -> typed_term
@@ -100,8 +98,6 @@ val make_get_val : typed_term -> typed_term
 val make_tuple : typed_term list -> typed_term
 val make_tuple' : typed_term list -> typed_term
 val make_proj : int -> typed_term -> typed_term
-val make_ttuple : typ list -> typ
-val make_ttuple' : typ list -> typ
 val make_ref : typed_term -> typed_term
 val make_deref : typed_term -> typed_term
 val make_setref : typed_term -> typed_term -> typed_term
@@ -110,6 +106,13 @@ val make_record : (string * typed_term) list -> typed_term
 val make_trywith : typed_term -> id -> (typed_pattern * typed_term * typed_term) list -> typed_term
 val make_length : typed_term -> typed_term
 val new_var_of_term : typed_term -> id
+
+(** {6 Type constructor} *)
+val make_ttuple : typ list -> typ
+val make_ttuple' : typ list -> typ
+val make_tpair : typ -> typ -> typ
+val make_tfun : typ -> typ -> typ
+
 
 (** {6 Term destructor} *)
 val is_none : typed_term -> bool
@@ -126,6 +129,7 @@ val pair_of_term : typed_term -> typed_term * typed_term
 val tuple_of_term : typed_term -> typed_term list
 val list_of_term : typed_term -> typed_term list
 val get_opt_typ : typ -> typ
+val opt_typ : typ -> typ
 
 
 (** {6 Misc} *)

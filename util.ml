@@ -98,6 +98,9 @@ module Triple = struct
     | _ -> invalid_arg "Triple.of_list"
   let to_pair_r (x,y,z) = x, (y, z)
   let to_pair_l (x,y,z) = (x, y), z
+  let take12 (x,y,z) = x, y
+  let take13 (x,y,z) = x, z
+  let take23 (x,y,z) = y, z
   let print f g h ppf (x,y,w) = Format.fprintf ppf "@[(@[%a,@ %a,@ %a@])@]" f x g y h w
 end
 
@@ -146,6 +149,11 @@ module Option = struct
   let some x = Some x
   let iter = may
   let apply = map
+
+  let make check f x =
+    if check x
+    then Some (f x)
+    else None
 
   let to_list x =
     match x with
@@ -222,6 +230,7 @@ module List = struct
   let rev_map_flatten f xs = fold_left (fun acc x -> f x @@@ acc) [] xs
   let rev_flatten_map = rev_map_flatten
   let flatten_map f xs = rev @@ rev_map_flatten f xs
+  let flatten_mapi f xs = List.flatten @@ List.mapi f xs
   let rev_flatten xs = rev_map_flatten Std.identity xs
   let concat_map = flatten_map
 
@@ -402,6 +411,9 @@ module String = struct
 
   let count_line s =
     fold_left (fun n c -> if c = '\n' then n+1 else n) 0 s
+
+  let remove_char c s =
+    replace_chars (fun c' -> if c = c' then "" else of_char c') s
 end
 
 module Math = struct
