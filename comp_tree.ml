@@ -34,9 +34,9 @@ and print_label fm label =
   match label with
   | App(f,env,map) ->
       let pr fm (x,t) = Format.fprintf fm "%a := %a" Id.print x Print.term t in
-      Format.fprintf fm "%a, %a |- %a" print_fun_id f (List.print Id.print) env (List.print pr) map
+      Format.fprintf fm "App %a, %a |- %a" print_fun_id f (List.print Id.print) env (List.print pr) map
   | Let(f,env,t) ->
-      let pr fm (x,var_env,t) = Format.fprintf fm "%a%a := %a" Id.print x (List.print Id.print) var_env Print.term t in
+      let pr fm (x,var_env,t) = Format.fprintf fm "Let %a%a := %a" Id.print x (List.print Id.print) var_env Print.term t in
       Format.fprintf fm "%a" pr (f,env,t)
   | Assume t -> Format.fprintf fm "Assume %a" Print.term t
   | Spawn(f,tids) -> Format.fprintf fm "Spawn %a, %a" Id.print f (List.print @@ Pair.print Id.print print_tid) tids
