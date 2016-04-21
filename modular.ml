@@ -76,7 +76,7 @@ type constr =
   | Pred of id * typed_term list
 and type_template =
   | Var of id
-  | Arg of int * type_template
+  | TApp of type_template * typed_term list
   | PApp of type_template * typed_term list
   | Singleton of typed_term
   | Base of pred_var option
@@ -103,7 +103,7 @@ let rec print_constr fm = function
 
 and print_template fm = function
   | Var f -> Id.print fm f
-  | Arg(i, typ) -> Format.fprintf fm "#%d(%a)" i print_template typ
+  | TApp(typ, ts) -> Format.fprintf fm "%a%a" print_template typ (List.print Print.term) ts
   (*  | PApp(typ, []) -> print_template fm typ*)
   | PApp(typ, ts) -> Format.fprintf fm "%a%a" print_template typ (List.print Print.term) ts
   | Singleton t -> Format.fprintf fm "{%a}" Print.term t
@@ -160,17 +160,6 @@ let _Inter tmps =
   | [tmp] -> tmp
   | _ -> Inter tmps
 
-let rec add_bind f map typ =
-  match typ with
-  | Var g -> if Id.same f g then _PApp typ map else typ
-  | Arg(i, typ) -> Arg(i, add_bind f map typ)
-  | PApp(typ1, map1) -> _PApp (add_bind f map typ1) map1
-  | Singleton _ -> typ
-  | _ -> assert false
-let add_bind f map typ =
-  let map' = List.filter_out (is_fun_typ -| Id.typ) map in
-  add_bind f (List.map make_var map') typ
-
 let rec apply f = function
   | Exp t -> Exp t
   | And(c1,c2) -> And(apply f c1, apply f c2)
@@ -181,8 +170,8 @@ let apply = ()
 
 let rec get_fv_typ = function
   | Var f -> [f]
-  | Arg(_,  typ) -> get_fv_typ typ
-  | PApp(typ, _) -> get_fv_typ typ
+  | TApp(typ, ts) -> get_fv_typ typ @ List.flatten_map Syntax.get_fv ts
+  | PApp(typ, ts) -> get_fv_typ typ @ List.flatten_map Syntax.get_fv ts
   | Singleton t -> Syntax.get_fv t
   | Base _ -> []
   | Fun(x,typ1,typ2) -> List.filter_out (Id.same x) @@ (get_fv_typ typ1 @ get_fv_typ typ2)
@@ -266,7 +255,7 @@ let rec subst_template x t tmp =
   let sbst = subst_template x t in
   match tmp with
   | Var _ -> tmp
-  | Arg(i, tmp') -> Arg(i, sbst tmp')
+  | TApp(tmp', ts) -> TApp(sbst tmp', List.map (Term_util.subst x t) ts)
   | PApp(tmp', ts) -> PApp(sbst tmp', List.map (Term_util.subst x t) ts)
   | Singleton t' -> Singleton (Term_util.subst x t t')
   | Base _ -> tmp
@@ -290,15 +279,16 @@ let rec inline_sub templates typ1 typ2 =
   | Singleton t, _ -> constr_of_typ @@ _PApp typ2 [t]
   | Base None, Base None -> Exp true_term
   | PApp(Base(Some p1), ts1), PApp(Base(Some p2), ts2) ->
+      (*
       let xs = List.filter_map (function ((x,_), Base (Some p)) when p=p1 -> Some x | _ -> None) templates in
       constr_of_typ @@ _PApp typ2 [make_var @@ List.get xs]
-  | Arg _, _ -> assert false
-  | _, Arg _ -> assert false
+       *)
+      _Imply [constr_of_typ @@ _PApp typ1 [pred_var_term]] @@ constr_of_typ @@ _PApp typ2 [pred_var_term]
   | Fun(_, (Fun _ as typ11), typ12), Fun(_, (Fun _ as typ21), typ22) ->
       _And (inline_sub templates typ21 typ11) (inline_sub templates typ12 typ22)
   | Fun(x1,typ11,typ12), Fun(x2,typ21,typ22) ->
-      let c1 = inline_sub templates typ21 typ11 in
-      let c2 = subst_constr pred_var (make_var x2) @@ constr_of_typ typ21 in
+      let c1 = subst_constr x1 (make_var x2) @@ inline_sub templates typ21 typ11 in
+      let c2 = constr_of_typ typ21 in
       let c3 = subst_constr x1 (make_var x2) @@ inline_sub templates typ12 typ22 in
       _And c1 @@ _Imply [c2] c3
   | _ ->
@@ -336,15 +326,17 @@ let rec normalize_type templates typ =
         | Inter typs -> Inter (List.map (fun typ' -> nt @@ PApp(typ',ts)) typs)
         | typ' -> PApp(typ', ts)
       end
-  | Arg(i, typ) ->
+  | TApp(typ, ts) ->
       begin
         match nt typ with
         | Fun(x, typ1, typ2) ->
-            if i = 0
-            then typ1
-            else nt @@ Arg(i-1, PApp(typ2, [make_var x]))
+            begin
+              match ts with
+              | [] -> typ1
+              | t::ts' -> nt @@ subst_template x t @@ TApp(PApp(typ2, [t]), ts')
+            end
         | Inter typs ->
-            Inter (List.map (fun typ -> Arg(i, typ)) typs)
+            Inter (List.map (fun typ -> nt @@ TApp(typ, ts)) typs)
         | typ' ->
             Format.printf "  typ: %a@." print_template typ';
             assert false
@@ -365,16 +357,19 @@ let in_comp_tree ct nid =
 
 let make_sub_flag = ref true (* for debug *)
 
-let make_sub ct nid templates typ1 typ2 =
+let make_sub ct templates typ1 typ2 =
   let templates' = List.filter (fst |- snd |- Option.for_all (in_comp_tree ct)) templates in
-  if !!debug then Format.printf "  typ1: %a@." print_template typ1;
-  if !!debug then Format.printf "  typ2: %a@." print_template typ2;
+  if !!debug then Format.printf "  make_sub: typ1: %a@." print_template typ1;
+  if !!debug then Format.printf "  make_sub: typ2: %a@." print_template typ2;
   if !make_sub_flag then
 (*    match typ1 with
     | Var x when not @@ is_fun_typ @@ Id.typ x -> constr_of_typ @@ normalize_type templates' @@ PApp(typ2, [make_var x])
     | PApp(Var x, ts) when not @@ is_fun_typ @@ Id.typ x -> constr_of_typ @@ normalize_type templates' @@ PApp(typ2, make_var x::ts)
     | _ ->*)
-    inline_sub templates' (normalize_type templates' typ1) (normalize_type templates' typ2)
+    let r = inline_sub templates' (normalize_type templates' typ1) (normalize_type templates' typ2) in
+    if !!debug then Format.printf "  make_sub: %a@." print_constr (Sub(typ1,typ2));
+    if !!debug then Format.printf "      ===>: %a@." print_constr r;
+    r
   else
     Sub(typ1,typ2)
 
@@ -386,8 +381,8 @@ let filter_assumption env assumption =
   in
   List.filter check assumption
 
-let rec generate_constraints templates vars var_env assumption (Rose_tree.Node((nid,label), children) as ct) =
-  let dbg = 0=1 in
+let rec generate_constraints templates vars var_env assumption (Rose_tree.Node((_,label), children) as ct) =
+  let dbg = 0=0 in
   let open Comp_tree in
   let r =
   let constr vs env asm = List.flatten_map (generate_constraints templates vs env asm) children in
@@ -400,17 +395,17 @@ let rec generate_constraints templates vars var_env assumption (Rose_tree.Node((
           else
             let env' = x::env in
             let cmp (x1,id1) (x2,id2) = Id.same x1 x2 && id1 = id2 in
-            let asm = constr_of_typ @@ PApp(List.assoc ~cmp (x,None) templates, List.map make_var env') in
-            acc @ [asm], env'
+            let asm1 = constr_of_typ @@ PApp(List.assoc ~cmp (x,None) templates, List.map make_var env') in
+            let asm2 = Exp (make_eq (make_var x) v) in
+            acc @ [asm1; asm2], env'
         in
         let base_vars = List.filter_out (is_fun_typ -| Id.typ) vars' in
         fst @@ List.fold_left aux (assumption, base_vars) map
       in
-      let vars'' = List.rev_map fst map @ vars' in
       let _,var_env' = List.fold_left (fun (vs,env) (x,_) -> x::vs, (x,vs)::env) (vars',var_env) map in
       let constr1 =
-        let _,_,constrs =
-          let aux (i,env,typs) (_,t) =
+        let _,constrs =
+          let aux (env,typs) (_,t) =
             let env' =
               if is_fun_typ t.typ
               then env
@@ -427,37 +422,34 @@ let rec generate_constraints templates vars var_env assumption (Rose_tree.Node((
               let typ2 =
                 let args = List.filter_map (Option.make (not -| is_fun_typ -| Id.typ) make_var) vars' in
                 if dbg then Format.printf "      args: %a@." (List.print Print.term) args;
-                PApp(Arg(i, Var f), args)
+                PApp(TApp(Var f, env), args)
               in
               if dbg then Format.printf "      env: %a@." (List.print Print.term) env;
-              if dbg then Format.printf "      typ1: %a@." print_template typ1;
-              if dbg then Format.printf "      typ2: %a@." print_template typ2;
-              make_sub ct nid templates typ1 typ2
+              if dbg then Format.printf "      gt: typ1: %a@." print_template typ1;
+              if dbg then Format.printf "      gt: typ2: %a@." print_template typ2;
+              make_sub ct templates typ1 typ2
             in
             if dbg then Format.printf "    constr: %a@."print_constr constr;
-            i+1, env', constr::typs
+            env', constr::typs
           in
-          List.fold_left aux (0,[],[]) map
+          List.fold_left aux ([],[]) map
         in
         let asm = filter_assumption vars assumption in
         if dbg then Format.printf "  asm: %a@." (List.print print_constr) asm;
         if dbg then Format.printf "  assumption: %a@." (List.print print_constr) assumption;
         if dbg then Format.printf "  assumption': %a@." (List.print print_constr) assumption';
-        if dbg then Format.printf "  vars: %a@." (List.print Id.print) vars;
-        if dbg then Format.printf "  vars': %a@." (List.print Id.print) vars';
-        if dbg then Format.printf "  vars'': %a@.@." (List.print Id.print) vars'';
         List.map (_Imply asm) constrs
       in
-      let constr2 =
-        match kind with
-        | Local
-        | Thread _ -> constr vars'' var_env' assumption'
-        | TopLevel -> List.flatten_map (generate_constraints templates vars'' var_env' assumption') children
-      in
-      constr1 @ constr2
+      let vars'' = List.rev_map fst map @ vars' in
+      if dbg then Format.printf "  vars: %a@." (List.print Id.print) vars;
+      if dbg then Format.printf "  vars': %a@." (List.print Id.print) vars';
+      if dbg then Format.printf "  vars'': %a@.@." (List.print Id.print) vars'';
+      constr1 @ constr vars'' var_env' assumption'
   | Let(f, vars', t) ->
+(*
       if dbg then Format.printf "  vars: %a@." (List.print Id.print) vars;
       if dbg then Format.printf "  vars': %a@.@." (List.print Id.print) vars';
+ *)
       assert (List.for_all2 Id.same vars vars');
       constr vars ((f,vars')::var_env) assumption
   | Spawn(f, tids) ->
@@ -466,7 +458,7 @@ let rec generate_constraints templates vars var_env assumption (Rose_tree.Node((
       let constrs1 =
         if true
         then []
-        else List.map (fun (g,tid) -> _Imply asm @@ make_sub ct nid templates (app @@ Var f) (app @@ Var g)) tids
+        else List.map (fun (g,tid) -> _Imply asm @@ make_sub ct templates (app @@ Var f) (app @@ Var g)) tids
       in
       constrs1 @ constr vars var_env assumption
   | Assume t ->
@@ -484,7 +476,7 @@ let rec generate_constraints templates vars var_env assumption (Rose_tree.Node((
 let generate_constraints xs templates ct =
   let env = List.map (fun x -> x, []) xs in
   let constr = List.map (fun x -> constr_of_typ (normalize_type templates @@ PApp(Var x, [make_var pred_var]))) xs in
-  (*constr @*) generate_constraints templates [] env [] ct
+  constr @ generate_constraints templates [] env [] ct
 
 
 
@@ -665,7 +657,7 @@ let rec make_template cnt (Rose_tree.Node((nid,label), children)) =
       in
       let arg_templates =
         let xtyps,_ =  decomp_tfun typ in
-        List.map2 (fun (_,typ) (x,_) -> (x,None), typ) xtyps map
+        List.filter_map2 (fun (_,typ) (x,_) -> if is_fun_typ @@ Id.typ x then None else Some ((x,None),typ)) xtyps map
       in
       ((f,Some nid), _Inter typs)::arg_templates@templates2
   | Let(f, var_env, t) ->
@@ -860,7 +852,7 @@ let infer spec parsed ce_set =
   let ce_set =
     let aux =
       match !Flag.filename with
-      | "test.ml" when 9=9 -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [1;0]] | _ -> assert false)
+      | "test.ml" when 9=9 -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]] | _ -> assert false)
       | "test.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]; f, [1;0]] | _ -> assert false)
       | "test2.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "fsum" -> [f, [0]; f, [1;0]] | "double" -> [f, [0]; f, [1;0]] | _ -> assert false)
       | "test3.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "apply" -> [f, []] | "double" -> [f, []] | _ -> assert false)
@@ -882,6 +874,7 @@ let infer spec parsed ce_set =
   Format.printf "CONSTR2: @[%a@.@." (List.print print_constr) constrs;
   let hc = List.flatten_map to_horn_clause constrs in
   Format.printf "HORN CLAUSES: @[%a@.@." print_horn_clauses hc;
+  Format.fprintf (Format.formatter_of_out_channel @@ open_out "test.hcs") "%a@." print_horn_clauses hc;
   (*
   let constr = inline_template templates constr in
   Format.printf "CONSTR2: @[%a@.@." print_constr constr;
