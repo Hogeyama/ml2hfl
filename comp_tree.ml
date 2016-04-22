@@ -8,7 +8,7 @@ module RT = Rose_tree
 let debug () = List.mem "Comp_tree" !Flag.debug_module
 
 type label =
-  | App of fun_id * id list * (id * typed_term) list
+  | App of fun_id * bool * id list * (id * typed_term) list
   | Let of id * id list * typed_term
   | Assume of typed_term
   | Spawn of id * (id * tid) list
@@ -32,9 +32,10 @@ let rec print_fun_id fm (f, kind) =
 and print_tid = Format.pp_print_int
 and print_label fm label =
   match label with
-  | App(f,env,map) ->
+  | App(f,local,env,map) ->
       let pr fm (x,t) = Format.fprintf fm "%a := %a" Id.print x Print.term t in
-      Format.fprintf fm "App %a, %a |- %a" print_fun_id f (List.print Id.print) env (List.print pr) map
+      let s = if local then "L" else "" in
+      Format.fprintf fm "App%s %a, %a |- %a" s print_fun_id f (List.print Id.print) env (List.print pr) map
   | Let(f,env,t) ->
       let pr fm (x,var_env,t) = Format.fprintf fm "Let %a%a := %a" Id.print x (List.print Id.print) var_env Print.term t in
       Format.fprintf fm "%a" pr (f,env,t)
@@ -87,7 +88,7 @@ let normalize_val_env x env ys t =
   let t'' = make_app t' @@ List.map make_var ws in
   x, (env, (ys@zs@ws, t''))
 
-let rec from_term cnt fun_env var_env val_env ce_set ce_env t : t list =
+let rec from_term cnt fun_env var_env val_env ce_set ce_env local t : t list =
   let f = if !!debug then fun f -> print_begin_end f else (!!) in
   f (fun () ->
   let nid = Counter.gen cnt in
@@ -124,7 +125,8 @@ let rec from_term cnt fun_env var_env val_env ce_set ce_env t : t list =
           in
           f, kind
         in
-        [RT.Node((nid, App(fun_id, var_env', arg_map')), from_term cnt fun_env var_env'' val_env' ce_set ce_env t_f')]
+        let label = App(fun_id, Id.mem f local, var_env', arg_map') in
+        [RT.Node((nid, label), from_term cnt fun_env var_env'' val_env' ce_set ce_env local t_f')]
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env ->
       if !!debug then Format.printf "[APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
@@ -139,14 +141,14 @@ let rec from_term cnt fun_env var_env val_env ce_set ce_env t : t list =
         let t' = make_app (add_id tid @@ make_var f') ts in
         let val_env' = normalize_val_env f' var_env' ys t_f''::val_env in
         let ce_env' = (tid,(i,path))::ce_env in
-        from_term cnt fun_env var_env' val_env' ce_set ce_env' t'
+        from_term cnt fun_env var_env' val_env' ce_set ce_env' local t'
       in
       let paths = List.assoc_all ~cmp:Id.eq f ce_set in
       let children = List.flatten_mapi aux paths in
       let tids =
         let get_thread (Rose_tree.Node((_,label),_)) =
           match label with
-          | App((g, Thread(tid,_)), _, _) -> g, tid
+          | App((g, Thread(tid,_)), _, _, _) -> g, tid
           | _ -> assert false
         in
         List.map get_thread children
@@ -166,16 +168,17 @@ let rec from_term cnt fun_env var_env val_env ce_set ce_env t : t list =
             let cond,t23 = if br = 0 then t1, t2 else make_not t1, t3 in
             let ce_env'' = (tid,(i,ce'))::ce_env' in
             if !!debug then Format.printf "[t23: %a@\n" Print.term t23;
-            [RT.Node((nid, Assume cond), from_term cnt fun_env var_env val_env ce_set ce_env'' t23)]
+            [RT.Node((nid, Assume cond), from_term cnt fun_env var_env val_env ce_set ce_env'' local t23)]
       end
   | Let(flag, [f,xs,t1], t2) ->
       let val_env' = normalize_val_env f var_env xs t1::val_env in
-      [RT.Node((nid, Let(f, var_env, make_funs xs t1)), from_term cnt fun_env var_env val_env' ce_set ce_env t2)]
+      let local' = f::local in
+      [RT.Node((nid, Let(f, var_env, make_funs xs t1)), from_term cnt fun_env var_env val_env' ce_set ce_env local' t2)]
   | _ ->
       if !!debug then Format.printf "%a@." Print.term t;
       unsupported "Comp_tree.from_term"
   )
-let from_term fun_env ce_set t = from_term (Counter.create()) fun_env [] [] ce_set [] t
+let from_term fun_env ce_set t = from_term (Counter.create()) fun_env [] [] ce_set [] [] t
 
 
 
