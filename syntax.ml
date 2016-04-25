@@ -30,6 +30,7 @@ and attr =
   | ADeterministic
   | AComment of string
   | AId of int
+  | AMark
 
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and term =

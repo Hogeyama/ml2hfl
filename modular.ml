@@ -103,7 +103,7 @@ let rec print_constr fm = function
 
 and print_template fm = function
   | Var f -> Id.print fm f
-  | Arg(typ, ts) -> Format.fprintf fm "%a@%a" print_template typ (List.print Print.term) ts
+  | Arg(typ, ts) -> Format.fprintf fm "%a(%a)" print_template typ (print_list Print.term ",") ts
   (*  | PApp(typ, []) -> print_template fm typ*)
   | PApp(typ, ts) -> Format.fprintf fm "%a%a" print_template typ (List.print Print.term) ts
   | Singleton t -> Format.fprintf fm "{%a}" Print.term t
@@ -113,6 +113,10 @@ and print_template fm = function
   | Fun(x, tmp1, tmp2) -> Format.fprintf fm "(@[<hov 2>%a:%a ->@ %a@])" Id.print x print_template tmp1 print_template tmp2
   | Inter [] -> Format.fprintf fm "T"
   | Inter tmps -> Format.fprintf fm "(@[%a@])" (print_list print_template " /\\@ ") tmps
+
+let __PApp loc (typ,ts) =
+  if List.exists (is_fun_typ -| Syntax.typ) ts then failwith loc;
+  PApp(typ,ts)
 
 let print_horn_clause fm (pre,constr) =
   let pr_aux fm t =
@@ -213,36 +217,6 @@ let rec subst_constr x t constr =
   | Sub(tmp1, tmp2) -> Sub(subst_template x t tmp1, subst_template x t tmp2)
   | Pred _ -> assert false
 
-let rec inline_sub templates typ1 typ2 =
-  let dbg = true in
-  let r =
-  match typ1,typ2 with
-  | _, Inter typs -> _Ands @@ List.map (inline_sub templates typ1) typs
-  | Singleton t, _ -> constr_of_typ @@ _PApp typ2 [t]
-  | Base None, Base None -> Exp true_term
-  | PApp(Base(Some p1), ts1), PApp(Base(Some p2), ts2) ->
-      (*
-      let xs = List.filter_map (function ((x,_), Base (Some p)) when p=p1 -> Some x | _ -> None) templates in
-      constr_of_typ @@ _PApp typ2 [make_var @@ List.get xs]
-       *)
-      _Imply [constr_of_typ @@ _PApp typ1 [pred_var_term]] @@ constr_of_typ @@ _PApp typ2 [pred_var_term]
-  | Fun(_, (Fun _ as typ11), typ12), Fun(_, (Fun _ as typ21), typ22) ->
-      _And (inline_sub templates typ21 typ11) (inline_sub templates typ12 typ22)
-  | Fun(x1,typ11,typ12), Fun(x2,typ21,typ22) ->
-      let c1 = subst_constr x1 (make_var x2) @@ inline_sub templates typ21 typ11 in
-      let c2 = constr_of_typ typ21 in
-      let c3 = subst_constr x1 (make_var x2) @@ inline_sub templates typ12 typ22 in
-      _And c1 @@ _Imply [c2] c3
-  | _ ->
-      Format.printf "  typ1: %a@." print_template typ1;
-      Format.printf "  typ2: %a@." print_template typ2;
-      assert false
-  in
-  if !!debug then Format.printf "    typ1: %a@." print_template typ1;
-  if !!debug then Format.printf "    typ2: %a@." print_template typ2;
-  if !!debug then Format.printf "    r: %a@.@." print_constr r;
-  r
-
 let rec normalize_type templates typ =
   let nt typ' = normalize_type templates typ' in
   match typ with
@@ -275,7 +249,13 @@ let rec normalize_type templates typ =
             begin
               match ts with
               | [] -> typ1
-              | t::ts' -> nt @@ subst_template x t @@ Arg(PApp(typ2, [t]), ts')
+              | t::ts' ->
+                  let typ2' =
+                    if is_fun_typ t.typ
+                    then typ2
+                    else PApp(typ2, [t])
+                  in
+                  nt @@ subst_template x t @@ Arg(typ2', ts')
             end
         | Inter typs ->
             Inter (List.map (fun typ -> nt @@ Arg(typ, ts)) typs)
@@ -285,6 +265,47 @@ let rec normalize_type templates typ =
       end
   | Fun(x, typ1, typ2) -> Fun(x, nt typ1, nt typ2)
   | Inter typs -> Inter (List.map nt typs)
+
+let rec inline_sub templates typ1 typ2 =
+  let dbg = true in
+  let r =
+  match typ1,typ2 with
+  | Inter typs1, Inter typs2 -> _Ands @@ List.map2 (inline_sub templates) typs1 typs2
+(*
+  | _, Inter typs ->
+      if true
+      then inline_sub templates typ1 @@ List.hd typs
+      else _Ands @@ List.map (inline_sub templates typ1) typs
+ *)
+  | Singleton t, _ -> constr_of_typ @@ _PApp typ2 [t]
+  | Base None, Base None -> Exp true_term
+  | PApp(Base(Some p1), ts1), PApp(Base(Some p2), ts2) ->
+      (*
+      let xs = List.filter_map (function ((x,_), Base (Some p)) when p=p1 -> Some x | _ -> None) templates in
+      constr_of_typ @@ _PApp typ2 [make_var @@ List.get xs]
+       *)
+      _Imply [constr_of_typ @@ _PApp typ1 [pred_var_term]] @@ constr_of_typ @@ _PApp typ2 [pred_var_term]
+  | Fun(_, (Fun _ as typ11), typ12), Fun(_, (Fun _ as typ21), typ22) ->
+      _And (inline_sub templates typ21 typ11) (inline_sub templates typ12 typ22)
+  | Fun(x1,typ11,typ12), Fun(x2,typ21,typ22) ->
+      let c1 = subst_constr x1 (make_var x2) @@ inline_sub templates typ21 typ11 in
+      let app typ =
+        if is_fun_typ @@ Id.typ x2
+        then typ
+        else normalize_type [] @@ _PApp typ [make_var x2]
+      in
+      let c2 = constr_of_typ @@ app typ21 in
+      let c3 = subst_constr x1 (make_var x2) @@ inline_sub templates (app typ12) (app typ22) in
+      _And c1 @@ _Imply [c2] c3
+  | _ ->
+      Format.printf "  typ1: %a@." print_template typ1;
+      Format.printf "  typ2: %a@." print_template typ2;
+      assert false
+  in
+  if !!debug then Format.printf "    typ1: %a@." print_template typ1;
+  if !!debug then Format.printf "    typ2: %a@." print_template typ2;
+  if !!debug then Format.printf "    r: %a@.@." print_constr r;
+  r
 
 let inline_sub templates typ1 typ2 =
   if !!debug then Format.printf "  typ1: %a@." print_template typ1;
@@ -297,6 +318,11 @@ let in_comp_tree ct nid =
   List.exists (fst |- (=) nid) @@ Rose_tree.flatten ct
 
 
+let hd_of_inter typ =
+  match typ with
+  | Inter typs -> List.hd typs
+  | _ -> typ
+
 let make_sub_flag = ref true (* for debug *)
 
 let make_sub ct templates typ1 typ2 =
@@ -308,8 +334,11 @@ let make_sub ct templates typ1 typ2 =
     | Var x when not @@ is_fun_typ @@ Id.typ x -> constr_of_typ @@ normalize_type templates' @@ PApp(typ2, [make_var x])
     | PApp(Var x, ts) when not @@ is_fun_typ @@ Id.typ x -> constr_of_typ @@ normalize_type templates' @@ PApp(typ2, make_var x::ts)
     | _ ->*)
-    let r = inline_sub templates' (normalize_type templates' typ1) (normalize_type templates' typ2) in
+    let typ1' = normalize_type templates' typ1 in
+    let typ2' = normalize_type templates' typ2 in
+    let r = inline_sub templates' typ1' typ2' in
     if !!debug then Format.printf "  make_sub: %a@." print_constr (Sub(typ1,typ2));
+    if !!debug then Format.printf "  make_sub: %a@." print_constr (Sub(typ1',typ2'));
     if !!debug then Format.printf "      ===>: %a@." print_constr r;
     r
   else
@@ -458,16 +487,12 @@ let rec make_template cnt (Rose_tree.Node((nid,label), children)) =
             let aux' (x,t) tmp2 =
               let tmp1 =
                 if is_fun_typ @@ Id.typ x then
-                  let tmp = (****)
-                    templates
-                    |> List.filter (Id.same x -| fst -| fst)
-                    |> List.map (Pair.map_fst fst)
-                    |> List.sort
-                    |> List.map snd
-                  in
-                  match tmp with
-                  | [] -> Inter []
-                  | typ::_ -> typ
+                  templates
+                  |> List.filter (Id.same x -| fst -| fst)
+                  |> List.map (Pair.map_fst fst)
+                  |> List.sort
+                  |> List.map snd
+                  |> _Inter
                 else
                   new_pred cnt
               in
@@ -569,10 +594,10 @@ let infer spec parsed ce_set =
   let ce_set =
     let aux =
       match !Flag.filename with
-      | "test.ml" when 9=0 -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]] | _ -> assert false)
+      | "test.ml" when 9=9 -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]] | _ -> assert false)
       | "test.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]; f, [1;0]] | _ -> assert false)
       | "test2.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "fsum" -> [f, [0]; f, [1;0]] | "double" -> [f, [0]; f, [1;0]] | _ -> assert false)
-      | "test3.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "apply" -> [f, []] | "double" -> [f, []] | _ -> assert false)
+      | "test3.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [0;1]] | "apply" -> [f, []] | "double" -> [f, []] | _ -> assert false)
       | "test4.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "fsum" -> [f, [0]; f, [1;0]] | "double" -> [f, [0]; f, [1;0]] | _ -> assert false)
       | "test5.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | _ -> [f, [1]])
       | _ -> assert false

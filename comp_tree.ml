@@ -86,7 +86,12 @@ let normalize_val_env x env ys t =
     |> Option.default []
   in
   let t'' = make_app t' @@ List.map make_var ws in
-  x, (env, (ys@zs@ws, t''))
+  let t''' =
+    if ws = []
+    then t''
+    else (Format.printf "ADD:%a@." Print.term t'';add_attr AMark t'')
+  in
+  x, (env, (ys@zs@ws, t'''))
 
 let rec from_term cnt fun_env var_env val_env ce_set ce_env local t : t list =
   let f = if !!debug then fun f -> print_begin_end f else (!!) in
@@ -101,7 +106,7 @@ let rec from_term cnt fun_env var_env val_env ce_set ce_env local t : t list =
   | Not _
   | Fun _
   | Event _
-  | Bottom -> assert false(*[RT.leaf (Term t)]*)
+  | Bottom -> []
   | _ when is_fail t -> [RT.leaf (nid, Fail)]
   | App({desc=Var f} as t1, ts) when Id.mem_assoc f val_env ->
       if !!debug then Format.printf "[APP1: %a@\n" Print.term t;
@@ -125,7 +130,7 @@ let rec from_term cnt fun_env var_env val_env ce_set ce_env local t : t list =
           in
           f, kind
         in
-        let label = App(fun_id, Id.mem f local, var_env', arg_map') in
+        let label = App(fun_id, List.mem AMark t.attr, var_env', arg_map') in
         [RT.Node((nid, label), from_term cnt fun_env var_env'' val_env' ce_set ce_env local t_f')]
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env ->
       if !!debug then Format.printf "[APP2,%a@\n" Id.print f;
@@ -141,7 +146,8 @@ let rec from_term cnt fun_env var_env val_env ce_set ce_env local t : t list =
         let t' = make_app (add_id tid @@ make_var f') ts in
         let val_env' = normalize_val_env f' var_env' ys t_f''::val_env in
         let ce_env' = (tid,(i,path))::ce_env in
-        from_term cnt fun_env var_env' val_env' ce_set ce_env' local t'
+        let t'' = if List.mem AMark t.attr then add_attr AMark t' else t' in
+        from_term cnt fun_env var_env' val_env' ce_set ce_env' local t''
       in
       let paths = List.assoc_all ~cmp:Id.eq f ce_set in
       let children = List.flatten_mapi aux paths in
