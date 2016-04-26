@@ -188,11 +188,13 @@ let rec get_fv = function
   | Pred(x,ts) -> x :: List.flatten_map Syntax.get_fv ts
 
 
-let constr_of_typ typ =
+let rec constr_of_typ typ =
   match typ with
-  | PApp(Base(Some p1), ts1) ->
-      Format.printf "  constr_of_typ: ts1: %a@.@." (List.print Print.term) ts1;
-      Exp (make_app (make_var @@ make_pred_var p1 ts1) ts1)
+  | PApp(Base(Some p1), ts) ->
+      let ts' = List.filter_out (Syntax.typ |- is_fun_typ) ts in
+      Format.printf "  constr_of_typ: ts: %a@.@." (List.print Print.term) ts;
+      Exp (make_app (make_var @@ make_pred_var p1 ts') ts')
+  | Inter typs -> constr_of_typ @@ List.hd typs
   | _ ->
       Format.printf "  typ: %a@." print_template typ;
       assert false
@@ -268,27 +270,17 @@ let rec normalize_type templates typ =
   | Fun(x, typ1, typ2) -> Fun(x, nt typ1, nt typ2)
   | Inter typs -> Inter (List.map nt typs)
   in
-  Format.printf "NT: typ: %a@." print_template typ;
-  Format.printf "NT: r: %a@." print_template r;
+  if !!debug then Format.printf "NT: typ: %a@." print_template typ;
+  if !!debug then Format.printf "NT: r: %a@." print_template r;
   r
 let rec inline_sub templates typ1 typ2 =
   let _dbg = true in
   let r =
   match typ1,typ2 with
   | Inter typs1, Inter typs2 -> _Ands @@ List.map2 (inline_sub templates) typs1 typs2
-(*
-  | _, Inter typs ->
-      if true
-      then inline_sub templates typ1 @@ List.hd typs
-      else _Ands @@ List.map (inline_sub templates typ1) typs
- *)
   | Singleton t, _ -> constr_of_typ @@ _PApp typ2 [t]
   | Base None, Base None -> Exp true_term
   | PApp(Base(Some p1), ts1), PApp(Base(Some p2), ts2) ->
-      (*
-      let xs = List.filter_map (function ((x,_), Base (Some p)) when p=p1 -> Some x | _ -> None) templates in
-      constr_of_typ @@ _PApp typ2 [make_var @@ List.get xs]
-       *)
       _Imply [constr_of_typ @@ _PApp typ1 [pred_var_term]] @@ constr_of_typ @@ _PApp typ2 [pred_var_term]
   | Fun(_, (Fun _ as typ11), typ12), Fun(_, (Fun _ as typ21), typ22) ->
       _And (inline_sub templates typ21 typ11) (inline_sub templates typ12 typ22)
@@ -335,10 +327,6 @@ let make_sub ct templates typ1 typ2 =
   if !!debug then Format.printf "  make_sub: typ1: %a@." print_template typ1;
   if !!debug then Format.printf "  make_sub: typ2: %a@." print_template typ2;
   if !make_sub_flag then
-(*    match typ1 with
-    | Var x when not @@ is_fun_typ @@ Id.typ x -> constr_of_typ @@ normalize_type templates' @@ PApp(typ2, [make_var x])
-    | PApp(Var x, ts) when not @@ is_fun_typ @@ Id.typ x -> constr_of_typ @@ normalize_type templates' @@ PApp(typ2, make_var x::ts)
-    | _ ->*)
     let typ1' = normalize_type templates' typ1 in
     let typ2' = normalize_type templates' typ2 in
     let r = inline_sub templates' typ1' typ2' in
@@ -380,22 +368,14 @@ let rec generate_constraints templates var_env assumption (Rose_tree.Node((_,var
   let r =
   let constr env asm = List.flatten_map (generate_constraints templates env asm) children in
   match label with
-  | App((f, kind), local, vars', map) ->
+  | App((f, _), local, vars', map) ->
       let constr1 =
         let constrs =
           let aux (env,typs) (_,t) =
             let constr =
               if is_fun_typ t.typ
               then []
-              else
-                let typ2 =
-                  let args = List.filter_map (Option.make (not -| is_fun_typ -| Id.typ) make_var) vars in
-                  let args = [] in
-                  if dbg then Format.printf "      args: %a@." (List.print Print.term) args;
-                  PApp(Arg(Var f, env), args)
-                in
-                if dbg then Format.printf "    typ2: %a@." print_template typ2;
-                [constr_of_typ @@ normalize_type templates @@ PApp(typ2, [t])]
+              else [constr_of_typ @@ normalize_type templates @@ PApp(Arg(Var f, env), [t])]
             in
             if dbg then Format.printf "    constr: %a@." (List.print print_constr) constr;
             env@[t], constr@typs
@@ -610,7 +590,7 @@ let infer spec parsed ce_set =
   let ce_set =
     let aux =
       match !Flag.filename with
-      | "test.ml" when 9=9 -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]] | _ -> assert false)
+      | "test.ml" when 9=0 -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]] | _ -> assert false)
       | "test.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [0]; f, [1;0]] | _ -> assert false)
       | "test2.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [1]] | "fsum" -> [f, [0]; f, [1;0]] | "double" -> [f, [0]; f, [1;0]] | _ -> assert false)
       | "test3.ml" -> (fun (f,_) -> match Id.name f with "main" -> [f, [0;1]] | "apply" -> [f, []] | "double" -> [f, []] | _ -> assert false)
