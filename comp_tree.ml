@@ -77,21 +77,20 @@ let is_fail t =
   | App({desc=Event("fail",_)}, [_]) -> true
   | _ -> false
 
-let normalize_val_env x env ys t =
-  let zs,t' = decomp_funs t in
-  let ws =
-    t
-    |> decomp_var
-    |> Option.map (Id.typ |- decomp_tfun |- fst)
-    |> Option.default []
-  in
-  let t'' = make_app t' @@ List.map make_var ws in
-  let t''' =
-    if ws = []
-    then t''
-    else (Format.printf "ADD:%a@\n" Print.term t'';add_attr AMark t'')
-  in
-  x, (env, (ys@zs@ws, t'''))
+let add_val_env x env ys t var_env =
+  if not @@ is_fun_typ t.typ then
+    var_env
+  else
+    match t.desc with
+    | Var f when ys = [] ->
+        (try
+            (x, Id.assoc f var_env)::var_env
+  with _ ->
+    Format.printf "ADD: %a@." Id.print f;
+    assert false)
+  | _ ->
+      let zs,t' = decomp_funs t in
+      (x, (env, (ys@zs, t')))::var_env
 
 let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
   let f = if !!debug then fun f -> print_begin_end f else (!!) in
@@ -121,7 +120,7 @@ let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
         if !!debug then Format.printf "[APP1: %a, %d@\n" Print.term t_f (List.length ts);
         let t_f' = List.fold_right2 subst_var ys ys' t_f in
         let arg_map = List.combine ys' ts in
-        let _,val_env' = List.fold_left (fun (vs,env) (y,t) -> y::vs, normalize_val_env y vs [] t::env) (vars',val_env) arg_map in
+        let _,val_env' = List.fold_left (fun (vs,env) (y,t) -> y::vs, add_val_env y vs [] t env) (vars',val_env) arg_map in
         let vars'' = ys' @@@ vars' in
         let fun_id =
           let kind =
@@ -145,7 +144,7 @@ let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
         let t_f' = Trans.alpha_rename t_f in
         let t_f'' = add_tid (f',tid) @@ subst_var f f' t_f' in
         let t' = make_app (add_id tid @@ make_var f') ts in
-        let val_env' = normalize_val_env f' [] ys t_f''::val_env in
+        let val_env' = add_val_env f' [] ys t_f'' val_env in
         let ce_env' = (tid,(i,path))::ce_env in
         let t'' = if List.mem AMark t.attr then add_attr AMark t' else t' in
         from_term cnt fun_env vars val_env' ce_set ce_env' local t''
@@ -162,6 +161,7 @@ let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
       in
       [RT.Node((nid, vars, Spawn(f,tids)), children)]
   | App _ ->
+      Format.printf "[APP3: %a@\n" Print.term t;
       assert false
   | If(t1, t2, t3) ->
       let tid = get_tid t in
@@ -180,7 +180,7 @@ let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
   | Let(flag, [f,xs,t1], t2) ->
       if !!debug then Format.printf "[LET@\n";
       if !!debug then Format.printf "[APP2: vars: %a@\n" (List.print Id.print) vars;
-      let val_env' = normalize_val_env f vars xs t1::val_env in
+      let val_env' = add_val_env f vars xs t1 val_env in
       let local' = f::local in
       let vars' = f::vars in
       [RT.Node((nid, vars, Let(f, vars, make_funs xs t1)), from_term cnt fun_env vars' val_env' ce_set ce_env local' t2)]
