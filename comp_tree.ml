@@ -115,14 +115,13 @@ let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
       if !!debug then Format.printf "[APP1: vars': %a@\n" (List.print Id.print) vars;
       if ys = [] then
         (assert (Option.is_some @@ decomp_var t_f);
-         assert false(*
-         [RT.Node((depth, Term t), from_term fun_env vars val_env ce_set ce_env @@ make_app t_f ts)]*))
+         assert false)
       else
         let ys' = List.map Id.new_var_id ys in
         if !!debug then Format.printf "[APP1: %a, %d@\n" Print.term t_f (List.length ts);
         let t_f' = List.fold_right2 subst_var ys ys' t_f in
         let arg_map = List.combine ys' ts in
-        let val_env' = List.map (fun (y,t) -> normalize_val_env y vars [] t) arg_map @ val_env in
+        let _,val_env' = List.fold_left (fun (vs,env) (y,t) -> y::vs, normalize_val_env y vs [] t::env) (vars',val_env) arg_map in
         let vars'' = ys' @@@ vars' in
         let fun_id =
           let kind =
