@@ -450,14 +450,27 @@ module Ref = struct
     r
 end
 
-module Counter = struct
-  type t = int ref
+module Counter : sig
+  type t
+  val create : unit -> t
+  val peep : t -> int
+  val gen : t -> int
+  val reset : t -> unit
+  val stash : t -> unit
+  val pop : t -> unit
+end
+  =
+struct
+  type t = int ref * int list ref
 
   let init = 0
-  let create () : t = ref init
-  let peep (c:t) = !c
-  let gen (c:t) = incr c; !c
-  let reset (c:t) = c := init
+  let create () = ref init, ref []
+  let peep ((c,_)) = !c
+  let gen ((c,_)) = incr c; !c
+  let reset ((c,_)) = c := init
+
+  let stash (c,s as cnt) = s := !c::!s; reset cnt
+  let pop (c,s) = s := List.tl !s
 end
 
 module Combination = struct
