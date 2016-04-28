@@ -742,15 +742,28 @@ let trans_ce labeled {defs; main} ce =
 
 let eq_not t1 t2 = t1 = make_not t2 || make_not t1 = t2
 
+let rec has_rand t =
+  match t with
+  | Const (RandInt _) -> true
+  | Const RandBool -> true
+  | Const (RandVal _) -> true
+  | Const _ -> false
+  | Var _ -> false
+  | App(t1,t2) -> has_rand t1 || has_rand t2
+  | Let(_,t1,t2) -> has_rand t1 || has_rand t2
+  | Fun(_, _, t) -> has_rand t
+
+
 let rec simplify_if_term env t =
   match t with
   | Const c -> Const c
   | Var x -> Var x
   | App(App(App(Const If, t1), t2), t3) ->
+      let add_env t env = if has_rand t then env else t::env in
       let t1' = simplify_if_term env t1 in
       let t1'' = normalize_bool_term t1' in
-      let t2' = simplify_if_term (t1''::env) t2 in
-      let t3' = simplify_if_term (make_not t1''::env) t3 in
+      let t2' = simplify_if_term (add_env t1'' env) t2 in
+      let t3' = simplify_if_term (add_env (make_not t1'') env) t3 in
       let t1''',t2'',t3'' =
         match t1'' with
         | App(Const Not, t1''') -> t1''', t3', t2'
