@@ -77,20 +77,18 @@ let is_fail t =
   | App({desc=Event("fail",_)}, [_]) -> true
   | _ -> false
 
-let add_val_env x env ys t var_env =
-  if not @@ is_fun_typ t.typ then
-    var_env
+let add_val_env x env ys t val_env =
+  if not @@ is_fun_typ @@ Id.typ x then
+    val_env
   else
     match t.desc with
     | Var f when ys = [] ->
-        (try
-            (x, Id.assoc f var_env)::var_env
-  with _ ->
-    Format.printf "ADD: %a@." Id.print f;
-    assert false)
-  | _ ->
-      let zs,t' = decomp_funs t in
-      (x, (env, (ys@zs, t')))::var_env
+        (x, Id.assoc f val_env)::val_env
+    | _ ->
+        let zs,t' = decomp_funs t in
+        let val_env' =        (x, (env, (ys@zs, t')))::val_env in
+        assert (Id.mem_assoc x val_env');
+        val_env'
 
 let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
   let f = if !!debug then fun f -> print_begin_end f else (!!) in
@@ -130,7 +128,7 @@ let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
           in
           f, kind
         in
-        let label = App(fun_id, List.mem AMark t.attr, vars', arg_map) in
+        let label = App(fun_id, Id.mem f vars, vars', arg_map) in
         [RT.Node((nid, vars, label), from_term cnt fun_env vars'' val_env' ce_set ce_env local t_f')]
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env ->
       if !!debug then Format.printf "[APP2,%a@\n" Id.print f;
@@ -146,7 +144,7 @@ let rec from_term cnt fun_env vars val_env ce_set ce_env local t : t list =
         let t' = make_app (add_id tid @@ make_var f') ts in
         let val_env' = add_val_env f' [] ys t_f'' val_env in
         let ce_env' = (tid,(i,path))::ce_env in
-        let t'' = if List.mem AMark t.attr then add_attr AMark t' else t' in
+        let t'' = if Id.mem f vars then add_attr AMark t' else t' in
         from_term cnt fun_env vars val_env' ce_set ce_env' local t''
       in
       let paths = List.assoc_all ~cmp:Id.eq f ce_set in

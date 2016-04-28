@@ -894,5 +894,6 @@ let get_id_map t =
 let rec decomp_prog t =
   match t.desc with
   | Let(flag, bindings, t') ->
-      Pair.map_fst (List.cons (flag,bindings)) @@ decomp_prog t'
+      let defs,main = decomp_prog t' in
+      (flag,bindings)::defs, main
   | _ -> [], t
