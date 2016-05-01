@@ -282,7 +282,6 @@ let arg_spec =
      "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
      (* verifier *)
      "-modular", Arg.Set Flag.modular, " Modular verification";
-     "-it", Arg.Unit (fun _ -> Flag.cegar := Flag.CEGAR_InteractionType), " Interaction type based verifier";
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
      "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.comment_spec, " disable {SPEC} on comments";
