@@ -15,69 +15,160 @@ let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
 let merge_get_rtyp get_rtyp1 get_rtyp2 f typ = get_rtyp1 f (get_rtyp2 f typ)
 let (-||) = merge_get_rtyp
 
+
+type preprocess =
+  | Init
+  | Replace_const
+  | Encode_mutable_record
+  | Abst_ref
+  | Make_fun_tuple
+  | Make_ext_funs
+  | Copy_poly
+  | Ignore_non_termination
+  | Beta_reduce_trivial
+  | Recover_const_attr
+  | Decomp_pair_eq
+  | Add_preds
+  | Replace_fali_with_raise
+  | Encode_recdata
+  | Replace_base_with_int
+  | Encode_list
+  | Ret_fun
+  | Ref_trans
+  | Tupling
+  | Inline
+  | Cps
+  | Remove_pair
+  | Replace_bottom_def
+  | Add_cps_preds
+  | Eliminate_same_arguments
+  | Insert_unit_param
+  | Preprocessfortermination
+
+let last acc = snd @@ List.hd acc
+let last_t acc = fst @@ last acc
+let last_get_rtyp acc = snd @@ last acc
+let take_result l acc = fst @@ List.assoc l acc
+
+let preprocesses t spec =
+  [
+    Replace_const,
+    ("replace_const",
+     (fun _ -> !Flag.replace_const),
+     (fun acc -> CFA.replace_const @@ last_t acc, last_get_rtyp acc));
+    Encode_mutable_record,
+    ("encode_mutable_record",
+     Fun.const true,
+     (fun acc -> Trans.encode_mutable_record @@ last_t acc, last_get_rtyp acc));
+    Abst_ref,
+    ("abst_ref",
+     Fun.const true,
+     (fun acc -> Trans.abst_ref @@ last_t acc, last_get_rtyp acc));
+    Make_fun_tuple,
+    ("make_fun_tuple",
+     (fun _ -> !Flag.tupling),
+     (fun acc -> Ref_trans.make_fun_tuple @@ last_t acc, last_get_rtyp acc));
+    Make_ext_funs,
+    ("make_ext_funs",
+     Fun.const true,
+     (fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, last_get_rtyp acc));
+    Copy_poly,
+    ("copy_poly",
+     Fun.const true,
+     (fun acc -> Trans.copy_poly_funs @@ last_t acc, last_get_rtyp acc));
+    Ignore_non_termination,
+    ("ignore_non_termination",
+     (fun _ -> !Flag.ignore_non_termination),
+     (fun acc -> Trans.ignore_non_termination @@ last_t acc, last_get_rtyp acc));
+    Beta_reduce_trivial,
+    ("beta_reduce_trivial",
+     Fun.const true,
+     (fun acc -> Trans.beta_reduce_trivial @@ last_t acc, last_get_rtyp acc));
+    Recover_const_attr,
+    ("recover_const_attr",
+     Fun.const true,
+     (fun acc -> Trans.recover_const_attr @@ last_t acc, last_get_rtyp acc));
+    Decomp_pair_eq,
+    ("decomp_pair_eq",
+     Fun.const true,
+     (fun acc -> Trans.decomp_pair_eq @@ last_t acc, last_get_rtyp acc));
+    Add_preds,
+    ("add_preds",
+     (fun _ -> spec.Spec.abst_env <> []),
+     (fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, last_get_rtyp acc));
+    Replace_fali_with_raise,
+    ("replace_fali_with_raise",
+     (fun _ -> !Flag.fail_as_exception),
+     (fun acc -> Trans.replace_fail_with_raise @@ last_t acc, last_get_rtyp acc));
+    Encode_recdata,
+    ("encode_recdata",
+     Fun.const true,
+     (fun acc -> Encode_rec.trans @@ last_t acc, last_get_rtyp acc));
+    Replace_base_with_int,
+    ("replace_base_with_int",
+     (fun _ -> !Flag.base_to_int),
+     (fun acc -> Trans.replace_base_with_int @@ last_t acc, last_get_rtyp acc));
+    Encode_list,
+    ("encode_list",
+     Fun.const true,
+     (fun acc -> Encode_list.trans @@ last_t acc));
+    Ret_fun,
+    ("ret_fun",
+     (fun acc -> !Flag.tupling),
+     (fun acc -> Ret_fun.trans @@ last_t acc));
+    Ref_trans,
+    ("ref_trans",
+     (fun _ -> !Flag.tupling),
+     (fun acc -> Ref_trans.trans @@ last_t acc));
+    Tupling,
+    ("tupling",
+     (fun _ -> !Flag.tupling),
+     (fun acc -> Tupling.trans @@ last_t acc));
+    Inline,
+    ("inline",
+     Fun.const true,
+     (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, last_get_rtyp acc));
+    Cps,
+    ("CPS",
+     (fun _ -> !Flag.trans_to_CPS),
+     (fun acc -> CPS.trans @@ last_t acc));
+    Remove_pair,
+    ("remove_pair",
+     (fun _ -> !Flag.trans_to_CPS),
+     (fun acc -> Curry.remove_pair @@ last_t acc));
+    Replace_bottom_def,
+    ("replace_bottom_def",
+     Fun.const true,
+     (fun acc -> Trans.replace_bottom_def @@ last_t acc, last_get_rtyp acc));
+    Add_preds,
+    ("add_preds",
+     (fun _ -> spec.Spec.abst_cps_env <> []),
+     (fun acc -> Trans.replace_typ (Spec.get_abst_cps_env spec @@ last_t acc) @@ last_t acc, last_get_rtyp acc));
+    Eliminate_same_arguments,
+    ("eliminate same arguments",
+     (fun _ -> !Flag.elim_same_arg),
+     (fun acc -> Elim_same_arg.trans @@ last_t acc, last_get_rtyp acc));
+    Insert_unit_param,
+    ("insert unit param",
+     (fun _ -> !Flag.insert_param_funarg),
+     (fun acc -> Trans.insert_param_funarg @@ last_t acc, last_get_rtyp acc));
+    Preprocessfortermination,
+    ("preprocessForTermination",
+     (fun _ -> !Flag.mode = Flag.Termination),
+     (fun acc -> !BRA_types.preprocessForTerminationVerification @@ last_t acc, last_get_rtyp acc));
+  ]
+
+
 let preprocess t spec =
-  let fun_list,t,get_rtyp =
-    if !Flag.init_trans
-    then
-      let t = t |&!Flag.replace_const&> trans_and_print CFA.replace_const "replace_const" Fun.id in
-      let t = trans_and_print Trans.encode_mutable_record "encode_mutable_record" Fun.id t in
-      let t = trans_and_print Trans.abst_ref "abst_ref" Fun.id t in
-      let t = t |&!Flag.tupling&> trans_and_print Ref_trans.make_fun_tuple "make_fun_tuple" Fun.id in
-      let ext_ref_env = Spec.get_ext_ref_env spec t |@not!Flag.only_result&> Spec.print_ext_ref_env Format.std_formatter in
-      let t = trans_and_print (Trans.make_ext_funs ext_ref_env) "make_ext_funs" Fun.id t in
-      let t = trans_and_print Trans.copy_poly_funs "copy_poly" Fun.id t in
-      let t = t |&!Flag.ignore_non_termination&> trans_and_print Trans.ignore_non_termination "ignore_non_termination" Fun.id in
-      let t = trans_and_print Trans.beta_reduce_trivial "beta_reduce_trivial" Fun.id t in
-      let t = trans_and_print Trans.recover_const_attr "recover_const_attr" Fun.id t in
-      let t = trans_and_print Trans.decomp_pair_eq "decomp_pair_eq" Fun.id t in
-      let fun_list = Term_util.get_top_funs t in
-      let abst_env = Spec.get_abst_env spec t |@not!Flag.only_result&> Spec.print_abst_env Format.std_formatter in
-      let t = trans_and_print (Trans.replace_typ abst_env) "add_preds" Fun.id ~pr:Print.term' ~opt:(spec.Spec.abst_env<>[]) t in
-      let t = t |&!Flag.fail_as_exception&> trans_and_print Trans.replace_fail_with_raise "replace_fali_with_raise" Fun.id in
-      let t = trans_and_print Encode_rec.trans "encode_recdata" Fun.id t in
-      let t = t |&!Flag.base_to_int&> trans_and_print Trans.replace_base_with_int "replace_base_with_int" Fun.id in
-      let t,get_rtyp_list = trans_and_print Encode_list.trans "encode_list" fst t in
-      let get_rtyp = get_rtyp_list in
-      let t,get_rtyp =
-        if !Flag.tupling
-        then
-          let t,get_rtyp_ret_fun = trans_and_print Ret_fun.trans "ret_fun" fst t in
-          let t,get_rtyp_ref_trans = trans_and_print Ref_trans.trans "ref_trans" fst t in
-          let t,get_rtyp_tupling = trans_and_print Tupling.trans "tupling" fst t in
-          t, get_rtyp -|| get_rtyp_ret_fun -|| get_rtyp_ref_trans -|| get_rtyp_tupling
-        else
-          t, get_rtyp
-      in
-      let inlined_f = Spec.get_inlined_f spec t in
-      let t = trans_and_print (Trans.inlined_f inlined_f) "inline" Fun.id t in
-      let t,get_rtyp =
-        if !Flag.trans_to_CPS
-        then
-          let t,get_rtyp_cps_trans = trans_and_print CPS.trans "CPS" fst ~pr:Print.term t in
-          let get_rtyp = get_rtyp -|| get_rtyp_cps_trans in
-          let t,get_rtyp_remove_pair = trans_and_print Curry.remove_pair "remove_pair" fst ~pr:Print.term t in
-          let get_rtyp = get_rtyp -|| get_rtyp_remove_pair in
-          t, get_rtyp
-        else
-          t, get_rtyp
-      in
-      let t = trans_and_print Trans.replace_bottom_def "replace_bottom_def" Fun.id ~pr:Print.term t in
-      let abst_cps_env = Spec.get_abst_cps_env spec t |@not!Flag.only_result&> Spec.print_abst_cps_env Format.std_formatter in
-      let t = trans_and_print (Trans.replace_typ abst_cps_env) "add_preds" Fun.id ~opt:(spec.Spec.abst_cps_env<>[]) t in
-      let t = t |&!Flag.elim_same_arg&> trans_and_print Elim_same_arg.trans "eliminate same arguments" Fun.id in
-      let t = t |&!Flag.insert_param_funarg&> trans_and_print Trans.insert_param_funarg "insert unit param" Fun.id in
-
-      (* preprocess for termination mode *)
-      let t =
-        match !Flag.mode with
-        | Flag.Termination -> !BRA_types.preprocessForTerminationVerification t
-        | _ -> t
-      in
-
-      fun_list, t, get_rtyp
-    else
-      Term_util.get_top_funs t, t, fun _ typ -> typ
+  let results =
+    let pps = preprocesses t spec in
+    let aux acc (label,(name,cond,f)) =
+      if cond acc then (label, f acc)::acc else acc
+    in
+    List.fold_left aux [Init, (t, fun _ typ -> typ)] pps
   in
+  let t,get_rtyp = last results in
+  let fun_list = Term_util.get_top_funs @@ take_result Decomp_pair_eq results in
 
   if !Flag.exp2 then
     begin
@@ -87,21 +178,10 @@ let preprocess t spec =
       close_out oc
     end;
 
-  (* ill-formed program *)
-  let _progWithExparam =
-    if !Flag.add_closure_exparam
-    then Some (Quadruple.fst @@ CEGAR_trans.trans_prog !ExtraParamInfer.withExparam)
-    else None
-  in
-  (**********************)
   let prog,map,rmap,get_rtyp_trans = CEGAR_trans.trans_prog (*~spec:abst_cegar_env*) t in
   let abst_cegar_env = Spec.get_abst_cegar_env spec prog |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter in
   let prog = CEGAR_trans.add_env abst_cegar_env prog in
-  let get_rtyp = get_rtyp -|| get_rtyp_trans in
-   (*
-    if !Flag.debug_level > 0 then Format.printf "[before]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) !Refine.progWithExparam;
-    if !Flag.debug_level > 0 then Format.printf "[after]***************@.    %a@." (CEGAR_util.print_prog_typ' [] []) prog;
-  *)
+  let get_rtyp' = get_rtyp -|| get_rtyp_trans in
 
   let info =
     let orig_fun_list =
@@ -113,10 +193,11 @@ let preprocess t spec =
       if !Flag.mode = Flag.FairNonTermination then
         Some spec.Spec.fairness
       else
-        None in
+        None
+    in
     {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
   in
-  prog, rmap, get_rtyp, info
+  prog, rmap, get_rtyp', info
 
 
 
