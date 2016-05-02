@@ -257,12 +257,13 @@ let report_safe env orig t0 =
 
 
 let report_unsafe main ce set_target =
-  if !Flag.mode = Flag.NonTermination || !Flag.ignore_non_termination
-  then
-    Color.printf Color.Bright "Unknown."
-  else
-    Color.printf Color.Bright "Unsafe!";
-  Format.printf "@.@.";
+  let s =
+    if !Flag.mode = Flag.NonTermination || !Flag.ignore_non_termination then
+      "Unknown."
+    else
+      "Unsafe!"
+  in
+  Color.printf Color.Bright "%s@.@." s;
   Option.may (fun (main_fun, arg_num) ->
               Format.printf "Input for %s:@.  %a@." main_fun
                             (print_list Format.pp_print_int "; ") (List.take arg_num ce)) main;
