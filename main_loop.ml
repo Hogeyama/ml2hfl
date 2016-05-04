@@ -183,7 +183,7 @@ let preprocess t spec =
       close_out oc
     end;
 
-  let prog,map,rmap,make_get_rtyp_trans = CEGAR_trans.trans_prog (*~spec:abst_cegar_env*) t in
+  let prog,map,_,make_get_rtyp_trans = CEGAR_trans.trans_prog (*~spec:abst_cegar_env*) t in
   let abst_cegar_env =
     Spec.get_abst_cegar_env spec prog
     |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter
@@ -205,31 +205,26 @@ let preprocess t spec =
     in
     {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
   in
-  prog, rmap, make_get_rtyp, info
+  prog, make_get_rtyp, info
 
 
+
+let write_annot env orig =
+  env
+  |> List.map (Pair.map_fst Id.name)
+  |> WriteAnnot.f !Flag.filename orig
 
 let report_safe env orig t0 =
-  if !Flag.write_annot
-  then
-    env
-    |> List.map (Pair.map_fst Id.name)
-    |> WriteAnnot.f !Flag.filename orig;
-  begin
+  if !Flag.write_annot then write_annot env orig;
+
+  let s =
     match !Flag.mode with
-    | Flag.NonTermination ->
-        Color.printf Color.Bright "Non-terminating!";
-        Format.printf "@.@."
-    | Flag.FairNonTermination ->
-        Color.printf Color.Bright "Fair Infinite Execution found!";
-        Format.printf "@.@."
-    | Flag.Termination when !Flag.debug_level <= 0 ->
-        Color.printf Color.Bright "Safe!";
-        Format.printf "@.@."
-    | _ ->
-        Color.printf Color.Bright "Safe!";
-        Format.printf "@.@."
-  end;
+    | Flag.NonTermination -> "Non-terminating!"
+    | Flag.FairNonTermination -> "Fair Infinite Execution found!"
+    | _ -> "Safe!"
+  in
+  Color.printf Color.Bright "%s@.@." s;
+
   if !Flag.relative_complete then
     begin
       let map =
@@ -241,10 +236,9 @@ let report_safe env orig t0 =
       in
       let t = Term_util.subst_map map t0 in
       Format.printf "Program with Quantifiers Added:@.";
-      Ref.tmp_set
-        Flag.web true
-        (fun () -> Format.printf "  @[<v>%a@]@.@." Print.term t)
+      Ref.tmp_set Flag.web true (fun () -> Format.printf "  @[<v>%a@]@.@." Print.term t)
     end;
+
   let only_result_termination = !Flag.debug_level <= 0 && !Flag.mode = Flag.Termination in
   if env <> [] && not only_result_termination then
     begin
@@ -254,7 +248,7 @@ let report_safe env orig t0 =
       List.iter pr env';
       Format.printf "@.";
 
-      if !Flag.print_abst_typ && env' <> [] && not only_result_termination then
+      if !Flag.print_abst_typ then
         begin
           Format.printf "Abstraction Types:@.";
           let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Print.typ @@ Ref_type.to_abst_typ typ in
@@ -349,7 +343,7 @@ let rec loop exparam_sol ?(spec=Spec.init) parsed set_target =
       set_target
   in
   (**)
-  let prog, rmap, make_get_rtyp, info = preprocess set_target' spec in
+  let prog, make_get_rtyp, info = preprocess set_target' spec in
   let prog' =
     if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
     then
@@ -365,28 +359,16 @@ let rec loop exparam_sol ?(spec=Spec.init) parsed set_target =
   if !Flag.trans_to_CPS then FpatInterface.init prog';
   try
     let result = CEGAR.run prog' info in
-    result, rmap, make_get_rtyp, set_target'
+    result, make_get_rtyp, set_target'
   with e ->
        improve_precision e;
        loop exparam_sol ~spec parsed set_target
 
 
-let trans_env rmap make_get_rtyp env : (Syntax.id * Ref_type.t) list =
-  if !Flag.insert_param_funarg
-  then []
-  else
-    let get_rtyp f = List.assoc f env in
-    let aux (f,rtyp) =
-      try
-        let f' = List.assoc f rmap in
-        Some (f', Ref_type.rename @@ make_get_rtyp get_rtyp f')
-      with
-      | Not_found -> None
-      | _ ->
-          if not !Flag.tupling then Format.printf "Some refinement types cannot be shown (unimplemented)@.@.";
-          None
-    in
-    List.filter_map aux env
+let trans_env parsed make_get_rtyp env : (Syntax.id * Ref_type.t) list =
+  let get_rtyp f = List.assoc f env in
+  let aux f = Option.try_any (fun _ -> f, Ref_type.rename @@ make_get_rtyp get_rtyp f) in
+  List.filter_map aux @@ Term_util.get_top_funs parsed
 
 let verify exparam_sol spec parsed =
   let main,set_target =
@@ -400,16 +382,16 @@ let verify exparam_sol spec parsed =
 
 
 let run orig exparam_sol ?(spec=Spec.init) parsed =
-  let (result, rmap, make_get_rtyp, set_target'), main, set_target = verify exparam_sol spec parsed in
+  let (result, make_get_rtyp, set_target'), main, set_target = verify exparam_sol spec parsed in
   match result with
   | CEGAR.Safe env ->
       Flag.result := "Safe";
-      let env' = trans_env rmap make_get_rtyp env in
-      if not !Flag.exp && !Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0)
-      then report_safe env' orig set_target';
+      let env' = trans_env parsed make_get_rtyp env in
+      if not !Flag.exp && !Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0) then
+        report_safe env' orig set_target';
       true
   | CEGAR.Unsafe ce ->
       Flag.result := "Unsafe";
-      if not !Flag.exp
-      then report_unsafe main ce set_target;
+      if not !Flag.exp then
+        report_unsafe main ce set_target;
       false

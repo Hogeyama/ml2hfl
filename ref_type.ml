@@ -617,3 +617,8 @@ and simplify typ =
       if p_len' = U.false_term
       then Union []
       else List(x, p_len', y, simplify_pred p_i, simplify typ)
+
+
+let from_fpat typ =
+  Format.printf "%a@." Fpat.RefType.pr typ;
+  assert false

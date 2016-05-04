@@ -840,8 +840,7 @@ let infer_ref_type spec ces parsed =
   let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
   let t = Trans.ref_to_assert ref_env parsed in
   Main_loop.init_typ_excep ();
-  let prog, rmap, get_rtyp, info = Main_loop.preprocess t spec in
-  Format.printf "@.rmap:@,  %a@," (List.print @@ Pair.print CEGAR_print.var Id.print) rmap;
+  let prog, make_get_rtyp, info = Main_loop.preprocess t spec in
   FpatInterface.init prog;
   let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
@@ -850,15 +849,15 @@ let infer_ref_type spec ces parsed =
   let prog = FpatInterface.conv_prog prog in
   let env = RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces) in
   if true then Format.printf "ENV: @[%a@." Fpat.RefType.pr_env env;
-  let env' = List.map (Pair.map_fst @@ (List.assoc ~cmp:(=) -$- rmap) -| Fpat.Idnt.string_of) env in
-  env'
+  let get_rtyp f = Ref_type.from_fpat @@ List.assoc (FpatInterface.conv_var f) env in
+  make_get_rtyp get_rtyp
 
 let infer_abs_type spec ces parsed =
   assert (spec.Spec.ref_env <> []);
   let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
   let t = Trans.ref_to_assert ref_env parsed in
   Main_loop.init_typ_excep ();
-  let prog, rmap, get_rtyp, info = Main_loop.preprocess t spec in
+  let prog, get_rtyp, info = Main_loop.preprocess t spec in
   FpatInterface.init prog;
   let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
@@ -1007,9 +1006,7 @@ let infer spec parsed (ce_set: (id * int list) list) =
   let rs' = List.filter (is_fail -| Triple.fst) rs in
   Format.printf "@.Counterexamples: %a@." (List.print (List.print Format.pp_print_int)) @@ List.map (Triple.trd) rs';
   let ces = List.map (Triple.trd) rs' in
-  let env = infer_ref_type spec ces normalized in
-  let env' = List.filter ((fun f -> List.exists (fun (g,_) -> let b1 = Id.name f = Id.name g in let b2 = Id.same f g in if b1 <> b2 then Format.printf "%a,%a@." Id.print  f Id.print g ;b1) fun_env) -| fst) env in
-  assert (env'<>[]);
-  Format.printf "@.refinement types:@,  %a@," (List.print @@ Pair.print Id.print Fpat.RefType.pr) env';(*
-  let aenv = infer_abs_type spec ces normalized in*)
-  List.get env'
+  let get_rtyp = infer_ref_type spec ces normalized in
+  let env = List.map (fun (f,_) -> f, get_rtyp f) fun_env in
+  Format.printf "@.refinement types:@,  %a@," (List.print @@ Pair.print Id.print Ref_type.print) env;
+  env
