@@ -2093,28 +2093,27 @@ let merge_bound_var_typ map t =
 
 
 
-let copy_poly_funs = make_trans ()
+let copy_poly_funs = make_fold_tr ()
 
-let copy_poly_funs_desc desc =
+let copy_poly_funs_desc map desc =
   match desc with
   | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
       let tvars = get_tvars (Id.typ f) in
       assert (tvars <> []);
-      let t2' = copy_poly_funs.tr_term t2 in
+      let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
       let t2'' = inst_tvar_tunit t2' in
-      let map,t2''' = rename_poly_funs f t2'' in
-      let n = List.length map in
-      if debug() && n >= 2
-      then
+      let map_rename,t2''' = rename_poly_funs f t2'' in
+      if debug() && List.length map_rename >= 2 then
         begin
           Format.printf "COPY: @[";
-          List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map;
+          List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map_rename;
           Format.printf "@.";
         end;
-      if map = []
-      then (inst_tvar_tunit (make_let_f flag [f, xs, copy_poly_funs.tr_term t1] t2')).desc
+      if map_rename = [] then
+        let map1,t1' = copy_poly_funs.fold_tr_term map2 t1 in
+        (f,f)::map1, (inst_tvar_tunit @@ make_let_f flag [f, xs, t1'] t2').desc
       else
-        let aux t (_,f') =
+        let aux (map',t) (_,f') =
           let tvar_map = List.map (fun v -> v, ref None) tvars in
           Type.unify (rename_tvar.tr2_typ tvar_map @@ Id.typ f) (Id.typ f');
           let xs = List.map (rename_tvar.tr2_var tvar_map) xs in
@@ -2124,28 +2123,43 @@ let copy_poly_funs_desc desc =
             | Nonrecursive -> t1
             | Recursive -> subst_var f f' t1
           in
-          let t1 = copy_poly_funs.tr_term t1 in
+          let map'', t1 = copy_poly_funs.fold_tr_term map' t1 in
           let t1 = alpha_rename t1 in
-          make_let_f flag [f', xs, t1] t
+          (f,f')::map'', make_let_f flag [f', xs, t1] t
         in
-        (List.fold_left aux t2''' map).desc
+        let map',t = List.fold_left aux (map2,t2''') map_rename in
+        map', t.desc
   | Let(flag, defs, t) ->
-      if List.for_all (not -| is_poly_typ -| Id.typ -| Triple.fst) defs
-      then
-        let defs' = List.map (Triple.map_trd copy_poly_funs.tr_term) defs in
-        Let(flag, defs', copy_poly_funs.tr_term t)
+      if List.for_all (not -| is_poly_typ -| Id.typ -| Triple.fst) defs then
+        let map',defs' =
+          let aux (map,defs) (f,xs,t) =
+            let map',t' = copy_poly_funs.fold_tr_term map t in
+            map', defs@[f,xs,t']
+          in
+          List.fold_left aux (map,[]) defs
+        in
+        let map'',t' = copy_poly_funs.fold_tr_term map' t in
+        List.map (fun (f,_,_) -> f,f) defs @ map'', Let(flag, defs', t')
       else
-        raise (Fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations.")
-  | _ -> copy_poly_funs.tr_desc_rec desc
+        fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations."
+  | _ -> copy_poly_funs.fold_tr_desc_rec map desc
 
-let () = copy_poly_funs.tr_desc <- copy_poly_funs_desc
+let () = copy_poly_funs.fold_tr_desc <- copy_poly_funs_desc
 let copy_poly_funs t =
-  t
-  |@> unify_pattern_var
-  |> copy_poly_funs.tr_term
-  |> flatten_tvar
-  |> inline_var_const
-  |@> Type_check.check -$- Type.TUnit
+  unify_pattern_var t;
+  let map,t' = copy_poly_funs.fold_tr_term [] t in
+  let t'' =
+    t'
+    |> flatten_tvar
+    |> inline_var_const
+    |@> Type_check.check -$- Type.TUnit
+  in
+  let make_get_rtyp get_rtyp f =
+    let fs = List.assoc_all ~cmp:Id.same f map in
+    if fs = [] then raise Not_found;
+    Ref_type.Inter (List.map get_rtyp fs)
+  in
+  t'', make_get_rtyp
 
 
 

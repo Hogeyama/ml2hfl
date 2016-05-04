@@ -905,13 +905,14 @@ let infer_effect t =
   let env = List.map (Pair.make Id.to_string (Id.typ |- infer_effect_typ |- force_cont)) ext_funs in
   infer_effect env t
 
-let get_rtyp_of typed f rtyp =
+let make_get_rtyp typed get_rtyp f =
   let etyp = assoc_typ_cps f typed in
-  if debug() then Format.printf "%a:@.rtyp:%a@.etyp:%a@.@."
-    Id.print f RT.print rtyp print_typ_cps etyp;
+  let rtyp = get_rtyp f in
+  if debug() then
+    Format.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
   let rtyp' = uncps_ref_type rtyp ENone etyp in
-  if Flag.print_ref_typ_debug
-  then Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+  if Flag.print_ref_typ_debug then
+    Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 let initialize () =
@@ -1010,4 +1011,4 @@ let trans t =
   let t = Trans.elim_unused_let ~cbv:false t in
   let t = Trans.elim_unused_branch t in
   pr "elim_unused_let" t;
-  t, get_rtyp_of typed
+  t, make_get_rtyp typed

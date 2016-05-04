@@ -56,11 +56,11 @@ val trans_term :
   list * t
 
 val trans_prog :
-  ?spec:('a Id.t * Syntax.typ) list ->
+  ?spec:(Syntax.id * Syntax.typ) list ->
   Syntax.typed_term ->
   prog * (var * var) list *
-  (var * 'b Type.t Id.t) list *
-  (Syntax.typ Id.t -> CEGAR_ref_type.t -> Ref_type.t)
+  (var * Syntax.id) list *
+  ((var -> CEGAR_ref_type.t) -> Syntax.id -> Ref_type.t)
 
 val is_value :
   (var * t CEGAR_type.t) list ->
