@@ -110,8 +110,9 @@ let rec get_rtyp_list rtyp typ =
       Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp Print.typ typ;
       assert false
 
-let get_rtyp_list_of typed f rtyp =
+let make_get_rtyp_list_of typed get_rtyp f =
   let typ = Trans.assoc_typ f typed in
+  let rtyp = get_rtyp f in
   let rtyp' = get_rtyp_list rtyp typ in
   if Flag.print_ref_typ_debug
   then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
@@ -282,7 +283,7 @@ let trans t =
   if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   typ_excep := abst_list.tr2_typ "" !typ_excep;
   Type_check.check t' Type.TUnit;
-  t', get_rtyp_list_of t
+  t', make_get_rtyp_list_of t
 
 
 
@@ -456,7 +457,7 @@ let trans_opt t =
   if false then Format.printf "abst_list::@. @[%a@.@." Print.term t';
   typ_excep := abst_list_opt.tr_typ !typ_excep;
   Type_check.check t' Type.TUnit;
-  t', get_rtyp_list_of t
+  t', fun _ _ -> raise Not_found
 
 
 

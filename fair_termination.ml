@@ -324,6 +324,7 @@ let rec run spec t =
   let t' =
     t
     |> Trans.copy_poly_funs
+    |> fst
     |@> pr "copy poly. funs."
     |> remove_and_replace_event
     |@> pr "remove_and_replace_event"

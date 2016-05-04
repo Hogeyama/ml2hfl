@@ -317,6 +317,8 @@ module List = struct
       Some (assoc ~cmp k tbl)
     with Not_found -> None
 
+  let assoc_all ?(cmp=(=)) k tbl = filter_map (fun (k',x) -> if cmp k k' then Some x else None) tbl
+
   let eq ?(cmp=(=)) xs ys = length xs = length ys && for_all2 cmp xs ys
 
   module Set = struct

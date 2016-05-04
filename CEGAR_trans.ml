@@ -540,8 +540,9 @@ let trans_prog ?(spec=[]) t =
   pr2 "PROG_E" prog;
   let prog,map,rmap = id_prog prog in
   pr2 "PROG_F" prog;
-  let get_rtyp f typ = get_rtyp f (trans_ref_type typ) in
-  prog,map,rmap,get_rtyp
+  let rrmap = List.map Pair.swap rmap in
+  let make_get_rtyp get_rtyp f = trans_ref_type @@ get_rtyp @@ Id.assoc f rrmap in
+  prog,map,rmap,make_get_rtyp
 
 let add_env spec prog =
   let spec' = List.map (Pair.map trans_var trans_typ) spec in
