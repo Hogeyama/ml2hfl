@@ -211,10 +211,6 @@ let main in_channel =
     else if !Flag.mode = Flag.FairTermination then
       main_fair_termination orig spec parsed
     else
-(*
-      let _ = Modular.infer spec parsed [Option.get @@ Term_util.get_last_definition parsed, [0;1]] in
-      let _ = assert false in
-*)
       Main_loop.run orig [] ~spec parsed
 
 

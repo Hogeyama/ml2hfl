@@ -93,7 +93,7 @@ let rec trans_inv_term = function
       Term_util.make_lt (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Gt, t1), t2) ->
       Term_util.make_gt (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Leq, t1), t2) ->
+  | App(App((Const (Leq|CmpPoly(_,"<="))), t1), t2) ->
       Term_util.make_leq (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Geq, t1), t2) ->
       Term_util.make_geq (trans_inv_term t1) (trans_inv_term t2)
@@ -105,7 +105,9 @@ let rec trans_inv_term = function
       Term_util.make_sub (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Mul, t1), t2) ->
       Term_util.make_mul (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const (CmpPoly _ as c), t1), t2) -> Format.printf "%a@." CEGAR_print.const c; assert false
   | t -> Format.printf "%a@." CEGAR_print.term t; assert false
+
 
 
 
@@ -434,6 +436,8 @@ let rec uniq_env = function
       else (f,typ) :: uniq_env env
 
 
+let remove_id_event = map_def_prog (fun (f,xs,t1,e,t2) -> f, xs, t1, List.remove_all e (Event "id"), t2)
+
 let rename_prog prog =
   let counter1 = Id.get_counter () in
   Id.clear_counter ();
@@ -537,6 +541,8 @@ let trans_prog ?(spec=[]) t =
   let prog = pop_main prog in
   pr2 "PROG_D" prog;
   let prog = assign_id_to_rand prog in
+  pr2 "PROG_E" prog;
+  let prog = remove_id_event prog in
   pr2 "PROG_E" prog;
   let prog,map,rmap = id_prog prog in
   pr2 "PROG_F" prog;
@@ -696,7 +702,7 @@ let assoc_def labeled defs ce acc t =
 let init_cont _ acc _ = List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
-  if true && debug () then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
+  if debug () then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
   | Const (RandInt _) -> assert false
   | Const c -> k ce acc (Const c)
@@ -718,20 +724,21 @@ let rec trans_ce_aux labeled ce acc defs t k =
       trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
       let t1',ts = decomp_app (App(t1,t2)) in
       let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
-      if List.length xs > List.length ts
-      then k ce acc (App(t1,t2))
+      if List.length xs > List.length ts then
+        k ce acc (App(t1,t2))
       else
-         match assoc_def labeled defs ce acc t1' with
-          | None ->
-             init_cont ce acc t1'
-          | Some (ce',acc',(f,xs,tf1,e,tf2)) ->
-             let ts1,ts2 = List.split_nth (List.length xs) ts in
-             let aux = List.fold_right2 subst xs ts1 in
-             let tf2' = make_app (aux tf2) ts2 in
-             assert (List.length xs = List.length ts);
-             if e = [Event "fail"]
-             then init_cont ce' acc' tf2'
-             else trans_ce_aux labeled ce' acc' defs tf2' k))
+        match assoc_def labeled defs ce acc t1' with
+         | None ->
+            init_cont ce acc t1'
+         | Some (ce',acc',(f,xs,tf1,e,tf2)) ->
+            let ts1,ts2 = List.split_nth (List.length xs) ts in
+            let aux = List.fold_right2 subst xs ts1 in
+            let tf2' = make_app (aux tf2) ts2 in
+            assert (List.length xs = List.length ts);
+            if e = [Event "fail"] then
+              init_cont ce' acc' tf2'
+            else
+              trans_ce_aux labeled ce' acc' defs tf2' k))
   | Let _ -> assert false
   | Fun _ -> assert false
 

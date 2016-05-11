@@ -7,6 +7,8 @@ exception CannotDiscoverPredicate
 
 type var = string
 
+type counterexample = int list
+
 module VarSet =
   Set.Make(
     struct

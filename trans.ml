@@ -51,6 +51,7 @@ let inst_tvar_tunit_typ typ =
   | _ -> inst_tvar_tunit.tr_typ_rec typ
 
 let () = inst_tvar_tunit.tr_typ <- inst_tvar_tunit_typ
+let inst_tvar_tunit_typ = inst_tvar_tunit.tr_typ
 let inst_tvar_tunit = inst_tvar_tunit.tr_term
 
 
@@ -1212,14 +1213,21 @@ let rec screen_fail path target t =
     | TSome _ -> assert false
   in
   {t with desc}
-
 let screen_fail target t = screen_fail [] target t
 
 
+let remove_defs = make_trans2 ()
+let remove_defs_desc xs desc =
+  match desc with
+  | Let(flag, bindings, t) ->
+      let bindings' = List.filter_out (fun (f,_,_) -> Id.mem f xs) bindings in
+      (make_let_f flag bindings' @@ remove_defs.tr2_term xs t).desc
+  | _ -> remove_defs.tr2_desc_rec xs desc
+let () = remove_defs.tr2_desc <- remove_defs_desc
+let remove_defs = remove_defs.tr2_term
 
 
 let rename_ext_funs = make_fold_tr ()
-
 let rename_ext_funs_desc (funs,map) desc =
   match desc with
   | Var x when Id.mem x funs ->
@@ -1232,7 +1240,6 @@ let rename_ext_funs_desc (funs,map) desc =
       in
       (funs,map'), Var x'
   | _ -> rename_ext_funs.fold_tr_desc_rec (funs,map) desc
-
 let () = rename_ext_funs.fold_tr_desc <- rename_ext_funs_desc
 let rename_ext_funs funs t =
   let (_,map),t' = rename_ext_funs.fold_tr_term (funs,[]) t in
@@ -1260,29 +1267,35 @@ let make_ext_fun_def f =
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
   f, xs', make_letrec defs' t'
 
-let make_ext_funs env t =
+let make_ext_funs ?(asm=false) env t =
+  let dbg = 0=9 in
+  let t' = remove_defs (List.map fst env) t in
+  if dbg then Format.printf "MEF t': %a@." Print.term t';
+  if dbg then Format.printf "MEF env: %a@." (List.print @@ Pair.print Id.print Ref_type.print) env;
+  if dbg then Format.printf "MEF fv: %a@." (List.print Id.print) @@ get_fv t';
   let funs =
-    get_fv t
+    get_fv t'
     |> List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name)
     |> List.filter_out is_extra_coeff
     |*> List.filter (fun x -> Id.id x > 0)
     |> List.filter_out (Id.mem_assoc -$- env)
   in
-  if false then Format.printf "MEF: %a@." (List.print Print.id_typ) funs;
-  if List.exists (is_poly_typ -| Id.typ) funs
-  then unsupported "Trans.make_ext_funs (polymorphic functions)";
-  let map,t' = rename_ext_funs funs t in
+  if dbg then Format.printf "MEF: %a@." (List.print Print.id_typ) funs;
+  if List.exists (is_poly_typ -| Id.typ) funs then
+    unsupported "Trans.make_ext_funs (polymorphic functions)";
+  let map,t'' = rename_ext_funs funs t' in
+  if dbg then Format.printf "MEF t'': %a@." Print.term t'';
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
-      let genv',cenv',t = Ref_type.generate genv cenv typ in
+      let genv',cenv',t = Ref_type.generate ~asm genv cenv typ in
       let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
       genv', cenv', (f',[],t)::defs
     in
     List.fold_left aux ([],[],[]) env
   in
   let defs = List.map snd (genv @ cenv) in
-  make_letrecs defs @@ make_lets defs2 @@ make_lets defs1 t'
+  make_letrecs defs @@ make_lets defs2 @@ make_lets defs1 t''
 
 
 let assoc_typ = make_col2 [] (@@@)
@@ -2181,15 +2194,16 @@ let set_main t =
   | Some f ->
       let xs = get_args (Id.typ f) in
       let t' =
-        if xs = [] && Id.typ f = TUnit
-        then replace_main (make_var f) t
+        if xs = [] && Id.typ f = TUnit then
+          replace_main (make_var f) t
         else
-          let aux i x =
-            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-            let t = make_randvalue_unit @@ Id.typ x in
-            x', [], t
-          in
-          let bindings = List.mapi aux xs in
+          let bindings =
+            let aux i x =
+              let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+              let t = make_randvalue_unit @@ Id.typ x in
+              x', [], t
+            in
+            List.mapi aux xs in
           let main = make_app (make_var f) @@ List.map make_var @@ List.map Triple.fst bindings in
           let main = make_lets bindings main in
           let u = Id.new_var ~name:"main" main.typ in
@@ -2205,7 +2219,7 @@ let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 let ref_to_assert ref_env t =
   let main =
     let aux (f, typ) =
-      if not @@ Type.same_shape (Id.typ f) (Ref_type.to_simple typ) then
+      if not @@ Type.can_unify (Id.typ f) (Ref_type.to_simple typ) then
         begin
           Format.printf "VAR: %a@." Id.print f;
           Format.printf "  Prog: %a@." Print.typ @@ Id.typ f;
@@ -2219,7 +2233,7 @@ let ref_to_assert ref_env t =
     List.fold_right (make_seq -| aux) ref_env unit_term
   in
   let map = List.map (Pair.map_snd Ref_type.to_abst_typ) ref_env in
-  merge_bound_var_typ map @@ replace_main main t
+  merge_bound_var_typ map @@ replace_main main t, main
 
 
 

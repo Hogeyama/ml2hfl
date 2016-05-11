@@ -2,13 +2,13 @@ open Util
 
 type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
-let rec trans_and_print f desc proj ?(opt=true) ?(pr=Print.term_typ) t =
+let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
   let b = false in
   if b then Format.printf "START: %s@." desc;
   let r = f t in
   if b then Format.printf "END: %s@." desc;
-  let t' = proj r in
-  if !Flag.debug_level > 0 && t <> t' && opt
+  let t' = proj_out r in
+  if !Flag.debug_level > 0 && proj_in t <> t' && opt
   then Format.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
@@ -63,7 +63,7 @@ let string_of_label = function
   | Ref_trans -> "Ref_trans"
   | Tupling -> "Tupling"
   | Inline -> "Inline"
-  | Cps -> "Cps"
+  | Cps -> "CPS"
   | Remove_pair -> "Remove_pair"
   | Replace_bottom_def -> "Replace_bottom_def"
   | Add_cps_preds -> "Add_cps_preds"
@@ -166,7 +166,8 @@ let preprocess t spec =
   let results =
     let aux acc (label,(cond,f)) =
       if cond acc then
-        (label, f acc)::acc
+        let r = trans_and_print f (string_of_label label) last_t fst acc in
+        (label, r)::acc
       else
         acc
     in
@@ -281,7 +282,7 @@ let rec run_cegar prog =
         Flag.result := "Safe";
         Color.printf Color.Bright "Safe!@.@.";
         true
-    | CEGAR.Unsafe ce ->
+    | CEGAR.Unsafe _ ->
         Flag.result := "Unsafe";
         Color.printf Color.Bright "Unsafe!@.@.";
         false
@@ -365,18 +366,21 @@ let rec loop exparam_sol ?(spec=Spec.init) parsed set_target =
        loop exparam_sol ~spec parsed set_target
 
 
-let trans_env parsed make_get_rtyp env : (Syntax.id * Ref_type.t) list =
+let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   let get_rtyp f = List.assoc f env in
   let aux f = Option.try_any (fun _ -> f, Ref_type.rename @@ make_get_rtyp get_rtyp f) in
-  List.filter_map aux @@ Term_util.get_top_funs parsed
+  List.filter_map aux top_funs
 
 let verify exparam_sol spec parsed =
   let main,set_target =
-    if spec.Spec.ref_env = []
-    then trans_and_print Trans.set_main "set_main" snd parsed
+    if spec.Spec.ref_env = [] then
+      trans_and_print Trans.set_main "set_main" Fun.id snd parsed
     else
-      let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
-      None, trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id parsed
+      let ref_env =
+        Spec.get_ref_env spec parsed
+        |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter
+      in
+      None, trans_and_print (fst -| Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
   in
   loop exparam_sol ~spec parsed set_target, main, set_target
 
@@ -386,12 +390,12 @@ let run orig exparam_sol ?(spec=Spec.init) parsed =
   match result with
   | CEGAR.Safe env ->
       Flag.result := "Safe";
-      let env' = trans_env parsed make_get_rtyp env in
+      let env' = trans_env (Term_util.get_top_funs parsed) make_get_rtyp env in
       if not !Flag.exp && !Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0) then
         report_safe env' orig set_target';
       true
-  | CEGAR.Unsafe ce ->
+  | CEGAR.Unsafe(sol,_) ->
       Flag.result := "Unsafe";
       if not !Flag.exp then
-        report_unsafe main ce set_target;
+        report_unsafe main sol set_target;
       false

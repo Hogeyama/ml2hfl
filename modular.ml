@@ -61,9 +61,40 @@ let main orig spec parsed =
 
 
 
+let normalize = make_trans ()
+let normalize_desc desc =
+  let desc' = normalize.tr_desc_rec desc in
+  match desc' with
+  | App(t1, ts) ->
+      let ts',binds =
+        let aux t2 =
+          match t2.desc with
+          | Fun _ ->
+              let x = new_var_of_term t2 in
+              make_var x, Some (x, [], t2)
+          | _ -> t2, None
+        in
+        let ts',binds = List.split_map aux ts in
+        ts', List.filter_map Fun.id binds
+      in
+      (make_lets binds @@ make_app t1 ts').desc
+  | If(t1, t2, t3) ->
+      begin
+        match t1.desc with
+        | Var x -> (make_if t1 t2 t3).desc
+        | _ ->
+            let x = new_var_of_term t1 in
+            (make_let [x,[],t1] @@ make_if (make_var x) t2 t3).desc
+      end
+  | _ -> desc'
+let () = normalize.tr_desc <- normalize_desc
+let normalize = Trans.short_circuit_eval -| normalize.tr_term
+
+
+
 (************************************************************************************************************)
 (************************************************************************************************************)
-(************************************************************************************************************)
+(***********************************************************************************************************
 
 
 
@@ -289,7 +320,7 @@ let rec expand_type templates typ =
  *)
   r
 let rec inline_sub templates typ1 typ2 =
-  let _dbg = true in
+  let _dbg = false in
   let r =
   match typ1,typ2 with
   | Inter typs1, Inter typs2 -> _Ands @@ List.map2 (inline_sub templates) typs1 typs2
@@ -661,29 +692,6 @@ let rec to_horn_clause asm constr =
   | Pred _ -> assert false
 let to_horn_clause constr = to_horn_clause [] constr
 
-let normalize = make_trans ()
-let normalize_term t =
-  let t' = normalize.tr_term_rec t in
-  match t'.desc with
-  | App(t1, ts) ->
-      let ts',binds =
-        let aux t2 =
-          match t2.desc with
-          | Fun _ ->
-              let x = new_var_of_term t2 in
-              make_var x, Some (x, [], t2)
-          | _ -> t2, None
-        in
-        let ts',binds = List.split_map aux ts in
-        ts', List.filter_map Fun.id binds
-      in
-      make_lets binds {t' with desc=App(t1, ts')}
-  | _ -> t'
-let () = normalize.tr_term <- normalize_term
-let normalize = normalize.tr_term
-
-
-
 let check_arity hc =
   let ts = List.flatten_map (Fun.uncurry List.snoc) hc in
   let aux env t =
@@ -761,7 +769,7 @@ let infer spec parsed ce_set =
 
 (************************************************************************************************************)
 (************************************************************************************************************)
-(************************************************************************************************************)
+***********************************************************************************************************)
 
 
 
@@ -834,28 +842,58 @@ let print_ce_set fm ce_set =
   let pr fm (f, ce) = Format.fprintf fm "%a: %a" Id.print f (List.print Format.pp_print_int) ce in
   Format.fprintf fm "%a" (print_list pr ",@ ") ce_set
 
-let infer_ref_type spec ces parsed =
-  Format.printf "%a@." Print.term parsed;
-  assert (spec.Spec.ref_env <> []);
-  let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
-  let t = Trans.ref_to_assert ref_env parsed in
+let to_CEGAR_ref_type_base base =
+  match base with
+  | Ref_type.Unit -> CEGAR_ref_type.Unit
+  | Ref_type.Bool -> CEGAR_ref_type.Bool
+  | Ref_type.Int -> CEGAR_ref_type.Int
+  | Ref_type.Abst s -> CEGAR_ref_type.Abst s
+let rec to_CEGAR_ref_type typ =
+  match typ with
+  | Ref_type.Base(base, x, p) -> CEGAR_ref_type.Base(to_CEGAR_ref_type_base base, Id.to_string x, snd @@ CEGAR_trans.trans_term p)
+  | Ref_type.Fun(x, typ1, typ2) -> CEGAR_ref_type.Fun(Id.to_string x, to_CEGAR_ref_type typ1, to_CEGAR_ref_type typ2)
+  | Ref_type.Inter typs -> CEGAR_ref_type.Inter (List.map to_CEGAR_ref_type typs)
+  | _ -> unsupported "Ref_type.to_CEGAR_ref_type"
+
+let rec add_id_event t =
+  match t.desc with
+  | Let(flag, bindings, t') ->
+      let bindings' = List.map (Triple.map_trd @@ make_seq (make_event_unit "id")) bindings in
+      {t with desc=Let(flag, bindings', add_id_event t')}
+  | _ -> t
+
+let infer_ref_type ces t =
+  if !!debug then Format.printf "infer_ref_type t: %a@." Print.term t;
+  if !!debug then Format.printf "infer_ref_type ces: %a@." (List.print @@ List.print Format.pp_print_int) ces;
   Main_loop.init_typ_excep ();
-  let prog, make_get_rtyp, info = Main_loop.preprocess t spec in
+  let t' = add_id_event t in
+  if !!debug then Format.printf "infer_ref_type t': %a@." Print.term t';
+  let prog, make_get_rtyp, info = Main_loop.preprocess t' Spec.init in
+  if !!debug then Format.printf "prog: %a@." CEGAR_print.prog prog;
   FpatInterface.init prog;
   let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
   let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
+  if !!debug then Format.printf "inliend_functions: [%s]@." @@ String.join "; " inlined_functions;
   let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
   let prog = FpatInterface.conv_prog prog in
   let env = RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces) in
-  if true then Format.printf "ENV: @[%a@." Fpat.RefType.pr_env env;
-  let get_rtyp f = Ref_type.from_fpat @@ List.assoc (FpatInterface.conv_var f) env in
+  if !!debug then Format.printf "ENV: @[%a@." Fpat.RefType.pr_env env;
+  let get_rtyp f =
+    List.assoc (FpatInterface.conv_var f) env
+    |*@> Format.printf "typ1: %a@." Fpat.RefType.pr
+    |> Ref_type.from_fpat
+    |*@> Format.printf "typ2: %a@." Ref_type.print
+    |> to_CEGAR_ref_type
+    |*@> Format.printf "typ3: %a@." CEGAR_ref_type.print
+  in
   make_get_rtyp get_rtyp
 
+(*
 let infer_abs_type spec ces parsed =
   assert (spec.Spec.ref_env <> []);
   let ref_env = Spec.get_ref_env spec parsed |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter in
-  let t = Trans.ref_to_assert ref_env parsed in
+  let t,main = Trans.ref_to_assert ref_env parsed in
   Main_loop.init_typ_excep ();
   let prog, get_rtyp, info = Main_loop.preprocess t spec in
   FpatInterface.init prog;
@@ -864,8 +902,12 @@ let infer_abs_type spec ces parsed =
   let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
   let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
   let prog = FpatInterface.conv_prog prog in
-  RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
-  |@true&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
+  let typ =
+    RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
+    |@true&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
+  in
+  typ, main
+*)
 
 let make_fix f xs t =
   make_letrec [f, xs, t] @@ make_var f
@@ -889,7 +931,7 @@ let add_label_term l t =
   | _ -> t'
 let () = add_label.tr2_term <- add_label_term
 let add_label = add_label.tr2_term
-let get_label t = get_id t
+let get_label t = Option.try_with (fun () -> get_id t) ((=) @@ Invalid_argument "get_id")
 
 let bool_of_term' t = Option.try_any (fun _ -> bool_of_term t)
 
@@ -903,110 +945,313 @@ let exists_fail ts = List.exists is_fail ts
 let append_path path rs =
   List.map (Triple.map_trd @@ (@) path) rs
 
+type dir = Single_to_Modular | Modular_to_Single
+type eval_result =
+  | Single of (typed_term * (int * int list) list * int list) list
+  | Modular of (typed_term * int list * int list)
+
+let init_result_of_dir dir t ce_env =
+  match dir with
+  | Modular_to_Single -> Single [t, ce_env, []]
+  | Single_to_Modular -> Modular(t, snd @@ List.get ce_env, [])
+
+let decomp_single r =
+  match r with
+  | Single rs -> rs
+  | Modular _ -> assert false
+
+let decomp_modular r =
+  match r with
+  | Single _ -> assert false
+  | Modular r -> r
+
+
 (* ASSUME: Input must be normal form *)
-let rec eval fun_env ce_set ce_env t =
-  Format.printf"@[ORIG(%d): %a@\n  @[" (List.length ce_set) Print.term t;
+let rec eval dir fun_env ce_set ce_env label_env t =
+  let dbg = 0=0 in
+  if dbg then Format.printf"@[ORIG(%d): %a@\n  @[" (List.length ce_set) Print.term t;
   let r =
+  (if dbg then match dir with Single_to_Modular -> Format.printf "Single to Modular.@\n" | Modular_to_Single -> Format.printf "Modular to Single.@\n");
+  if dbg then Format.printf "Dom(FUN_ENV): %a@\n" (List.print Id.print) @@ List.map fst fun_env;
+  if dbg then Format.printf "CE_ENV: %a@\n" (List.print @@ Pair.print Format.pp_print_int @@ List.print Format.pp_print_int) ce_env;
   match t.desc with
-  | BinOp(And, _, _) -> assert false
-  | BinOp(Or, _, _) -> assert false
   | Const _
   | Var _
   | BinOp _
   | Not _
   | Fun _
-  | Event _ -> [t, ce_env, []]
-  | _ when is_fail t -> [t, ce_env, []]
-  | Bottom -> []
+  | Event _ -> init_result_of_dir dir t ce_env
+  | _ when is_fail t -> init_result_of_dir dir t ce_env
+  | Bottom ->
+      assert (dir = Modular_to_Single);
+      Single []
+  | App({desc=Const(RandValue _)}, [t2]) ->
+      assert (t2 = unit_term);
+      init_result_of_dir dir t ce_env
+  | App({desc=Fun(x,t1)}, v::vs) when List.for_all is_value vs ->
+      let t' = make_app (subst x v t1) vs in
+      eval dir fun_env ce_set ce_env label_env t'
   | App(t1, ts) when is_fix t1 ->
       let n = get_arg_num t1 in
       if n < List.length ts then
-        [t, ce_env, []]
+        init_result_of_dir dir t ce_env
       else if n > List.length ts then
         unsupported "Modular.eval: App(fix, _)"
       else
         let f,xs,t1' = Option.get @@ decomp_fix t1 in
         let t1'' = subst f t1 t1' in
         let t' = List.fold_right2 subst xs ts t1'' in
-        eval fun_env ce_set ce_env t'
+        eval dir fun_env ce_set ce_env label_env t'
+  | App({desc=Var f}, ts) when List.length ts > List.length @@ fst @@ Id.assoc f fun_env ->
+      let n = List.length @@ fst @@ Id.assoc f fun_env in
+      let ts1,ts2 = List.split_nth n ts in
+      eval dir fun_env ce_set ce_env label_env @@ make_app2 (make_app (make_var f) ts1) ts2
   | App({desc=Var f}, ts) ->
       let ys,t_f = Id.assoc f fun_env in
       assert (List.length ts <= List.length ys);
-      if List.length ts < List.length ys
-      then [t, ce_env, []]
+      if List.length ts < List.length ys then
+        init_result_of_dir dir t ce_env
       else
         let label = new_label () in
-        Format.printf "LABEL: %a, %d@\n  @[" Id.print f label;
-        let t_f' = add_label label t_f in
-        let paths = List.assoc_all ~cmp:Id.eq f ce_set in
-        let aux path =
-          Format.printf "PATH: %d, %a@\n" label (List.print Format.pp_print_int) path;
-          let t' = make_app (make_fix f ys t_f') ts in
-          let ce_env' = (label,path)::ce_env in
-          eval fun_env ce_set ce_env' t'
-        in
-        let r = List.flatten_map aux paths in
-        Format.printf "@]";
-        r
-  | App({desc=Fun(x,t1)}, [t2]) ->
-      let r = eval fun_env ce_set ce_env @@ subst x t2 t1 in
-      Format.printf "@]";
-      r
-  | If(_, t2, t3) ->
-      let label = get_label t in
-      let ce,ce_env' = List.decomp_assoc label ce_env in
+        let label_env' = (label,f)::label_env in
+        if dbg then Format.printf "LABEL: %a, %d@\n  @[" Id.print f label;
+        begin
+          match dir with
+          | Modular_to_Single ->
+              let t_f' = add_label label t_f in
+              let paths = List.assoc_all ~cmp:Id.eq f ce_set in
+              if paths = [] then
+                let xs,typ = decomp_tfun t_f.typ in
+                let t' = make_funs xs @@ unit_term in
+                if dbg then Format.printf "typ: %a@\n" Print.typ typ;
+                assert (can_unify typ TUnit);
+                Single [t', ce_env, []]
+              else
+                let aux path =
+                  if dbg then Format.printf "PATH: %d, %a@\n" label (List.print Format.pp_print_int) path;
+                  let t' = make_app (make_fix f ys t_f') ts in
+                  let ce_env' = (label,path)::ce_env in
+                  decomp_single @@ eval dir fun_env ce_set ce_env' label_env' t'
+                in
+                let r = List.flatten_map aux paths in
+                if dbg then Format.printf "@]";
+                Single r
+          | Single_to_Modular ->
+              let t' = make_app (make_fix f ys t_f) ts in
+              eval dir fun_env ce_set ce_env label_env' t'
+        end
+  | App(t1, [t2]) ->
+      assert (not @@ is_value t1);
+      assert (is_value t2);
+      let r = eval dir fun_env ce_set ce_env label_env t1 in
       begin
-        match ce with
-        | [] -> []
-        | br::ce' ->
-            Format.printf "CE_ENV[%d]: %a@\n" label (List.print @@ Pair.print Format.pp_print_int @@ List.print Format.pp_print_int) ce_env;
-            Format.printf "CE[%d]: %a@\n" label (List.print Format.pp_print_int) ce;
-            let t23 = if br = 0 then t2 else t3 in
-            let ce_env'' = (label,ce')::ce_env' in
-            Format.printf "CE_ENV''[%d]: %a@\n" label (List.print @@ Pair.print Format.pp_print_int @@ List.print Format.pp_print_int) ce_env'';
-            append_path [br] @@ eval fun_env ce_set ce_env'' t23
+        match r with
+        | Single rs ->
+            let aux (v,ce_env,path) =
+              if is_fail v then
+                [fail_unit_term, ce_env, path]
+              else
+                match v.desc with
+                | Fun(x,t1') -> decomp_single @@ eval dir fun_env ce_set ce_env label_env @@ subst x t2 t1'
+                | _ -> assert false
+            in
+            Single (List.flatten_map aux rs)
+        | Modular(v, ce, path) ->
+            if is_fail v then
+              Modular(fail_unit_term, ce, path)
+            else
+              match v.desc with
+              | Fun(x,t1') -> eval dir fun_env ce_set ce_env label_env @@ subst x t2 t1'
+              | _ -> assert false
       end
-  | Let _ when is_fix t -> [t, ce_env, []]
-  | Let(flag, [], t2) -> eval fun_env ce_set ce_env t2
-  | Let(Nonrecursive, [f,xs,t1], t2) ->
-      if xs = []
-      then
-        let rs = eval fun_env ce_set ce_env t1 in
-        let aux (v,ce_env,path) =
-          if is_fail v then
-            [fail_unit_term, ce_env, path]
-          else
-            t2
-            |> (if is_base_typ t1.typ then Fun.id else subst f v)
-            |> eval fun_env ce_set ce_env
-            |> append_path path
-        in
-        List.flatten_map aux rs
+  | If(_, t2, t3) ->
+      begin
+        match dir with
+        | Modular_to_Single ->
+            let label = get_label t in
+            let r =
+              match label with
+              | None ->
+                  let aux br =
+                    let t23 = if br = 0 then t2 else t3 in
+                    append_path [br] @@ decomp_single @@ eval dir fun_env ce_set ce_env label_env t23
+                  in
+                  aux 0 @ aux 1
+              | Some label ->
+                  let ce,ce_env' = List.decomp_assoc label ce_env in
+                  match ce with
+                  | [] -> []
+                  | 2::_ -> []
+                  | br::ce' ->
+                      if dbg then
+                        Format.printf "CE_ENV[%d]: %a@\n" label (List.print @@ Pair.print Format.pp_print_int @@ List.print Format.pp_print_int) ce_env;
+                      if dbg then
+                        Format.printf "CE[%d]: %a@\n" label (List.print Format.pp_print_int) ce;
+                      let t23 = if br = 0 then t2 else t3 in
+                      let ce_env'' = (label,ce')::ce_env' in
+                      if dbg then
+                        Format.printf "CE_ENV''[%d]: %a@\n" label (List.print @@ Pair.print Format.pp_print_int @@ List.print Format.pp_print_int) ce_env'';
+                      append_path [br] @@ decomp_single @@ eval dir fun_env ce_set ce_env'' label_env t23
+            in
+            Single r
+        | Single_to_Modular ->
+            let label = get_label t in
+            let f,ce = List.get ce_env in
+            match ce with
+            | [] -> assert false
+            | br::ce' ->
+                let t23 = if br = 0 then t2 else t3 in
+                let v,ce_env,path = decomp_modular @@ eval dir fun_env ce_set [f,ce'] label_env t23 in
+                let path' =
+                  match label with
+                  | None -> path
+                  | Some label -> br::path
+                in
+                Modular(v, ce_env, path')
+      end
+  | Let _ when is_fix t -> init_result_of_dir dir t ce_env
+  | Let(flag, [], t2) -> eval dir fun_env ce_set ce_env label_env t2
+  | Let(flag, [f,xs,t1], t2) when Id.mem_assoc f fun_env ->
+      let fun_env' = List.map (fun (g,def) -> if Id.same f g then f,(xs,t1) else g,def) fun_env in
+      eval dir fun_env' ce_set ce_env label_env t2
+  | Let(flag, [f,xs,t1], t2) ->
+      assert (flag = Nonrecursive || not @@ Id.mem f @@ Term_util.get_fv t1);
+      if xs = [] then
+        match eval dir fun_env ce_set ce_env label_env t1 with
+        | Single rs ->
+            let aux (v,ce_env,path) =
+              if is_fail v then
+                [fail_unit_term, ce_env, path]
+              else
+                t2
+                |> (if is_base_typ t1.typ then Fun.id else subst f v)
+                |> eval dir fun_env ce_set ce_env label_env
+                |> decomp_single
+                |> append_path path
+            in
+            Single (List.flatten_map aux rs)
+        | Modular(v, ce, path) ->
+            if is_fail v then
+              Modular(fail_unit_term, ce, path)
+            else
+              t2
+              |> (if is_base_typ t1.typ then Fun.id else subst f v)
+              |> eval dir fun_env ce_set [0,ce] label_env
       else
         let t2' = subst f (make_funs xs t1) t2 in
-        eval fun_env ce_set ce_env t2'
+        eval dir fun_env ce_set ce_env label_env t2'
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.printf "@.%a@." Print.term t;
       unsupported "Modular.eval"
   in
-  Format.printf"@]@\nRESULT: %a@]@," (List.print (Pair.print Print.term (List.print Format.pp_print_int))) @@ List.map (fun (x,y,z) -> x,z) r;r
+  if dbg then
+    Format.printf"@]@\nRETURN@\n@]";
+  r
 
-let infer spec parsed (ce_set: (id * int list) list) =
+type result =
+  | Typable of Ref_type.env
+  | Untypable of (Syntax.id * int list) list
+
+let add_context for_infer env f (xs,t) typ =
+  let dbg = 0=9 in
+  if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
+  let env' = List.takewhile (not -| Id.same f -| fst) env in
+  if dbg then Format.printf "ADD_CONTEXT ENV': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
+  let t' = add_label 0 t in
+  make_letrec [f,xs,t'] unit_term
+  |@dbg&> Format.printf "ADD_CONTEXT ORIG: %a@.@." Print.term
+  |> Trans.ref_to_assert [f,typ]
+  |> fst
+  |@dbg&> Format.printf "ADD_CONTEXT REF_TO_ASSERT: %a@.@." Print.term
+  |> Trans.make_ext_funs ~asm:for_infer env'
+  |@dbg&> Format.printf "ADD_CONTEXT MAKE_EXT_FUNS: %a@.@." Print.term
+  |> normalize
+  |@dbg&> Format.printf "ADD_CONTEXT MAKE_EXT_FUNS: %a@.@." Print.term
+
+let infer env fun_defs f typ t ce_set =
+  let t = add_context true env f (Id.assoc f fun_defs) typ in
+  if !!debug then Format.printf "CE_SET: %a@." (List.print @@ Pair.print Id.print (List.print Format.pp_print_int)) ce_set;
+  let rs = decomp_single @@ eval Modular_to_Single fun_defs ce_set [] [] t in
+  let rs' = List.filter (is_fail -| Triple.fst) rs in
+  let ces = List.map (Triple.trd) rs' in
+  if !!debug then Format.printf "@.Counterexamples: %a@." (List.print @@ List.print Format.pp_print_int) ces;
+  let get_rtyp = infer_ref_type ces t in
+  let fun_defs' = List.takewhile (not -| Id.same f -| fst) fun_defs in
+  if !!debug then Format.printf "@.fun_defs': %a@," (List.print Id.print) @@ List.map fst fun_defs';
+  let cand_env = List.map (fun (g,_) -> g, get_rtyp g) fun_defs' in
+  if !!debug then Format.printf "@.candidate refinement types:@,  %a@," (List.print @@ Pair.print Id.print Ref_type.print) cand_env;
+  cand_env
+
+let check env f fun_defs typ =
+  if !Flag.print_progress then Format.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
+  let t = add_context false env f (Id.assoc f fun_defs) typ in
+  if !!debug then Format.printf "  Check: %a : %a@." Print.term t Ref_type.print typ;
+  let (result, make_get_rtyp, set_target'), main, set_target = Main_loop.verify [] Spec.init t in
+  match result with
+  | CEGAR.Safe env ->
+      Typable (Main_loop.trans_env (List.map fst fun_defs) make_get_rtyp env)
+  | CEGAR.Unsafe(sol, ModelCheck.CESafety ce) ->
+      if !!debug then Format.printf "  Untypable@.@.";
+      let path =
+        Format.printf "  CE_INIT: %a@\n" (List.print Format.pp_print_int) ce;
+        let v,ce',path = decomp_modular @@ eval Single_to_Modular fun_defs [] [0,ce] [] t in
+        assert (v = fail_unit_term);
+        assert (ce' = []);
+        if path = [] then [2] else path
+      in
+      Untypable [f, path]
+  | CEGAR.Unsafe _ -> assert false
+
+(* "t" must be "add_context env f _ _ typ" *)
+let rec main_loop c orig env fun_defs f typ t ce_set =
+  if !!debug then Format.printf "MAIN_LOOP[%a,%d]: %a :? %a@." Id.print f c Id.print f Ref_type.print typ;
+  if !!debug then Format.printf "MAIN_LOOP[%a,%d] env: %a@." Id.print f c (List.print @@ Pair.print Id.print Ref_type.print) env;
+  if !!debug then Format.printf "MAIN_LOOP[%a,%d] t: %a@.@." Id.print f c Print.term t;
+  match check env f fun_defs typ with
+  | Typable env' ->
+      if !!debug then Format.printf "TYPABLE: %a : %a@.@." Id.print f Ref_type.print typ;
+      Typable env'
+  | Untypable ce_set' ->
+      if !!debug then Format.printf "UNTYPABLE: %a : %a@." Id.print f Ref_type.print typ;
+      if !!debug then Format.printf "UNTYPABLE ce_set': %a@.@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set';
+      let rec refine_loop ce_set'' =
+        let candidate = infer env fun_defs f typ t ce_set'' in
+        let aux r (g,typ') =
+          if !!debug then Format.printf "CHECK CANDIDATE: %a :? %a@.@." Id.print g Ref_type.print typ';
+          match r with
+          | Typable env ->
+              let t' = add_context false env g (Id.assoc g fun_defs) typ' in
+              main_loop 0 orig env fun_defs g typ' t' ce_set''
+          | Untypable ce_set -> Untypable ce_set
+        in
+        match List.fold_left aux (Typable env) candidate with
+        | Typable env' ->
+            if !!debug then Format.printf "ALL CANDIDATES ARE VALID@.@.";
+            main_loop (c+1) orig env' fun_defs f typ t ce_set''
+        | Untypable ce_set''' ->
+            if !!debug then Format.printf "CANDIDATE IS INVALID@.@.";
+            refine_loop (ce_set''' @ ce_set'')
+      in
+      refine_loop (ce_set' @ ce_set)
+let main_loop orig env fun_defs f typ t ce_set = main_loop 0 orig env fun_defs f typ t ce_set
+
+let main orig spec parsed =
+  if spec <> Spec.init then unsupported "Modular.main: spec";
   let normalized = Trans.inline_var @@ Trans.flatten_let @@ Trans.normalize_let parsed in
-  Format.printf "NORM: %a@." Print.term normalized;
+  if !!debug then Format.printf "NORM: %a@.@." Print.term normalized;
   let fbindings,main = decomp_prog normalized in
   assert (main.desc = Const Unit);
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
-  let fun_env = List.flatten_map (fun (_,bindings) -> List.map (fun (f,xs,t) -> f, (xs,t)) bindings) fbindings in
-  Format.printf "FUN_ENV: %a@." (List.print Id.print) @@ List.map fst fun_env;
-  let ce_set = List.flatten @@ List.mapi (fun i (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [1;0](*; f, [1;0;1]*)] | _ -> assert false) fun_env in
-  Format.printf "CE_SET: %a@." (List.print @@ Pair.print Id.print (List.print Format.pp_print_int)) ce_set;
-  let main = Option.get @@ get_last_definition normalized in
-  let rs = eval fun_env ce_set [] (make_app (make_var main) [make_var @@ Id.new_var ~name:"v0" TInt]) in
-  let rs' = List.filter (is_fail -| Triple.fst) rs in
-  Format.printf "@.Counterexamples: %a@." (List.print (List.print Format.pp_print_int)) @@ List.map (Triple.trd) rs';
-  let ces = List.map (Triple.trd) rs' in
-  let get_rtyp = infer_ref_type spec ces normalized in
-  let env = List.map (fun (f,_) -> f, get_rtyp f) fun_env in
-  Format.printf "@.refinement types:@,  %a@," (List.print @@ Pair.print Id.print Ref_type.print) env;
-  env
+  let fun_defs = List.flatten_map (fun (_,bindings) -> List.map (fun (f,xs,t) -> f, (xs,t)) bindings) fbindings in
+  if !!debug then Format.printf "FUN_DEFS: %a@." (List.print Id.print) @@ List.map fst fun_defs;
+  let _,(f,_) = List.decomp_snoc fun_defs in
+  let typ = Ref_type.from_simple @@ Id.typ f in
+(*
+  let ce_set = List.flatten @@ List.mapi (fun i (f,_) -> match Id.name f with "main" -> [f, [1]] | "sum" -> [f, [1;0](*; f, [1;0;1]*)] | _ -> assert false) fun_defs in
+ *)
+  let env_init = List.map (fun (f,_) -> f, Ref_type.make_weakest @@ Trans.inst_tvar_tunit_typ @@ Id.typ f) fun_defs in
+  if !!debug then Format.printf "ENV_INIT: %a@." (List.print @@ Pair.print Id.print Ref_type.print) env_init;
+  let t = add_context false env_init f (Id.assoc f fun_defs) typ in
+  match main_loop parsed env_init fun_defs f typ t [] with
+  | Typable _ -> true
+  | Untypable _ -> false

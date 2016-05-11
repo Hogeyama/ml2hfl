@@ -863,8 +863,8 @@ let assoc_typ_cps f typed =
 
 
 let rec uncps_ref_type rtyp e etyp =
-  if debug()
-  then Format.printf "rtyp:%a@.e:%a@.etyp:%a@.@." RT.print rtyp print_effect e print_typ_cps etyp;
+  if !!debug then
+    Format.printf "rtyp:%a@.e:%a@.etyp:%a@.@." RT.print rtyp print_effect e print_typ_cps etyp;
   match rtyp, e, etyp with
   | RT.Inter rtyps, ENone, _ ->
       RT.Inter (List.map (fun rtyp1 -> uncps_ref_type rtyp1 e etyp) rtyps)
@@ -890,7 +890,8 @@ let rec uncps_ref_type rtyp e etyp =
   | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
       RT.ExtArg(x, rtyp1, uncps_ref_type rtyp2 e etyp)
   | _ ->
-      if !!debug then Format.printf "rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
+      if !!debug then
+        Format.printf "rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
       assert false
 
 let infer_effect t =

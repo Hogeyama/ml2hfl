@@ -136,7 +136,7 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
   let aux_ref (f,typ) =
     try
       let f' = rename_id f in
-      if not @@ Type.same_shape (Id.typ f') (Ref_type.to_simple typ) then
+      if not @@ Type.can_unify (Id.typ f') (Ref_type.to_simple typ) then
         begin
           Format.printf "VAR: %a@." Id.print f;
           Format.printf "  Prog: %a@." Print.typ @@ Id.typ f';

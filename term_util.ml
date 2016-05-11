@@ -58,7 +58,10 @@ let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
 let make_string s = {desc=Const(String s); typ=TData("string",false); attr=const_attr}
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
-let make_randvalue_unit typ = {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
+let make_randvalue_unit typ =
+  match typ with
+  | TUnit -> unit_term
+  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 let make_randvalue_cps typ =
   let u = Id.new_var TUnit in
   let r = Id.new_var typ in
@@ -72,8 +75,7 @@ let make_randint_cps b =
   {desc=Const(RandValue(TInt,true)); typ=TFun(u,TFun(k,typ_result)); attr}
 let rec make_app t ts =
   let check typ1 typ2 =
-    if not (Flag.check_typ => Type.can_unify typ1 typ2)
-    then
+    if not (Flag.check_typ => Type.can_unify typ1 typ2) then
       begin
         Format.printf "make_app:@ %a@ <=/=>@ %a@." Print.typ typ1 Print.typ typ2;
         Format.printf "fun: %a@." Print.term t;
@@ -97,13 +99,17 @@ let rec make_app t ts =
   | _ ->
       Format.printf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
       assert false
+let make_app2 t ts =
+  let t' = make_app t ts in
+  {t' with desc=App(t,ts)}
 let make_let_f flag bindings t2 =
-  if bindings = []
-  then t2
+  if bindings = [] then
+    t2
   else
     let rec aux (f,xs,t) =
       match t.desc with
       | Fun(x,t') -> aux (f, xs@[x], t')
+      | Let(Nonrecursive, [x,[],t'], {desc=Var y}) when Id.same x y -> f, xs, t'
       | _ -> f, xs, t
     in
     let bindings' = List.map aux bindings in
@@ -897,3 +903,45 @@ let rec decomp_prog t =
       let defs,main = decomp_prog t' in
       (flag,bindings)::defs, main
   | _ -> [], t
+
+let from_fpat_const c =
+  match c with
+  | Fpat.Const.Unit -> unit_term
+  | Fpat.Const.True -> true_term
+  | Fpat.Const.False -> false_term
+  | Fpat.Const.Int n -> make_int n
+  | _ -> unsupported "Term_util.from_fpat_const"
+
+let from_fpat_idnt x =
+  Id.from_string (Fpat.Idnt.string_of x) typ_unknown
+
+let decomp_binop t =
+  match t with
+  | Fpat.Term.Const c ->
+      begin
+      match c with
+      | Fpat.Const.Lt _ -> Some make_lt
+      | Fpat.Const.Gt _ -> Some make_gt
+      | Fpat.Const.Leq _ -> Some make_leq
+      | Fpat.Const.Geq _ -> Some make_geq
+      | Fpat.Const.Eq _ -> Some make_eq
+      | Fpat.Const.Add _ -> Some make_add
+      | Fpat.Const.Sub _ -> Some make_sub
+      | Fpat.Const.Mul _ -> Some make_mul
+      | Fpat.Const.Neq _ -> Some (fun x y -> make_not @@ make_eq x y)
+      | _ -> None
+      end
+  | _ -> None
+
+let rec from_fpat_term = function
+  | Fpat.Term.Const c -> from_fpat_const c
+  | Fpat.Term.Var x -> make_var (from_fpat_idnt x)
+  | Fpat.Term.App(Fpat.Term.App(f, t1), t2) when Option.is_some @@ decomp_binop f ->
+      let make = Option.get @@ decomp_binop f in
+      let t1' = from_fpat_term t1 in
+      let t2' = from_fpat_term t2 in
+      make t1' t2'
+  | Fpat.Term.App(Fpat.Term.Const Fpat.Const.Not, t) -> make_not (from_fpat_term t)
+  | t -> Fpat.Term.pr Format.std_formatter t; assert false
+
+let from_fpat_formula t = from_fpat_term @@ Fpat.Formula.term_of t

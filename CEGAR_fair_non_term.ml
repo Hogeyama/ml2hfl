@@ -82,5 +82,5 @@ let cegar prog0 labeled info is_cp ce_rules prog =
   let ce_tree = value2tree ce_value in
   Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
 
-  (*feasiblity check and refinement is common with that of non-termination*)
+  (*feasiblity checking and refinement is common with that of non-termination*)
   CEGAR_non_term.cegar prog0 labeled info is_cp ce_tree prog

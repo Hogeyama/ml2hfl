@@ -39,6 +39,7 @@ val make_randvalue_unit : typ -> typed_term
 val make_randvalue_cps : typ -> typed_term
 val make_randint_cps : bool -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
+val make_app2 : typed_term -> typed_term list -> typed_term (** Does not merge arguments *)
 val make_fail : typ -> typed_term
 val make_let : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets : (id * id list * typed_term) list -> typed_term -> typed_term
@@ -122,6 +123,8 @@ val decomp_get_val : typed_term -> typed_term option
 val decomp_funs : typed_term -> id list * typed_term
 val decomp_lets : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
 val decomp_var : typed_term -> id option
+val decomp_bexp : typed_term -> typed_term list
+val decomp_prog : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
 val var_of_term : typed_term -> id
 val int_of_term : typed_term -> int
 val bool_of_term : typed_term -> bool
@@ -167,7 +170,6 @@ val make_term : typ -> typed_term
 val col_same_term : typed_term -> typed_term -> typed_term list
 val col_info_id : typed_term -> id list
 val is_bottom_def : Syntax.rec_flag -> id -> id list -> Syntax.typed_term -> bool
-val decomp_bexp : typed_term -> typed_term list
 val merge_typ : typ -> typ -> typ
 val get_last_definition : typed_term -> id option
 val get_body : typed_term -> typed_term
@@ -179,4 +181,5 @@ val get_bound_variables : typed_term -> id list
 val get_id : typed_term -> int
 val get_id_option : typed_term -> int option
 val get_id_map : typed_term -> (int, typed_term) Hashtbl.t
-val decomp_prog : typed_term -> (rec_flag * (id * id list * typed_term) list) list * typed_term
+val from_fpat_term : Fpat.Term.t -> typed_term
+val from_fpat_formula : Fpat.Formula.t -> typed_term

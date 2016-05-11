@@ -168,7 +168,9 @@ and print_desc pri typ fm desc =
           fprintf fm "@[%a@]" (print_term p typ) t3
         end;
       fprintf fm "@]%s" s2
-  | Let(_, [], _) -> assert false
+  | Let(_, [], t) ->
+      Format.printf "@.%a@." (print_term 0 typ) t;
+      assert false
   | Let(flag, bindings, t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
@@ -505,9 +507,9 @@ let print_defs fm (defs:(id * (id list * typed_term)) list) =
   List.iter print_fundef defs
 
 
-let string_of_const = Format.asprintf "%a" print_const
-let string_of_binop = Format.asprintf "%a" print_binop
-let string_of_typ = Format.asprintf "%a" print_typ
+let string_of_const c = Format.asprintf "%a" print_const c
+let string_of_binop op = Format.asprintf "%a" print_binop op
+let string_of_typ typ = Format.asprintf "%a" print_typ typ
 let string_of_constr t =
   match t.desc with
   | Const _ -> "Const"

@@ -4,9 +4,11 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
-type result = Safe of (var * CEGAR_ref_type.t) list | Unsafe of int list
-
 module MC = ModelCheck
+
+type result =
+  | Safe of (var * CEGAR_ref_type.t) list
+  | Unsafe of int list * MC.counterexample
 
 let pre () =
   ()
@@ -144,7 +146,7 @@ let rec loop prog0 is_cp ces info =
               Refine.refine_rank_fun ce' [] prog0;
               assert false
           | Feasibility.Feasible sol, _ ->
-              prog, Unsafe sol
+              prog, Unsafe(sol, ce)
           | Feasibility.FeasibleNonTerm _, _ ->
               assert false
           | Feasibility.Infeasible prefix, _ ->
