@@ -316,7 +316,7 @@ let infer labeled is_cp cexs ext_cexs prog =
       prog.defs @ List.concat_map aux fs
     else
       prog.defs in
-  let prog = conv_prog prog in
+  let prog = conv_prog {prog with defs=defs'} in
   let cexs =
     if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
       List.map (flip (@) [2]) cexs
