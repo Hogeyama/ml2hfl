@@ -98,6 +98,8 @@ module Triple = struct
     | _ -> invalid_arg "Triple.of_list"
   let to_pair_r (x,y,z) = x, (y, z)
   let to_pair_l (x,y,z) = (x, y), z
+  let of_pair_r (x,(y,z)) = x, y, z
+  let of_pair_l ((x,y),z) = x, y, z
   let take12 (x,y,z) = x, y
   let take13 (x,y,z) = x, z
   let take23 (x,y,z) = y, z
@@ -126,6 +128,8 @@ end
 
 module Fun = struct
   external id : 'a -> 'a = "%identity"
+  let fst x y = x
+  let snd x y = y
   let flip f x y = f y x
   let curry2 = Pair.curry
   let uncurry2 = Pair.uncurry
@@ -283,6 +287,8 @@ module List = struct
         rev_filter_map acc' f xs'
   let rev_filter_map f xs = rev_filter_map [] f xs
   let filter_map2 f xs ys = rev_filter_map Std.identity @@ rev_map2 f xs ys
+  let filter_mapi f xs = filter_map Fun.id @@ List.mapi f xs
+
   let filter_out f xs = filter (not -| f) xs
 
   let rev_split xs = fold_left (fun (acc1,acc2) (x,y) -> x::acc1, y::acc2) ([],[]) xs
@@ -359,7 +365,10 @@ module List = struct
         else decomp_assoc ~cmp k tbl' |> Pair.map_snd @@ cons (k', x)
 
   let assoc_all ?(cmp=(=)) k tbl = filter_map (fun (k',x) -> if cmp k k' then Some x else None) tbl
-
+(*
+  let fold_righti f xs acc = snd @@ fold_right (fun x (i,acc) -> i+1, f i x acc) xs (0,acc)
+  let fold_lefti f xs acc = snd @@ fold_left (fun (i,acc) x -> i+1, f i acc x) (0,acc) xs
+ *)
   let eq ?(cmp=(=)) xs ys = length xs = length ys && for_all2 cmp xs ys
 
   module Set = struct
@@ -481,6 +490,7 @@ module Combination = struct
         let cmb = take_each xxs' in
         List.flatten_map (fun x -> List.map (List.cons x) cmb) xs
 end
+
 
 let is_uppercase c = 'A' <= c && c <= 'Z'
 

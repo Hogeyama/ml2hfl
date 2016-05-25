@@ -73,6 +73,8 @@ let rec decomp_tfuns = function
   | TFuns(xs, typ) -> xs, typ
   | _ -> invalid_arg "decomp_tfuns"
 
+let arity typ = List.length @@ fst @@ decomp_tfun typ
+
 let rec print occur print_pred fm typ =
   let print' = print occur print_pred in
   let print_preds ps = print_list print_pred "; " ps in

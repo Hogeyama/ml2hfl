@@ -2,6 +2,9 @@ type 'a t = Node of 'a * 'a t list
 type path = int list
 
 val leaf : 'a -> 'a t
+val decomp : 'a t -> 'a * 'a t list
+val label : 'a t -> 'a
+val children : 'a t -> 'a t list
 val root : 'a t -> 'a
 val flatten : 'a t -> 'a list
 val map : (path -> 'a -> 'b) -> 'a t -> 'b t
@@ -16,3 +19,4 @@ val find_all_subtree : ('a t -> bool) -> 'a t -> 'a t list
 val find_all_label : ('a -> bool) -> 'a t -> 'a list
 val filter_map_subtree : ('a t -> 'b option) -> 'a t -> 'b list
 val filter_map_label : ('a -> 'b option) -> 'a t -> 'b list
+val is_leaf : 'a t -> bool

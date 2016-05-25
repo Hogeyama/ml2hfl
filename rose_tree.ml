@@ -64,3 +64,5 @@ let rec filter_map_subtree f (Node(l,ts)) =
   | Some r -> r::ls
 
 let filter_map_label f t = filter_map_subtree (f -| label) t
+
+let is_leaf (Node(_, ts)) = ts = []

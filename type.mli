@@ -42,6 +42,7 @@ val copy : 'a t -> 'a t
 val app_typ : 'a t -> 'b list -> 'a t
 val to_id_string : 'a t -> string
 val order : 'a t -> int
+val arity : 'a t -> int
 
 val tuple_num : 'a t -> int option
 val proj_typ : int -> 'a t -> 'a t

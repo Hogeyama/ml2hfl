@@ -99,7 +99,7 @@ let rec make_app t ts =
   | _ ->
       Format.printf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
       assert false
-let make_app2 t ts =
+let make_app_raw t ts =
   let t' = make_app t ts in
   {t' with desc=App(t,ts)}
 let make_let_f flag bindings t2 =
@@ -352,6 +352,9 @@ let decomp_get_val t =
 
 (*** AUXILIARY FUNCTIONS ***)
 
+let is_base_var x = is_base_typ @@ Id.typ x
+let is_fun_var x = is_fun_typ @@ Id.typ x
+
 let decomp_var t =
   match t.desc with
   | Var x -> Some x
@@ -471,7 +474,7 @@ let subst_map_term map t =
   match t.desc with
   | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
   | Fun(y, t1) ->
-      let map' = List.filter (fun (x,_) -> not (Id.same x y)) map in
+      let map' = List.filter_out (fun (x,_) -> Id.same x y) map in
       let t1' = subst_map.tr2_term map' t1 in
       make_fun y t1'
   | Let(Nonrecursive, bindings, t2) ->
@@ -874,6 +877,7 @@ let count_occurrence x t =
 let add_attr attr t = {t with attr=attr::t.attr}
 let add_comment s t = add_attr (AComment s) t
 let add_id id t = add_attr (AId id) t
+let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}
 
 let get_id t =
   try

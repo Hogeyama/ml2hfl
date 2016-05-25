@@ -380,7 +380,7 @@ let verify exparam_sol spec parsed =
         Spec.get_ref_env spec parsed
         |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter
       in
-      None, trans_and_print (fst -| Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
+      None, trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
   in
   loop exparam_sol ~spec parsed set_target, main, set_target
 

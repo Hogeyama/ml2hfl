@@ -39,7 +39,7 @@ val make_randvalue_unit : typ -> typed_term
 val make_randvalue_cps : typ -> typed_term
 val make_randint_cps : bool -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
-val make_app2 : typed_term -> typed_term list -> typed_term (** Does not merge arguments *)
+val make_app_raw : typed_term -> typed_term list -> typed_term (** Does not merge arguments *)
 val make_fail : typ -> typed_term
 val make_let : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets : (id * id list * typed_term) list -> typed_term -> typed_term
@@ -133,6 +133,8 @@ val tuple_of_term : typed_term -> typed_term list
 val list_of_term : typed_term -> typed_term list
 val get_opt_typ : typ -> typ
 val opt_typ : typ -> typ
+val is_base_var : id -> bool
+val is_fun_var : id -> bool
 
 
 (** {6 Misc} *)
@@ -177,6 +179,7 @@ val count_occurrence : id -> typed_term -> int
 val add_attr : attr -> typed_term -> typed_term
 val add_comment : string -> typed_term -> typed_term
 val add_id : int -> typed_term -> typed_term
+val remove_attr : attr -> typed_term -> typed_term
 val get_bound_variables : typed_term -> id list
 val get_id : typed_term -> int
 val get_id_option : typed_term -> int option

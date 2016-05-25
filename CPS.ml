@@ -161,7 +161,7 @@ let rec infer_effect_typ typ =
   | TUnit
   | TInt
   | TBool
-  | TData(_,false)-> TBaseCPS typ
+  | TData _ -> TBaseCPS typ
   | TFun(x,typ2) ->
       let typ1 = Id.typ x in
       let e = new_evar () in

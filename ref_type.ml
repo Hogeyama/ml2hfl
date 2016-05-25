@@ -464,8 +464,10 @@ and generate ?(asm=false) genv cenv typ =
           let genv',cenv',t_typ1 = generate_check ~asm genv cenv x' typ1 in
           if !!debug then Format.printf "Ref_type.generate t_typ1: %a@." Print.term t_typ1;
           if asm then
+            let t1 = U.make_or U.randbool_unit_term t_typ1 in
             let genv'',cenv'',t2 = generate ~asm genv' cenv' typ2' in
-            genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "GEN FUN: %a" print typ2) @@ U.make_assume t_typ1 t2
+            let t3 = U.make_bottom @@ to_simple typ2' in
+            genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "GEN FUN: %a" print typ2) @@ U.make_if t1 t2 t3
           else
             let t1 = U.make_or U.randbool_unit_term t_typ1 in
             let genv'',cenv'',t2 = generate ~asm genv' cenv' typ2' in
@@ -696,12 +698,13 @@ let rec from_fpat typ =
 
 let rec make_strongest typ =
   match typ with
-  | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term) (* treated as the result type *)
+  | Type.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.false_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.false_term)
   | Type.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
   | Type.TTuple _ -> unsupported "Ref_type.make_strongest"
   | Type.TList _ -> unsupported "Ref_type.make_strongest"
+  | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.false_term)
   | _ -> unsupported "Ref_type.make_strongest"
 
 and make_weakest typ =
@@ -712,6 +715,7 @@ and make_weakest typ =
   | Type.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | Type.TTuple _ -> unsupported "Ref_type.make_weakest Tuple"
   | Type.TList _ -> unsupported "Ref_type.make_weakest List"
+  | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.true_term)
   | _ ->
       Format.printf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"

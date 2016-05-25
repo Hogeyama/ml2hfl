@@ -1267,7 +1267,7 @@ let make_ext_fun_def f =
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
   f, xs', make_letrec defs' t'
 
-let make_ext_funs ?(asm=false) env t =
+let make_ext_funs ?(asm=false) ?(fvs=[]) env t =
   let dbg = 0=9 in
   let t' = remove_defs (List.map fst env) t in
   if dbg then Format.printf "MEF t': %a@." Print.term t';
@@ -1279,6 +1279,7 @@ let make_ext_funs ?(asm=false) env t =
     |> List.filter_out is_extra_coeff
     |*> List.filter (fun x -> Id.id x > 0)
     |> List.filter_out (Id.mem_assoc -$- env)
+    |> List.filter_out (Id.mem -$- fvs)
   in
   if dbg then Format.printf "MEF: %a@." (List.print Print.id_typ) funs;
   if List.exists (is_poly_typ -| Id.typ) funs then
@@ -1504,55 +1505,57 @@ let () = flatten_let.tr_term <- flatten_let_term
 let flatten_let = flatten_let.tr_term
 
 
-let normalize_let = make_trans ()
+let normalize_let = make_trans2 ()
 
-let normalize_let_aux t =
-  let post t' =
-    match t'.desc with
-    | BinOp _ | App _ | Tuple _ | Proj _ ->
-        let y = new_var_of_term t' in
-        make_lets [y,[],t'] @@ make_var y
-    | _ -> t'
-  in
+let normalize_let_aux is_atom t =
   match t.desc with
-  | Var x -> x, post
+  | Var _ -> t, Fun.id
+  | _ when is_atom t -> t, Fun.id
   | _ ->
-     let x = new_var_of_term t in
-     let t' = normalize_let.tr_term t in
-     let post' t'' = make_let [x,[],t'] @@ post t'' in
-     x, post'
+      let post t' =
+        match t'.desc with
+        | BinOp _ | App _ | Tuple _ | Proj _ ->
+            let y = new_var_of_term t' in
+            make_lets [y,[],t'] @@ make_var y
+        | _ -> t'
+      in
+      let x = new_var_of_term t in
+      let t' = normalize_let.tr2_term is_atom t in
+      let post' t'' = make_let [x,[],t'] @@ post t'' in
+      make_var x, post'
 
-let normalize_let_term t =
+let normalize_let_term is_atom t =
   match t.desc with
+  | _ when is_atom t -> t
   | BinOp(op,t1,t2) ->
-      let x1,post1 = normalize_let_aux t1 in
-      let x2,post2 = normalize_let_aux t2 in
-      post1 @@ post2 @@ {desc=BinOp(op, make_var x1, make_var x2); typ=t.typ; attr=[]}
+      let t1',post1 = normalize_let_aux is_atom t1 in
+      let t2',post2 = normalize_let_aux is_atom t2 in
+      post1 @@ post2 @@ {desc=BinOp(op, t1', t2'); typ=t.typ; attr=[]}
   | App(t, ts) ->
-     let xs,posts = List.split_map normalize_let_aux ts in
-     let x,post = normalize_let_aux t in
+     let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
+     let t',post = normalize_let_aux is_atom t in
      let post' = List.fold_left (|-) post posts in
-     post' @@ make_app (make_var x) @@ List.map make_var xs
+     post' @@ make_app t' ts'
   | Tuple ts ->
-      let xs,posts = List.split_map normalize_let_aux ts in
-      List.fold_right (@@) posts @@ make_tuple @@ List.map make_var xs
+      let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
+      List.fold_right (@@) posts @@ make_tuple ts'
   | Proj(i,t) ->
-     let x,post = normalize_let_aux t in
-     post @@ make_proj i @@ make_var x
+     let t',post = normalize_let_aux is_atom t in
+     post @@ make_proj i t'
   | If(t1, t2, t3) ->
-      let x,post = normalize_let_aux t1 in
-      let t2'  = normalize_let.tr_term t2 in
-      let t3'  = normalize_let.tr_term t3 in
-      post @@ make_if (make_var x) t2' t3'
+      let t1',post = normalize_let_aux is_atom t1 in
+      let t2'  = normalize_let.tr2_term is_atom t2 in
+      let t3'  = normalize_let.tr2_term is_atom t3 in
+      post @@ make_if t1' t2' t3'
   | Let(flag,bindings,t1) ->
-      let aux (f,xs,t) = f, xs, normalize_let.tr_term t in
+      let aux (f,xs,t) = f, xs, normalize_let.tr2_term is_atom t in
       let bindings' = List.map aux bindings in
-      let t1' = normalize_let.tr_term t1 in
+      let t1' = normalize_let.tr2_term is_atom t1 in
       make_let_f flag bindings' t1'
-  | _ -> normalize_let.tr_term_rec t
+  | _ -> normalize_let.tr2_term_rec is_atom t
 
-let () = normalize_let.tr_term <- normalize_let_term
-let normalize_let = normalize_let.tr_term
+let () = normalize_let.tr2_term <- normalize_let_term
+let normalize_let ?(is_atom=fun _ -> false) = normalize_let.tr2_term is_atom
 
 
 
@@ -2177,41 +2180,50 @@ let copy_poly_funs t =
 
 
 
-let rec replace_main ?(force=true) main t =
+let rec map_main f t =
   match t.desc with
   | Let(flag, bindings, t2) ->
-      make_let_f flag bindings @@ replace_main main t2
+      let desc = Let(flag, bindings, map_main f t2) in
+      {t with desc}
+  | _ -> f t
+
+let rec replace_main ?(force=false) main t =
+  match t.desc with
+  | Let(flag, bindings, t2) ->
+      make_let_f flag bindings @@ replace_main ~force main t2
   | _ ->
       assert (force || t.desc = Const Unit);
       main
 
 
 let set_main t =
-  match get_last_definition t with
-  | None ->
-      let u = Id.new_var ~name:"main" t.typ in
-      None, make_let [u, [], t] unit_term
-  | Some f ->
-      let xs = get_args (Id.typ f) in
-      let t' =
-        if xs = [] && Id.typ f = TUnit then
-          replace_main (make_var f) t
-        else
-          let bindings =
-            let aux i x =
-              let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-              let t = make_randvalue_unit @@ Id.typ x in
-              x', [], t
-            in
-            List.mapi aux xs in
-          let main = make_app (make_var f) @@ List.map make_var @@ List.map Triple.fst bindings in
-          let main = make_lets bindings main in
-          let u = Id.new_var ~name:"main" main.typ in
-          let main = make_let [u, [], main] unit_term in
-          replace_main main t
-      in
-      let t'' = inst_randval t' in
-      Some (Id.name f, List.length xs), t''
+  let defs, body = decomp_prog t in
+  if defs = [] then
+    let u = Id.new_var ~name:"main" t.typ in
+    None, make_let [u, [], t] unit_term
+  else
+    let f = Triple.fst @@ List.last @@ snd @@ List.last defs in
+    let xs = get_args (Id.typ f) in
+    let t' =
+      if xs = [] && Id.typ f = TUnit then
+        replace_main (make_var f) t
+      else
+        let bindings =
+          let aux i x =
+            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+            let t = make_randvalue_unit @@ Id.typ x in
+            x', [], t
+          in
+          List.mapi aux xs
+        in
+        let main = make_app (make_var f) @@ List.map make_var @@ List.map Triple.fst bindings in
+        let main = make_lets bindings main in
+        let u = Id.new_var ~name:"main" main.typ in
+        let main = make_let [u, [], main] unit_term in
+        replace_main main t
+    in
+    let t'' = inst_randval t' in
+    Some (Id.name f, List.length xs), t''
 let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
@@ -2233,7 +2245,7 @@ let ref_to_assert ref_env t =
     List.fold_right (make_seq -| aux) ref_env unit_term
   in
   let map = List.map (Pair.map_snd Ref_type.to_abst_typ) ref_env in
-  merge_bound_var_typ map @@ replace_main main t, main
+  merge_bound_var_typ map @@ replace_main main t
 
 
 
@@ -2560,3 +2572,40 @@ let replace_fail_with_raise_desc desc =
   | _ -> replace_fail_with_raise.tr_desc_rec desc
 let () = replace_fail_with_raise.tr_desc <- replace_fail_with_raise_desc
 let replace_fail_with_raise = replace_fail_with_raise.tr_term
+
+
+
+let eta_normal = make_trans ()
+let eta_normal_desc desc =
+  fatal "Not tested";
+  match eta_normal.tr_desc_rec desc with
+  | App(t, ts) when arity t.typ > List.length ts ->
+      let xs,_ = decomp_tfun t.typ in
+      let xs' = List.map Id.new_var_id @@ List.take (List.length ts) xs in
+      (make_funs xs' (make_app t (ts @ List.map make_var xs'))).desc
+  | desc' -> desc'
+let () = eta_normal.tr_desc <- eta_normal_desc
+let eta_normal = eta_normal.tr_term
+
+
+let direct_from_CPS = make_trans ()
+let direct_from_CPS_typ typ =
+  if typ = typ_result then
+    TUnit
+  else
+    direct_from_CPS.tr_typ_rec typ
+let direct_from_CPS_desc desc =
+  match desc with
+  | Const CPS_result -> Const Unit
+  | App({desc=Event(s, true)}, [t1; t2]) ->
+      let t1' = direct_from_CPS.tr_term t1 in
+      let t2' = direct_from_CPS.tr_term t2 in
+      (make_seq (make_app (make_event s) [t1']) (make_app t2' [unit_term])).desc
+  | App({desc=Const(RandValue(typ, true))}, [t1; t2]) ->
+      let t1' = direct_from_CPS.tr_term t1 in
+      let t2' = direct_from_CPS.tr_term t2 in
+      (make_app t2' [make_app (make_randvalue typ) [t1']]).desc
+  | _ -> direct_from_CPS.tr_desc_rec desc
+let () = direct_from_CPS.tr_typ <- direct_from_CPS_typ
+let () = direct_from_CPS.tr_desc <- direct_from_CPS_desc
+let direct_from_CPS = remove_attr ACPS -| direct_from_CPS.tr_term
