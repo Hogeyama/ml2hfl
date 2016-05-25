@@ -23,16 +23,12 @@ let debug_abst = ref false
 let print_ref_typ_debug = false
 
 (* method option *)
+let mode = ref Reachability
+let mc = ref TRecS
 let input_cegar = ref false
-let remove_false = ref false (* remove false from pbs/pts in CEGAR_abst_util *)
-let assume = ref false (* use strongest post condition in if-term *)
-let assume_if = ref false (* replace if-term to branch or not when !assume = true *)
 let nondet = ref false (* eager evaluation for branch *)
-let use_dor = true
 let use_prefix_trace = false
 let use_nint = ref false
-let use_subterm = false
-let never_use_neg_pred = ref false
 let use_part_eval = true
 let check_sat = true
 let gen_int = true
@@ -45,13 +41,9 @@ let church_encode = ref false
 let beta_reduce = false (* do beta reduction before model checking *)
 let useless_elim = false
 let lift_fv_only = ref false
-let use_filter = ref false
-let disable_predicate_accumulation = ref false
 let relative_complete = ref false
 let never_use_relative_complete = ref true
 let no_exparam = ref true
-let expand_nonrec = ref true
-let expand_nonrec_init = ref true
 let cps_simpl = ref false
 let bool_init_empty = ref false
 let insert_param_funarg = ref false
@@ -62,11 +54,8 @@ let elim_same_arg = ref false
 let base_to_int = ref false
 let exists_unknown_false = true
 let replace_const = ref false
-let mode = ref Reachability
-let mc = ref TRecS
 let use_spec = ref false
 let comment_spec = ref true
-let wp_max_max = 8
 let cartesian_abstraction = ref true
 let modular = ref false
 let ignore_non_termination = ref false
@@ -118,8 +107,19 @@ let init_trans = ref true
 let just_print_non_CPS_abst = ref false
 let trans_to_CPS = ref true
 
+(* predicate abstraction option *)
+let use_filter = ref false
+let disable_predicate_accumulation = ref false
+let never_use_neg_pred = ref false
+let wp_max_max = 8
+let remove_false = ref false (* remove false from pbs/pts in CEGAR_abst_util *)
+let assume = ref false (* use strongest post condition in if-term *)
+let assume_if = ref false (* whether replace if-term to branch or not (this flag is used only when !assume = true) *)
+let expand_nonrec = ref true
+let expand_nonrec_init = ref true
+let decomp_pred = ref false
 
-(* pretty printer's option *)
+(* pretty printer option *)
 let () = Format.set_margin 120
 let color = ref false
 let color_always = ref false

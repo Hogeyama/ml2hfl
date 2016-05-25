@@ -293,10 +293,11 @@ let rec arg_spec () =
      "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
      "-no-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := false; Flag.expand_nonrec_init := false), " Do not expand non-recursive functions";
      "-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
-      " Expand non-recursive functions except those in the original program";
+             " Expand non-recursive functions except those in the original program";
      "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
      "-neg-pred-off", Arg.Set Flag.never_use_neg_pred,
-     " Never use negative predicates for abstraction";
+                      " Never use negative predicates for abstraction";
+     "-decomp-pred", Arg.Set Flag.decomp_pred, "Decompose abstraction predicates (e.g., [P1 && P2] ==> [P1, P2])";
      (* higher-order model checking *)
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      "-bool-church", Arg.Set Flag.church_encode, " Use church-encoding for model checking";
