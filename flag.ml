@@ -117,7 +117,7 @@ let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* whether replace if-term to branch or not (this flag is used only when !assume = true) *)
 let expand_nonrec = ref true
 let expand_nonrec_init = ref true
-
+let decomp_pred = ref false
 
 (* pretty printer option *)
 let () = Format.set_margin 120

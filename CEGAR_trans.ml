@@ -16,6 +16,11 @@ let debug () = List.mem "CEGAR_trans" !Flag.debug_module
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 
+let rec decomp_bool t =
+  match t with
+  | App(App(Const (And|Or), t1), t2) -> decomp_bool t1 @ decomp_bool t2
+  | _ -> [t]
+
 let rec merge_typ env typ typ' =
   match typ,typ' with
   | TBase(b1,ps1),TBase(b2,ps2) when b1 = b2 ->
@@ -23,18 +28,25 @@ let rec merge_typ env typ typ' =
       let env' = (x,typ)::env in
       let ps1' = ps1 (Var x) in
       let ps2' = ps2 (Var x) in
-      let equiv env t1 t2 =
-        let t1' = FpatInterface.conv_formula t1 in
-        let t2' = FpatInterface.conv_formula t2 in
-        FpatInterface.implies [t1'] [t2'] &&
-        FpatInterface.implies [t2'] [t1']
+      let ps2'' =
+        if !Flag.decomp_pred then
+          List.flatten_map decomp_bool ps2'
+        else
+          ps2'
       in
       let add env ps p =
-        if List.exists (equiv env p) ps
-        then ps
-        else normalize_bool_term p :: ps
+        let equiv env t1 t2 =
+          let t1' = FpatInterface.conv_formula t1 in
+          let t2' = FpatInterface.conv_formula t2 in
+          FpatInterface.implies [t1'] [t2'] &&
+            FpatInterface.implies [t2'] [t1']
+        in
+        if List.exists (equiv env p) ps then
+          ps
+        else
+          normalize_bool_term p :: ps
       in
-      let ps = List.fold_left (add env') ps1' ps2' in
+      let ps = List.fold_left (add env') ps1' ps2'' in
       let ps t = List.map (subst x t) ps in
       TBase(b1, ps)
   | TFun(typ11,typ12), TFun(typ21,typ22) ->
