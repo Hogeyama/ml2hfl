@@ -50,10 +50,10 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	BRA_transform.mli CEGAR_lift.mli tupling.mli ref_trans.mli	\
 	trans.mli tree.mli rose_tree.mli type.mli color.mli		\
 	CEGAR_trans.mli CEGAR_util.mli fair_termination_type.mli	\
-	HORS_parser.mli
+	HORS_parser.mli fpatInterface.mli ref_type.mli
 CMI = $(MLI:.mli=.cmi)
 
-CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
+CMO = environment.cmo flag.cmo util.cmo ext.cmo color.cmo tree.cmo	\
 	rose_tree.cmo id.cmo type.cmo syntax.cmo print.cmo		\
 	type_decl.cmo term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo	\
 	CEGAR_print.cmo typing.cmo type_check.cmo CEGAR_ref_type.cmo	\
@@ -74,8 +74,9 @@ CMO = environment.cmo flag.cmo util.cmo color.cmo tree.cmo		\
 	ref_trans.cmo ret_fun.cmo BRA_types.cmo BRA_util.cmo		\
 	BRA_state.cmo BRA_transform.cmo extraClsDepth.cmo		\
 	extraParamInfer.cmo eval.cmo elim_same_arg.cmo main_loop.cmo	\
-	comp_tree.cmo infer_mod.cmo modular.cmo termination_loop.cmo			\
-	fair_termination.cmo mochi.cmo
+	modular_syntax.cmo comp_tree.cmo infer_mod.cmo check_mod.cmo	\
+	modular.cmo termination_loop.cmo fair_termination.cmo		\
+	verify_ref_typ.cmo mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =

@@ -1267,18 +1267,18 @@ let make_ext_fun_def f =
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
   f, xs', make_letrec defs' t'
 
-let make_ext_funs ?(asm=false) ?(fvs=[]) env t =
-  let dbg = 0=9 in
-  let t' = remove_defs (List.map fst env) t in
+let make_ext_funs ?(fvs=[]) env t =
+  let dbg = 0=1 in
+  let t' = remove_defs (Ref_type.Env.dom env) t in
   if dbg then Format.printf "MEF t': %a@." Print.term t';
-  if dbg then Format.printf "MEF env: %a@." (List.print @@ Pair.print Id.print Ref_type.print) env;
+  if dbg then Format.printf "MEF env: %a@." Ref_type.Env.print env;
   if dbg then Format.printf "MEF fv: %a@." (List.print Id.print) @@ get_fv t';
   let funs =
     get_fv t'
     |> List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name)
     |> List.filter_out is_extra_coeff
     |*> List.filter (fun x -> Id.id x > 0)
-    |> List.filter_out (Id.mem_assoc -$- env)
+    |> List.filter_out (Ref_type.Env.mem_assoc -$- env)
     |> List.filter_out (Id.mem -$- fvs)
   in
   if dbg then Format.printf "MEF: %a@." (List.print Print.id_typ) funs;
@@ -1289,11 +1289,11 @@ let make_ext_funs ?(asm=false) ?(fvs=[]) env t =
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
-      let genv',cenv',t = Ref_type.generate ~asm genv cenv typ in
+      let genv',cenv',t = Ref_type.generate genv cenv typ in
       let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
       genv', cenv', (f',[],t)::defs
     in
-    List.fold_left aux ([],[],[]) env
+    List.fold_left aux ([],[],[]) @@ Ref_type.Env.to_list env
   in
   let defs = List.map snd (genv @ cenv) in
   make_letrecs defs @@ make_lets defs2 @@ make_lets defs1 t''
@@ -2069,13 +2069,11 @@ let beta_no_effect_tuple = beta_no_effect_tuple.tr2_term []
 
 
 let reduce_bottom = make_trans ()
-
 let reduce_bottom_term t =
   let t' = reduce_bottom.tr_term_rec t in
   match t'.desc with
   | Let(_, [x,[],{desc=Bottom}], _) -> make_bottom t.typ
   | _ -> t'
-
 let () = reduce_bottom.tr_term <- reduce_bottom_term
 let reduce_bottom = reduce_bottom.tr_term
 
@@ -2229,6 +2227,7 @@ let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
 let ref_to_assert ref_env t =
+  let ref_env = Ref_type.Env.to_list ref_env in
   let main =
     let aux (f, typ) =
       if not @@ Type.can_unify (Id.typ f) (Ref_type.to_simple typ) then
@@ -2609,3 +2608,13 @@ let direct_from_CPS_desc desc =
 let () = direct_from_CPS.tr_typ <- direct_from_CPS_typ
 let () = direct_from_CPS.tr_desc <- direct_from_CPS_desc
 let direct_from_CPS = remove_attr ACPS -| direct_from_CPS.tr_term
+
+
+let reduce_fail_unit = make_trans ()
+let reduce_fail_unit_term t =
+  let t' = reduce_fail_unit.tr_term_rec t in
+  match t'.desc with
+  | Let(_, [x,[],t], _) when t.desc = fail_unit_term.desc -> t
+  | _ -> t'
+let () = reduce_fail_unit.tr_term <- reduce_fail_unit_term
+let reduce_fail_unit = reduce_fail_unit.tr_term

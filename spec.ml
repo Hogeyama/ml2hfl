@@ -4,8 +4,8 @@ open Syntax
 open Term_util
 
 type spec =
-    {ref_env: Ref_type.env;
-     ext_ref_env: Ref_type.env;
+    {ref_env: (id * Ref_type.t) list;
+     ext_ref_env: (id * Ref_type.t) list;
      abst_env: env;
      abst_cps_env: env;
      abst_cegar_env: env;
@@ -161,7 +161,7 @@ let get_vars t = get_def_vars t @ get_fv t
 let get_vars_cegar prog = List.map (fun (f,_,_,_,_) -> CEGAR_trans.trans_inv_var f) prog.CEGAR_syntax.defs
 
 let get_ref_env spec t = (rename [Ref_env] spec @@ get_vars t).ref_env
-let get_ext_ref_env spec t = (rename [Ext_ref_env] spec @@ get_vars t).ext_ref_env
+let get_ext_ref_env spec t = Ref_type.Env.of_list @@ (rename [Ext_ref_env] spec @@ get_vars t).ext_ref_env
 let get_abst_env spec t = (rename [Abst_env] spec @@ get_vars t).abst_env
 let get_abst_cps_env spec t = (rename [Abst_cps_env] spec @@ get_vars t).abst_cps_env
 let get_abst_cegar_env spec prog = (rename [Abst_cegar_env] spec @@ get_vars_cegar prog).abst_cegar_env

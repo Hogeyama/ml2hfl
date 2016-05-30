@@ -91,6 +91,12 @@ and pattern =
 
 type env = (id * typ) list
 
+module ID : sig
+  type t = id
+  val compare : t -> t -> int
+  val print : Format.formatter -> t -> unit
+end
+
 val const_attr : attr list
 
 type trans =

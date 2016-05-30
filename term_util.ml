@@ -45,15 +45,15 @@ let rec is_value t =
   | _ -> false
 
 let unit_term = {desc=Const Unit; typ=TUnit; attr=const_attr}
-let true_term = {desc=Const True;typ=TBool; attr=const_attr}
-let false_term = {desc=Const False;typ=TBool; attr=const_attr}
+let true_term = {desc=Const True; typ=TBool; attr=const_attr}
+let false_term = {desc=Const False; typ=TBool; attr=const_attr}
 let cps_result = {desc=Const CPS_result; typ=typ_result; attr=const_attr}
-let fail_term = {desc=Event("fail",false);typ=typ_event; attr=[]}
-let fail_term_cps = {desc=Event("fail",true);typ=typ_event_cps; attr=[]}
+let fail_term = {desc=Event("fail",false); typ=typ_event; attr=[]}
+let fail_term_cps = {desc=Event("fail",true); typ=typ_event_cps; attr=[]}
 let make_bool b = if b then true_term else false_term
-let make_bottom typ = {desc=Bottom;typ=typ; attr=[]}
-let make_event s = {desc=Event(s,false);typ=typ_event; attr=[]}
-let make_event_cps s = {desc=Event(s,true);typ=typ_event_cps; attr=[]}
+let make_bottom typ = {desc=Bottom; typ=typ; attr=[]}
+let make_event s = {desc=Event(s,false); typ=typ_event; attr=[]}
+let make_event_cps s = {desc=Event(s,true); typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
 let make_string s = {desc=Const(String s); typ=TData("string",false); attr=const_attr}
@@ -123,14 +123,12 @@ let make_letrecs bindings t2 =
 let make_lets_f bindings t2 =
   List.fold_right (fun (flag,binding) -> make_let_f flag [binding]) bindings t2
 let make_seq t1 t2 =
-  match t1.desc with
-  | Const _
-  | Var _ -> t2
-  | _ -> make_let [Id.new_var ~name:"u" t1.typ, [], t1] t2
+  if is_value t1 then
+    t2
+  else
+    make_let [Id.new_var ~name:"u" t1.typ, [], t1] t2
 let make_ignore t =
-  if is_value t then
-    unit_term
-  else if Type.can_unify t.typ TUnit then
+  if Type.can_unify t.typ TUnit then
     t
   else
     make_seq t unit_term

@@ -171,6 +171,10 @@ and print_desc pri typ fm desc =
   | Let(_, [], t) ->
       Format.printf "@.%a@." (print_term 0 typ) t;
       assert false
+  | Let(_, [_, [], {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
+      let p = 80 in
+      let s1,s2 = paren pri p in
+      fprintf fm "@[%sassert@ false%s@]" s1 s2
   | Let(flag, bindings, t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in

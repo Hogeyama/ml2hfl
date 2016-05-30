@@ -618,3 +618,22 @@ let rec fixed_point ?(eq=(=)) f init =
   if eq x init
   then x
   else fixed_point ~eq f x
+
+
+let rec topological_sort_aux eq edges roots xs rev_acc =
+  match roots with
+  | [] -> List.rev rev_acc
+  | r::roots' ->
+      let edges1,edges2 = List.partition (fst |- eq r) edges in
+      let roots'' =
+        let ys = List.map snd edges1 in
+        List.filter (fun y -> not @@ List.exists (snd |- eq y) edges2) ys @ roots'
+      in
+      let xs' = List.filter_out (eq r) xs in
+      let rev_acc' = r::rev_acc in
+      topological_sort_aux eq edges2 roots'' xs' rev_acc'
+
+let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
+  let xs = List.unique ~cmp:eq @@ List.flatten_map Pair.to_list edges in
+  let roots = List.filter (fun x -> not @@ List.exists (snd |- eq x) edges) xs in
+  topological_sort_aux eq edges roots xs []

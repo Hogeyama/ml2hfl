@@ -184,7 +184,7 @@ let () = abst_recdata.tr_term <- abst_recdata_term
 let () = abst_recdata.tr_typ <- abst_recdata_typ
 
 
-let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term_typ t
+let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
 let trans t =
   t

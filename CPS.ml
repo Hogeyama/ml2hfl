@@ -822,7 +822,7 @@ let rec transform k_post {t_cps=t; typ_cps=typ; typ_orig; effect=e} =
 
 
 
-let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig=typ_orig; effect=e} =
+let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; typ_orig; effect=e} =
   match t with
   | ConstCPS _ -> []
   | BottomCPS -> []
@@ -974,12 +974,15 @@ let inline_affine t =
   |> Trans.inline_var_const
 
 
+let trans_typ typ = trans_typ typ @@ force_cont @@ infer_effect_typ typ
+
 let pr2 s p t = if !!debug then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
 
 let trans t =
+  pr "INPUT" t;
   initialize ();
-  typ_excep := trans_typ !typ_excep (force_cont (infer_effect_typ !typ_excep));
+  typ_excep := trans_typ !typ_excep;
   let t = Trans.short_circuit_eval t in
   let typed = infer_effect t in
   pr2 "infer_effect" print_typed_term typed;
@@ -994,22 +997,59 @@ let trans t =
     let h = make_fun e @@ make_app fail_term_cps [unit_term; k] in
     make_app_excep typed.effect t k h
   in
-  let t = {t with attr = [ACPS]} in
-  pr "CPS" t;
-  Type_check.check t typ_result;
-  let t = Trans.propagate_typ_arg t in
-  pr2 "propagate_typ_arg" Print.term t;
-  Type_check.check t typ_result;
-  let t = Trans.beta_reduce t in
-  pr "beta reduce" t;
-  Type_check.check t typ_result;
-  let t = inline_affine t in
-  pr "inline affine functions" t;
-  Type_check.check t typ_result;
-  let t = Trans.expand_let_val t in
-  pr "expand_let_val" t;
-  Type_check.check t typ_result;
-  let t = Trans.elim_unused_let ~cbv:false t in
-  let t = Trans.elim_unused_branch t in
-  pr "elim_unused_let" t;
-  t, make_get_rtyp typed
+  let t' =
+    {t with attr = [ACPS]}
+    |@> pr "CPS"
+    |@> Type_check.check -$- typ_result
+    |> Trans.propagate_typ_arg
+    |@> pr2 "propagate_typ_arg" Print.term
+    |@> Type_check.check -$- typ_result
+    |> Trans.beta_reduce
+    |@> pr "beta reduce"
+    |@> Type_check.check -$- typ_result
+    |> inline_affine
+    |@> pr "inline affine functions"
+    |@> Type_check.check -$- typ_result
+    |> Trans.expand_let_val
+    |@> pr "expand_let_val"
+    |@> Type_check.check -$- typ_result
+    |> Trans.elim_unused_let ~cbv:false
+    |> Trans.elim_unused_branch
+    |@> pr "elim_unused_let"
+  in
+  t', make_get_rtyp typed
+
+
+let trans_as_direct t =
+  t
+  |> trans
+  |> Pair.map_fst Trans.direct_from_CPS
+
+
+let rec trans_ref_typ is_CPS typ =
+  let open Ref_type in
+  match typ with
+  | Base(base, x, t) -> Base(base, x, t)
+  | Fun(x, typ1, typ2) ->
+      let x' = Id.map_typ trans_typ x in
+      let typ1' = trans_ref_typ is_CPS typ1 in
+      let typ2' = trans_ref_typ is_CPS typ2 in
+      let r = Id.new_var @@ to_simple typ2' in
+      let ret_typ =
+        if is_CPS then
+          typ_result
+        else
+          Base(Unit, U.dummy_var, true_term)
+      in
+      let typ' = Fun(r, typ2', ret_typ) in
+      let k = Id.new_var @@ to_simple typ' in
+      Fun(x', typ1', Fun(k, typ', ret_typ))
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ trans_ref_typ is_CPS) xtyps)
+  | Inter typs -> Inter (List.map (trans_ref_typ is_CPS) typs)
+  | Union typs -> Union (List.map (trans_ref_typ is_CPS) typs)
+  | _ -> assert false
+
+let trans_ref_typ typ = trans_ref_typ true typ
+and trans_ref_typ_as_direct typ = trans_ref_typ false typ
+
+let uncps_ref_type typ_cps typ = uncps_ref_type typ_cps ENone @@ force_cont @@ infer_effect_typ @@ Ref_type.to_simple typ

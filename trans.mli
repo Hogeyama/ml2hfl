@@ -22,7 +22,7 @@ val eval : typed_term -> typed_term
 val get_and_list : typed_term -> typed_term list
 val elim_fun : typed_term -> typed_term
 val make_ext_env : typed_term -> env
-val init_rand_int : typed_term -> typed_term
+val init_rand_int : typed_term -> typed_term (** replace rand_int() with a fresh variable*)
 val inlined_f : id list -> typed_term -> typed_term
 val lift_fst_snd : typed_term -> typed_term
 val expand_let_val : typed_term -> typed_term
@@ -30,7 +30,7 @@ val insert_param_funarg : typed_term -> typed_term
 val search_fail : typed_term -> int list list
 val screen_fail : int list -> typed_term -> typed_term
 val rename_ext_funs : id list -> typed_term -> id list * typed_term
-val make_ext_funs : ?asm:bool -> ?fvs:(id list) -> Ref_type.env -> typed_term -> typed_term
+val make_ext_funs : ?fvs:(id list) -> Ref_type.env -> typed_term -> typed_term
 val assoc_typ : id -> typed_term -> typ
 val diff_terms : typed_term -> typed_term -> (typed_term * typed_term) list
 val remove_label : ?label:string -> typed_term -> typed_term
@@ -93,3 +93,4 @@ val beta_size1 : typed_term -> typed_term
 val beta_reduce : typed_term -> typed_term
 val beta_no_effect : typed_term -> typed_term
 val reduce_bottom : typed_term -> typed_term
+val reduce_fail_unit : typed_term -> typed_term

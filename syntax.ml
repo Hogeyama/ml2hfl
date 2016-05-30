@@ -99,6 +99,13 @@ and pattern =
 type env = (id * typ) list
 
 
+module ID = struct
+  type t = id
+  let compare = Id.compare
+  let print = Id.print
+end
+
+
 let typ t = t.typ
 let desc t = t.desc
 let attr t = t.attr

@@ -58,6 +58,7 @@ let use_spec = ref false
 let comment_spec = ref true
 let cartesian_abstraction = ref true
 let modular = ref false
+let verify_ref_typ = ref false
 let ignore_non_termination = ref false
 let fail_as_exception = ref false
 

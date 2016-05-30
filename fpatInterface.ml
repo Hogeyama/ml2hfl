@@ -103,6 +103,7 @@ let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
 
 let rec of_typed_term t =
   match S.desc t with
+  | S.Const S.Unit -> Fpat.Term.mk_const @@ Fpat.Const.Unit
   | S.Const S.True -> Fpat.Term.mk_const @@ Fpat.Const.True
   | S.Const S.False -> Fpat.Term.mk_const @@ Fpat.Const.False
   | S.Const (S.Int n) -> Fpat.Term.mk_const @@ Fpat.Const.Int n
@@ -117,7 +118,9 @@ let rec of_typed_term t =
               | Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
               | Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
               | typ when typ = Type.typ_unknown -> Fpat.Const.Eq Fpat.Type.mk_int
-              | _ -> unsupported "FpatInterface.of_typed_term"
+              | typ ->
+                  Format.eprintf "t1.S.typ: %a@." Print.typ typ;
+                  unsupported "FpatInterface.of_typed_term"
             end
         | S.Lt -> Fpat.Const.Lt Fpat.Type.mk_int
         | S.Gt -> Fpat.Const.Gt Fpat.Type.mk_int
@@ -130,7 +133,27 @@ let rec of_typed_term t =
         | S.Mult -> Fpat.Const.Mul Fpat.Type.mk_int
       in
       Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_typed_term t1; of_typed_term t2]
-  | _ -> unsupported "FpatInterface.of_typed_term"
+  | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
+      let of_typ typ =
+        match typ with
+        | Type.TUnit -> Fpat.Type.mk_unit
+        | Type.TInt -> Fpat.Type.mk_int
+        | Type.TBool -> Fpat.Type.mk_bool
+        | _ ->
+            Format.printf "%a@." Print.typ typ;
+            assert false
+      in
+      let ts' =
+        ts
+        |> List.map @@ Pair.add_right @@ of_typ -| S.typ
+        |> List.map @@ Pair.map_fst of_typed_term
+      in
+      Fpat.Pva.make (Fpat.Idnt.make @@ Id.to_string p) ts'
+      |> Fpat.Pva.to_formula
+      |> Fpat.Formula.term_of
+  | desc ->
+      Format.eprintf "desc: %a@." Print.desc desc;
+      unsupported "FpatInterface.of_typed_term"
 
 let inv_const c =
   match c with
@@ -299,7 +322,7 @@ let is_cp prog =
 let infer labeled is_cp cexs ext_cexs prog =
   let fs = List.map fst prog.env in
   let defs' =
-    if !Flag.mode = Flag.FairNonTermination || !Flag.modular then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
+    if !Flag.mode = Flag.FairNonTermination || !Flag.verify_ref_typ then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
       let aux f =
         if CEGAR_syntax.is_randint_var f then
           []
@@ -318,7 +341,7 @@ let infer labeled is_cp cexs ext_cexs prog =
       prog.defs in
   let prog = conv_prog {prog with defs=defs'} in
   let cexs =
-    if !Flag.mode = Flag.FairNonTermination || !Flag.modular then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
+    if !Flag.mode = Flag.FairNonTermination || !Flag.verify_ref_typ then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
       List.map (flip (@) [2]) cexs
     else
       cexs in

@@ -206,6 +206,8 @@ let main in_channel =
       main_split_assert orig spec parsed
     else if !Flag.modular then
       Modular.main orig spec parsed
+    else if !Flag.verify_ref_typ then
+      Verify_ref_typ.main orig spec parsed
     else if !Flag.mode = Flag.Termination then
       main_termination orig parsed
     else if !Flag.mode = Flag.FairTermination then
@@ -281,6 +283,7 @@ let rec arg_spec () =
      "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
      (* verifier *)
      "-modular", Arg.Set Flag.modular, " Modular verification";
+     "-verify-ref-typ", Arg.Set Flag.verify_ref_typ, " Verify functions have given refinement types";
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
      "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.comment_spec, " disable {SPEC} on comments";
