@@ -1,8 +1,3 @@
-(*
-  手動で述語を与えたが、何故か動かない
-  HorSatPがおかしい?
-*)
-
 (*{SPEC}
   fairness: (A, B)
 
@@ -19,7 +14,7 @@ let rec f x =
     ()
   else
     if read_int () > 0 then
-      (event "B"; f (x-2))
+      (event "B"; f(x-2))
     else
       (event "A"; f x)
 
@@ -29,7 +24,7 @@ let main () =
 let rec main () =
   let r = read_int () in
     if r > 0 then
-      f r
+      ()
     else
       (event "A"; main ())
 *)

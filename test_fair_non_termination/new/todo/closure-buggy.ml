@@ -1,3 +1,7 @@
+(*
+  abstractionに時間がかかる
+*)
+
 let const x () = x
 let rec finish() =
   event "A"; finish()
