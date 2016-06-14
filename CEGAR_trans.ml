@@ -687,7 +687,7 @@ let rec eval_abst_cbn prog labeled abst ce =
 
 
 let assoc_def labeled defs ce acc t =
-  if ce = [] && !Flag.mode = Flag.FairNonTermination then
+  if ce = [] && !Flag.mode = Flag.FairNonTermination && !Flag.break_expansion_ref then
     None
   else
     let f = match t with Var f -> f | _ -> assert false in
