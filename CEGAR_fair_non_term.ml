@@ -37,7 +37,8 @@ let rec expand_tree rules n expr =
     List.assoc f rules in
 
   if n < - !Flag.expand_ce_count then
-    Var "end" (* 打ち切れる場所が現れないときの無限ループ防止 *)
+    (Flag.break_expansion_ref := true;
+     Var "end") (* 打ち切れる場所が現れないときの無限ループ防止 *)
   else match expr with
   | Var s when is_term s ->
      Var s
@@ -78,6 +79,7 @@ let rec value2tree v =
 let cegar prog0 labeled is_cp ce_rules prog =
   Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules;
   let start_symbol = fst @@ List.hd ce_rules in
+  Flag.break_expansion_ref := false;
   let ce_value = expand_tree ce_rules !Flag.expand_ce_count (Var start_symbol) in
   let ce_tree = value2tree ce_value in
   Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;

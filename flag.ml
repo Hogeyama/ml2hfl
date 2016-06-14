@@ -146,3 +146,4 @@ let fair_term_loop_count = ref 0
 
 (* fair-non-termination-mode option *)
 let expand_ce_count = ref 30
+let break_expansion_ref = ref false
