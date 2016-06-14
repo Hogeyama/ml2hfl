@@ -312,7 +312,9 @@ let rec arg_spec () =
      "-trecs-bin", Arg.Set_string Flag.trecs,
                    Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
      "-horsat-bin", Arg.Set_string Flag.horsat,
-                   Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
+                    Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
+     "-horsatp-bin", Arg.Set_string Flag.horsatp,
+                     Format.sprintf "<cmd>  Change horsatp command to <cmd> (default: \"%s\")" !Flag.horsatp;
      (* predicate discovery *)
      "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,

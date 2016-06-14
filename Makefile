@@ -163,7 +163,7 @@ endif
 bin: $(NAME).opt
 	@echo make $(MOCHI_BIN_DIR)
 	@mkdir -p $(MOCHI_BIN_DIR)/bin
-	@cp $(CVC3) $(HORSAT) $(TRECS) $(NAME).opt $(MOCHI_BIN_DIR)/bin
+	@cp $(CVC3) $(HORSAT) $(TRECS) $(HORSATP) $(NAME).opt $(MOCHI_BIN_DIR)/bin
 	@mkdir -p $(MOCHI_BIN_DIR)/lib
 	@ldd $(NAME).opt | while read line; \
 	do \
