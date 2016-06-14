@@ -703,23 +703,26 @@ let rec eval_abst_cbn prog labeled abst ce =
 
 
 let assoc_def labeled defs ce acc t =
-  let f = match t with Var f -> f | _ -> assert false in
-  let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
-  if List.mem f labeled
-  then
-    if ce = [] then
-      None
-    else
-      let c = List.hd ce in
-      let ce' = List.tl ce in
-      let acc' = c::acc in
-      let def = List.nth defs' c in
-      Some (ce', acc', def)
+  if ce = [] && !Flag.mode = Flag.FairNonTermination then
+    None
   else
-    let acc' = 0::acc in
-    let def = List.hd defs' in
-    assert (List.length defs' = 1);
-    Some(ce, acc', def)
+    let f = match t with Var f -> f | _ -> assert false in
+    let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
+    if List.mem f labeled
+    then
+      if ce = [] then
+        None
+      else
+        let c = List.hd ce in
+        let ce' = List.tl ce in
+        let acc' = c::acc in
+        let def = List.nth defs' c in
+        Some (ce', acc', def)
+    else
+      let acc' = 0::acc in
+      let def = List.hd defs' in
+      assert (List.length defs' = 1);
+      Some(ce, acc', def)
 
 let init_cont _ acc _ = List.rev acc
 
