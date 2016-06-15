@@ -767,6 +767,11 @@ let rec has_rand t =
   | Fun(_, _, t) -> has_rand t
 
 
+let implies env t =
+  try
+    FpatInterface.implies (List.map FpatInterface.conv_formula env) [FpatInterface.conv_formula t]
+  with _ -> false
+
 let rec simplify_if_term env t =
   match t with
   | Const c -> Const c
@@ -783,9 +788,9 @@ let rec simplify_if_term env t =
         | _ -> t1'', t2', t3'
       in
       begin
-        if t1''' = Const True || List.mem t1''' env then
+        if implies env t1''' then
           t2''
-        else if t1''' = Const False || List.mem (make_not t1''') env then
+        else if implies env (make_not t1''') then
           t3''
         else
           make_if t1''' t2'' t3''
