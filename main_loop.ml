@@ -34,7 +34,7 @@ type preprocess =
   | Ref_trans
   | Tupling
   | Inline
-  | Cps
+  | CPS
   | Remove_pair
   | Replace_bottom_def
   | Add_cps_preds
@@ -63,7 +63,7 @@ let string_of_label = function
   | Ref_trans -> "Ref_trans"
   | Tupling -> "Tupling"
   | Inline -> "Inline"
-  | Cps -> "CPS"
+  | CPS -> "CPS"
   | Remove_pair -> "Remove_pair"
   | Replace_bottom_def -> "Replace_bottom_def"
   | Add_cps_preds -> "Add_cps_preds"
@@ -78,7 +78,7 @@ let take_result l acc = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
 
-let preprocesses t spec =
+let preprocesses spec =
   [
     Replace_const,
     ((Fun.const !Flag.replace_const),
@@ -137,7 +137,7 @@ let preprocesses t spec =
     Inline,
     (Fun.const true,
      (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
-    Cps,
+    CPS,
     ((Fun.const !Flag.trans_to_CPS),
      (fun acc -> CPS.trans @@ last_t acc));
     Remove_pair,
@@ -161,18 +161,27 @@ let preprocesses t spec =
   ]
 
 
-let preprocess t spec =
-  let pps = preprocesses t spec in
-  let results =
-    let aux acc (label,(cond,f)) =
-      if cond acc then
-        let r = trans_and_print f (string_of_label label) last_t fst acc in
-        (label, r)::acc
-      else
-        acc
-    in
-    List.fold_left aux [Init, (t, get_rtyp_id)] pps
+let preprocess_before label spec =
+  List.takewhile ((<>) label -| fst) @@ preprocesses spec
+
+let run_preprocess pps t =
+  let aux acc (label,(cond,f)) =
+    if true then Format.printf "PREPROCESS: %s@." @@ string_of_label label;
+    if cond acc then
+      let r = trans_and_print f (string_of_label label) last_t fst acc in
+      (label, r)::acc
+    else
+      acc
   in
+  List.fold_left aux [Init, (t, get_rtyp_id)] pps
+
+let preprocess ?(pps=None) t spec =
+  let pps' =
+    match pps with
+    | None -> preprocesses spec
+    | Some pps' -> pps' spec
+  in
+  let results = run_preprocess pps' t in
   let t = last_t results in
   let fun_list = Term_util.get_top_funs @@ take_result Decomp_pair_eq results in
 

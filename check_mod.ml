@@ -134,7 +134,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
       if n < List.length ts then
         init_result_of_dir dir t ce_env
       else if n > List.length ts then
-        unsupported "Modular.eval: App(fix, _)"
+        unsupported "Check_mod.eval: App(fix, _)"
       else
         let f,xs,t1' = Option.get @@ decomp_fix t1 in
         let t1'' = subst f t1 t1' in
@@ -142,8 +142,8 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
         eval dir top_funs fun_env ce_set ce_env label_env t'
   | App({desc=Var f}, ts) when List.length ts > List.length @@ fst @@ Id.assoc f fun_env ->
       let n = List.length @@ fst @@ Id.assoc f fun_env in
-      if dbg then Format.printf "Modular.eval App %a %d@\n" Id.print f n;
-      if dbg then Format.printf "Modular.eval App %a@\n" Print.term  @@ snd @@ Id.assoc f fun_env;
+      if dbg then Format.printf "Check_mod.eval App %a %d@\n" Id.print f n;
+      if dbg then Format.printf "Check_mod.eval App %a@\n" Print.term  @@ snd @@ Id.assoc f fun_env;
       let ts1,ts2 = List.split_nth n ts in
       eval dir top_funs fun_env ce_set ce_env label_env @@ make_app_raw (make_app (make_var f) ts1) ts2
   | App({desc=Var f}, ts) ->
@@ -263,8 +263,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
       end
   | Let _ when is_fix t -> init_result_of_dir dir t ce_env
   | Let(flag, [], t2) -> eval dir top_funs fun_env ce_set ce_env label_env t2
-  | Let(flag, [f,xs,t1], t2) ->
-      assert (flag = Nonrecursive || not @@ Id.mem f @@ Term_util.get_fv t1);
+  | Let(Nonrecursive, [f,xs,t1], t2) ->
       if xs = [] then
         let fun_env' = if is_base_typ t1.typ then fun_env else (f, decomp_funs' t1)::fun_env in
         match eval dir top_funs fun_env ce_set ce_env label_env t1 with
@@ -289,9 +288,13 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
       else
         let t2' = subst f (make_funs xs t1) t2 in
         eval dir top_funs fun_env ce_set ce_env label_env t2'
+  | Let(Recursive, [f,xs,t1], t2) ->
+      assert (xs <> []);
+      let t2' = subst f (make_fix f xs t1) t2 in
+      eval dir top_funs fun_env ce_set ce_env label_env t2'
   | _ ->
       Format.printf "@.%a@." Print.term t;
-      unsupported "Modular.eval"
+      unsupported "Check_mod.eval"
   in
   if dbg then
     if dir=Modular_to_Single then
@@ -337,7 +340,7 @@ let check prog f typ =
   let top_funs = List.map fst fun_env' in
   if !!debug then Format.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   if !!debug then Format.printf "  t: %a@." Print.term_typ t;
-  if !!debug then Format.printf "  t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
+  if !!debug then Format.printf "  t with def: %a@.@." Print.term' @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_letrecs (List.map Triple.of_pair_r fun_env')

@@ -947,7 +947,7 @@ let eta = eta.tr_term
 
 
 
-let normalize = Trans.reduce_fail_unit
+let normalize = Trans.reduce_fail_unit |- Trans.reconstruct
 
 let trans_CPS env t =
   let fs = List.map fst env in

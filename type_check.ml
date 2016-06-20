@@ -13,11 +13,9 @@ let check_var x typ =
 
 let rec check t typ =
   if !!debug then Format.printf "CHECK: %a, %a@." Print.term t Print.typ typ;
-  if not (Type.can_unify t.typ typ)
-  then (Format.printf "check: %a, %a@."
-                      (Color.red Print.term') t
-                      (Color.yellow Print.typ) typ;
-        assert false);
+  if not (Type.can_unify t.typ typ) then
+    (Format.printf "check: %a, %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
+     assert false);
   match t.desc, elim_tpred t.typ with
   | _, TFuns _ -> ()
   | Label(_, t), _ -> check t typ
@@ -77,6 +75,12 @@ let rec check t typ =
             assert false
       in
       List.iter (fun (f,xs,t) -> aux t xs @@ Id.typ f) bindings;
+      let fv = get_fv t2 in
+      let aux' f =
+        let fv' = List.filter (Id.same f) fv in
+        List.for_all (fun f' -> Type.can_unify (Id.typ f) (Id.typ f')) fv'
+      in
+      assert (List.for_all (aux' -| Triple.fst) bindings);
       check t2 typ'
   | BinOp(Eq,t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);

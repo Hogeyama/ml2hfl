@@ -75,26 +75,42 @@ let report_unsafe ce_set =
 
 let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
-  let normalized = normalize parsed in
+  let initialized =
+    let pps =
+      Main_loop.preprocess_before Main_loop.CPS spec
+      |> List.filter_out (fst |- (=) Main_loop.Beta_reduce_trivial)
+    in
+    Main_loop.last_t @@ Main_loop.run_preprocess pps parsed
+  in
+  if !!debug then Format.printf "INITIALIZED: %a@.@." Print.term' initialized;
+  let normalized = normalize initialized in
   if !!debug then Format.printf "NORM: %a@.@." Print.term normalized;
   let fbindings,body = decomp_prog normalized in
   assert (body.desc = Const Unit);
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
   let fun_env = List.flatten_map (fun (_,bindings) -> List.map Triple.to_pair_r bindings) fbindings in
   let _,(main,_) = List.decomp_snoc fun_env in
-  let fs = List.flatten_map (snd |- List.map Triple.fst) fbindings in
-  let fs' = List.filter_out (Id.same main) fs in
   let typ = Ref_type.from_simple @@ Id.typ main in
-  let env_init = Ref_type.Env.create fs' (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ) in
-  if !!debug then Format.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
-  let prog = {fun_typ_env=env_init; fun_def_env=fun_env} in
-  let cmp =
-    let edges =
-      let fvs = List.map (fun (f,(xs,t)) -> f, List.Set.diff ~cmp:Id.eq (get_fv t) (f::xs)) fun_env in
-      List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv) fvs
+  let prog =
+    let fs =
+      List.flatten_map (snd |- List.map Triple.fst) fbindings
+      |> List.filter_out (Id.same main)
     in
-    let fs = topological_sort ~eq:Id.eq edges in
-    let map = List.mapi (fun i x -> x, i) fs in
+    let env_init = Ref_type.Env.create fs (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ) in
+    if !!debug then Format.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
+    {fun_typ_env=env_init; fun_def_env=fun_env}
+  in
+  let cmp =
+    let map =
+      let edges =
+        fun_env
+        |> List.map (fun (f,(xs,t)) -> f, List.Set.diff ~cmp:Id.eq (get_fv t) (f::xs))
+        |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
+      in
+      edges
+      |> topological_sort ~eq:Id.eq
+      |> List.mapi (fun i x -> x, i)
+    in
     Compare.on (Id.assoc -$- map)
   in
   match main_loop prog cmp main typ with

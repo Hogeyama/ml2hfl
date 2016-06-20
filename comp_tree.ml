@@ -276,63 +276,6 @@ let rec from_term
       from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env t2
   | App({desc=Fun(_, t)}, [{desc=App({desc=Const(RandValue _)}, [{desc=Const Unit}])}]) ->
       from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env t
-(*
-  | App({desc=Var f}, ts) when Ref_type.Env.mem_assoc f typ_env && false ->
-      if !!debug then Format.printf "  APP3, %a@\n" Id.print f;
-      let n = List.length ts in
-      let ref_typ = Some (Ref_type.Env.assoc f typ_env) in
-      let children =
-        let aux typ = (* f has type "typ" *)
-          let xtyps =
-            typ
-            |> Ref_type.decomp_funs n
-            |> Triple.snd
-            |> List.map @@ Pair.map_fst Id.new_var_id
-          in
-          let arg_map =
-            let xs = List.map fst xtyps in
-            if !!debug then Format.printf "    xs: %a@\n" (List.print Id.print) xs;
-            if !!debug then Format.printf "    ts: %a@\n" (List.print Print.term) ts;
-            make_arg_map val_env xs ts
-          in
-          if !!debug then Format.printf "  APP3 arg_map: %a@\n" pr_env arg_map;
-          let nid' = Counter.gen cnt  in
-          let children' =
-            let aux' (g,typ) tg =
-              if !!debug then Format.printf "    Id.typ g: %a@\n" Print.typ @@ Id.typ g;
-              let m = Type.arity @@ Id.typ g in
-              let ytyps =
-                try
-                  Ref_type.Env.of_list @@ Triple.snd @@ Ref_type.decomp_funs m typ
-                with _ -> unsupported "Comp_tree.from_term"
-              in
-              let t' =
-                ytyps
-                |> Ref_type.Env.dom
-                |> List.map make_var
-                |> make_app @@ make_var g
-              in
-              if !!debug then Format.printf "    g: %a@\n" Id.print g;
-              if !!debug then Format.printf "    t': %a@\n" Print.term t';
-              if !!debug then Format.printf "    t'.typ: %a@\n" Print.typ t'.typ;
-              if !!debug then Format.printf "    typ: %a@\n" Ref_type.print typ;
-              if !!debug then Format.printf "    tg: %a@\n" Print.term tg;
-              let typ_env' = Ref_type.Env.merge ytyps typ_env in
-              from_term cnt ext_funs typ_env' fun_env arg_map ce_set ce_env t'
-            in
-            let xtyps' = List.filter (fst |- is_fun_var) xtyps in
-            let ts' = List.filter (Syntax.typ |- is_fun_typ) ts in
-            List.filter_map2 aux' xtyps' ts'
-          in
-          let label = App((f,TopLevel), arg_map) in
-          RT.Node({nid=nid'; val_env; label; ref_typ; ce_env}, children')
-        in
-        let typs = Ref_type.Env.assoc_all f typ_env in
-        List.map aux typs
-      in
-      if !!debug then Format.printf "  children: %a@\n" (List.print print) children;
-      Some (spawn false nid typ_env val_env ce_env f children)
- *)
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       if !!debug then Format.printf "  APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
@@ -380,21 +323,25 @@ let rec from_term
         f, kind
       in
       let args' = ys @ args in
-      let label = App(fun_id, arg_map) in
-      let ref_typ = Ref_type.Env.assoc_option f typ_env in
+      let node =
+        let label = App(fun_id, arg_map) in
+        let ref_typ = Ref_type.Env.assoc_option f typ_env in
+        {nid; var_env; val_env; label; ref_typ; ce_env}
+      in
       assert (List.Set.eq ~cmp:Id.eq (List.map fst var_env') (List.map fst val_env'));
-      [RT.Node({nid; var_env; val_env; label; ref_typ; ce_env},
-               from_term cnt ext_funs args' typ_env fun_env var_env' val_env' ce_set ce_env t_f)]
+      [RT.Node(node, from_term cnt ext_funs args' typ_env fun_env var_env' val_env' ce_set ce_env t_f)]
   | If(t1, t2, t3) ->
       if !!debug then Format.printf "  IF t1: %a@\n" Print.term t1;
       let tid = get_id_option t in
       let aux br ce_env' =
         let cond,t23 = if br = 0 then t1, t2 else make_not t1, t3 in
         if !!debug then Format.printf "    t23: %a@\n" Print.term t23;
-        let label = Assume cond in
-        let ref_typ = None in
-        RT.Node({nid; var_env; val_env; label; ref_typ; ce_env},
-                from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env' t23)
+        let node =
+          let label = Assume cond in
+          let ref_typ = None in
+          {nid; var_env; val_env; label; ref_typ; ce_env}
+        in
+        RT.Node(node, from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env' t23)
       in
       begin
         match tid with
@@ -419,18 +366,26 @@ let rec from_term
       assert (xs <> []);
       let var_env' = (f, List.map fst val_env)::var_env in
       let val_env' = (f, Closure(var_env, val_env, make_funs xs t1))::val_env in
-      let label = Let(f, make_funs xs t1) in
-      let ref_typ = None in
-      [RT.Node({nid; var_env; val_env; label; ref_typ; ce_env},
-               from_term cnt ext_funs args typ_env fun_env var_env' val_env' ce_set ce_env t2)]
+      let node =
+        let label = Let(f, make_funs xs t1) in
+        let ref_typ = None in
+        {nid; var_env; val_env; label; ref_typ; ce_env}
+      in
+      [RT.Node(node, from_term cnt ext_funs args typ_env fun_env var_env' val_env' ce_set ce_env t2)]
   | _ when is_fail t ->
-      let label = Fail in
-      let ref_typ = None in
-      [RT.Node({nid; var_env; val_env; label; ref_typ; ce_env}, [])]
+      let node =
+        let label = Fail in
+        let ref_typ = None in
+        {nid; var_env; val_env; label; ref_typ; ce_env}
+      in
+      [RT.Node(node, [])]
   | _ when t.desc = Bottom ->
-      let label = Bottom in
-      let ref_typ = None in
-      [RT.Node({nid; var_env; val_env; label; ref_typ; ce_env}, [])]
+      let node =
+        let label = Bottom in
+        let ref_typ = None in
+        {nid; var_env; val_env; label; ref_typ; ce_env}
+      in
+      [RT.Node(node, [])]
   | _ ->
       Format.printf "@.%a@." Print.term t;
       Format.printf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
