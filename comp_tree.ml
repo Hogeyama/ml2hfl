@@ -291,7 +291,9 @@ let rec from_term
           let val_env' =
             let t_f' = Trans.alpha_rename t_f in
             let t_f'' = add_tid (f',tid) @@ subst_var f f' t_f' in
-            (f', Closure([], [], make_funs ys t_f'')) :: val_env
+            let var_env_f' = [f', []] in
+            let rec val_env_f' = [f', Closure(var_env_f', val_env_f', make_funs ys t_f'')] in
+            val_env_f' @ val_env
           in
           let ce_env' = (tid,(i,path))::ce_env in
           let t' = make_app (add_id tid @@ make_var f') ts in

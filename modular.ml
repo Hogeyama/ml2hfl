@@ -7,8 +7,8 @@ open Modular_syntax
 let debug () = List.mem "Modular" !Flag.debug_module
 
 type result =
-  | Typable of Ref_type.Env.t
-  | Untypable of (Syntax.id * int list) list
+  | Typable
+  | Untypable
 
 let merge_tenv env' env =
   Ref_type.Env.to_list env' @ Ref_type.Env.to_list env
@@ -16,51 +16,58 @@ let merge_tenv env' env =
   |> Ref_type.Env.of_list
 
 let merge_ce_set ce_set' ce_set =
-  let ce_set'' = ce_set' @ ce_set in
-  let fs = List.unique ~cmp:Id.eq @@ List.map fst ce_set'' in
-  List.map (fun f -> f, List.unique @@ List.flatten @@ List.assoc_all f ce_set'') fs
+  let dbg = 0=1 in
+  let cmp (x,ce) (x',ce') = Id.same x x' && ce = ce' in
+  let ce_set'' = List.unique ~cmp @@ ce_set' @ ce_set in
+  List.filter_out (fun (x,ce) -> ce = [] && 2 <= List.length @@ List.assoc_all ~cmp:Id.eq x ce_set'') ce_set''
+  |@dbg&> Format.printf "MERGE_CE_SET: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int)
 
 let is_closed f def_env =
   let ys,t = Id.assoc f def_env in
   List.Set.subset ~cmp:Id.eq (get_fv t) (f::ys)
 
 let rec main_loop c d prog cmp f typ ce_set =
-  if !!debug then Format.printf "#[MAIN_LOOP]{%a,%d,%d} prog: %a@." Id.print f c d print_prog prog;
-  if !!debug then Format.printf "#[MAIN_LOOP]{%a,%d,%d} ce_set: %a@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
+  if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d} prog:@ %a@." Id.print f c d print_prog prog;
+  if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d} ce_set:@ %a@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
   let {fun_typ_env=env; fun_def_env} = prog in
-  if !!debug then Format.printf "#[MAIN_LOOP]{%a,%d,%d}: %a :? %a@." Id.print f c d Id.print f Ref_type.print typ;
+  if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d}:@ %a :? %a@." Id.print f c d Id.print f Ref_type.print typ;
   match Check_mod.check prog f typ with
   | Check_mod.Typable env' ->
-      if !!debug then Format.printf "  #[MAIN_LOOP] TYPABLE{%a,%d,%d}: %a : %a@.@." Id.print f c d Id.print f Ref_type.print typ;
-      Typable (merge_tenv env' env)
+      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] TYPABLE{%a,%d,%d}: %a :@ %a@.@." Id.print f c d Id.print f Ref_type.print typ;
+      Typable, merge_tenv env' env, ce_set
   | Check_mod.Untypable ce_set' when is_closed f fun_def_env ->
-      if !!debug then Format.printf "  #[MAIN_LOOP] UNTYPABLE{%a,%d,%d} (closed): %a : %a@.@." Id.print f c d Id.print f Ref_type.print typ;
-      Untypable (merge_ce_set ce_set ce_set')
+      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d} (closed):@ %a : %a@.@." Id.print f c d Id.print f Ref_type.print typ;
+      Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set'
   | Check_mod.Untypable ce_set' ->
-      if !!debug then Format.printf "  #[MAIN_LOOP] UNTYPABLE{%a,%d,%d}: %a : %a@." Id.print f c d Id.print f Ref_type.print typ;
-      if !!debug then Format.printf "  #[MAIN_LOOP] UNTYPABLE{%a,%d,%d}: fv: %a@." Id.print f c d (List.print Id.print) (get_fv @@ Fun.uncurry make_funs @@ Id.assoc f fun_def_env);
-      if !!debug then Format.printf "  #[MAIN_LOOP] UNTYPABLE{%a,%d,%d} ce_set': %a@.@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set';
+      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d}:@ %a : %a@." Id.print f c d Id.print f Ref_type.print typ;
+      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d}:@ fv: %a@." Id.print f c d (List.print Id.print) (get_fv @@ Fun.uncurry make_funs @@ Id.assoc f fun_def_env);
+      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d} ce_set':@ %a@.@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set';
       let rec refine_loop ce_set'' =
+        if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d} ce_set'':@ %a@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set'';
         match Infer_mod.infer prog f typ ce_set'' with
         | None ->
-            Untypable ce_set''
+            Untypable, prog.fun_typ_env, ce_set''
         | Some candidate ->
             let candidate' = List.sort ~cmp:(Compare.on ~cmp fst) @@ Ref_type.Env.to_list candidate in
-            if !!debug then Format.printf "    #[MAIN_LOOP] CANDIDATES{%a,%d,%d}: %a@.@." Id.print f c d Ref_type.Env.print candidate;
-            let aux acc (g,typ') =
-              if !!debug then Format.printf "    #[MAIN_LOOP] CHECK CANDIDATE{%a,%d,%d}: %a :? %a@.@." Id.print f c d Id.print g Ref_type.print typ';
-              match acc with
-              | Typable env' -> main_loop 0 (d+1) {prog with fun_typ_env=env'} cmp g typ' ce_set''
-              | Untypable ce_set -> Untypable ce_set
+            if !!debug then Format.printf "    @[<hov 2>#[MAIN_LOOP] CANDIDATES{%a,%d,%d}:@ %a@.@." Id.print f c d Ref_type.Env.print candidate;
+            let aux ((r,env',ce_set'''),updated) (g,typ') =
+              if !!debug then Format.printf "    @[<hov 2>#[MAIN_LOOP] CHECK CANDIDATE{%a,%d,%d}:@ %a :? %a@.@." Id.print f c d Id.print g Ref_type.print typ';
+              match r with
+              | Typable -> main_loop 0 (d+1) {prog with fun_typ_env=env'} cmp g typ' ce_set''', true
+              | Untypable -> Triple.map_fst (Fun.const Untypable) @@ main_loop 0 (d+1) {prog with fun_typ_env=env'} cmp g typ' ce_set''', updated
             in
-            match List.fold_left aux (Typable env) candidate' with
-            | Typable env' ->
-                if !!debug then Format.printf "  #[MAIN_LOOP] ALL CANDIDATES ARE VALID{%a,%d,%d}@." Id.print f c d;
-                if !!debug then Format.printf "    #[MAIN_LOOP] CANDIDATES{%a,%d,%d}: %a@.@." Id.print f c d Ref_type.Env.print candidate;
-                main_loop (c+1) d {prog with fun_typ_env=env'} cmp f typ ce_set''
-            | Untypable ce_set''' ->
-                if !!debug then Format.printf "  #[MAIN_LOOP] CANDIDATE IS INVALID{%a,%d,%d}@.@." Id.print f c d;
-                refine_loop (merge_ce_set ce_set''' ce_set'')
+            let (r, env', ce_set'''), updated = List.fold_left aux ((Typable, env, ce_set''), false) candidate' in
+            match r with
+            | Typable ->
+                if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] ALL CANDIDATES ARE VALID{%a,%d,%d}@." Id.print f c d;
+                if !!debug then Format.printf "    @[<hov 2>#[MAIN_LOOP] CANDIDATES{%a,%d,%d}: %a@.@." Id.print f c d Ref_type.Env.print candidate;
+                main_loop (c+1) d {prog with fun_typ_env=env'} cmp f typ ce_set'''
+            | Untypable when updated ->
+                if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] CANDIDATE IS INVALID{%a,%d,%d}@.@." Id.print f c d;
+                main_loop (c+1) d {prog with fun_typ_env=env'} cmp f typ ce_set'''
+            | Untypable ->
+                if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] CANDIDATE IS INVALID{%a,%d,%d}@.@." Id.print f c d;
+                refine_loop ce_set'''
       in
       refine_loop (merge_ce_set ce_set' ce_set)
 let main_loop prog cmp f typ = main_loop 0 0 prog cmp f typ []
@@ -114,10 +121,11 @@ let main _ spec parsed =
     in
     Compare.on (Id.assoc -$- map)
   in
-  match main_loop prog cmp main typ with
-  | Typable env ->
+  let r, env, ce_set = main_loop prog cmp main typ in
+  match r with
+  | Typable ->
       report_safe env;
       true
-  | Untypable ce_set ->
+  | Untypable ->
       report_unsafe ce_set;
       false

@@ -175,6 +175,8 @@ let rec constr_of_typ typ =
   | Fun _
   | PApp(Fun _, _) -> Exp true_term
   | Inter [] -> Exp true_term
+  | Inter typs -> (* TODO *)
+      _Ands (List.map constr_of_typ typs)
   | _ ->
       Format.printf "  typ: %a@." print_template typ;
       assert false
@@ -242,6 +244,7 @@ let rec expand_type templates typ =
                     then typ2
                     else PApp(typ2, [t])
                   in
+                  let typ2' = typ2 in
                   et @@ subst_template x t @@ Arg(typ2', ts')
                   |@> pr "@[<hov 2>[%a |-> %a]%a = %a@]@." Id.print x Print.term t print_template (Arg(typ2', ts')) print_template
             end

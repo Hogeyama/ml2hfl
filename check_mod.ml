@@ -78,12 +78,16 @@ let decomp_modular r =
   | Single _ -> assert false
   | Modular r -> r
 
-let decomp_funs' t =
+let eta_decomp_funs' t =
   match t.desc with
   | Event("fail",false) ->
       let u = Id.new_var TUnit in
       [u], make_app t [make_var u]
-  | _ ->  decomp_funs t
+  | _ ->
+      let xs,t' = decomp_funs t in
+      let xs',_ = decomp_tfun t'.typ in
+      let xs'' = List.map Id.new_var_id xs' in
+      xs@xs'', make_app t' @@ List.map make_var xs''
 
 let counter = Counter.create ()
 let new_label () = Counter.gen counter
@@ -273,7 +277,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
   | Let(flag, [], t2) -> eval dir top_funs fun_env ce_set ce_env label_env t2
   | Let(Nonrecursive, [f,xs,t1], t2) ->
       if xs = [] then
-        let fun_env' = if is_base_typ t1.typ then fun_env else (f, decomp_funs' t1)::fun_env in
+        let fun_env' = if is_base_typ t1.typ then fun_env else (f, eta_decomp_funs' t1)::fun_env in
         match eval dir top_funs fun_env ce_set ce_env label_env t1 with
         | Single rs ->
             let aux (v,ce_env,path) =
