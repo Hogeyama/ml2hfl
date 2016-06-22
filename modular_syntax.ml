@@ -28,7 +28,8 @@ let normalize t =
   |> Trans.short_circuit_eval
   |> Trans.normalize_let ~is_atom:is_atom
   |> Trans.flatten_let
-  |> Trans.inline_var
-  |> Trans.inline_simple_exp
-  |> Trans.inline_no_effect
-  |> Trans.reconstruct
+  |> fixed_point
+       (Trans.inline_var
+        |- Trans.inline_simple_exp
+        |- Trans.inline_no_effect
+        |- Trans.reconstruct)

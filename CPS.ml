@@ -863,42 +863,51 @@ let assoc_typ_cps f typed =
 
 
 let rec uncps_ref_type rtyp e etyp =
+  let dbg = 0=10 in
   if !!debug then
-    Format.printf "rtyp:%a@.e:%a@.etyp:%a@.@." RT.print rtyp print_effect e print_typ_cps etyp;
+    Format.printf "rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
   match rtyp, e, etyp with
   | RT.Inter rtyps, ENone, _ ->
+      if dbg then Format.printf "%s@.@." __LOC__;
       RT.Inter (List.map (fun rtyp1 -> uncps_ref_type rtyp1 e etyp) rtyps)
-  | RT.Base(b,x,ps), ENone, TBaseCPS _ -> RT.Base(b,x,ps)
+  | RT.Base(b,x,ps), ENone, TBaseCPS _ ->
+      if dbg then Format.printf "%s@.@." __LOC__;
+      RT.Base(b,x,ps)
   | RT.Fun(x,rtyp1,rtyp2), ENone, TFunCPS(e,etyp1,etyp2) ->
+      if dbg then Format.printf "%s@.@." __LOC__;
       let rtyp1' = uncps_ref_type rtyp1 ENone etyp1 in
       let rtyp2' = uncps_ref_type rtyp2 (!sol e) etyp2 in
       RT.Fun(x, rtyp1', rtyp2')
   | RT.Fun(_, RT.Fun(_,rtyp,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_)),
     ECont, _ ->
+      if dbg then Format.printf "%s@.@." __LOC__;
       uncps_ref_type rtyp ENone etyp
   | RT.Fun(_, RT.Fun(_,rtyp, RT.Base(RT.Unit,_,_)), RT.Fun(_,_,RT.Base(RT.Unit,_,_))),
     EExcep, _ -> (* TODO: refine *)
+      if dbg then Format.printf "%s@.@." __LOC__;
       uncps_ref_type rtyp ENone etyp
   | RT.Fun(_, RT.Inter rtyps, RT.Base(RT.Unit,_,_)), ECont, _ ->
+      if dbg then Format.printf "%s@.@." __LOC__;
       let aux = function
         | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type rtyp1 ENone etyp
         | _ -> assert false
       in
       RT.Union (List.map aux rtyps)
   | RT.Tuple xrtyps, _, TTupleCPS etyps ->
+      if dbg then Format.printf "%s@.@." __LOC__;
       RT.Tuple (List.map2 (fun (x,rtyp) etyp -> x, uncps_ref_type rtyp e etyp) xrtyps etyps)
   | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
+      if dbg then Format.printf "%s@.@." __LOC__;
       RT.ExtArg(x, rtyp1, uncps_ref_type rtyp2 e etyp)
   | _ ->
       if !!debug then
-        Format.printf "rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
+        Format.printf "@.rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
       assert false
 
 let infer_effect t =
   let cmp x y = Id.same x y && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
   let ext_funs = get_fv ~cmp t in
-  if List.length ext_funs <> List.length (List.unique ~cmp:Id.same ext_funs)
-  then
+  if List.length ext_funs <> List.length (List.unique ~cmp:Id.same ext_funs) then
     begin
       List.iter (fun x -> Format.printf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
       unsupported "polymorphic use of external functions";
@@ -909,7 +918,7 @@ let infer_effect t =
 let make_get_rtyp typed get_rtyp f =
   let etyp = assoc_typ_cps f typed in
   let rtyp = get_rtyp f in
-  if debug() then
+  if !!debug then
     Format.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
   let rtyp' = uncps_ref_type rtyp ENone etyp in
   if Flag.print_ref_typ_debug then

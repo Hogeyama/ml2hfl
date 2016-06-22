@@ -75,17 +75,18 @@ let report_unsafe ce_set =
 
 let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
-  let initialized =
+  let fbindings,body =
     let pps =
       Main_loop.preprocess_before Main_loop.CPS spec
       |> List.filter_out (fst |- (=) Main_loop.Beta_reduce_trivial)
     in
-    Main_loop.last_t @@ Main_loop.run_preprocess pps parsed
+    Main_loop.run_preprocess pps parsed
+    |> Main_loop.last_t
+    |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term'
+    |> normalize
+    |@!!debug&> Format.printf "NORMALIZED: %a@.@." Print.term
+    |> decomp_prog
   in
-  if !!debug then Format.printf "INITIALIZED: %a@.@." Print.term' initialized;
-  let normalized = normalize initialized in
-  if !!debug then Format.printf "NORM: %a@.@." Print.term normalized;
-  let fbindings,body = decomp_prog normalized in
   assert (body.desc = Const Unit);
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
   let fun_env = List.flatten_map (fun (_,bindings) -> List.map Triple.to_pair_r bindings) fbindings in

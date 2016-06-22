@@ -210,14 +210,14 @@ let rec expand_type templates typ =
   | Base _
   | Const _ -> typ
   | Var x ->
-      pr "TEMPLATE: %a@." print_tmp_env templates;
+      pr "  TEMPLATE: %a@." print_tmp_env templates;
       templates
       |> List.filter (Id.eq x -| fst -| fst)
-      |> List.map (fun ((x,nid),typ) -> pr "VAR[%a]: typ: %a@." Id.print x print_template typ; nid,typ)
+      |> List.map (fun ((x,nid),typ) -> pr "  VAR[%a]: typ: %a@." Id.print x print_template typ; nid,typ)
       |> List.sort
       |> List.hd
       |> snd
-      |@> pr "VAR[%a]: typ: %a@." Id.print x print_template
+      |@> pr "  VAR[%a]: typ: %a@." Id.print x print_template
       |> et
   | PApp(Base None, _) -> Base None
   | PApp(Singleton t, _) -> Singleton t
@@ -1030,20 +1030,29 @@ let infer prog f typ ce_set =
   Format.printf "CONSTR3: @[%a@.@." print_constr constr;
   let constr = flatten constr in
   Format.printf "CONSTR4: @[%a@.@." print_horn_clauses constr;*)
-  let sol = Option.try_any (fun _ -> solve hc) in
-  Option.map
-    (fun sol ->
-     let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
-     if !!debug then Format.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
-     let env' = List.filter_map (fun ((f,_),tmp) -> if Id.mem f top_funs then Some (f, apply_sol sol tmp) else None) templates in
-     let env'' =
-       let aux (x,typ') =
-         let typ = Ref_type.Env.assoc x prog.fun_typ_env in
-         let x',_ = Ref_type.Env.find (fst |- Id.same x) env in
-         if !!debug then Format.printf "%a: %a@." Id.print x' Ref_type.print typ';
-         x', CPS.uncps_ref_type typ' typ
-       in
-       Ref_type.Env.of_list @@ List.map aux env'
-     in
-     if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env'';
-     env'') sol
+  match Option.try_any (fun _ -> solve hc) with
+  | None -> None
+  | Some sol ->
+      let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
+      if !!debug then Format.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
+      let env' = List.filter_map (fun ((f,_),tmp) -> if Id.mem f top_funs then Some (f, apply_sol sol tmp) else None) templates in
+      let env'' =
+        let aux (x,typ') =
+          let typ = Ref_type.Env.assoc x prog.fun_typ_env in
+          let x',_ = Ref_type.Env.find (fst |- Id.same x) env in
+          if !!debug then Format.printf "%a: %a@." Id.print x' Ref_type.print typ';
+          let typ_ =
+            if !!debug then Format.printf "typ: %a@." Ref_type.print typ;
+            if !!debug then Format.printf "typ': %a@." Ref_type.print typ';
+            make_get_rtyp (fun y -> assert (Id.same y x); typ') x
+          in
+          if !!debug then Format.printf "typ_: %a@." Ref_type.print typ_;(*
+          let typ'' = CPS.uncps_ref_type typ' typ in*)
+          x', typ_
+        in
+        List.map aux env'
+        |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
+        |> Ref_type.Env.of_list
+      in
+      if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env'';
+      Some env''

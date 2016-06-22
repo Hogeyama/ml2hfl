@@ -389,12 +389,12 @@ let rec from_term
   | _ ->
       Format.printf "@.%a@." Print.term t;
       Format.printf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
-      Format.printf "Dom(typ_env): %a@." (List.print Id.print) @@ Ref_type.Env.dom typ_env;
+      Format.printf "Dom(fun_env): %a@." (List.print Id.print) @@ List.map fst fun_env;
       let f =
         (match t.desc with App({desc=Var f},_) -> f | _ -> assert false)
       in
-      Format.printf "%a is in Dom(typ_env)?: %b@." Id.print f (Id.mem f @@ Ref_type.Env.dom typ_env);
-      Format.printf "%a is in Dom(typ_env)?: %b@." Id.print f (Ref_type.Env.mem_assoc f typ_env);
+      Format.printf "%a is in Dom(fun_env)?: %b@." Id.print f (Id.mem_assoc f fun_env);
+      Format.printf "%a is in Dom(val_env)?: %b@." Id.print f (Id.mem_assoc f val_env);
       unsupported "Comp_tree.from_term")
 let from_term typ_env fun_env ce_set t =
   let ext_funs = Ref_type.Env.dom typ_env in

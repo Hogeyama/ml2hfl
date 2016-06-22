@@ -124,12 +124,15 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
       if dbg then Format.printf "BOTTOM@\n";
       Single []
   | App({desc=Const(RandValue _)}, [t2]) ->
+      if dbg then Format.printf "Check_mod.eval APP1@\n";
       assert (t2 = unit_term);
       init_result_of_dir dir t ce_env
   | App({desc=Fun(x,t1)}, v::vs) when List.for_all is_value vs ->
+      if dbg then Format.printf "Check_mod.eval APP2@\n";
       let t' = make_app (subst x v t1) vs in
       eval dir top_funs fun_env ce_set ce_env label_env t'
   | App(t1, ts) when is_fix t1 ->
+      if dbg then Format.printf "Check_mod.eval APP3@\n";
       let n = get_arg_num t1 in
       if n < List.length ts then
         init_result_of_dir dir t ce_env
@@ -141,12 +144,14 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
         let t' = List.fold_right2 subst xs ts t1'' in
         eval dir top_funs fun_env ce_set ce_env label_env t'
   | App({desc=Var f}, ts) when List.length ts > List.length @@ fst @@ Id.assoc f fun_env ->
+      if dbg then Format.printf "Check_mod.eval APP4@\n";
       let n = List.length @@ fst @@ Id.assoc f fun_env in
       if dbg then Format.printf "Check_mod.eval App %a %d@\n" Id.print f n;
       if dbg then Format.printf "Check_mod.eval App %a@\n" Print.term  @@ snd @@ Id.assoc f fun_env;
       let ts1,ts2 = List.split_nth n ts in
       eval dir top_funs fun_env ce_set ce_env label_env @@ make_app_raw (make_app (make_var f) ts1) ts2
   | App({desc=Var f}, ts) ->
+      if dbg then Format.printf "Check_mod.eval APP5@\n";
       if dbg then Format.printf "ASSOC: %a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
       assert (List.length ts <= List.length ys);
@@ -188,6 +193,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
               eval dir top_funs fun_env ce_set ce_env label_env t'
         end
   | App(t1, [t2]) ->
+      if dbg then Format.printf "Check_mod.eval APP6@\n";
       assert (not @@ is_value t1);
       assert (is_value t2);
       let r = eval dir top_funs fun_env ce_set ce_env label_env t1 in
@@ -242,7 +248,9 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
             let label = get_label t in
             let f,ce = List.get ce_env in
             match ce with
-            | [] -> assert false
+            | [] ->
+                assert (label = None);
+                assert false
             | br::ce' ->
                 let t23 = if br = 0 then t2 else t3 in
                 let v,ce_env,paths = decomp_modular @@ eval dir top_funs fun_env ce_set [f,ce'] label_env t23 in
@@ -340,7 +348,7 @@ let check prog f typ =
   let top_funs = List.map fst fun_env' in
   if !!debug then Format.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   if !!debug then Format.printf "  t: %a@." Print.term_typ t;
-  if !!debug then Format.printf "  t with def: %a@.@." Print.term' @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
+  if !!debug then Format.printf "  t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_letrecs (List.map Triple.of_pair_r fun_env')

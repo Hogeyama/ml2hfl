@@ -2,8 +2,10 @@ open Util
 
 type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
+let debug () = List.mem "Main_loop" !Flag.debug_module
+
 let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
-  let b = 0=9 in
+  let b = !!debug in
   if b then Format.printf "START: %s@." desc;
   let r = f t in
   if b then Format.printf "END: %s@." desc;
@@ -166,7 +168,7 @@ let preprocess_before label spec =
 
 let run_preprocess pps t =
   let aux acc (label,(cond,f)) =
-    if true then Format.printf "PREPROCESS: %s@." @@ string_of_label label;
+    if !!debug then Format.printf "PREPROCESS: %s@." @@ string_of_label label;
     if cond acc then
       let r = trans_and_print f (string_of_label label) last_t fst acc in
       (label, r)::acc
