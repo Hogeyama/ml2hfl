@@ -79,6 +79,13 @@ module Pair = struct
     | [x;y] -> x,y
     | _ -> invalid_arg "Pair.of_list"
   let print f g ppf (x,y) = Format.fprintf ppf "@[(@[%a,@ %a@])@]" f x g y
+  let eq eq1 eq2 (x,y) (x',y') = eq1 x x' && eq2 y y'
+  let compare cmp1 cmp2 (x,y) (x',y') =
+    let r = cmp1 x x' in
+    if r <> 0 then
+      r
+    else
+      cmp2 y y'
 end
 
 module Triple = struct
@@ -637,3 +644,19 @@ let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
   let xs = List.unique ~cmp:eq @@ List.flatten_map Pair.to_list edges in
   let roots = List.filter (fun x -> not @@ List.exists (snd |- eq x) edges) xs in
   topological_sort_aux eq edges roots xs []
+
+let rec transitive_closure ?(eq=(=)) edges =
+  let eq' = Pair.eq eq eq in
+  let cons (x,y) es =
+    if List.mem ~cmp:eq' (x,y) es then
+      es
+    else
+      (x,y)::es
+  in
+  let f edges' =
+    let aux acc (x,y) =
+      List.fold_left (fun acc' (z,w) -> if eq y z then cons (x,w) acc' else acc') acc acc
+    in
+    List.fold_left aux edges' edges'
+  in
+  fixed_point ~eq:(List.Set.eq ~cmp:eq') f edges
