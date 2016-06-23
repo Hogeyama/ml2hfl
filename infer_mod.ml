@@ -820,8 +820,8 @@ let rec to_horn_clause asm constr =
   | Pred _ -> assert false
 let to_horn_clause constr = to_horn_clause [] constr
 
-let check_arity hc =
-  let ts = List.flatten_map (Fun.uncurry List.snoc) hc in
+let check_arity hcs =
+  let ts = List.flatten_map (Fun.uncurry List.snoc) hcs in
   let aux env t =
     match t.desc with
     | App({desc=Var f}, ts) ->
@@ -847,9 +847,9 @@ let rec pvars t =
 let print_solution fm (p,(xs,t)) =
   Format.fprintf fm "P_%d(%a) := %a" p (print_list Id.print ",") xs Print.term t
 
-let solve hc =
+let solve hcs =
   let vars =
-    hc
+    hcs
     |> List.flatten_map (fun (body,head) -> List.flatten_map pvars body @ pvars head)
     |> List.unique ~cmp:Id.eq
   in
@@ -859,7 +859,7 @@ let solve hc =
       |> FpatInterface.of_typed_term
       |> Fpat.Formula.of_term
     in
-    hc
+    hcs
     |> List.map @@ Pair.map (List.map tr) tr
     |> List.map @@ Pair.swap
     |> List.map (Fun.uncurry Fpat.HornClause.of_formulas)
@@ -1001,6 +1001,83 @@ let add_context for_infer prog f typ =
   let env' = prog.fun_def_env in
   trans_CPS env' t'
 
+let get_dependencies hcs =
+  let aux (body,head) =
+    let fv1 = get_fv @@ make_ands body in
+    let fv2 = get_fv head in
+    List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1
+  in
+  List.flatten_map aux hcs
+
+let assoc_pred_var p hcs =
+  let rec find hcs =
+    match hcs with
+    | [] -> raise Not_found
+    | (body,head)::hcs' ->
+        match List.find_option (fun x -> is_pred_var x && Id.id x = p) @@ get_fv @@ make_ands (head::body) with
+        | None -> find hcs'
+        | Some x -> x
+  in
+  find hcs
+
+let merge_predicate_variables candidates hcs =
+  let rec get_map candidates dependencies =
+    match candidates with
+    | [] -> []
+    | (p1,p2)::candidates' ->
+        if List.mem (p1,p2) dependencies then
+          get_map candidates' dependencies
+        else
+          let dependencies' =
+            let sbst p = if Id.same p p1 then p2 else p in
+            dependencies
+            |> List.map @@ Pair.map sbst sbst
+            |> List.unique
+          in
+          (p1,p2) :: get_map candidates' dependencies'
+  in
+  get_dependencies hcs
+  |> transitive_closure
+  |> get_map candidates
+
+let subst_horn_clause x t (body,head) =
+  List.map (subst x t) body, subst x t head
+
+let solve_merged merge_candidates hcs =
+  let map = merge_predicate_variables merge_candidates hcs in
+  let rec aux map =
+    let hcs' = List.fold_left (fun hcs (p1,p2) -> List.map (subst_horn_clause p1 (make_var p2)) hcs) hcs map in
+    match Option.try_any (fun () -> solve hcs'), map with
+    | None, [] -> None
+    | None, _::map' -> aux map'
+    | Some sol, _ -> Some sol
+  in
+  aux map
+
+let rec get_merge_candidates_aux typ1 typ2 =
+  match typ1, typ2 with
+  | Base None, Base None -> []
+  | Base (Some(_, p1)), Base (Some(_, p2)) -> [p1, p2]
+  | PApp(typ1', _), _ -> get_merge_candidates_aux typ1' typ2
+  | _, PApp(typ2', _) -> get_merge_candidates_aux typ1 typ2'
+  | Fun(_, typ11, typ12), Fun(_, typ21, typ22) -> get_merge_candidates_aux typ11 typ21 @ get_merge_candidates_aux typ12 typ22
+  | _ ->
+      Format.printf "get_merge_candidates_aux typ1: %a@." print_template typ1;
+      Format.printf "get_merge_candidates_aux typ2: %a@." print_template typ2;
+      assert false
+let get_merge_candidates templates hcs =
+  let aux (_, typ) =
+    match typ with
+    | Inter [typ'] -> []
+    | Inter (typ'::typs) ->
+        assert (List.for_all (function Inter _ -> false | _ -> true) (typ'::typs));
+        List.flatten_map (get_merge_candidates_aux typ') typs
+    | _ -> []
+  in
+  templates
+  |> List.flatten_map aux
+  |> List.map (fun (p1,p2) -> assoc_pred_var p1 hcs, assoc_pred_var p2 hcs)
+
 let infer prog f typ ce_set =
   let ce_set =
     if 0=1 then
@@ -1033,13 +1110,17 @@ let infer prog f typ ce_set =
   if !!debug then Format.printf "TEMPLATES: @[%a@.@." print_tmp_env templates;
   let constrs = generate_constraints templates comp_tree in
   if !!debug then Format.printf "CONSTR: @[%a@.@." (List.print print_constr) constrs;
-  let hc = List.flatten_map to_horn_clause constrs in
-  let hc = List.map (Pair.map (List.map Trans.init_rand_int) Trans.init_rand_int) hc in
-  if !!debug then Format.printf "HORN CLAUSES: @[%a@.@." print_horn_clauses hc;
+  let hcs =
+    constrs
+    |> List.flatten_map to_horn_clause
+    |> List.map @@ Pair.map (List.map Trans.init_rand_int) Trans.init_rand_int
+    |@!!debug&> Format.printf "HORN CLAUSES: @[%a@.@." print_horn_clauses
+    |@!!debug&> check_arity
+  in
+  let merge_candidates = get_merge_candidates templates hcs in
 (*
   if false then Format.fprintf (Format.formatter_of_out_channel @@ open_out "test.hcs") "%a@." print_horn_clauses hc;
  *)
-  check_arity hc;
   (*
   let constr = inline_template templates constr in
   Format.printf "CONSTR2: @[%a@.@." print_constr constr;
@@ -1049,7 +1130,7 @@ let infer prog f typ ce_set =
   Format.printf "CONSTR3: @[%a@.@." print_constr constr;
   let constr = flatten constr in
   Format.printf "CONSTR4: @[%a@.@." print_horn_clauses constr;*)
-  match Option.try_any (fun _ -> solve hc) with
+  match solve_merged merge_candidates hcs with
   | None -> None
   | Some sol ->
       let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
