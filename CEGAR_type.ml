@@ -1,3 +1,4 @@
+open Util
 
 type var = string
 
@@ -65,3 +66,10 @@ let is_ttuple typ =
   match decomp_tapp typ with
   | TBase(TTuple, _), _ -> true
   | _ -> false
+
+let rec arg_num x typ =
+  match typ with
+  | TBase _ -> 0
+  | TAbs _ -> unsupported "CEGAR_type.arg_num: TAbs"
+  | TApp _ -> unsupported "CEGAR_type.arg_num: TAbs"
+  | TFun(typ1, typ2) -> 1 + arg_num x (typ2 x)

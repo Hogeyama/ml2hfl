@@ -367,7 +367,7 @@ let rec from_term
       if !!debug then Format.printf "    t: %a@\n" Print.term t;
       assert (xs <> []);
       let var_env' = (f, List.map fst val_env)::var_env in
-      let val_env' = (f, Closure(var_env, val_env, make_funs xs t1))::val_env in
+      let rec val_env' = (f, Closure(var_env', val_env', make_funs xs t1))::val_env in
       let node =
         let label = Let(f, make_funs xs t1) in
         let ref_typ = None in

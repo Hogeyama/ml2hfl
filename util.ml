@@ -166,6 +166,12 @@ module Option = struct
     then Some (f x)
     else None
 
+  let some_if b x =
+    if b then
+      Some x
+    else
+      None
+
   let to_list x =
     match x with
     | None -> []

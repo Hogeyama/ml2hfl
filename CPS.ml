@@ -147,6 +147,12 @@ let rec unify typ1 typ2 =
                     print_typ_cps typ1 print_typ_cps typ2;
       assert false
 
+let rec typ_of_etyp etyp =
+  match etyp with
+  | TBaseCPS typ -> typ
+  | TFunCPS(x, etyp1, etyp2) -> make_tfun (typ_of_etyp etyp1) (typ_of_etyp etyp2)
+  | TTupleCPS etyps -> make_ttuple (List.map typ_of_etyp etyps)
+
 let rec lift_letrec_typ typed =
   match typed.t_cps, typed.typ_cps with
   | FunCPS(_, ({t_cps=FunCPS _} as typed1)), _ ->
@@ -313,7 +319,9 @@ let rec infer_effect env t =
       let e = new_evar () in
       constraints := CGeq(e, EExcep) :: !constraints;
       {t_cps=RaiseCPS typed; typ_cps=infer_effect_typ t.typ; typ_orig=t.typ; effect=e}
-  | _ -> assert false
+  | _ ->
+      Format.printf "%a@." Print.term t;
+      assert false
 
 
 exception Loop of effect_var list
@@ -867,9 +875,15 @@ let rec uncps_ref_type rtyp e etyp =
   if !!debug then
     Format.printf "rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
   match rtyp, e, etyp with
-  | RT.Inter rtyps, ENone, _ ->
+  | RT.Inter(styp, rtyps), ENone, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
-      RT.Inter (List.map (fun rtyp1 -> uncps_ref_type rtyp1 e etyp) rtyps)
+      let typs = List.map (fun rtyp1 -> uncps_ref_type rtyp1 e etyp) rtyps in
+      let styp' =
+        match typs with
+        | [] -> typ_unknown (* TODO *)
+        | typ'::_ -> RT.to_simple typ'
+      in
+      RT.Inter(styp', typs)
   | RT.Base(b,x,ps), ENone, TBaseCPS _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
       RT.Base(b,x,ps)
@@ -886,13 +900,19 @@ let rec uncps_ref_type rtyp e etyp =
     EExcep, _ -> (* TODO: refine *)
       if dbg then Format.printf "%s@.@." __LOC__;
       uncps_ref_type rtyp ENone etyp
-  | RT.Fun(_, RT.Inter rtyps, RT.Base(RT.Unit,_,_)), ECont, _ ->
+  | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(RT.Unit,_,_)), ECont, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
       let aux = function
         | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type rtyp1 ENone etyp
         | _ -> assert false
       in
-      RT.Union (List.map aux rtyps)
+      let rtyps' = List.map aux rtyps in
+      let typ' =
+        match rtyps' with
+        | [] -> typ_of_etyp etyp
+        | rtyp'::_ -> RT.to_simple rtyp'
+      in
+      RT.Union(typ', List.map aux rtyps)
   | RT.Tuple xrtyps, _, TTupleCPS etyps ->
       if dbg then Format.printf "%s@.@." __LOC__;
       RT.Tuple (List.map2 (fun (x,rtyp) etyp -> x, uncps_ref_type rtyp e etyp) xrtyps etyps)
@@ -983,15 +1003,28 @@ let inline_affine t =
   |> Trans.inline_var_const
 
 
+let has_typ_result =
+  let has_typ_result = make_col false (||) in
+  let has_typ_result_typ typ =
+    if typ = typ_result then
+      true
+    else
+      has_typ_result.col_typ_rec typ
+  in
+  has_typ_result.col_typ <- has_typ_result_typ;
+  has_typ_result.col_typ
+
+
 let trans_typ typ = trans_typ typ @@ force_cont @@ infer_effect_typ typ
 
 let pr2 s p t = if !!debug then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
 
-let trans t =
+let trans ?(typ_excep_orig=typ_excep_init) t =
   pr "INPUT" t;
   initialize ();
-  typ_excep := trans_typ !typ_excep;
+  if not @@ has_typ_result !typ_excep then
+    typ_excep := trans_typ !typ_excep;
   let t = Trans.short_circuit_eval t in
   let typed = infer_effect t in
   pr2 "infer_effect" print_typed_term typed;
@@ -1029,9 +1062,9 @@ let trans t =
   t', make_get_rtyp typed
 
 
-let trans_as_direct t =
+let trans_as_direct ?(typ_excep_orig=typ_excep_init) t =
   t
-  |> trans
+  |> trans ~typ_excep_orig
   |> Pair.map_fst Trans.direct_from_CPS
 
 
@@ -1054,11 +1087,26 @@ let rec trans_ref_typ is_CPS typ =
       let k = Id.new_var @@ to_simple typ' in
       Fun(x', typ1', Fun(k, typ', ret_typ))
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ trans_ref_typ is_CPS) xtyps)
-  | Inter typs -> Inter (List.map (trans_ref_typ is_CPS) typs)
-  | Union typs -> Union (List.map (trans_ref_typ is_CPS) typs)
+  | Inter(styp, typs) ->
+      let typs' = List.map (trans_ref_typ is_CPS) typs in
+      let styp' =
+        match typs' with
+        | [] -> typ_unknown
+        | typ'::_ -> RT.to_simple typ'
+      in
+      Inter(styp', typs')
+  | Union(styp, typs) ->
+      let typs' = List.map (trans_ref_typ is_CPS) typs in
+      let styp' =
+        match typs' with
+        | [] -> typ_unknown
+        | typ'::_ -> RT.to_simple typ'
+      in
+      Union(styp', typs')
   | _ -> assert false
 
 let trans_ref_typ typ = trans_ref_typ true typ
 and trans_ref_typ_as_direct typ = trans_ref_typ false typ
 
-let uncps_ref_type typ_cps typ = uncps_ref_type typ_cps ENone @@ force_cont @@ infer_effect_typ @@ Ref_type.to_simple typ
+(*let uncps_ref_type typ_cps typ = uncps_ref_type typ_cps ENone @@ force_cont @@ infer_effect_typ @@ Ref_type.to_simple typ
+ *)

@@ -300,8 +300,8 @@ ref_typ:
     in
     RT.Fun(x, $1, $3)
   }
-| ref_typ UNION ref_typ { RT.Union[$1; $3] }
-| ref_typ INTER ref_typ { RT.Inter[$1; $3] }
+| ref_typ UNION ref_typ { RT.Union(RT.to_simple $1, [$1; $3]) }
+| ref_typ INTER ref_typ { RT.Inter(RT.to_simple $1, [$1; $3]) }
 
 pred_list:
   { [] }

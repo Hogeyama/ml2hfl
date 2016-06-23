@@ -6,15 +6,15 @@ type t =
   | Base of base * S.id * S.typed_term
   | Fun of S.id * t * t
   | Tuple of (S.id * t) list
-  | Inter of t list
-  | Union of t list
+  | Inter of S.typ * t list
+  | Union of S.typ * t list
   | ExtArg of S.id * t * t
   | List of S.id * S.typed_term * S.id * S.typed_term * t
 module Env : Ext.Env.ENV with type key := S.id with type value := t
 type env = Env.t
 
-val _Inter : t list -> t
-val _Union : t list -> t
+val _Inter : S.typ -> t list -> t
+val _Union : S.typ -> t list -> t
 val _ExtArg : S.id -> t -> t -> t
 val decomp_base : t -> (base * S.id * S.typed_term) option
 val decomp_fun : t -> (S.id * t * t) option
@@ -67,8 +67,10 @@ val simplify_pred : S.typed_term -> S.typed_term
 val flatten : t -> t
 val simplify_typs : (t list -> t) -> (Syntax.typed_term list -> S.typed_term) -> t list -> t
 val simplify : t -> t
+(*
 val from_fpat_const : Fpat.TypConst.t -> base
 val from_fpat : Fpat.RefType.t -> t
+ *)
 val make_strongest : S.typ -> t
 val make_weakest : S.typ -> t
 val typ_result : t

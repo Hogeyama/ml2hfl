@@ -24,11 +24,16 @@ let rec is_atom t =
   | _ -> false
 
 let normalize t =
+  let dbg = 0=1 in
   t
+  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
   |> Trans.short_circuit_eval
+  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
   |> Trans.normalize_let ~is_atom:is_atom
+  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
   |> Trans.flatten_let
-  |> fixed_point
+  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
+  |> fixed_point ~eq:same_term
        (Trans.inline_var
         |- Trans.inline_simple_exp
         |- Trans.inline_no_effect

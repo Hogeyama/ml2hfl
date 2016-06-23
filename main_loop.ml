@@ -15,7 +15,7 @@ let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ)
   r
 
 
-type preprocess =
+type preprocess_label =
   | Init
   | Replace_const
   | Encode_mutable_record
@@ -43,6 +43,12 @@ type preprocess =
   | Eliminate_same_arguments
   | Insert_unit_param
   | Preprocessfortermination
+
+type tr_result = Syntax.typed_term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
+
+type results = (preprocess_label * tr_result) list
+
+type preprocess = preprocess_label * ((results -> bool) * (results -> tr_result))
 
 let string_of_label = function
   | Init -> "Init"
@@ -80,7 +86,7 @@ let take_result l acc = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
 
-let preprocesses spec =
+let preprocesses spec : preprocess list =
   [
     Replace_const,
     ((Fun.const !Flag.replace_const),
@@ -163,12 +169,17 @@ let preprocesses spec =
   ]
 
 
-let preprocess_before label spec =
-  List.takewhile ((<>) label -| fst) @@ preprocesses spec
+let preprocess_before label pps =
+  List.takewhile ((<>) label -| fst) pps
+
+let preprocess_and_after label pps =
+  List.dropwhile ((<>) label -| fst) pps
+
+let preprocess_filter_out labels pps =
+  List.filter_out (fst |- List.mem -$- labels) pps
 
 let run_preprocess pps t =
   let aux acc (label,(cond,f)) =
-    if !!debug then Format.printf "PREPROCESS: %s@." @@ string_of_label label;
     if cond acc then
       let r = trans_and_print f (string_of_label label) last_t fst acc in
       (label, r)::acc
@@ -177,15 +188,19 @@ let run_preprocess pps t =
   in
   List.fold_left aux [Init, (t, get_rtyp_id)] pps
 
-let preprocess ?(pps=None) t spec =
+let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
   let pps' =
-    match pps with
+    match make_pps with
     | None -> preprocesses spec
-    | Some pps' -> pps' spec
+    | Some make_pps' -> make_pps' spec
   in
   let results = run_preprocess pps' t in
   let t = last_t results in
-  let fun_list = Term_util.get_top_funs @@ take_result Decomp_pair_eq results in
+  let fun_list' =
+    match fun_list with
+    | None -> Term_util.get_top_funs @@ take_result Decomp_pair_eq results
+    | Some fun_list' -> fun_list'
+  in
 
   if !Flag.exp2 then
     begin
@@ -206,7 +221,7 @@ let preprocess ?(pps=None) t spec =
   let info =
     let orig_fun_list =
       let aux x = List.assoc_option (CEGAR_trans.trans_var x) map in
-      List.filter_map aux fun_list
+      List.filter_map aux fun_list'
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     let fairness =
@@ -343,8 +358,7 @@ let improve_precision e =
       incr Fpat.RefTypInfer.number_of_extra_params
   | _ -> raise e
 
-let rec loop exparam_sol ?(spec=Spec.init) parsed set_target =
-  init_typ_excep ();
+let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_target =
   (** Unno: I temporally placed the following code here
             so that we can infer refinement types for a safe program
             with extra parameters added *)
@@ -355,7 +369,7 @@ let rec loop exparam_sol ?(spec=Spec.init) parsed set_target =
       set_target
   in
   (**)
-  let prog, make_get_rtyp, info = preprocess set_target' spec in
+  let prog, make_get_rtyp, info = preprocess ~make_pps ~fun_list set_target' spec in
   let prog' =
     if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
     then
@@ -373,8 +387,9 @@ let rec loop exparam_sol ?(spec=Spec.init) parsed set_target =
     let result = CEGAR.run prog' info in
     result, make_get_rtyp, set_target'
   with e ->
-       improve_precision e;
-       loop exparam_sol ~spec parsed set_target
+    init_typ_excep ();
+    improve_precision e;
+    loop ~make_pps ~fun_list exparam_sol ~spec parsed set_target
 
 
 let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
@@ -382,7 +397,7 @@ let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   let aux f = Option.try_any (fun _ -> f, Ref_type.rename @@ make_get_rtyp get_rtyp f) in
   List.filter_map aux top_funs
 
-let verify exparam_sol spec parsed =
+let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
   let main,set_target =
     if spec.Spec.ref_env = [] then
       trans_and_print Trans.set_main "set_main" Fun.id snd parsed
@@ -394,11 +409,11 @@ let verify exparam_sol spec parsed =
       in
       None, trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
   in
-  loop exparam_sol ~spec parsed set_target, main, set_target
+  loop ~make_pps ~fun_list exparam_sol ~spec parsed set_target, main, set_target
 
 
-let run orig exparam_sol ?(spec=Spec.init) parsed =
-  let (result, make_get_rtyp, set_target'), main, set_target = verify exparam_sol spec parsed in
+let run ?(make_pps=None) ?(fun_list=None) orig exparam_sol ?(spec=Spec.init) parsed =
+  let (result, make_get_rtyp, set_target'), main, set_target = verify ~make_pps ~fun_list exparam_sol spec parsed in
   match result with
   | CEGAR.Safe env ->
       Flag.result := "Safe";

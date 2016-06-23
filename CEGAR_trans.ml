@@ -519,8 +519,14 @@ let rec trans_ref_type = function
       RT.Base(b', trans_inv_var x, trans_inv_term p)
   | CRT.Fun(x,typ1,typ2) ->
       RT.Fun(trans_inv_var x, trans_ref_type typ1, trans_ref_type typ2)
-  | CRT.Inter typs ->
-      RT.Inter (List.map trans_ref_type typs)
+  | CRT.Inter(typ, typs) ->
+      let typs' = List.map trans_ref_type typs in
+      let typ' =
+        match typs' with
+        | [] -> Type.typ_unknown (* TODO *)
+        | typ''::_ -> RT.to_simple typ''
+      in
+      RT.Inter(typ', typs')
 
 
 let trans_term = trans_term "" [] []

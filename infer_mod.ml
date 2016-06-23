@@ -23,7 +23,7 @@ and type_template =
   | Base of (Ref_type.base * pred_var) option (** None represents the result type X *)
   | Const of id * typed_term
   | Fun of id * type_template * type_template
-  | Inter of type_template list
+  | Inter of typ * type_template list
 and pred_var = int
 and horn_clause = typed_term list * typed_term
 and horn_clauses = horn_clause list
@@ -54,8 +54,8 @@ and print_template fm = function
   | Const(x,t) -> Format.fprintf fm "{%a:int | %a}" Id.print x Print.term t
   | Fun(x, tmp1, tmp2) when is_fun_var x -> Format.fprintf fm "(@[<hov 2>%a ->@ %a@])" print_template tmp1 print_template tmp2
   | Fun(x, tmp1, tmp2) -> Format.fprintf fm "(@[<hov 2>%a:%a ->@ %a@])" Id.print x print_template tmp1 print_template tmp2
-  | Inter [] -> Format.fprintf fm "T"
-  | Inter tmps -> Format.fprintf fm "(@[%a@])" (print_list print_template " /\\@ ") tmps
+  | Inter(_, []) -> Format.fprintf fm "T"
+  | Inter(_, tmps) -> Format.fprintf fm "(@[%a@])" (print_list print_template " /\\@ ") tmps
 
 let print_tmp_env fm env =
   let print_idx fm (x,nid) =
@@ -106,7 +106,7 @@ let rec inline_PApp typ ts =
   | Base _ -> PApp(typ, ts)
   | Const _ -> typ
   | Fun(x, typ1, typ2) -> Fun(x, _PApp typ1 ts, _PApp typ2 ts)
-  | Inter typs -> Inter (List.map (inline_PApp -$- ts) typs)
+  | Inter(styp, typs) -> Inter(styp, List.map (inline_PApp -$- ts) typs)
 and _PApp typ ts =
   let dbg = 0=9 in
   let typ' = inline_PApp typ @@ List.filter (is_base_typ -| Syntax.typ) ts in
@@ -125,10 +125,10 @@ let rec _Imply cs c =
         if c1 = Exp true_term then
           _Imply cs' c
         else Imply(c1, _Imply cs' c)
-let _Inter tmps =
+let _Inter styp tmps =
   match tmps with
   | [tmp] -> tmp
-  | _ -> Inter tmps
+  | _ -> Inter(styp, tmps)
 
 let rec apply f = function
   | Exp t -> Exp t
@@ -143,7 +143,7 @@ let rec from_ref_type typ =
   | Ref_type.Base(_, x, t) -> Const(x, t)
   | Ref_type.Fun(x, typ1, typ2) -> Fun(x, from_ref_type typ1, from_ref_type typ2)
   | Ref_type.Tuple _ -> assert false
-  | Ref_type.Inter typs -> _Inter @@ List.map from_ref_type typs
+  | Ref_type.Inter(styp, typs) -> _Inter styp @@ List.map from_ref_type typs
   | Ref_type.Union _ -> assert false
   | Ref_type.ExtArg _ -> assert false
   | Ref_type.List _ -> assert false
@@ -156,7 +156,7 @@ let rec get_fv_typ = function
   | Base _ -> []
   | Const _ -> []
   | Fun(x,typ1,typ2) -> List.filter_out (Id.eq x) @@ (get_fv_typ typ1 @ get_fv_typ typ2)
-  | Inter typs -> List.flatten_map get_fv_typ typs
+  | Inter(_, typs) -> List.flatten_map get_fv_typ typs
 let rec get_fv_constr = function
   | Exp t -> Syntax.get_fv t
   | And(c1, c2) -> get_fv_constr c1 @ get_fv_constr c2
@@ -174,8 +174,8 @@ let rec constr_of_typ typ =
   | PApp(Const(x, t), _) -> Exp t
   | Fun _
   | PApp(Fun _, _) -> Exp true_term
-  | Inter [] -> Exp true_term
-  | Inter typs -> (* TODO *)
+  | Inter(_, []) -> Exp true_term
+  | Inter(_, typs) -> (* TODO *)
       _Ands (List.map constr_of_typ typs)
   | _ ->
       Format.printf "  typ: %a@." print_template typ;
@@ -191,7 +191,7 @@ let rec subst_template x t tmp =
   | Base _ -> tmp
   | Const _ -> tmp
   | Fun(x, tmp1, tmp2) -> Fun(x, sbst tmp1, sbst tmp2)
-  | Inter tmps -> Inter (List.map sbst tmps)
+  | Inter(typ, tmps) -> Inter(typ, List.map sbst tmps)
 
 let rec subst_constr x t constr =
   let sbst = subst_constr x t in
@@ -227,7 +227,7 @@ let rec expand_type templates typ =
       begin
         match et typ with
         | Fun(x, typ1, typ2) -> Fun(x, et (PApp(typ1,ts)), et (PApp(typ2,ts)))
-        | Inter typs -> Inter (List.map (fun typ' -> et @@ PApp(typ',ts)) typs)
+        | Inter(typ, typs) -> Inter(typ, List.map (fun typ' -> et @@ PApp(typ',ts)) typs)
         | typ' -> _PApp typ' ts
       end
   | Arg(typ, ts) ->
@@ -249,15 +249,15 @@ let rec expand_type templates typ =
                   et @@ subst_template x t @@ Arg(typ2', ts')
                   |@> pr "@[<hov 2>[%a |-> %a]%a = %a@]@." Id.print x Print.term t print_template (Arg(typ2', ts')) print_template
             end
-        | Inter typs ->
-            Inter (List.map (fun typ -> et @@ Arg(typ, ts)) typs)
+        | Inter(styp, typs) ->
+            Inter(styp, List.map (fun typ -> et @@ Arg(typ, ts)) typs)
         | typ' ->
             Format.printf "@.typ: %a@." print_template typ;
             Format.printf "typ': %a@.@." print_template typ';
             assert false
       end
   | Fun(x, typ1, typ2) -> Fun(x, et typ1, et typ2)
-  | Inter typs -> Inter (List.map et typs)
+  | Inter(styp, typs) -> Inter(styp, List.map et typs)
   in
   if dbg then pr "typ: %a@." print_template typ;
   if dbg then pr "r: %a@." print_template r;
@@ -276,7 +276,7 @@ let rec inline_sub templates typ1 typ2 =
   let _dbg = false in
   let r =
   match typ1,typ2 with
-  | Inter typs1, Inter typs2 -> _Ands @@ List.map2 (inline_sub templates) typs1 typs2
+  | Inter(_,typs1), Inter(_,typs2) -> _Ands @@ List.map2 (inline_sub templates) typs1 typs2
   | Singleton t, _ -> constr_of_typ @@ _PAppSelf typ2 t
   | Base None, Base None -> Exp true_term
   | PApp(Base(Some p1) as typ1', ts1), PApp(Base(Some p2) as typ2', ts2) ->
@@ -318,7 +318,7 @@ let in_comp_tree ct nid =
 
 let hd_of_inter typ =
   match typ with
-  | Inter typs -> List.hd typs
+  | Inter(_, typs) -> List.hd typs
   | _ -> typ
 
 let make_sub_flag = ref true (* for debug *)
@@ -327,7 +327,7 @@ let rec decomp_tfun typ =
   match typ with
   | Var _ -> assert false
   | Fun(x,typ1,typ2) -> Pair.map_fst (List.cons (x,typ1)) @@ decomp_tfun typ2
-  | Inter [typ'] -> decomp_tfun typ'
+  | Inter(_, [typ']) -> decomp_tfun typ'
   | Inter _ ->
       Format.printf "decomp_tfun: %a@." print_template typ;
       assert false
@@ -343,13 +343,13 @@ let rec copy_template cnt typ =
   | Base (Some(base, p)) -> Base (Some (base, Counter.gen cnt))
   | Const _ -> typ
   | Fun(x,typ1,typ2) -> Fun(x, copy_template cnt  typ1, copy_template cnt typ2)
-  | Inter typs -> Inter (List.map (copy_template cnt) typs)
+  | Inter(styp, typs) -> Inter(styp, List.map (copy_template cnt) typs)
 
 let rec elim_papp typ =
   match typ with
   | PApp(typ, _) -> elim_papp typ
   | Fun(x,typ1,typ2) -> Fun(x, elim_papp typ1, elim_papp typ2)
-  | Inter typs -> Inter (List.map elim_papp typs)
+  | Inter(styp, typs) -> Inter(styp, List.map elim_papp typs)
   | _ -> typ
 
 let merge_template ts = List.flatten ts
@@ -380,7 +380,7 @@ let rec init_with_pred_var cnt typ =
   | Base (Some (base, _)) -> new_pred base cnt
   | Const(x, _) -> (try new_pred (base_of_typ @@ Id.typ x) cnt with _ -> Format.printf "%a@." print_template typ;  assert false)
   | Fun(x, typ1, typ2) -> Fun(x, ip typ1, ip typ2)
-  | Inter typs -> _Inter @@ List.map ip typs
+  | Inter(styp, typs) -> _Inter styp @@ List.map ip typs
 
 let make_sub templates typ1 typ2 =
   if !!debug then Format.printf "      make_sub: %a@." print_constr (Sub(typ1,typ2));
@@ -583,16 +583,17 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
               |> List.map snd
               |> List.map elim_papp
               |*@> Format.printf "LENGTH: %a@." (List.print print_template)
-              |> _Inter
+              |> _Inter t.typ
           in
           let tmp1' =
-            if tmp1 = Inter [] then
-              t.typ
-              |> Ref_type.from_simple
-              |> from_ref_type
-              |> init_with_pred_var cnt
-            else
-              _PApp tmp1 pargs
+            match tmp1 with
+            | Inter(styp, []) ->
+                styp
+                |> Ref_type.from_simple
+                |> from_ref_type
+                |> init_with_pred_var cnt
+            | _ ->
+                _PApp tmp1 pargs
           in
           pr "  [%a] tmp1: %a@." Id.print x print_template tmp1;
           pr "  [%a] tmp1': %a@." Id.print x print_template tmp1';
@@ -705,7 +706,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       pr "  TEMPLATES: @[%a@.@."  print_tmp_env templates;
       pr "  SPAWN: %a@.@." Id.print f;
       pr "  NIDS: %a@.@." (List.print Format.pp_print_int) nids;
-      let typ = _Inter @@ List.flatten_map (fun g -> List.map snd @@ List.filter (fst |- fst |- Id.eq g) templates) gs in
+      let typ = _Inter (Id.typ f) @@ List.flatten_map (fun g -> List.map snd @@ List.filter (fst |- fst |- Id.eq g) templates) gs in
       ((f,Some nid), typ)::templates
   | Assume _ -> templates
   | Value _ -> assert false
@@ -923,7 +924,7 @@ let rec apply_sol sol x vars tmp =
         Ref_type.Base(base, x', p)
   | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
   | Fun(y,typ1,typ2) -> Ref_type.Fun(y, apply_sol sol (Some y) vars typ1, apply_sol sol None (y::vars) typ2)
-  | Inter tmps -> Ref_type.Inter (List.map (apply_sol sol x vars) tmps)
+  | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol sol x vars) tmps)
   | _ ->
       Format.eprintf "%a@." print_template tmp;
       assert false
@@ -962,16 +963,28 @@ let normalize = Trans.reduce_fail_unit |- Trans.reconstruct
 
 let trans_CPS env t =
   let fs = List.map fst env in
-  let t',make_get_rtyp =
+  let t',make_get_rtyp_cps =
     t
     |> make_letrecs @@ List.map Triple.of_pair_r env
     |@!!debug&> Format.printf "trans_CPS: %a@." Print.term
     |> CPS.trans_as_direct
-    |> Pair.map_fst normalize
   in
   if !!debug then Format.printf "trans_CPS t': %a@." Print.term t';
-  let env',t'' = decomp_prog t' in
+  Type_check.check t' TUnit;
+  let t'',make_get_rtyp_pair =
+    Curry.remove_pair_direct t'
+  in
   if !!debug then Format.printf "trans_CPS t'': %a@." Print.term t'';
+  let env',t_main =
+    t''
+    |@!!debug&> Format.printf "trans_CPS INPUT: %a@." Print.term
+    |> Trans.reduce_fail_unit
+    |@!!debug&> Format.printf "trans_CPS reduce_fail_unit: %a@." Print.term
+    |> Trans.reconstruct
+    |@!!debug&> Format.printf "trans_CPS normalized: %a@." Print.term
+    |> decomp_prog
+  in
+  let make_get_rtyp = make_get_rtyp_cps -| make_get_rtyp_pair in
   let env1,env2 =
     env'
     |> List.flatten_map (snd |- List.map Triple.to_pair_r)
@@ -980,7 +993,7 @@ let trans_CPS env t =
   if !!debug then Format.printf "fs: %a@." (List.print Id.print) fs;
   if !!debug then Format.printf "env1: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env1;
   if !!debug then Format.printf "env2: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env2;
-  env1, make_letrecs (List.map Triple.of_pair_r env2) t'', make_get_rtyp
+  env1, make_letrecs (List.map Triple.of_pair_r env2) t_main, make_get_rtyp
 
 let replace_if_with_bottom = make_trans ()
 let replace_if_with_bottom_term t =
@@ -991,7 +1004,7 @@ let () = replace_if_with_bottom.tr_term <- replace_if_with_bottom_term
 let replace_if_with_bottom = replace_if_with_bottom.tr_term
 
 let add_context for_infer prog f typ =
-  let dbg = 0=10 in
+  let dbg = 0=0 in
   if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let t' = Trans.ref_to_assert (Ref_type.Env.of_list [f,typ]) unit_term in
   if dbg then Format.printf "ADD_CONTEXT t': %a@." Print.term t';
@@ -1008,17 +1021,6 @@ let get_dependencies hcs =
     List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1
   in
   List.flatten_map aux hcs
-
-let assoc_pred_var p hcs =
-  let rec find hcs =
-    match hcs with
-    | [] -> raise Not_found
-    | (body,head)::hcs' ->
-        match List.find_option (fun x -> is_pred_var x && Id.id x = p) @@ get_fv @@ make_ands (head::body) with
-        | None -> find hcs'
-        | Some x -> x
-  in
-  find hcs
 
 let merge_predicate_variables candidates hcs =
   let rec get_map candidates dependencies =
@@ -1054,6 +1056,18 @@ let solve_merged merge_candidates hcs =
   in
   aux map
 
+let assoc_pred_var p hcs =
+  if 0=0 then Format.printf "APV: P_%d@." p;
+  let rec find hcs =
+    match hcs with
+    | [] -> make_pred_var p []
+    | (body,head)::hcs' ->
+        match List.find_option (fun x -> is_pred_var x && Id.id x = p) @@ get_fv @@ make_ands (head::body) with
+        | None -> find hcs'
+        | Some x -> x
+  in
+  find hcs
+
 let rec get_merge_candidates_aux typ1 typ2 =
   match typ1, typ2 with
   | Base None, Base None -> []
@@ -1068,8 +1082,8 @@ let rec get_merge_candidates_aux typ1 typ2 =
 let get_merge_candidates templates hcs =
   let aux (_, typ) =
     match typ with
-    | Inter [typ'] -> []
-    | Inter (typ'::typs) ->
+    | Inter(styp, [typ']) -> []
+    | Inter(styp, typ'::typs) ->
         assert (List.for_all (function Inter _ -> false | _ -> true) (typ'::typs));
         List.flatten_map (get_merge_candidates_aux typ') typs
     | _ -> []
@@ -1080,14 +1094,14 @@ let get_merge_candidates templates hcs =
 
 let infer prog f typ ce_set =
   let ce_set =
-    if 0=1 then
+    if 0=0 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x (List.print Format.pp_print_int) ce; read_int() <> 0) ce_set
     else
       ce_set
   in
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
-  let fun_env',t,make_get_rtyp = add_context true prog f typ in
   if !!debug then Format.printf "INFER prog: %a@." print_prog prog;
+  let fun_env',t,make_get_rtyp = add_context true prog f typ in
   if !!debug then Format.printf "t: %a@.@." Print.term t;
   let comp_tree =
     let env' =

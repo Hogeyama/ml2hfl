@@ -10,8 +10,8 @@ module RT = Ref_type
 let get_rtyp_lift t f rtyp =
   let rec aux rtyp typ =
     match rtyp with
-    | RT.Inter rtyps -> RT.Inter (List.map (fun rtyp1 -> aux rtyp1 typ) rtyps)
-    | RT.Union rtyps -> RT.Union (List.map (fun rtyp1 -> aux rtyp1 typ) rtyps)
+    | RT.Inter(styp, rtyps) -> RT.Inter(styp, List.map (aux -$- typ) rtyps)
+    | RT.Union(styp, rtyps) -> RT.Union(styp, List.map (aux -$- typ) rtyps)
     | RT.Fun(x,rtyp1,rtyp2) ->
         if RT.arg_num rtyp = arg_num typ
         then rtyp

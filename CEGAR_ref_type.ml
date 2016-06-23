@@ -11,7 +11,7 @@ type base =
 type t =
   | Base of base * CS.var * CS.t
   | Fun of CS.var * t * t
-  | Inter of t list
+  | Inter of CS.typ * t list
 
 let print_base fm = function
   | Unit -> Format.pp_print_string fm "unit"
@@ -22,7 +22,7 @@ let print_base fm = function
 let rec occur x = function
   | Base(_,_,p) -> List.mem x (CS.get_fv p)
   | Fun(_, typ1,typ2) -> occur x typ1 || occur x typ2
-  | Inter typs -> List.exists (occur x) typs
+  | Inter(_, typs) -> List.exists (occur x) typs
 
 let rec print fm = function
   | Base(base,x,CS.Const CS.True) ->
@@ -33,9 +33,9 @@ let rec print fm = function
       if occur x typ2
       then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" CEGAR_print.var x print typ1 print typ2
       else Format.fprintf fm "(@[%a@ ->@ %a@])" print typ1 print typ2
-  | Inter [] -> Format.fprintf fm "Top"
-  | Inter [typ] -> print fm typ
-  | Inter typs -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
+  | Inter(_, []) -> Format.fprintf fm "Top"
+  | Inter(_, [typ]) -> print fm typ
+  | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
 
 
 let rec decomp_fun n typ =
@@ -49,9 +49,20 @@ let rec decomp_fun n typ =
         let typs,typ' = decomp_fun (n-1) typ2 in
         (x,typ1)::typs, typ'
 
+let to_simple_base base =
+  match base with
+  | Unit -> CEGAR_type.TUnit
+  | Bool -> CEGAR_type.TBool
+  | Int -> CEGAR_type.TInt
+  | Abst s -> CEGAR_type.TAbst s
+
+let rec to_simple typ =
+  match typ with
+  | Base(base, _, _) -> CEGAR_type.TBase(to_simple_base base, Fun.const [])
+  | Fun(_, typ1, typ2) -> CEGAR_type.TFun(to_simple typ1, fun _ -> to_simple typ2)
+  | Inter(styp, typs) -> styp
 
 let rec arg_num = function
   | Base _ -> 0
-  | Inter [] -> assert false
-  | Inter (typ::_) -> arg_num typ
+  | Inter(typ, _) -> CS.arg_num typ
   | Fun(_,_,typ2) -> 1 + arg_num typ2

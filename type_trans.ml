@@ -17,7 +17,7 @@ let rec ref_of_inter env cond atyp ityp =
   match atyp,ityp with
   | _, IT.Inter ityps ->
       let rtyps = List.map (ref_of_inter env cond atyp) ityps in
-      RT.Inter rtyps
+      RT.Inter(atyp, rtyps)
   | AT.TFun(AT.TBase(b,ps), atyp2), _ ->
       let x = CS.new_id "x" in
       let ps' = ps (CS.Var x) in

@@ -24,7 +24,7 @@ let rec to_CEGAR_ref_type typ =
   match typ with
   | Ref_type.Base(base, x, p) -> CEGAR_ref_type.Base(to_CEGAR_ref_type_base base, Id.to_string x, snd @@ CEGAR_trans.trans_term p)
   | Ref_type.Fun(x, typ1, typ2) -> CEGAR_ref_type.Fun(Id.to_string x, to_CEGAR_ref_type typ1, to_CEGAR_ref_type typ2)
-  | Ref_type.Inter typs -> CEGAR_ref_type.Inter (List.map to_CEGAR_ref_type typs)
+  | Ref_type.Inter(styp, typs) -> CEGAR_ref_type.Inter(CEGAR_trans.trans_typ styp, List.map to_CEGAR_ref_type typs)
   | _ -> unsupported "Ref_type.to_CEGAR_ref_type"
 
 let rec add_id_event t =
@@ -196,10 +196,10 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
               let t' = make_app (make_fix f ys t_f) ts in
               eval dir top_funs fun_env ce_set ce_env label_env t'
         end
-  | App(t1, [t2]) ->
+  | App(t1, t2::ts) ->
       if dbg then Format.printf "Check_mod.eval APP6@\n";
       assert (not @@ is_value t1);
-      assert (is_value t2);
+      assert (List.for_all is_value @@ t2::ts);
       let r = eval dir top_funs fun_env ce_set ce_env label_env t1 in
       begin
         match r with
@@ -209,7 +209,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
                 [fail_unit_term, ce_env, path]
               else
                 match v.desc with
-                | Fun(x,t1') -> decomp_single @@ eval dir top_funs fun_env ce_set ce_env label_env @@ subst x t2 t1'
+                | Fun(x,t1') -> decomp_single @@ eval dir top_funs fun_env ce_set ce_env label_env @@ make_app (subst x t2 t1') ts
                 | _ -> assert false
             in
             let rs' = List.flatten_map aux rs in
@@ -219,7 +219,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
               Modular(fail_unit_term, ce, paths)
             else
               match v.desc with
-              | Fun(x,t1') -> eval dir top_funs fun_env ce_set ce_env label_env @@ subst x t2 t1'
+              | Fun(x,t1') -> eval dir top_funs fun_env ce_set ce_env label_env @@ make_app (subst x t2 t1') ts
               | _ -> assert false
       end
   | If(_, t2, t3) ->
@@ -339,11 +339,16 @@ let add_context prog f typ =
   let fun_env' =
     env
     |> Ref_type.Env.filter_key (Id.mem -$- fs)
+    |@dbg&> (fun x -> Format.printf "AAA@.")
     |> Ref_type.Env.to_list
+    |@dbg&> (fun x -> Format.printf "AAA@.")
     |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type.generate [] [])
     |@dbg&> Format.printf "ADD_CONTEXT fun_env': %a@." Modular_syntax.print_def_env
   in
-  let fun_env'' = fun_env' @ [f, Pair.map_snd (add_label 0) @@ Id.assoc f fun_env] in
+  let fun_env'' =
+    List.map (Pair.map_snd @@ Pair.map_snd normalize) fun_env' @
+    [f, Pair.map_snd (add_label 0 -| normalize) @@ Id.assoc f fun_env]
+  in
   t', fun_env'', List.map Pair.swap label_env
 
 let check prog f typ =
@@ -354,13 +359,19 @@ let check prog f typ =
   if !!debug then Format.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   if !!debug then Format.printf "  t: %a@." Print.term_typ t;
   if !!debug then Format.printf "  t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
+  let make_pps spec =
+    let open Main_loop in
+    preprocesses spec
+    |> preprocess_and_after CPS
+  in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_letrecs (List.map Triple.of_pair_r fun_env')
+    |@> Type_check.check -$- TUnit
     |> Trans.map_main (make_seq -$- unit_term)
     |@!!debug&> Format.printf "  Check: %a@." Print.term_typ
     |@> Type_check.check -$- TUnit
-    |> Main_loop.verify [] Spec.init
+    |> Main_loop.verify ~make_pps:(Some(make_pps)) ~fun_list:(Some []) [] Spec.init
   in
   match result with
   | CEGAR.Safe env ->

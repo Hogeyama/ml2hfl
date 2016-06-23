@@ -486,8 +486,7 @@ let replace_typ_desc env desc =
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
         let f' = replace_typ_var env f in
-        if not @@ Type.can_unify (Id.typ f) (Id.typ f')
-        then
+        if not @@ Type.can_unify (Id.typ f) (Id.typ f') then
           begin
             let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
             Format.printf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
@@ -2171,7 +2170,7 @@ let copy_poly_funs t =
   let make_get_rtyp get_rtyp f =
     let fs = List.assoc_all ~cmp:Id.same f map in
     if fs = [] then raise Not_found;
-    Ref_type.Inter (List.map get_rtyp fs)
+    Ref_type.Inter(Id.typ f, List.map get_rtyp fs)
   in
   t'', make_get_rtyp
 
@@ -2377,7 +2376,7 @@ let beta_full_app = beta_full_app.tr2_term
 let beta_affine_fun = make_trans ()
 let beta_affine_fun_desc desc =
   match desc with
-  | Let(Nonrecursive, [f, xs, t1], t2) ->
+  | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] ->
       let t1' = beta_affine_fun.tr_term t1 in
       begin
         match t1' with
@@ -2509,18 +2508,22 @@ let tfun_to_tfuns = tfun_to_tfuns.tr_term
 
 let reconstruct = make_trans ()
 let reconstruct_term t =
-  match t.desc with
-  | Const _ -> {t with attr = const_attr}
-  | Var x -> make_var x
-  | Fun(x, t) -> make_fun x @@ reconstruct.tr_term t
-  | App(t1, ts) -> make_app (reconstruct.tr_term t1) @@ List.map reconstruct.tr_term ts
-  | If(t1, t2, t3) -> make_if (reconstruct.tr_term t1) (reconstruct.tr_term t2) (reconstruct.tr_term t3)
-  | Let(flag, bindings, t) ->
-      make_let_f flag (List.map (Triple.map_trd reconstruct.tr_term) bindings) @@ reconstruct.tr_term t
-  | Not t -> make_not @@ reconstruct.tr_term t
-  | Tuple ts -> make_tuple @@ List.map reconstruct.tr_term ts
-  | Proj(i, t) -> make_proj i @@ reconstruct.tr_term t
-  | _ -> reconstruct.tr_term_rec t
+  let t' =
+    match t.desc with
+    | Const _ -> {t with attr = const_attr}
+    | Var x -> make_var x
+    | Fun(x, t) -> make_fun x @@ reconstruct.tr_term t
+    | App(t1, ts) -> make_app (reconstruct.tr_term t1) @@ List.map reconstruct.tr_term ts
+    | If(t1, t2, t3) -> make_if (reconstruct.tr_term t1) (reconstruct.tr_term t2) (reconstruct.tr_term t3)
+    | Let(flag, bindings, t) ->
+        make_let_f flag (List.map (Triple.map_trd reconstruct.tr_term) bindings) @@ reconstruct.tr_term t
+    | Not t -> make_not @@ reconstruct.tr_term t
+    | Tuple ts -> make_tuple @@ List.map reconstruct.tr_term ts
+    | Proj(i, t) -> make_proj i @@ reconstruct.tr_term t
+    | _ -> reconstruct.tr_term_rec t
+  in
+  let attr' = List.unique (t.attr @ t'.attr) in
+  {t' with attr=attr'}
 let () = reconstruct.tr_term <- reconstruct_term
 let reconstruct = reconstruct.tr_term
 
@@ -2614,7 +2617,7 @@ let reduce_fail_unit = make_trans ()
 let reduce_fail_unit_term t =
   let t' = reduce_fail_unit.tr_term_rec t in
   match t'.desc with
-  | Let(_, [x,[],t], _) when t.desc = fail_unit_term.desc -> t
+  | Let(_, [x,[],t''], _) when t''.desc = fail_unit_term.desc -> t''
   | _ -> t'
 let () = reduce_fail_unit.tr_term <- reduce_fail_unit_term
 let reduce_fail_unit = reduce_fail_unit.tr_term

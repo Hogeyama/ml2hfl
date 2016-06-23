@@ -217,6 +217,8 @@ let make_br_exists n = function
     make_tree (make_randint_label n) [List.fold_left make_br_exists_aux (add_bool_labels t bs) xs]
 
 
+let arg_num typ = arg_num (Const Unit) typ
+
 
 let rec get_fv = function
   | Const _ -> StringSet.empty

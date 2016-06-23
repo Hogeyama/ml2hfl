@@ -84,8 +84,10 @@ let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
   let fbindings,body =
     let pps =
-      Main_loop.preprocess_before Main_loop.CPS spec
-      |> List.filter_out (fst |- (=) Main_loop.Beta_reduce_trivial)
+      let open Main_loop in
+      preprocesses spec
+      |> preprocess_before CPS
+      |> preprocess_filter_out [(*Encode_mutable_record; Encode_recdata; Encode_list;*) Beta_reduce_trivial]
     in
     Main_loop.run_preprocess pps parsed
     |> Main_loop.last_t

@@ -15,18 +15,18 @@ type t =
   | Base of base * S.id * S.typed_term
   | Fun of S.id * t * t
   | Tuple of (S.id * t) list
-  | Inter of t list
-  | Union of t list
+  | Inter of S.typ * t list
+  | Union of S.typ * t list
   | ExtArg of S.id * t * t
   | List of S.id * S.typed_term * S.id * S.typed_term * t
 
 let typ_result = Base(Abst "X", U.dummy_var, U.true_term)
 
-let _Inter typs =
+let _Inter styp typs =
   match typs with
   | [typ] -> typ
-  | _ -> Inter typs
-let _Union typs = Union typs
+  | _ -> Inter(styp, typs)
+let _Union styp typs = Union(styp, typs)
 let _ExtArg x typ1 typ2 = ExtArg(x, typ1, typ2)
 
 let decomp_base typ =
@@ -43,7 +43,11 @@ let decomp_list typ =
   | _ -> None
 let rec decomp_inter typ =
   match typ with
-  | Inter typs -> List.flatten_map decomp_inter typs
+  | Inter(_, typs) -> List.flatten_map decomp_inter typs
+  | _ -> [typ]
+let rec decomp_union typ =
+  match typ with
+  | Inter(_, typs) -> List.flatten_map decomp_union typs
   | _ -> [typ]
 
 let is_base = Option.is_some -| decomp_base
@@ -60,8 +64,8 @@ let rec occur x = function
   | Base(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
   | Fun(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | Tuple xtyps -> List.exists (occur x -| snd) xtyps
-  | Inter typs
-  | Union typs -> List.exists (occur x) typs
+  | Inter(_, typs)
+  | Union(_, typs) -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | List(_,p_len,_,p_i,typ) ->
       let aux =  List.mem ~cmp:Id.eq x -| U.get_fv in
@@ -91,12 +95,12 @@ let rec print fm = function
         print fm typ
       in
       Format.fprintf fm "(@[%a@])" (print_list pr " *@ ") @@ List.mapi Pair.pair xtyps
-  | Inter [] -> Format.fprintf fm "Top"
-  | Inter [typ] -> print fm typ
-  | Inter typs -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
-  | Union [] -> Format.fprintf fm "Bottom"
-  | Union [typ] -> print fm typ
-  | Union typs -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ ") typs
+  | Inter(_, []) -> Format.fprintf fm "Top"
+  | Inter(_, [typ]) -> print fm typ
+  | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
+  | Union(_, []) -> Format.fprintf fm "Bottom"
+  | Union(_, [typ]) -> print fm typ
+  | Union(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ ") typs
   | ExtArg(x,typ1,typ2) ->
       Format.fprintf fm "(@[%a where %a:%a@])" print typ2 Id.print x print typ1
   | List(x,p_len,y,p_i,typ2) ->
@@ -136,10 +140,10 @@ let rec decomp_funs n typ =
 let rec arg_num = function
   | Base _ -> 0
   | Tuple _ -> 0
-  | Inter [] -> assert false
-  | Inter (typ::_) -> arg_num typ
-  | Union [] -> assert false
-  | Union (typ::_) -> arg_num typ
+  | Inter(typ, []) -> List.length @@ fst @@ Type.decomp_tfun typ
+  | Inter(_, typ::_) -> arg_num typ
+  | Union(typ, []) -> List.length @@ fst @@ Type.decomp_tfun typ
+  | Union(_, typ::_) -> arg_num typ
   | Fun(_,_,typ2) -> 1 + arg_num typ2
   | ExtArg(_,_,typ2) -> arg_num typ2
   | List _ -> 0
@@ -149,8 +153,8 @@ let rec map_pred f typ =
   | Base(base,y,p) -> Base(base, y, f p)
   | Fun(y,typ1,typ2) -> Fun(y, map_pred f typ1, map_pred f typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ map_pred f) xtyps)
-  | Inter typs -> Inter (List.map (map_pred f) typs)
-  | Union typs -> Union (List.map (map_pred f) typs)
+  | Inter(typ, typs) -> Inter(typ, List.map (map_pred f) typs)
+  | Union(typ, typs) -> Union(typ, List.map (map_pred f) typs)
   | ExtArg(y,typ1,typ2) -> ExtArg(y, map_pred f typ1, map_pred f typ2)
   | List(y,p_len,z,p_i,typ) -> List(y, f p_len, z, f p_i, map_pred f typ)
 
@@ -181,8 +185,8 @@ let rec rename var = function
         (x', rename (Some x') @@ sbst typ) :: xtyps'
       in
       Tuple (List.fold_right aux xtyps [])
-  | Inter typs -> Inter (List.map (rename var) typs)
-  | Union typs -> Union (List.map (rename var) typs)
+  | Inter(typ, typs) -> Inter(typ, List.map (rename var) typs)
+  | Union(typ, typs) -> Union(typ, List.map (rename var) typs)
   | ExtArg(x,typ1,typ2) ->
       let x' = Id.new_var_id x in
       let typ2' = subst_var x x' typ2 in
@@ -211,7 +215,9 @@ let rec from_simple typ =
   | Type.TFun(x, typ) -> Fun(x, from_simple @@ Id.typ x, from_simple typ)
   | Type.TTuple _ -> unsupported "Ref_type.from_simple"
   | Type.TList _ -> unsupported "Ref_type.from_simple"
-  | _ -> unsupported "Ref_type.from_simple"
+  | _ ->
+      Format.printf "%a@." Print.typ typ;
+      unsupported "Ref_type.from_simple"
 
 
 let rec to_simple typ =
@@ -222,10 +228,8 @@ let rec to_simple typ =
   | Base(Abst _, _, _) -> Term_util.typ_result
   | Fun(x,typ1,typ2) -> Type.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
   | Tuple xtyps -> Type.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
-  | Inter [] -> assert false
-  | Inter (typ::_) -> to_simple typ
-  | Union [] -> assert false
-  | Union (typ::_) -> to_simple typ
+  | Inter(typ, _) -> typ
+  | Union(typ, _) -> typ
   | ExtArg _ -> assert false
   | List(_,_,_,_,typ) -> Type.TList (to_simple typ)
 
@@ -254,12 +258,12 @@ let rec to_abst_typ typ =
         List.map (Id.map_typ @@ U.subst_type_var x x') (x'::xs)
       in
       Type.TTuple (List.fold_right aux xtyps [])
-  | Inter typs
-  | Union typs -> List.fold_right (Term_util.merge_typ -| to_abst_typ) typs Type.typ_unknown
+  | Inter(typ, typs)
+  | Union(typ, typs) -> List.fold_right (Term_util.merge_typ -| to_abst_typ) typs typ
   | ExtArg _ -> unsupported "Ref_type.to_abst_typ"
   | List(x,p_len,y,p_i,typ1) ->
-      if p_i.S.desc <> S.Const S.True || occur y typ1
-      then unsupported "Ref_type.to_abst_typ"
+      if p_i.S.desc <> S.Const S.True || occur y typ1 then
+        unsupported "Ref_type.to_abst_typ"
       else
         let typ1' = to_abst_typ typ1 in
         let x' = Id.new_var ~name:"xs" @@ Type.TList typ1' in
@@ -269,15 +273,15 @@ let rec to_abst_typ typ =
 
 let rec set_base_var x = function
   | Base(base, y, p) -> Base(base, x, U.subst_var y x p)
-  | Inter typs -> Inter (List.map (set_base_var x) typs)
-  | Union typs -> Union (List.map (set_base_var x) typs)
+  | Inter(typ, typs) -> Inter(typ, List.map (set_base_var x) typs)
+  | Union(typ, typs) -> Union(typ, List.map (set_base_var x) typs)
   | typ -> typ
 let rec copy_fun_arg_to_base = function
   | Base(base, x, p) -> Base(base, x, p)
   | Fun(x,typ1,typ2) -> Fun(x, set_base_var x @@ copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd copy_fun_arg_to_base) xtyps)
-  | Inter typs -> Inter (List.map copy_fun_arg_to_base typs)
-  | Union typs -> Union (List.map copy_fun_arg_to_base typs)
+  | Inter(typ, typs) -> Inter(typ, List.map copy_fun_arg_to_base typs)
+  | Union(typ, typs) -> Union(typ, List.map copy_fun_arg_to_base typs)
   | ExtArg(x,typ1,typ2) -> ExtArg(x, copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, copy_fun_arg_to_base typ)
 
@@ -290,8 +294,8 @@ let rec same typ1 typ2 =
       let typs1 = List.map snd xtyps1 in
       let typs2 = List.map (fun (_,typ) -> List.fold_left2 (fun typ (x1,_) (x2,_) -> subst_var x2 x1 typ) typ xtyps1 xtyps2) xtyps2 in
       List.eq ~cmp:same typs1 typs2
-  | Inter typs1, Inter typs2 -> List.eq ~cmp:same typs1 typs2
-  | Union typs1, Union typs2 -> List.eq ~cmp:same typs1 typs2
+  | Inter(_, typs1), Inter(_, typs2) -> List.eq ~cmp:same typs1 typs2
+  | Union(_, typs1), Union(_, typs2) -> List.eq ~cmp:same typs1 typs2
   | ExtArg(x1,typ11,typ12), ExtArg(x2,typ21,typ22) -> same typ11 typ21 && same typ12 @@ subst_var x2 x1 typ22
   | List(x1,p1_len,y1,p1_i,typ1'), List(x2,p2_len,y2,p2_i,typ2') ->
       U.same_term p1_len @@ U.subst_var x2 x1 p2_len &&
@@ -304,8 +308,8 @@ let rec has_no_predicate typ =
   | Base(b, x, t) -> t = U.true_term
   | Fun(x,typ1,typ2) -> has_no_predicate typ1 && has_no_predicate typ2
   | Tuple xtyps -> List.for_all (has_no_predicate -| snd) xtyps
-  | Inter typs
-  | Union typs -> List.for_all has_no_predicate typs
+  | Inter(_, typs)
+  | Union(_, typs) -> List.for_all has_no_predicate typs
   | ExtArg _ -> unsupported "has_no_predicate"
   | List(x,p_len,y,p_i,typ1) -> p_len = U.true_term && p_i = U.true_term && has_no_predicate typ1
 
@@ -331,6 +335,7 @@ let rec make_rand typ =
 
 
 let rec generate_check genv cenv x typ =
+  if !!debug then Format.printf "Ref_type.generate_check: %a : %a@." Id.print x print typ;
   match typ with
   | Base(base, y, p) ->
       genv, cenv, U.subst_var y x p
@@ -399,7 +404,7 @@ let rec generate_check genv cenv x typ =
             else genv', cenv', U.make_letrec [def] t
       in
       genv', cenv', add_len t
-  | Inter typs ->
+  | Inter(_, typs) ->
       let aux (genv',cenv',ts) typ =
         let genv'',cenv'',t = generate_check genv' cenv' x typ in
         genv'', cenv'', ts@[t]
@@ -408,7 +413,7 @@ let rec generate_check genv cenv x typ =
       if !!debug then Format.printf "generate_check typ: %a@." (List.print print) typs;
       if !!debug then Format.printf "generate_check ts: %a@." (List.print  Print.term) ts;
       genv'', cenv'', U.make_ands ts
-  | Union typs ->
+  | Union(_, typs) ->
       let aux (genv',cenv',ts) typ =
         let genv'',cenv'',t = generate_check genv' cenv' x typ in
         genv'', cenv'', ts@[t]
@@ -479,11 +484,23 @@ and generate genv cenv typ =
           let genv'',cenv'',t2 = generate genv' cenv' typ2' in
           genv'', cenv'', U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
       | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
-      | Inter [typ] -> generate genv cenv typ
-      | Inter[Base(base1, x1, p1); Base(base2, x2, p2)] ->
-          assert (base1 = base2);
-          generate genv cenv @@ Base(base1, x1, U.make_and p1 (U.subst_var x2 x1 p2))
-      | Inter[Fun(x1,typ11,typ12); Fun(x2,typ21,typ22)] ->
+      | Inter(styp, []) -> [], [], U.make_fail styp
+      | Inter(_, [typ]) -> generate genv cenv typ
+      | Inter(_, Base(base,x,p)::typs) ->
+          let p' =
+            let aux p typ =
+              match typ with
+              | Base(base', x', p') ->
+                  assert (base = base');
+                  U.make_and p (U.subst_var x' x p')
+              | _ -> assert false
+            in
+            List.fold_left aux p typs
+          in
+          generate genv cenv @@ Base(base, x, p')
+(*
+      | Inter(_, [Fun(x1,typ11,typ12); Fun(x2,typ21,typ22)]) ->
+          assert !Flag.fail_as_exception;
           let x = Id.new_var @@ to_abst_typ typ11 in
           let typ22 = subst_var x1 x typ12 in
           let typ22 = subst_var x2 x typ22 in
@@ -492,7 +509,7 @@ and generate genv cenv typ =
           let e = Id.new_var ~name:"e" !U.typ_excep in
           let genv,cenv,t1 = generate_check genv cenv x typ11 in
           let genv,cenv,t2 = generate_check genv cenv x typ21 in
-          let genv,cenv,t_tt = generate genv cenv @@ Inter [typ12; typ22] in
+          let genv,cenv,t_tt = generate genv cenv @@ Inter(to_simple typ12, [typ12; typ22]) in
           let genv,cenv,t_tf = generate genv cenv typ12 in
           let genv,cenv,t_ft = generate genv cenv typ22 in
           let t_ff = U.make_fail t_tt.S.typ in
@@ -503,10 +520,75 @@ and generate genv cenv typ =
                     (U.make_if (U.make_var b2) t_ft t_ff)
           in
           genv, cenv, U.make_fun x @@ U.make_lets [b1,[],tb1; b2,[],tb2] t
-      | Inter typs ->
+ *)
+      | Inter(_, ((Fun _)::_ as typs)) ->
+          Flag.fail_as_exception := true;
+          let bss = Combination.take_each @@ List.map (Fun.const [true;false]) typs in
+          if !!debug then Format.printf "GEN bss: %a@." (List.print @@ List.print Format.pp_print_bool) bss;
+          let x =
+            match typs with
+            | Fun(_,typ1,_)::_ -> Id.new_var @@ to_abst_typ typ1
+            | _ -> assert false
+          in
+          let typs1,typs2 = List.split_map (function Fun(y,typ1,typ2) -> typ1, subst_var y x typ2 | _ -> assert false) typs in
+          if !!debug then Format.printf "GEN typs1: %a@." (List.print print) typs1;
+          if !!debug then Format.printf "GEN typs2: %a@." (List.print print) typs2;
+          let xs = List.map (fun _ -> Id.new_var ~name:"b" Type.TBool) typs in
+          if !!debug then Format.printf "GEN xs: %a@." (List.print Id.print) xs;
+          let genv',cenv',tbs =
+            let aux typ1 (genv,cenv,tbs) =
+              let genv', cenv', tb = generate_check genv cenv x typ1 in
+              let tb' =
+                let e = Id.new_var ~name:"e" !U.typ_excep in
+                U.make_trywith tb e [U.make_pany @@ Id.typ e, U.true_term, U.false_term]
+                |> U.make_or U.randbool_unit_term
+              in
+              genv', cenv', tb'::tbs
+            in
+            List.fold_right aux typs1 (genv,cenv,[])
+          in
+          if !!debug then Format.printf "GEN tbs: %a@." (List.print Print.term) tbs;
+          let tcs =
+            let aux bs =
+              xs
+              |> List.map U.make_var
+              |> List.filter_map2 Option.some_if bs
+              |> U.make_ands
+            in
+            List.map aux bss
+          in
+          if !!debug then Format.printf "GEN tcs: %a@." (List.print Print.term) tcs;
+(*
+          let typss = List.map (fun bs -> List.map) bss in
+          if !!debug then Format.printf "GEN |typss|: %d@." @@ List.length typss;
+ *)
+          let rstyp = to_simple @@ List.hd typs2 in
+          let genv'',cenv'',trs =
+            let aux bs (genv,cenv,trs) =
+              let typ =
+                typs2
+                |> List.filter_map2 Option.some_if bs
+                |> _Inter rstyp
+              in
+              if !!debug then Format.printf "GEN typ: %a@." print typ;
+              let genv',cenv',tr = generate genv cenv typ in
+              genv', cenv', tr::trs
+            in
+            List.fold_right aux bss (genv',cenv',[])
+          in
+          if !!debug then Format.printf "GEN trs: %a@." (List.print Print.term) trs;
+          let t =
+            U.make_bottom rstyp
+            |> List.fold_right2 U.make_if tcs trs
+            |> U.make_lets @@ List.map2 (fun x tb -> x, [], tb) xs tbs
+            |> U.make_fun x
+          in
+          if !!debug then Format.printf "GEN t: %a@."  Print.term t;
+          genv'', cenv'', t
+      | Inter(_, _) ->
           Format.printf "INTER: %a@." print typ;
           unsupported "Ref_type.generate: Inter"
-      | Union typs -> unsupported "Ref_type.generate: Union"
+      | Union(_, typs) -> unsupported "Ref_type.generate: Union"
       | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
       | List(x,p_len,y,p_i,typ') ->
           if p_i.S.desc <> S.Const S.True || occur y typ' then
@@ -580,21 +662,21 @@ let rec simplify_pred t =
 
 let rec flatten typ =
   match typ with
-  | Inter typs ->
+  | Inter(styp, typs) ->
       let typs' = List.map flatten typs in
-      let typs'' = List.flatten_map (function Inter typs -> typs | typ -> [typ]) typs' in
-      Inter typs''
-  | Union typs ->
+      let typs'' = List.flatten_map decomp_inter typs' in
+      Inter(styp, typs'')
+  | Union(styp, typs) ->
       let typs' = List.map flatten typs in
-      let typs'' = List.flatten_map (function Union typs -> typs | typ -> [typ]) typs' in
-      Union typs''
+      let typs'' = List.flatten_map decomp_union typs' in
+      Union(styp, typs'')
   | _ -> typ
 
 let rec simplify_typs constr and_or typs =
   let decomp typ =
     match typ with
-    | Inter typs -> typs
-    | Union typs -> typs
+    | Inter(_, typs) -> typs
+    | Union(_, typs) -> typs
     | typ -> [typ]
   in
   let rec aux typs =
@@ -636,27 +718,29 @@ and simplify typ =
   | Base(base, x, p) ->
       let p' = simplify_pred p in
       if p' = U.false_term
-      then Union []
+      then Union(to_simple typ, [])
       else Base(base, x, p')
   | Fun(x,typ1,typ2) ->
       let typ1' = simplify typ1 in
-      if typ1' = Union []
-      then Inter []
-      else Fun(x, typ1', simplify typ2)
+      begin
+        match typ1' with
+        | Union(_, []) -> Inter(to_simple typ, [])
+        | _ -> Fun(x, typ1', simplify typ2)
+      end
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd simplify) xtyps)
-  | Inter [] -> Inter []
-  | Inter typs -> simplify_typs _Inter (List.fold_left U.make_and U.true_term) typs
-  | Union [] -> Union []
-  | Union typs -> simplify_typs _Union (List.fold_left U.make_or U.false_term) typs
+  | Inter(styp, []) -> Inter(styp, [])
+  | Inter(styp, typs) -> simplify_typs (_Inter styp) (List.fold_left U.make_and U.true_term) typs
+  | Union(styp, []) -> Union(styp, [])
+  | Union(styp, typs) -> simplify_typs (_Union styp) (List.fold_left U.make_or U.false_term) typs
   | ExtArg(x,typ1,typ2) -> ExtArg(x, simplify typ1, simplify typ2)
   | List(x,p_len,y,p_i,typ) ->
       let p_len' = simplify_pred p_len in
       if p_len' = U.false_term
-      then Union []
+      then Union(to_simple typ, [])
       else List(x, p_len', y, simplify_pred p_i, simplify typ)
 
 
-
+(*
 let from_fpat_const typ =
   match typ with
   | Fpat.TypConst.Unit -> Unit
@@ -693,7 +777,7 @@ let rec from_fpat typ =
         Fun(x, typ1', typ2')
       in
       _Inter @@ List.map aux typs
-
+ *)
 
 let rec make_strongest typ =
   match typ with

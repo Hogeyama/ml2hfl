@@ -75,20 +75,20 @@ let subst_matched_var = subst_matched_var.tr_term
 
 let rec get_rtyp_list rtyp typ =
   match rtyp, elim_tpred typ with
-  | RT.Inter rtyps, _ ->
-     RT.Inter (List.map (get_rtyp_list -$- typ) rtyps)
-  | RT.Union rtyps, _ ->
-      RT.Union (List.map (get_rtyp_list -$- typ) rtyps)
+  | RT.Inter(_, rtyps), _ ->
+     RT.Inter(typ, List.map (get_rtyp_list -$- typ) rtyps)
+  | RT.Union(_, rtyps), _ ->
+      RT.Union(typ, List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Fun(y, RT.Base(RT.Int, y', p_i), typ2)], TList typ ->
       let p_len' = subst_var x' x p_len in
       let p_i' = subst_var y' y p_i in
       RT.List(x, p_len', y, p_i', get_rtyp_list typ2 typ)
-  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter []], TList typ ->
+  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter(_, [])], TList typ ->
       let p_len' = subst_var x' x p_len in
-      RT.List(x, p_len', Id.new_var typ_unknown, true_term, RT.Inter [])
-  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter typs], TList typ ->
+      RT.List(x, p_len', Id.new_var typ_unknown, true_term, RT.Inter(typ, []))
+  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter(_, typs)], TList typ ->
       let typs' = List.map (fun typ -> RT.Tuple [x, RT.Base(RT.Int, x', p_len); Id.new_var typ_unknown, typ]) typs in
-      get_rtyp_list (RT.Inter typs') (TList typ)
+      get_rtyp_list (RT.Inter(typ_unknown, typs')) (TList typ)
   | _, TList typ ->
       Format.printf "%a@." RT.print rtyp;
       raise (Fatal "not implemented get_rtyp_list")

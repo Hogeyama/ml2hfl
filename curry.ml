@@ -20,8 +20,8 @@ let rec get_tuple_name_map rtyp =
       let ixs = List.filter_map (function (i,(_,RT.Base(_,x,_))) -> Some(i,x) | _ -> None) ixrtyps in
       let map = List.rev_flatten_map (fun (i,(_,typ)) -> List.map (Pair.map_snd (List.cons i)) @@ get_tuple_name_map typ) ixrtyps in
       List.map (fun (i,x) -> x,[i]) ixs @@@ map
-  | RT.Inter rtyps
-  | RT.Union rtyps -> List.rev_flatten_map get_tuple_name_map rtyps
+  | RT.Inter(_, rtyps)
+  | RT.Union(_, rtyps) -> List.rev_flatten_map get_tuple_name_map rtyps
   | _ -> []
 
 let rec correct_arg_refer rtyp =
@@ -48,8 +48,8 @@ let rec correct_arg_refer rtyp =
         (x, rtyp') :: xrtyps'
       in
       RT.Tuple (List.fold_right aux xrtyps [])
-  | RT.Inter rtyps -> RT.Inter (List.map correct_arg_refer rtyps)
-  | RT.Union rtyps -> RT.Union (List.map correct_arg_refer rtyps)
+  | RT.Inter(typ, rtyps) -> RT.Inter(typ, List.map correct_arg_refer rtyps)
+  | RT.Union(typ, rtyps) -> RT.Union(typ, List.map correct_arg_refer rtyps)
   | RT.ExtArg(x,rtyp1,rtyp2) -> assert false
   | RT.List _ -> assert false
 
@@ -57,8 +57,22 @@ let rec uncurry_typ rtyp typ =
   if debug() then
     Format.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
   match rtyp,typ with
-  | RT.Inter rtyps, _ -> RT.Inter (List.map (uncurry_typ -$- typ) rtyps)
-  | RT.Union rtyps, _ -> RT.Union (List.map (uncurry_typ -$- typ) rtyps)
+  | RT.Inter(typ, rtyps), _ ->
+      let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
+      let typ' =
+        match rtyps' with
+        | [] -> typ_unknown (* TODO *)
+        | rtyp'::_ -> RT.to_simple rtyp'
+      in
+      RT.Inter(typ', rtyps')
+  | RT.Union(typ, rtyps), _ ->
+      let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
+      let typ' =
+        match rtyps' with
+        | [] -> typ_unknown (* TODO *)
+        | rtyp'::_ -> RT.to_simple rtyp'
+      in
+      RT.Union(typ', rtyps')
   | _, TFun(x,typ2) ->
       let typ1 = Id.typ x in
       let n = element_num typ1 in
@@ -225,13 +239,19 @@ and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
 
 
 
-let remove_pair t =
-  assert (List.mem ACPS t.attr);
+let remove_pair ?(check=true) t =
+  assert (check => List.mem ACPS t.attr);
   let t' =
     t
+    |@!!debug&> Format.printf "remove_pair INPUT: %a@." Print.term
     |> remove_pair
-    |@> Type_check.check -$- typ_result
+    |@!!debug&> Format.printf "remove_pair remove_pair: %a@." Print.term
+    |@check&> Type_check.check -$- typ_result
     |> Trans.beta_affine_fun
+    |@!!debug&> Format.printf "remove_pair beta_affine_fun: %a@." Print.term
     |> Trans.beta_size1
+    |@!!debug&> Format.printf "remove_pair beta_size1: %a@." Print.term
   in
   t', uncurry_rtyp t
+
+let remove_pair_direct t = remove_pair ~check:false t

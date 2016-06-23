@@ -534,7 +534,7 @@ let same_list same xs ys = List.length xs = List.length ys && List.for_all2 same
 
 let rec same_const c1 c2 =
   match c1,c2 with
-  | RandValue _, RandValue _ -> unsupported "same_const"
+  | RandValue(typ1, b1) , RandValue(typ2, b2) -> b1 = b2 && same_shape typ1 typ2
   | _ -> c1 = c2
 and same_term t1 t2 = same_desc t1.desc t2.desc
 and same_desc t1 t2 =
@@ -555,10 +555,10 @@ and same_desc t1 t2 =
   | SetField _, SetField _ -> unsupported "same_term 4"
   | Nil, Nil -> true
   | Cons _, Cons _ -> unsupported "same_term 5"
-  | Constr _, Constr _ -> unsupported "same_term 6"
+  | Constr(c1, ts1), Constr(c2, ts2) -> c1 = c2 && List.for_all2 same_term ts1 ts2
   | Match _, Match _ -> unsupported "same_term 7"
-  | Raise _, Raise _ -> unsupported "same_term 8"
-  | TryWith _, TryWith _ -> unsupported "same_term 9"
+  | Raise t1, Raise t2 -> same_term t1 t2
+  | TryWith(t11,t12), TryWith(t21,t22) -> same_term t11 t21 && same_term t12 t22
   | Tuple ts1, Tuple ts2 -> List.length ts1 = List.length ts2 && List.for_all2 same_term ts1 ts2
   | Proj(i,t1), Proj(j,t2) -> i = j && same_term t1 t2
   | Bottom, Bottom -> true
