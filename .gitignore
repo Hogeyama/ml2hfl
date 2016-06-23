@@ -55,3 +55,5 @@ mochi_bin/lib/
 *.horsatp_out
 *.error_out
 *.error_hors
+*.hcs
+gmon.out

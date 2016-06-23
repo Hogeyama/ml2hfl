@@ -374,16 +374,13 @@ let rec init_with_pred_var cnt typ =
 
 let make_sub templates typ1 typ2 =
   if !!debug then Format.printf "      make_sub: %a@." print_constr (Sub(typ1,typ2));
-  if !make_sub_flag then
-    let typ1' = expand_type templates typ1 in
-    let typ2' = expand_type templates typ2 in
-    if !!debug then Format.printf "      make_sub: %a@." print_constr (Sub(typ1',typ2'));
-    let r = inline_sub templates typ1' typ2' in
-    if !!debug then Format.printf "          ===>: %a@." print_constr r;
-    r(*;
-    Sub(typ1',typ2')*)
-  else
-    Sub(typ1,typ2)
+  let typ1' = expand_type templates typ1 in
+  let typ2' = expand_type templates typ2 in
+  if !!debug then Format.printf "      make_sub: %a@." print_constr (Sub(typ1',typ2'));
+  let r = inline_sub templates typ1' typ2' in
+  if !!debug then Format.printf "          ===>: %a@." print_constr r;
+  r(*;
+  Sub(typ1',typ2')*)
 
 let filter_assumption val_env assumption =
   let vars = List.map fst val_env in
@@ -478,7 +475,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
               if dbg then Format.printf "    Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
               make_sub templates' typ1 typ2
             else
-              PApp(Arg(Var f, env), [t])
+              _PApp (Arg(Var f, env)) [t]
               |@dbg&> Format.printf "      ARG: typ: %a@." print_template
               |> expand_type templates'
               |@dbg&> Format.printf "      ARG: typ': %a@." print_template
@@ -987,11 +984,19 @@ let add_context for_infer prog f typ =
   if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let t' = Trans.ref_to_assert (Ref_type.Env.of_list [f,typ]) unit_term in
   if dbg then Format.printf "ADD_CONTEXT t': %a@." Print.term t';
+(*
   let env' = List.filter (fst |- Id.same f) prog.fun_def_env in
+ *)
   let env' = prog.fun_def_env in
   trans_CPS env' t'
 
 let infer prog f typ ce_set =
+  let ce_set =
+    if 0=1 then
+      List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x (List.print Format.pp_print_int) ce; read_int() <> 0) ce_set
+    else
+      ce_set
+  in
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
   let fun_env',t,make_get_rtyp = add_context true prog f typ in
   if !!debug then Format.printf "INFER prog: %a@." print_prog prog;
@@ -1054,7 +1059,7 @@ let infer prog f typ ce_set =
           x', typ_
         in
         List.map aux env'
-        |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
+        |*> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
         |> Ref_type.Env.of_list
       in
       if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env'';

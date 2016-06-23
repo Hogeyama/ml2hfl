@@ -405,6 +405,8 @@ let rec generate_check genv cenv x typ =
         genv'', cenv'', ts@[t]
       in
       let genv'',cenv'',ts = List.fold_left aux (genv,cenv,[]) typs in
+      if !!debug then Format.printf "generate_check typ: %a@." (List.print print) typs;
+      if !!debug then Format.printf "generate_check ts: %a@." (List.print  Print.term) ts;
       genv'', cenv'', U.make_ands ts
   | Union typs ->
       let aux (genv',cenv',ts) typ =

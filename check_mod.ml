@@ -332,6 +332,7 @@ let add_context prog f typ =
   let t' =
     unit_term
     |> Trans.ref_to_assert @@ Ref_type.Env.of_list [f,typ]
+    |@dbg&> Format.printf "ADD_CONTEXT t: %a@." Print.term
     |> normalize
     |@dbg&> Format.printf "ADD_CONTEXT t': %a@." Print.term
   in
