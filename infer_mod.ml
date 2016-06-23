@@ -226,10 +226,9 @@ let rec expand_type templates typ =
   | PApp(typ, ts) ->
       begin
         match et typ with
-        | PApp(typ', ts') -> PApp(typ', ts@ts')
         | Fun(x, typ1, typ2) -> Fun(x, et (PApp(typ1,ts)), et (PApp(typ2,ts)))
         | Inter typs -> Inter (List.map (fun typ' -> et @@ PApp(typ',ts)) typs)
-        | typ' -> PApp(typ', ts)
+        | typ' -> _PApp typ' ts
       end
   | Arg(typ, ts) ->
       begin
@@ -239,11 +238,13 @@ let rec expand_type templates typ =
               match ts with
               | [] -> typ1
               | t::ts' ->
+(*
                   let typ2' =
                     if is_fun_typ t.typ
                     then typ2
                     else PApp(typ2, [t])
                   in
+ *)
                   let typ2' = typ2 in
                   et @@ subst_template x t @@ Arg(typ2', ts')
                   |@> pr "@[<hov 2>[%a |-> %a]%a = %a@]@." Id.print x Print.term t print_template (Arg(typ2', ts')) print_template
@@ -262,17 +263,26 @@ let rec expand_type templates typ =
   if dbg then pr "r: %a@." print_template r;
   r
 
+let _PAppSelf typ t =
+  let typ',ts =
+    match typ with
+    | Base _ -> typ, []
+    | PApp(Base(Some _) as typ', ts) -> typ', ts
+    | _ -> assert false
+  in
+  _PApp typ' (t::ts)
+
 let rec inline_sub templates typ1 typ2 =
   let _dbg = false in
   let r =
   match typ1,typ2 with
   | Inter typs1, Inter typs2 -> _Ands @@ List.map2 (inline_sub templates) typs1 typs2
-  | Singleton t, _ -> constr_of_typ @@ _PApp typ2 [t]
+  | Singleton t, _ -> constr_of_typ @@ _PAppSelf typ2 t
   | Base None, Base None -> Exp true_term
-  | PApp(Base(Some p1), ts1), PApp(Base(Some p2), ts2) ->
-      _PApp typ2 [pred_var_term]
+  | PApp(Base(Some p1) as typ1', ts1), PApp(Base(Some p2) as typ2', ts2) ->
+      _PApp typ2' (pred_var_term::ts2)
       |> constr_of_typ
-      |> _Imply [constr_of_typ @@ _PApp typ1 [pred_var_term]]
+      |> _Imply [constr_of_typ @@ _PApp typ1' (pred_var_term::ts1)]
   | Fun(_, (Fun _ as typ11), typ12), Fun(_, (Fun _ as typ21), typ22) ->
       _And (inline_sub templates typ21 typ11) (inline_sub templates typ12 typ22)
   | Fun(x1,typ11,typ12), Fun(x2,typ21,typ22) ->
@@ -401,8 +411,8 @@ let make_assumption templates val_env =
     |> List.filter is_base_var
     |> List.map make_var
                                                 *)
-    [make_var x]
-    |> _PApp @@ List.assoc ~cmp (x,None) templates
+    make_var x
+    |> _PAppSelf @@ List.assoc ~cmp (x,None) templates
     |@dbg&> Format.printf "      MA: typ of %a: %a@." Id.print x print_template
     |> constr_of_typ
     |@dbg&> Format.printf "      MA: constr: %a@." print_constr
@@ -694,7 +704,8 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       let nids = List.map get_nid children in
       pr "  TEMPLATES: @[%a@.@."  print_tmp_env templates;
       pr "  SPAWN: %a@.@." Id.print f;
-      let typ = _Inter @@ List.map2 (fun g nid -> List.assoc ~cmp (g,Some nid) templates) gs nids in
+      pr "  NIDS: %a@.@." (List.print Format.pp_print_int) nids;
+      let typ = _Inter @@ List.flatten_map (fun g -> List.map snd @@ List.filter (fst |- fst |- Id.eq g) templates) gs in
       ((f,Some nid), typ)::templates
   | Assume _ -> templates
   | Value _ -> assert false
@@ -901,7 +912,7 @@ let rec apply_sol sol x vars tmp =
         in
         let x' = Option.get x in
         let p =
-          let ts' = List.rev @@ make_var x' :: List.map make_var vars @ ts in
+          let ts' = make_var x' :: List.map make_var vars @ ts in
           try
             let xs,t = List.assoc p sol in
             if dbg then Format.printf "xs: %a@." (List.print Id.print) xs;
