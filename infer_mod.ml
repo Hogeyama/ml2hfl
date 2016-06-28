@@ -913,9 +913,12 @@ let rec apply_sol sol x vars tmp =
         in
         let x' = Option.get x in
         let p =
-          let ts' = make_var x' :: List.map make_var vars @ ts in
+          let vars' = List.filter is_base_var vars in
+          let ts' = make_var x' :: List.map make_var vars' @ ts in
           try
             let xs,t = List.assoc p sol in
+            if dbg then Format.printf "P_%d@." p;
+            if dbg then Format.printf "t: %a@." Print.term t;
             if dbg then Format.printf "xs: %a@." (List.print Id.print) xs;
             if dbg then Format.printf "ts': %a@." (List.print Print.term) ts';
             List.fold_right2 subst xs ts' t
@@ -1004,7 +1007,7 @@ let () = replace_if_with_bottom.tr_term <- replace_if_with_bottom_term
 let replace_if_with_bottom = replace_if_with_bottom.tr_term
 
 let add_context for_infer prog f typ =
-  let dbg = 0=0 in
+  let dbg = 0=0 && !!debug in
   if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let t' = Trans.ref_to_assert (Ref_type.Env.of_list [f,typ]) unit_term in
   if dbg then Format.printf "ADD_CONTEXT t': %a@." Print.term t';
@@ -1057,7 +1060,7 @@ let solve_merged merge_candidates hcs =
   aux map
 
 let assoc_pred_var p hcs =
-  if 0=0 then Format.printf "APV: P_%d@." p;
+  if 0=1 then Format.printf "APV: P_%d@." p;
   let rec find hcs =
     match hcs with
     | [] -> make_pred_var p []
@@ -1094,7 +1097,7 @@ let get_merge_candidates templates hcs =
 
 let infer prog f typ ce_set =
   let ce_set =
-    if 0=0 then
+    if 10=0 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x (List.print Format.pp_print_int) ce; read_int() <> 0) ce_set
     else
       ce_set

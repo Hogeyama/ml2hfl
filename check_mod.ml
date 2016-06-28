@@ -58,6 +58,15 @@ let exists_fail ts = List.exists is_fail ts
 let append_path path rs =
   List.map (Triple.map_trd @@ (@) path) rs
 
+let merge_path path1 path2 =
+  let aux (x,ce) acc =
+    if Id.mem_assoc x acc then
+      List.map (fun (y,ce') -> let ce'' = if Id.same x y then ce@ce' else ce' in y, ce'') acc
+    else
+      (x,ce)::acc
+  in
+  List.fold_right aux path1 path2
+
 type dir = Single_to_Modular | Modular_to_Single
 type eval_result =
   | Single of (typed_term * (int * int list) list * int list) list
@@ -296,7 +305,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
             else
               match eval dir top_funs fun_env' ce_set [0,ce] label_env t2 with
               | Single _ -> assert false
-              | Modular(v', ce', path') -> Modular(v', ce', path@path')
+              | Modular(v', ce', path') -> Modular(v', ce', merge_path path path')
       else
         let t2' = subst f (make_funs xs t1) t2 in
         eval dir top_funs fun_env ce_set ce_env label_env t2'
@@ -322,6 +331,7 @@ type result =
 let add_context prog f typ =
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
   let dbg = 0=0 && !!debug in
+  if dbg then Format.printf "ADD_CONTEXT prog: %a@." print_prog prog;
   if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let fs =
     let xs,t = Id.assoc f fun_env in

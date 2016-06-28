@@ -588,6 +588,7 @@ and generate genv cenv typ =
       | Inter(_, _) ->
           Format.printf "INTER: %a@." print typ;
           unsupported "Ref_type.generate: Inter"
+      | Union(_, [typ]) -> generate genv cenv typ
       | Union(_, typs) -> unsupported "Ref_type.generate: Union"
       | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
       | List(x,p_len,y,p_i,typ') ->
@@ -802,3 +803,8 @@ and make_weakest typ =
   | _ ->
       Format.printf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"
+
+let union styp typs =
+  match List.unique ~cmp:same typs with
+  | [typ] -> typ
+  | typs' -> _Union styp typs'

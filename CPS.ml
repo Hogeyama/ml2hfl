@@ -912,7 +912,7 @@ let rec uncps_ref_type rtyp e etyp =
         | [] -> typ_of_etyp etyp
         | rtyp'::_ -> RT.to_simple rtyp'
       in
-      RT.Union(typ', List.map aux rtyps)
+      RT.union typ' @@ List.map aux rtyps
   | RT.Tuple xrtyps, _, TTupleCPS etyps ->
       if dbg then Format.printf "%s@.@." __LOC__;
       RT.Tuple (List.map2 (fun (x,rtyp) etyp -> x, uncps_ref_type rtyp e etyp) xrtyps etyps)

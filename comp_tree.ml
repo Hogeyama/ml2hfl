@@ -17,9 +17,9 @@ type label =
   | Bottom
 and t = node RT.t
 and node =
-  {nid : nid;
-   val_env : val_env;
-   var_env : var_env;
+  {nid : nid; (* ID of node *)
+   val_env : val_env; (* Value environment *)
+   var_env : var_env; (* Scope environment: var_env(x) is a set of variables which are visible from x *)
    label : label;
    ref_typ : Ref_type.t option;
    ce_env : (tid * (int * int list)) list}
@@ -182,7 +182,7 @@ let spawn is_top nid env var_env val_env ce_env f children =
   RT.Node({nid; var_env; val_env; label; ref_typ; ce_env}, children)
 
 let value_of var_env val_env t = Closure(var_env, val_env, t)
-
+(*
 let make_arg_map var_env val_env f xs ts =
   if !!debug then Format.printf "      MAM: %a %a@\n" (List.print Id.print) xs (List.print Print.term) ts;
   let eta t =
@@ -222,6 +222,8 @@ let make_arg_map var_env val_env f xs ts =
   in
   List.rev @@ snd @@ List.fold_left2 aux (env,[]) xs ts
  *)
+ *)
+
 let eta_expand t =
   let xs,t' = decomp_funs t in
   let ys,_ = decomp_tfun t'.typ in
@@ -230,7 +232,7 @@ let eta_expand t =
 
 let make_arg_map var_env val_env _ xs ts =
   let value_of var_env val_env t = Closure(var_env, val_env, eta_expand t) in
-  [], [], List.combine xs @@ List.map (value_of var_env val_env) ts
+  List.combine xs @@ List.map (value_of var_env val_env) ts
 
 (*
 let eta_and_lift = make_trans2 ()
@@ -307,11 +309,18 @@ let rec from_term
       if !!debug then Format.printf "  APP1: %a@\n" Print.term t;
       let var_env_f,val_env_f,(ys,t_f) = assoc_fun (Id.mem f args) f var_env val_env in
       if !!debug then Format.printf "    APP1 (ys -> t_f): %a, %d@\n" Print.term (make_funs ys t_f) (List.length ts);
-      let var_env_arg,val_env_arg,arg_map = make_arg_map var_env val_env f ys ts in
+      if !!debug then Format.printf "    APP1 var_env_f: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env_f;
+      let arg_map = make_arg_map var_env val_env f ys ts in
       if !!debug then Format.printf "    APP1 arg_map: %a@\n" pr_env arg_map;
       let val_env' = List.rev arg_map @ val_env_f in
       if !!debug then Format.printf "    APP1 val_env': %a@\n" pr_env val_env';
-      let var_env' = List.fold_left (fun acc x -> (x, List.map fst acc)::acc) var_env_f ys in
+      let vars_f = Id.assoc f var_env in
+      if !!debug then Format.printf "    APP1 vars_f: %a@\n" (List.print Id.print) vars_f;
+      let var_env',_ = List.fold_left (fun (acc,vars) x -> (x, vars)::acc, x::vars) (var_env_f,vars_f) ys in
+(*
+      let var_env' = List.fold_left (fun acc x -> (x, List.map fst acc)::acc) [] ys @ var_env_f in
+ *)
+      if !!debug then Format.printf "    APP1 var_env': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env';
       let fun_id =
         let kind =
           match get_id_option t1 with

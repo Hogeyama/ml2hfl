@@ -74,3 +74,5 @@ val from_fpat : Fpat.RefType.t -> t
 val make_strongest : S.typ -> t
 val make_weakest : S.typ -> t
 val typ_result : t
+
+val union : S.typ -> t list -> t
