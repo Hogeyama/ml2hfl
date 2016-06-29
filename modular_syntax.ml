@@ -3,6 +3,10 @@ open Syntax
 open Term_util
 open Type
 
+
+let debug () = List.mem "Modular_syntax" !Flag.debug_module
+
+
 type program =
   {fun_typ_env : Ref_type.Env.t;
    fun_def_env : (id * (id list * typed_term)) list}
@@ -24,7 +28,7 @@ let rec is_atom t =
   | _ -> false
 
 let normalize t =
-  let dbg = 0=1 in
+  let dbg = 0=0 && !!debug in
   t
   |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
   |> Trans.short_circuit_eval
@@ -33,8 +37,10 @@ let normalize t =
   |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
   |> Trans.flatten_let
   |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
+  |> Trans.remove_no_effect_trywith
+  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
   |> fixed_point ~eq:same_term
        (Trans.inline_var
         |- Trans.inline_simple_exp
-        |- Trans.inline_no_effect
+        |- Trans.bool_eta_reduce
         |- Trans.reconstruct)

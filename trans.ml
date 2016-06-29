@@ -1551,6 +1551,9 @@ let normalize_let_term is_atom t =
       let bindings' = List.map aux bindings in
       let t1' = normalize_let.tr2_term is_atom t1 in
       make_let_f flag bindings' t1'
+  | Raise t ->
+     let t',post = normalize_let_aux is_atom t in
+     post @@ make_raise t' t.typ
   | _ -> normalize_let.tr2_term_rec is_atom t
 
 let () = normalize_let.tr2_term <- normalize_let_term
@@ -2621,3 +2624,25 @@ let reduce_fail_unit_term t =
   | _ -> t'
 let () = reduce_fail_unit.tr_term <- reduce_fail_unit_term
 let reduce_fail_unit = reduce_fail_unit.tr_term
+
+
+
+
+let remove_no_effect_trywith = make_trans ()
+let remove_no_effect_trywith_term t =
+  let t' = remove_no_effect_trywith.tr_term_rec t in
+  match t'.desc with
+  | TryWith(t, _) when has_no_effect t -> t
+  | _ -> t'
+let () = remove_no_effect_trywith.tr_term <- remove_no_effect_trywith_term
+let remove_no_effect_trywith = remove_no_effect_trywith.tr_term
+
+
+let bool_eta_reduce = make_trans ()
+let bool_eta_reduce_term t =
+  let t' = bool_eta_reduce.tr_term_rec t in
+  match t'.desc with
+  | If(t1, {desc=Const True}, {desc=Const False}) -> t1
+  | _ -> t'
+let () = bool_eta_reduce.tr_term <- bool_eta_reduce_term
+let bool_eta_reduce = bool_eta_reduce.tr_term

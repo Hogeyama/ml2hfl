@@ -75,4 +75,5 @@ val make_strongest : S.typ -> t
 val make_weakest : S.typ -> t
 val typ_result : t
 
+val inter : S.typ -> t list -> t
 val union : S.typ -> t list -> t

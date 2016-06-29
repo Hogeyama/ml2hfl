@@ -94,3 +94,5 @@ val beta_reduce : typed_term -> typed_term
 val beta_no_effect : typed_term -> typed_term
 val reduce_bottom : typed_term -> typed_term
 val reduce_fail_unit : typed_term -> typed_term
+val remove_no_effect_trywith : typed_term -> typed_term
+val bool_eta_reduce : typed_term -> typed_term

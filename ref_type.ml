@@ -804,7 +804,12 @@ and make_weakest typ =
       Format.printf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"
 
+let inter styp typs =
+  match typs with
+  | [typ] -> typ
+  | typs' -> _Inter styp @@ List.unique ~cmp:same @@ List.flatten_map decomp_inter typs'
+
 let union styp typs =
   match List.unique ~cmp:same typs with
   | [typ] -> typ
-  | typs' -> _Union styp typs'
+  | typs' -> _Union styp @@ List.unique ~cmp:same @@ List.flatten_map decomp_union typs'

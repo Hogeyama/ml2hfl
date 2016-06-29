@@ -626,11 +626,11 @@ let load_from_file file default =
     default
 
 
-let rec fixed_point ?(eq=(=)) f init =
+let rec fixed_point ?(eq=(=)) ?(max= -1) f init =
   let x = f init in
-  if eq x init
+  if eq x init || max = 0
   then x
-  else fixed_point ~eq f x
+  else fixed_point ~eq ~max:(max-1) f x
 
 
 let rec topological_sort_aux eq edges roots xs rev_acc =

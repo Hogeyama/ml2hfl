@@ -371,6 +371,7 @@ let add_context prog f typ =
     List.map (Pair.map_snd @@ Pair.map_snd normalize) fun_env' @
     [f, Pair.map_snd (add_label 0 -| normalize) @@ Id.assoc f fun_env]
   in
+  if dbg then Format.printf "ADD_CONTEXT fun_env'': %a@." Modular_syntax.print_def_env fun_env'';
   t', fun_env'', List.map Pair.swap label_env
 
 let check prog f typ =
