@@ -1073,7 +1073,8 @@ let assoc_pred_var p hcs =
 
 let rec get_merge_candidates_aux typ1 typ2 =
   match typ1, typ2 with
-  | Base None, Base None -> []
+  | Base None, Base _ -> []
+  | Base _, Base None -> []
   | Base (Some(_, p1)), Base (Some(_, p2)) -> [p1, p2]
   | PApp(typ1', _), _ -> get_merge_candidates_aux typ1' typ2
   | _, PApp(typ2', _) -> get_merge_candidates_aux typ1 typ2'
