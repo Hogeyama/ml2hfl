@@ -36,7 +36,7 @@ let rec expand_tree rules n expr =
   let get_fun f =
     List.assoc f rules in
 
-  if n < - !Flag.expand_ce_count then
+  if n < - (max 30 !Flag.expand_ce_count) then
     (Flag.break_expansion_ref := true;
      Var "end") (* 打ち切れる場所が現れないときの無限ループ防止 *)
   else match expr with
@@ -49,7 +49,7 @@ let rec expand_tree rules n expr =
      Abst (x, e)
   | Apply (e1, e2) ->
      begin match expand_tree rules (n - 1) e1 with
-     | Var s when n < 0 && (s = "l0" || s = "l1") -> (* n回展開済みで、分岐の直前なら、展開を打ち切る*)
+     | Var s when n < 0 && (String.starts_with s "randint_") -> (* n回展開済みで、乱数生成の直前なら、展開を打ち切る*)
         Var "end"
      | Abst (x, e) ->
         expand_tree rules n (subst x e2 e)

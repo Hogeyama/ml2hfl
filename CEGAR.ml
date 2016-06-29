@@ -133,11 +133,11 @@ let rec loop prog0 is_cp ces =
         | _ -> assert false
       in
       if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_orig;
-      let ce' = CEGAR_trans.trans_ce labeled prog ce_orig in
+      let ce' = CEGAR_trans.trans_ce labeled prog ce_orig None in
       let same_counterexample =
         match ces with
         | [] -> false
-        | MC.CESafety ce_pre :: _ -> ce' = CEGAR_trans.trans_ce labeled prog ce_pre
+        | MC.CESafety ce_pre :: _ -> ce' = CEGAR_trans.trans_ce labeled prog ce_pre None
         | _ -> assert false
       in
       if same_counterexample then
@@ -168,7 +168,7 @@ let rec loop prog0 is_cp ces =
               let inlined_functions = inlined_functions prog0 in
               let aux ce =
                 match ce with
-                | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce'
+                | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce' None
                 | _ -> assert false
               in
               let prog' =

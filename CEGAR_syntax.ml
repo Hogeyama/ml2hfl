@@ -275,18 +275,19 @@ let rec decomp_let = function
 
 
 
-let is_app_randint t =
+let is_app_randint ?(is_read_int=false) t =
   match t with
   | App _ ->
       let t',ts = decomp_app t in
       begin
         match t' with
-        | Const (Rand (TInt, _)) -> true
+        | Const (Rand (TInt, Some _)) -> true
+        | Const (Rand (TInt, _)) -> not is_read_int
         | _ -> false
       end
   | _ -> false
 
-
+let is_app_read_int = is_app_randint ~is_read_int:true
 
 let get_ext_funs {env; defs} =
   env
