@@ -11,9 +11,26 @@ type result =
   | Untypable
 
 let merge_tenv env' env =
+  let aux acc (f,typ) =
+(*
+    Format.printf "MERGE_TENV acc: %a@\n" print_typ_env @@ Ref_type.Env.of_list acc;
+ *)
+    if Id.mem_assoc f acc then
+      List.map (fun (g,typ') -> g, if Id.same f g then Ref_type.inter (Ref_type.to_simple typ) [typ;typ'] else typ') acc
+    else
+      (f,typ)::acc
+  in
   Ref_type.Env.to_list env' @ Ref_type.Env.to_list env
-  |> List.fold_left (fun acc (f,typ) -> if Id.mem_assoc f acc then acc else (f,typ)::acc) []
+  |> List.fold_left aux []
   |> Ref_type.Env.of_list
+(*
+let merge_tenv env1 env2 =
+  Format.printf "MERGE_TENV env1: %a@\n" print_typ_env env1;
+  Format.printf "MERGE_TENV env1: %a@\n" print_typ_env env2;
+  let r = merge_tenv env1 env2 in
+  Format.printf "MERGE_TENV r: %a@\n" print_typ_env r;
+  r
+ *)
 
 let merge_ce_set ce_set' ce_set =
   let dbg = 0=1 in
