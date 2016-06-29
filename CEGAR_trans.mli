@@ -81,7 +81,7 @@ val eval_abst_cbn :
   var list -> prog -> int list -> unit
 
 val trans_ce :
-  var list -> prog -> int list -> int list
+  var list -> prog -> int list -> int option -> int list
 
 val simplify_if : prog -> prog
 val add_fail_to_end : prog -> prog
