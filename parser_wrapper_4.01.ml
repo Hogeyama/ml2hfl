@@ -44,7 +44,7 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Pervasives.not"}, [t] -> make_not t
   | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
   | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
-  | Var {Id.name="Pervasives.raise"}, [t] -> {desc=Raise(t); typ=typ; attr=[]}
+  | Var {Id.name="Pervasives.raise"}, [t] -> make_raise t typ
   | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
   | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] ->
       let attr = if !Flag.mode = Flag.NonTermination then AAbst_under::randint_term.attr else randint_term.attr in

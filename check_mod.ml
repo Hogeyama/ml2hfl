@@ -313,6 +313,17 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
       assert (xs <> []);
       let t2' = subst f (make_fix f xs t1) t2 in
       eval dir top_funs fun_env ce_set ce_env label_env t2'
+  | Raise t ->
+      assert false
+  | TryWith(t1, t2) ->
+      begin
+        match eval dir top_funs fun_env ce_set ce_env label_env t1 with
+        | Single _ -> assert false
+        | Modular({desc=Raise _}, ce, path) ->
+            assert false (*TODO*)
+        | Modular(v, ce, path) ->
+            Modular(v, ce, path)
+      end
   | _ ->
       Format.printf "@.%a@." Print.term t;
       unsupported "Check_mod.eval"
