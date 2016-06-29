@@ -880,7 +880,7 @@ let rec uncps_ref_type rtyp e etyp =
       let typs = List.map (fun rtyp1 -> uncps_ref_type rtyp1 e etyp) rtyps in
       let styp' =
         match typs with
-        | [] -> typ_unknown (* TODO *)
+        | [] -> RT.to_simple @@ uncps_ref_type (RT.of_simple styp) ENone etyp
         | typ'::_ -> RT.to_simple typ'
       in
       RT.Inter(styp', typs)
@@ -1081,7 +1081,7 @@ let rec trans_ref_typ is_CPS typ =
         if is_CPS then
           typ_result
         else
-          Base(Unit, U.dummy_var, true_term)
+          Base(Unit, dummy_var, true_term)
       in
       let typ' = Fun(r, typ2', ret_typ) in
       let k = Id.new_var @@ to_simple typ' in

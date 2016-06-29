@@ -35,7 +35,7 @@ let rec print_list_aux print punc last fm xs =
   | [] -> ()
   | [x] -> print fm x
   | x::xs ->
-      Format.fprintf fm "%a" print x;
+      Format.fprintf fm "@[%a@]" print x;
       Format.fprintf fm punc;
       Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
 
@@ -666,3 +666,14 @@ let rec transitive_closure ?(eq=(=)) edges =
     List.fold_left aux edges' edges'
   in
   fixed_point ~eq:(List.Set.eq ~cmp:eq') f edges
+
+
+let rec classify ?(eq=(=)) xs =
+  let rec aux rev_acc xs =
+    match xs with
+    | [] -> List.rev rev_acc
+    | x::xs' ->
+        let xs1,xs2 = List.partition (eq x) xs' in
+        aux ((x::xs1)::rev_acc) xs2
+  in
+  aux [] xs

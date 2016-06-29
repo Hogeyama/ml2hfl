@@ -147,7 +147,9 @@ let assoc_fun is_arg f var_env val_env =
     let ys,_ =  decomp_tfun @@ Id.typ f in
     let ys' = List.map Id.new_var_id ys in
     let ys'' = List.map Id.new_var_id ys in
+(*
     let t = make_funs ys' @@ make_app (make_var f) @@ List.map make_var ys' in
+ *)
     let f' = Id.new_var_id f in
     let var_env' = (f', Id.assoc f var_env)::var_env in
     let val_env' = (f', Id.assoc f val_env)::val_env in

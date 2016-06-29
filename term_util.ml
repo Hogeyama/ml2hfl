@@ -623,8 +623,6 @@ let rec merge_typ typ1 typ2 =
   | TOption typ1, TOption typ2 -> TOption (merge_typ typ1 typ2)
   | _ -> Format.printf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
 
-
-
 let make_if t1 t2 t3 =
   assert (Flag.check_typ => Type.can_unify t1.typ TBool);
   if Flag.check_typ && not @@ Type.can_unify t2.typ t3.typ

@@ -349,7 +349,9 @@ let add_context prog f typ =
     let xs,t = Id.assoc f fun_env in
     List.Set.diff ~cmp:Id.eq (get_fv t) (f::xs)
   in
+(*
   let label_env = List.mapi (fun i f -> f, i) fs in
+ *)
   let label_env = [f, 0] in
   let t' =
     unit_term
@@ -404,6 +406,7 @@ let check prog f typ =
       if !!debug then Format.printf "  env': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
       Typable (Ref_type.Env.of_list env')
   | CEGAR.Unsafe(sol, ModelCheck.CESafety ce) ->
+      if !!debug then Main_loop.report_unsafe main sol set_target;
       if !!debug then Format.printf "  Untypable@.@.";
       if !!debug then Format.printf "  CE_INIT: %a@\n" (List.print Format.pp_print_int) ce;
       let v,ce',paths = decomp_modular @@ eval Single_to_Modular top_funs fun_env' [] [0,ce] label_env t in

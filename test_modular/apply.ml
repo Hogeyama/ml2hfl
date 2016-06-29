@@ -1,9 +1,9 @@
 
-let apply f (x:int) (k:(int->unit)) = f x k
+let apply f (x:int)  = f x
 
-let double x k = k (x+x)
+let double x  =  (x+x)
 
 let main n =
   if n >= 0 then
-  let k0 r = assert (n <= r) in
-  apply double n k0
+
+  assert (n <= apply double n)

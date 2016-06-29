@@ -10,7 +10,7 @@ type result =
   | Typable
   | Untypable
 
-let merge_tenv env' env =
+let merge_tenv env' env = Ref_type.Env.merge env' env (*
   let aux acc (f,typ) =
 (*
     Format.printf "MERGE_TENV acc: %a@\n" print_typ_env @@ Ref_type.Env.of_list acc;
@@ -22,7 +22,7 @@ let merge_tenv env' env =
   in
   Ref_type.Env.to_list env' @ Ref_type.Env.to_list env
   |> List.fold_left aux []
-  |> Ref_type.Env.of_list
+  |> Ref_type.Env.of_list*)
 (*
 let merge_tenv env1 env2 =
   Format.printf "MERGE_TENV env1: %a@\n" print_typ_env env1;
@@ -117,7 +117,7 @@ let main _ spec parsed =
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
   let fun_env = List.flatten_map (fun (_,bindings) -> List.map Triple.to_pair_r bindings) fbindings in
   let _,(main,_) = List.decomp_snoc fun_env in
-  let typ = Ref_type.from_simple @@ Id.typ main in
+  let typ = Ref_type.of_simple @@ Id.typ main in
   let prog =
     let fs =
       List.flatten_map (snd |- List.map Triple.fst) fbindings

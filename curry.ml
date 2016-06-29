@@ -61,7 +61,7 @@ let rec uncurry_typ rtyp typ =
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
       let typ' =
         match rtyps' with
-        | [] -> typ_unknown (* TODO *)
+        | [] -> RT.to_simple @@ uncurry_typ (RT.of_simple typ) typ
         | rtyp'::_ -> RT.to_simple rtyp'
       in
       RT.Inter(typ', rtyps')
@@ -69,7 +69,7 @@ let rec uncurry_typ rtyp typ =
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
       let typ' =
         match rtyps' with
-        | [] -> typ_unknown (* TODO *)
+        | [] -> RT.to_simple @@ uncurry_typ (RT.of_simple typ) typ
         | rtyp'::_ -> RT.to_simple rtyp'
       in
       RT.Union(typ', rtyps')

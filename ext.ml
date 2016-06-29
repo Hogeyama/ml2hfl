@@ -11,6 +11,7 @@ module Env = struct
   module type VALUE = sig
     type t
     val print : Format.formatter -> t -> unit
+    val merge : t -> t -> t list
   end
 
   module type ENV = sig
@@ -44,6 +45,7 @@ module Env = struct
     val filter_key_out : (key -> bool) -> t -> t
     val filter_value_out : (value -> bool) -> t -> t
     val merge : t -> t -> t
+    val normalize : t -> t
 
     val print : Format.formatter -> t -> unit
   end
@@ -56,7 +58,7 @@ module Env = struct
     let eq_key k1 k2 = Key.compare k1 k2 = 0
 
     let empty = []
-    let add x y env = (x,y)::env
+    let add k x env = (k,x)::env
     let create keys f = List.fold_right (fun x env -> add x (f x) env) keys empty
 
     let of_list env = env
@@ -81,10 +83,19 @@ module Env = struct
     let filter_out f env = List.filter_out f env
     let filter_key_out f env = filter_out (fst |- f) env
     let filter_value_out f env = filter_out (snd |- f) env
-    let merge env1 env2 = env1 @ env2
+    let merge env1 env2 =
+      let aux (k,x) acc =
+        if mem_assoc k acc then
+          List.flatten_map (fun (k',x') -> let xs = if eq_key k k' then Value.merge x x' else [x'] in List.map (fun y -> k', y) xs) acc
+        else
+          (k,x)::acc
+      in
+      List.fold_right aux env1 env2
+    let normalize env =
+      List.fold_right (fun v acc -> merge [v] acc) env []
 
     let print fm env =
-      let pr fm (k,x) = Format.fprintf fm "%a |-> %a" Key.print k Value.print x in
-      Format.fprintf fm "%a" (List.print pr) env
+      let pr fm (k,x) = Format.fprintf fm "@[%a |-> %a@]" Key.print k Value.print x in
+      List.print pr fm env
   end
 end

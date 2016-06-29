@@ -1,13 +1,13 @@
 
-let rec fsum f n k =
+let rec fsum f n =
   if n <= 0
-  then k 0
-  else fsum f (n-1) (fun r -> f n (fun r' -> k (r'+r)))
+  then 0
+  else f n + fsum f (n-1)
 
-let rec double x k =
+let rec double x =
   if Random.bool()
-  then k (x+x)
-  else double (x-1) (fun r -> k (2+r))
+  then x+x
+  else 2 + double (x-1)
 
 let main n =
-  fsum double n (fun r -> assert (n <= r))
+  assert (n <= fsum double n)

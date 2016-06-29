@@ -466,7 +466,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
           try
             let Closure(var_env, val_env, _) = Id.assoc f val_env in
             var_env, val_env
-          with Not_found -> assert false; [], []
+          with Not_found -> assert false
         in
         if dbg then Format.printf "  Dom(val_env'): %a@." (List.print Id.print) @@ List.map fst val_env';
         let asm1 = filter_assumption val_env assumption in
@@ -548,7 +548,6 @@ let generate_constraints templates ct = generate_constraints templates [] ct
 
 
 let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.label; CT.ref_typ}, children)) =
-  let cmp (x1,id1) (x2,id2) = Id.eq x1 x2 && id1 = id2 in
   let dbg = 0=0 && !!debug in
   let pr f = if dbg then Format.printf @@ "MT " ^^ f else Format.ifprintf Format.std_formatter f in
   let r=
@@ -589,7 +588,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
             match tmp1 with
             | Inter(styp, []) ->
                 styp
-                |> Ref_type.from_simple
+                |> Ref_type.of_simple
                 |> from_ref_type
                 |> init_with_pred_var cnt
             | _ ->
@@ -698,8 +697,10 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       assert (is_fun_var f);
       templates
   | Spawn(f, None) ->
+(*
       let typ = from_ref_type @@ Option.get ref_typ in
       ((f,Some nid),typ);
+ *)
       templates
   | Spawn(f, Some gs) ->
       let nids = List.map get_nid children in
@@ -774,7 +775,7 @@ let rec make_var_env (Rose_tree.Node({CT.val_env; CT.label}, children)) =
       var_env
 
 
-
+(*
 let rec make_fun_env (Rose_tree.Node({CT.nid; CT.label}, children)) =
   let open Comp_tree in
   let fun_env = List.flatten_map make_fun_env children in
@@ -797,7 +798,7 @@ let rec make_fun_env (Rose_tree.Node({CT.nid; CT.label}, children)) =
   | Assume _
   | Fail -> fun_env
   | Value _ -> assert false
-
+ *)
 
 
 let elim_not t =
@@ -931,7 +932,7 @@ let rec apply_sol sol x vars tmp =
   | _ ->
       Format.eprintf "%a@." print_template tmp;
       assert false
-let apply_sol sol tmp = apply_sol sol None [] tmp
+let apply_sol sol tmp = Ref_type.simplify @@ apply_sol sol None [] tmp
 
 
 
@@ -1098,7 +1099,7 @@ let get_merge_candidates templates hcs =
 
 let infer prog f typ ce_set =
   let ce_set =
-    if 10=0 then
+    if 0=0 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x (List.print Format.pp_print_int) ce; read_int() <> 0) ce_set
     else
       ce_set
@@ -1168,9 +1169,11 @@ let infer prog f typ ce_set =
           let typ'' = CPS.uncps_ref_type typ' typ in*)
           x', typ_
         in
-        List.map aux env'
-        |*> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
+        env'
+        |> List.map aux
+        |*> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_subtype @@ Ref_type.decomp_inter typ)
         |> Ref_type.Env.of_list
+        |> Ref_type.Env.normalize
       in
       if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env'';
       Some env''

@@ -2582,13 +2582,13 @@ let replace_fail_with_raise = replace_fail_with_raise.tr_term
 
 let eta_normal = make_trans ()
 let eta_normal_desc desc =
-  fatal "Not tested";
+  fatal "Not tested"(*;
   match eta_normal.tr_desc_rec desc with
   | App(t, ts) when arity t.typ > List.length ts ->
       let xs,_ = decomp_tfun t.typ in
       let xs' = List.map Id.new_var_id @@ List.take (List.length ts) xs in
       (make_funs xs' (make_app t (ts @ List.map make_var xs'))).desc
-  | desc' -> desc'
+  | desc' -> desc'*)
 let () = eta_normal.tr_desc <- eta_normal_desc
 let eta_normal = eta_normal.tr_term
 
