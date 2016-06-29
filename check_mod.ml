@@ -114,6 +114,7 @@ let add_label = add_label.tr2_term
 let get_label = get_id_option
 
 (* ASSUME: Input must be normal form *)
+(* In Single_to_Modular mode, ce_env must be of the form [0, ce] *)
 let rec eval dir top_funs fun_env ce_set ce_env label_env t =
   let dbg = 0=0 && !!debug in
   if dbg then Format.printf"@[ORIG: %a@\n  @[" Print.term t;
@@ -228,7 +229,7 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
               Modular(fail_unit_term, ce, paths)
             else
               match v.desc with
-              | Fun(x,t1') -> eval dir top_funs fun_env ce_set ce_env label_env @@ make_app (subst x t2 t1') ts
+              | Fun(x,t1') -> eval dir top_funs fun_env ce_set [0,ce] label_env @@ make_app (subst x t2 t1') ts
               | _ -> assert false
       end
   | If(_, t2, t3) ->
