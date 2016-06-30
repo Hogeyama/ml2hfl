@@ -62,7 +62,11 @@ let cegar prog0 labeled info is_cp ce_tree prog =
     List.filter_map2
       (fun orig_ce ext_ce ->
         path_counter := !path_counter + 1;
-        let ce = CEGAR_trans.trans_ce labeled prog orig_ce in
+        let rand_num =
+          if Flag.FairNonTermination = !Flag.mode then
+            Some (List.length ext_ce)
+          else None in
+        let ce = CEGAR_trans.trans_ce labeled prog orig_ce rand_num in
         if !Flag.print_progress then Feasibility.print_ce_reduction ~map_randint_to_preds ~ext_ce ce prog;
         let ext_path = ext_ce |> arrange_ext_preds_sequence |> conv_path in
         (* let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in *)

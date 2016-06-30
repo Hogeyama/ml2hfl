@@ -686,12 +686,14 @@ let rec eval_abst_cbn prog labeled abst ce =
 
 
 
-let assoc_def labeled defs ce acc t =
+let assoc_def labeled defs ce acc rand_num t =
   if ce = [] && !Flag.mode = Flag.FairNonTermination && !Flag.break_expansion_ref then
     None
   else
     let f = match t with Var f -> f | _ -> assert false in
     let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
+    let aux (_,_,_,_,t) = (* In fair nonterm mode, trans_ce ends just before 'read_int' *)
+      rand_num = Some 0 && is_app_read_int t in
     if List.mem f labeled
     then
       if ce = [] then
@@ -701,58 +703,71 @@ let assoc_def labeled defs ce acc t =
         let ce' = List.tl ce in
         let acc' = c::acc in
         let def = List.nth defs' c in
-        Some (ce', acc', def)
+        if aux def then
+          None
+        else
+          Some (ce', acc', def)
     else
       let acc' = 0::acc in
       let def = List.hd defs' in
       assert (List.length defs' = 1);
-      Some(ce, acc', def)
+      if aux def then
+        None
+      else
+        Some(ce, acc', def)
 
-let init_cont _ acc _ = List.rev acc
+let init_cont _ acc _ _ = List.rev acc
 
-let rec trans_ce_aux labeled ce acc defs t k =
+let rec trans_ce_aux labeled ce acc defs rand_num t k =
   if true && debug () then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
   | Const (RandInt _) -> assert false
-  | Const c -> k ce acc (Const c)
-  | Var x -> k ce acc (Var x)
+  | Const c -> k ce acc rand_num (Const c)
+  | Var x -> k ce acc rand_num (Var x)
   | App(Const Not, t) ->
-      trans_ce_aux labeled ce acc defs t (fun ce acc t ->
-      k ce acc (make_app (Const Not) [t]))
+      trans_ce_aux labeled ce acc defs rand_num t (fun ce acc rand_num t ->
+      k ce acc rand_num (make_app (Const Not) [t]))
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
-      trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
-      trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
-      k ce acc (make_app (Const op) [t1;t2])))
+      trans_ce_aux labeled ce acc defs rand_num t1 (fun ce acc rand_num t1 ->
+      trans_ce_aux labeled ce acc defs rand_num t2 (fun ce acc rand_num t2 ->
+      k ce acc rand_num (make_app (Const op) [t1;t2])))
   | App _ when is_app_randint t ->
       let _,ts = decomp_app t in
       let t' = List.last ts in
       let r = new_id "r" in
-      trans_ce_aux labeled ce acc defs (App(t', Var r)) k
+      let rand_num' =
+        if is_app_read_int t then
+          Option.map pred rand_num
+        else rand_num in
+      if rand_num = Some 0 then (* fair non-termination *)
+        init_cont ce acc rand_num' t
+      else
+        trans_ce_aux labeled ce acc defs rand_num' (App(t', Var r)) k
   | App(t1,t2) ->
-      trans_ce_aux labeled ce acc defs t1 (fun ce acc t1 ->
-      trans_ce_aux labeled ce acc defs t2 (fun ce acc t2 ->
+      trans_ce_aux labeled ce acc defs rand_num t1 (fun ce acc rand_num t1 ->
+      trans_ce_aux labeled ce acc defs rand_num t2 (fun ce acc rand_num t2 ->
       let t1',ts = decomp_app (App(t1,t2)) in
       let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
       if List.length xs > List.length ts
-      then k ce acc (App(t1,t2))
+      then k ce acc rand_num (App(t1,t2))
       else
-         match assoc_def labeled defs ce acc t1' with
+         match assoc_def labeled defs ce acc rand_num t1' with
           | None ->
-             init_cont ce acc t1'
+             init_cont ce acc rand_num t1'
           | Some (ce',acc',(f,xs,tf1,e,tf2)) ->
              let ts1,ts2 = List.split_nth (List.length xs) ts in
              let aux = List.fold_right2 subst xs ts1 in
              let tf2' = make_app (aux tf2) ts2 in
              assert (List.length xs = List.length ts);
              if e = [Event "fail"]
-             then init_cont ce' acc' tf2'
-             else trans_ce_aux labeled ce' acc' defs tf2' k))
+             then init_cont ce' acc' rand_num tf2'
+             else trans_ce_aux labeled ce' acc' defs rand_num tf2' k))
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let trans_ce labeled {defs; main} ce =
+let trans_ce labeled {defs; main} ce rand_num =
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
-  let ce' = trans_ce_aux labeled ce [] defs t init_cont in
+  let ce' = trans_ce_aux labeled ce [] defs rand_num t init_cont in
   assert (not (List.mem main labeled));
   0::ce'
 

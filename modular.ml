@@ -845,7 +845,7 @@ let infer_ref_type spec ces parsed =
   let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
   let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
-  let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
+  let ces' = List.map (CEGAR_trans.trans_ce labeled prog -$- None) ces in
   let prog = FpatInterface.conv_prog prog in
   let env = RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces) in
   if true then Format.printf "ENV: @[%a@." Fpat.RefType.pr_env env;
@@ -862,7 +862,7 @@ let infer_abs_type spec ces parsed =
   let labeled = CEGAR_abst_util.has_branch prog in
   let is_cp = FpatInterface.is_cp prog in
   let inlined_functions = CEGAR_util.inlined_functions info.CEGAR_syntax.orig_fun_list info.CEGAR_syntax.inlined prog in
-  let ces' = List.map (CEGAR_trans.trans_ce labeled prog) ces in
+  let ces' = List.map (CEGAR_trans.trans_ce labeled prog -$- None) ces in
   let prog = FpatInterface.conv_prog prog in
   RefTypInfer.refine prog inlined_functions is_cp ces' false (List.map (Fun.const []) ces)
   |@true&> Format.printf "ENV: @[%a@." Fpat.RefType.pr_env
