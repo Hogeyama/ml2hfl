@@ -702,12 +702,14 @@ let rec eval_abst_cbn prog labeled abst ce =
 
 
 
-let assoc_def labeled defs ce acc t =
+let assoc_def labeled defs ce acc rand_num t =
   if ce = [] && !Flag.mode = Flag.FairNonTermination && !Flag.break_expansion_ref then
     None
   else
     let f = match t with Var f -> f | _ -> assert false in
     let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
+    let aux (_,_,_,_,t) = (* In fair nonterm mode, trans_ce ends just before 'read_int' *)
+      rand_num = Some 0 && is_app_read_int t in
     if List.mem f labeled
     then
       if ce = [] then
@@ -717,12 +719,18 @@ let assoc_def labeled defs ce acc t =
         let ce' = List.tl ce in
         let acc' = c::acc in
         let def = List.nth defs' c in
-        Some (ce', acc', def)
+        if aux def then
+          None
+        else
+          Some (ce', acc', def)
     else
       let acc' = 0::acc in
       let def = List.hd defs' in
       assert (List.length defs' = 1);
-      Some(ce, acc', def)
+      if aux def then
+        None
+      else
+        Some(ce, acc', def)
 
 let init_cont _ acc _ _ = List.rev acc
 
@@ -754,12 +762,12 @@ let rec trans_ce_aux labeled ce acc defs rand_num t k =
   | App(t1,t2) ->
       trans_ce_aux labeled ce acc defs rand_num t1 (fun ce acc rand_num t1 ->
       trans_ce_aux labeled ce acc defs rand_num t2 (fun ce acc rand_num t2 ->
-        let t1',ts = decomp_app (App(t1,t2)) in
-        let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
-        if List.length xs > List.length ts
-        then k ce acc rand_num (App(t1,t2))
-        else
-          match assoc_def labeled defs ce acc t1' with
+      let t1',ts = decomp_app (App(t1,t2)) in
+      let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
+      if List.length xs > List.length ts
+      then k ce acc rand_num (App(t1,t2))
+      else
+         match assoc_def labeled defs ce acc rand_num t1' with
           | None ->
              init_cont ce acc rand_num t1'
           | Some (ce',acc',(f,xs,tf1,e,tf2)) ->

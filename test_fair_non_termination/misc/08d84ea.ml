@@ -15,3 +15,5 @@ let rec f g =
 
 let main () =
   f fail
+
+(* Found Bug in 08d84ea, but fixed in next commit *)
