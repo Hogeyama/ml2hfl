@@ -6,6 +6,11 @@ open Rose_tree
 
 module RT = Ref_type
 
+let leaf x = leaf (Some x)
+let root x = Option.get @@ root x
+let flatten x = List.filter_map Fun.id @@ flatten x
+let map f x = map (fun path label -> Option.map (f path) label) x
+
 let debug () = List.mem "Curry" !Flag.debug_module
 
 let rec element_num typ =
@@ -81,7 +86,7 @@ let rec uncurry_typ rtyp typ =
       let rtyp2' = uncurry_typ rtyp2 typ2 in
       let y =
           match rtyp with
-          | RT.Fun(y, _, _) -> y
+          | RT.Fun(y, _, _) -> Id.set_typ y (RT.to_simple rtyp1')
           | _ -> assert false
       in
       let rtyp = RT.Fun(y, rtyp1', rtyp2') in
@@ -130,7 +135,7 @@ let rec remove_pair_typ = function
       let xs,typ' = decomp_tfun typ in
       let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
       leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
-  | TTuple xs -> Node (TUnit, List.map (remove_pair_typ -| Id.typ) xs)
+  | TTuple xs -> Node (None, List.map (remove_pair_typ -| Id.typ) xs)
   | TList typ -> leaf (TList (root (remove_pair_typ typ)))
   | TData(s,b) -> leaf (TData(s,b))
   | TPred({Id.typ=TTuple[x; {Id.typ=typ}]} as y, ps) ->
@@ -154,7 +159,7 @@ let rec remove_pair_typ = function
       let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ (Id.typ x) with
-        | Node (typ, []) -> typ
+        | Node(Some typ, []) -> typ
         | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
       leaf (TPred(Id.set_typ x typ', ps'))
@@ -224,7 +229,7 @@ and remove_pair_aux t typ_opt =
   | Constr(s,ts) -> assert false
   | Match(t1,pats) -> assert false
   | TryWith(t1,t2) -> assert false
-  | Tuple ts -> Node (unit_term, List.map (remove_pair_aux -$- None) ts)
+  | Tuple ts -> Node(None, List.map (remove_pair_aux -$- None) ts)
   | Proj(i, {desc=Var x}) when x = abst_var -> leaf (make_var x) (* for predicates *)
   | Proj(i,t) ->
       begin

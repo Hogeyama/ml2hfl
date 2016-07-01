@@ -250,7 +250,7 @@ let proj_typ i typ =
   match elim_tpred typ with
   | TTuple xs -> Id.typ @@ List.nth xs i
   | typ when typ = typ_unknown -> typ_unknown
-  | _ -> assert false
+  | typ' -> invalid_arg @@ Format.asprintf "proj_typ %d (%a)" i print_typ_init typ'
 
 let fst_typ typ = proj_typ 0 typ
 let snd_typ typ = proj_typ 1 typ

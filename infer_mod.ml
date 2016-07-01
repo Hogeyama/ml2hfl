@@ -1159,13 +1159,13 @@ let infer prog f typ ce_set =
         let aux (x,typ') =
           let typ = Ref_type.Env.assoc x prog.fun_typ_env in
           let x',_ = Ref_type.Env.find (fst |- Id.same x) env in
-          if !!debug then Format.printf "%a: %a@." Id.print x' Ref_type.print typ';
+          if !!debug then Format.printf "  %a: %a@." Id.print x' Ref_type.print typ';
           let typ_ =
-            if !!debug then Format.printf "typ: %a@." Ref_type.print typ;
-            if !!debug then Format.printf "typ': %a@." Ref_type.print typ';
-            make_get_rtyp (fun y -> assert (Id.same y x); typ') x
+            if !!debug then Format.printf "  typ: %a@." Ref_type.print typ;
+            if !!debug then Format.printf "  typ': %a@." Ref_type.print typ';
+            make_get_rtyp (fun y -> assert (Id.same y x); Ref_type.simplify typ') x
           in
-          if !!debug then Format.printf "typ_: %a@." Ref_type.print typ_;(*
+          if !!debug then Format.printf "  typ_: %a@." Ref_type.print typ_;(*
           let typ'' = CPS.uncps_ref_type typ' typ in*)
           x', typ_
         in

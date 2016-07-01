@@ -76,6 +76,12 @@ let rec occur x = function
       let aux =  List.mem ~cmp:Id.eq x -| U.get_fv in
       aux p_len || aux p_i || occur x typ
 
+let rec decomp_fun_full typ =
+  match typ with
+  | Fun(x,typ1,typ2) ->
+      Pair.map_fst (List.cons (x,typ1)) @@ decomp_fun_full typ2
+  | _ -> [], typ
+
 let rec print fm = function
   | Base(base,x,p) when p = U.true_term ->
       Format.fprintf fm "%a" print_base base
@@ -88,10 +94,16 @@ let rec print fm = function
       Format.fprintf fm "{%d}" n
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
-  | Fun(x, typ1, typ2) ->
-      if occur x typ2
-      then Format.fprintf fm "(@[<hov 4>%a:%a@ ->@ %a@])" Id.print x print typ1 print typ2
-      else Format.fprintf fm "(@[<hov 4>%a@ ->@ %a@])" print typ1 print typ2
+  | Fun _ as typ ->
+      let rec aux fm (xtyps, typ) =
+        match xtyps with
+        | [] -> print fm typ
+        | (x,typ1)::xtyps' ->
+            if List.exists (snd |- occur x) xtyps
+            then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print typ1 aux (xtyps', typ)
+            else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print typ1 aux (xtyps', typ)
+      in
+      Format.fprintf fm "(%a)" aux @@ decomp_fun_full typ
   | Tuple xtyps ->
       let n = List.length xtyps in
       let pr fm (i,(x,typ)) =
