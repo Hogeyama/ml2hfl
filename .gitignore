@@ -57,3 +57,5 @@ mochi_bin/lib/
 *.error_hors
 *.hcs
 gmon.out
+fpat/
+tmp/

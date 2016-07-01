@@ -149,9 +149,9 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
       if dbg then Format.printf "Check_mod.eval APP3@\n";
       let n = get_arg_num t1 in
       if n < List.length ts then
-        init_result_of_dir dir t ce_env
-      else if n > List.length ts then
         unsupported "Check_mod.eval: App(fix, _)"
+      else if n > List.length ts then
+        init_result_of_dir dir t ce_env
       else
         let f,xs,t1' = Option.get @@ decomp_fix t1 in
         let t1'' = subst f t1 t1' in
@@ -228,9 +228,21 @@ let rec eval dir top_funs fun_env ce_set ce_env label_env t =
             if is_fail v then
               Modular(fail_unit_term, ce, paths)
             else
-              match v.desc with
-              | Fun(x,t1') -> eval dir top_funs fun_env ce_set [0,ce] label_env @@ make_app (subst x t2 t1') ts
-              | _ -> assert false
+              let t' =
+                match v.desc with
+                | Fun(x,t1') -> make_app (subst x t2 t1') ts
+                | _ ->
+                    assert false
+(*
+                    Format.printf "v: %a@." Print.term v;
+                    assert (is_fix v);
+                    let f,xs,t1' = Option.get @@ decomp_fix v in
+                    let ts1,ts2 = List.split_nth (List.length xs) (t2::ts) in
+                    let t1'' = subst f v t1' in
+                    make_app (List.fold_right2 subst xs ts1 t1'') ts2
+ *)
+              in
+              eval dir top_funs fun_env ce_set [0,ce] label_env t'
       end
   | If(_, t2, t3) ->
       begin

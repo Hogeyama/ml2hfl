@@ -742,7 +742,7 @@ and generate genv cenv typ =
           let typ2' = subst_var x x' typ2 in
           let genv',cenv',t_typ1 = generate_check genv cenv x' typ1 in
           if !!debug then Format.printf "Ref_type.generate t_typ1: %a@." Print.term t_typ1;
-          let t1 = U.make_or U.randbool_unit_term @@ U.add_comment (Format.asprintf "GEN CHECK: %a" print typ1) t_typ1 in
+          let t1 = U.make_or U.randbool_unit_term t_typ1 in
           let genv'',cenv'',t2 = generate genv' cenv' typ2' in
           let t3 = generate_simple @@ to_simple typ2' in
           genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "GEN FUN: %a" print typ2) @@ U.make_if t1 t2 t3
@@ -811,7 +811,7 @@ and generate genv cenv typ =
                 let e = Id.new_var ~name:"e" !U.typ_excep in
                 U.make_trywith tb e [U.make_pany @@ Id.typ e, U.true_term, U.false_term]
                 |> U.make_or U.randbool_unit_term
-                |> U.add_comment @@ Format.asprintf "GEN INTER: beta(%a)" print typ1
+                |*> U.add_comment @@ Format.asprintf "GEN INTER: beta(%a)" print typ1
               in
               genv', cenv', tb'::tbs
             in
