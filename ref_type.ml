@@ -125,11 +125,6 @@ let rec print fm = function
 
 let rec decomp_funs n typ =
   match typ with
-  | Base _
-  | Tuple _
-  | Inter _
-  | Union _
-  | List _ -> assert (n=0); [], [], typ
   | Fun _ when n <= 0 ->
       [], [], typ
   | Fun(x,typ1,typ2) ->
@@ -138,6 +133,11 @@ let rec decomp_funs n typ =
   | ExtArg(x,typ1,typ2) ->
       let exts,typs,typ' = decomp_funs n typ2 in
       (x,typ1)::exts, typs, typ'
+  | _ when n = 0 -> [], [], typ
+  | _ ->
+      Format.printf "%a@." print typ;
+      assert false
+
 
 let rec arg_num = function
   | Base _ -> 0

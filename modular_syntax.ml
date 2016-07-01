@@ -30,15 +30,15 @@ let rec is_atom t =
 let normalize t =
   let dbg = 0=0 && !!debug in
   t
-  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
+  |@dbg&> Format.printf "NORMALIZE0: %a@.@." Print.term
   |> Trans.short_circuit_eval
-  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
+  |@dbg&> Format.printf "NORMALIZE1: %a@.@." Print.term
   |> Trans.normalize_let ~is_atom:is_atom
-  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
+  |@dbg&> Format.printf "NORMALIZE2: %a@.@." Print.term
   |> Trans.flatten_let
-  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
+  |@dbg&> Format.printf "NORMALIZE3: %a@.@." Print.term
   |> Trans.remove_no_effect_trywith
-  |@dbg&> Format.printf "NORMALIZE: %a@.@." Print.term
+  |@dbg&> Format.printf "NORMALIZE4: %a@.@." Print.term
   |> fixed_point ~eq:same_term
        (Trans.inline_var
         |- Trans.inline_simple_exp
