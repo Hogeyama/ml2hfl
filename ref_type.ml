@@ -535,11 +535,14 @@ let rec make_strongest typ =
   | Type.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.false_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.false_term)
+  | Type.TData(s,_) -> Base(Abst s, Id.new_var typ, U.false_term)
   | Type.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
-  | Type.TTuple _ -> unsupported "Ref_type.make_strongest"
-  | Type.TList _ -> unsupported "Ref_type.make_strongest"
+  | Type.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
+  | Type.TList _ -> unsupported "Ref_type.make_strongest TList"
   | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.false_term)
-  | _ -> unsupported "Ref_type.make_strongest"
+  | _ ->
+      Format.printf "make_strongest: %a@." Print.typ typ;
+      unsupported "Ref_type.make_strongest"
 
 and make_weakest typ =
   match typ with
@@ -547,25 +550,15 @@ and make_weakest typ =
   | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
   | Type.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
-  | Type.TTuple _ -> unsupported "Ref_type.make_weakest Tuple"
+  | Type.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | Type.TList _ -> unsupported "Ref_type.make_weakest List"
   | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.true_term)
   | _ ->
       Format.printf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"
 
-let inter styp typs =
-  let n = Random.int 10000 in
-  Format.printf "INPUT[%d] %a@." n print (Inter(styp,typs));
-  let r = simplify @@ Inter(styp, typs) in
-  Format.printf "OUTPUT[%d] %a@." n print r;
-  r
-let union styp typs =
-  let n = Random.int 10000000 in
-  Format.printf "INPUT[%d] %a@." n print (Inter(styp,typs));
-  let r = simplify @@ Union(styp, typs) in
-  Format.printf "OUTPUT[%d] %a@." n print r;
-  r
+let inter styp typs = simplify @@ Inter(styp, typs)
+let union styp typs = simplify @@ Union(styp, typs)
 
 
 let decomp_funs_and_classify typs =
@@ -633,11 +626,8 @@ let rec generate_check genv cenv x typ =
       let t2 = U.make_snd @@ U.make_var x in
       let x1 = U.new_var_of_term t1 in
       let x2 = U.new_var_of_term t2 in
-      let genv',cenv',t_typ1 = generate genv cenv typ1 in
-      let genv'',cenv'',t_typ2 =
-        let typ2' = subst_var y x1 typ2 in
-        generate genv' cenv' typ2'
-      in
+      let genv',cenv',t_typ1 = generate_check genv cenv x1 typ1 in
+      let genv'',cenv'',t_typ2 = generate_check genv' cenv' x2 @@ subst_var y x1 typ2 in
       let t = U.make_and t_typ1 t_typ2 in
       genv', genv'', U.make_lets [x1,[],t1; x2,[],t2] t
   | List(l,p_len,y,p_i,typ1) when p_i.S.desc = S.Const S.True && not @@ occur y typ1 ->
@@ -752,7 +742,7 @@ and generate genv cenv typ =
           let typ2' = subst_var x x' typ2 in
           let genv',cenv',t_typ1 = generate_check genv cenv x' typ1 in
           if !!debug then Format.printf "Ref_type.generate t_typ1: %a@." Print.term t_typ1;
-          let t1 = U.make_or U.randbool_unit_term t_typ1 in
+          let t1 = U.make_or U.randbool_unit_term @@ U.add_comment (Format.asprintf "GEN CHECK: %a" print typ1) t_typ1 in
           let genv'',cenv'',t2 = generate genv' cenv' typ2' in
           let t3 = generate_simple @@ to_simple typ2' in
           genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "GEN FUN: %a" print typ2) @@ U.make_if t1 t2 t3
