@@ -31,6 +31,8 @@ let merge_tenv env1 env2 =
   Format.printf "MERGE_TENV r: %a@\n" print_typ_env r;
   r
  *)
+let merge_tenv env' env = (* ??? *)
+  Ref_type.Env.of_list @@ List.fold_right (fun (x,typ) acc -> if Id.mem_assoc x acc then acc else (x,typ)::acc) (Ref_type.Env.to_list env) (Ref_type.Env.to_list env')
 
 let merge_ce_set ce_set' ce_set =
   let dbg = 0=1 in

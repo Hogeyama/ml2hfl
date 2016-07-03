@@ -405,6 +405,13 @@ let rec subtype env typ1 typ2 =
       List.for_all (subtype env typ1) typs
   | _, Union(_, typs) ->
       List.exists (subtype env -$- typ2) typs
+  | Tuple xtyps1, Tuple xtyps2 ->
+      let aux (env,acc) (x1,typ1) (x2,typ2) =
+        make_env x1 typ1 :: env,
+        acc && subtype env typ1 typ2
+      in
+      List.length xtyps1 = List.length xtyps2 &&
+        snd @@ List.fold_left2 aux (env,true) xtyps1 xtyps2
   | _ -> unsupported "Ref_type.subtype"
 let subtype typ1 typ2 = subtype [] typ1 typ2
 

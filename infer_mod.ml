@@ -35,6 +35,7 @@ let make_pred_var p ts =
   let typ = List.fold_right make_tfun typs TInt in
   Id.make p "P" typ
 let is_pred_var x = Id.name x = "P"
+let get_pred_id x = Id.id x
 
 let rec print_constr fm = function
   | Exp t -> Format.fprintf fm "%a" Print.term t
@@ -322,6 +323,11 @@ let hd_of_inter typ =
   | _ -> typ
 
 let make_sub_flag = ref true (* for debug *)
+
+let rec decomp_inter typ =
+  match typ with
+  | Inter(styp, typs) -> List.flatten_map decomp_inter typs
+  | _ -> [typ]
 
 let rec decomp_tfun typ =
   match typ with
@@ -893,13 +899,13 @@ let solve hcs =
   in
   if !!debug then Format.printf "SOLUTION: %a@." (List.print print_solution) sol';
   sol'
-
+let solve_option hcs = Option.try_any (fun () -> solve hcs)
 
 
 
 let rec apply_sol sol x vars tmp =
   let dbg = 0=0 && !!debug in
-  if dbg then Format.printf "AS tmp: %a@." print_template tmp;
+  let r =
   match tmp with
   | Base(Some _)
   | PApp(Base (Some _), _) ->
@@ -912,16 +918,18 @@ let rec apply_sol sol x vars tmp =
           | PApp(Base (Some (base,p)), ts) -> base, p, [](*ts*)
           | _ -> assert false
         in
+        if dbg then Format.printf "  P_%d@." p;
+        if dbg then Format.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
         let x' = Option.get x in
         let p =
           let vars' = List.filter is_base_var vars in
           let ts' = make_var x' :: List.map make_var vars' @ ts in
           try
             let xs,t = List.assoc p sol in
-            if dbg then Format.printf "P_%d@." p;
-            if dbg then Format.printf "t: %a@." Print.term t;
-            if dbg then Format.printf "xs: %a@." (List.print Id.print) xs;
-            if dbg then Format.printf "ts': %a@." (List.print Print.term) ts';
+            if dbg then Format.printf "  P_%d@." p;
+            if dbg then Format.printf "  t: %a@." Print.term t;
+            if dbg then Format.printf "  xs: %a@." (List.print Id.print) xs;
+            if dbg then Format.printf "  ts': %a@." (List.print Print.term) ts';
             List.fold_right2 subst xs ts' t
           with Not_found -> false_term
         in
@@ -932,6 +940,10 @@ let rec apply_sol sol x vars tmp =
   | _ ->
       Format.eprintf "%a@." print_template tmp;
       assert false
+  in
+  if dbg then Format.printf "AS tmp: %a@." print_template tmp;
+  if dbg then Format.printf "AS r: %a@." Ref_type.print r;
+  r
 let apply_sol sol tmp = Ref_type.simplify @@ apply_sol sol None [] tmp
 
 
@@ -1051,14 +1063,30 @@ let subst_horn_clause x t (body,head) =
 
 let solve_merged merge_candidates hcs =
   let map = merge_predicate_variables merge_candidates hcs in
-  let rec aux map =
-    let hcs' = List.fold_left (fun hcs (p1,p2) -> List.map (subst_horn_clause p1 (make_var p2)) hcs) hcs map in
-    match Option.try_any (fun () -> solve hcs'), map with
-    | None, [] -> None
-    | None, _::map' -> aux map'
-    | Some sol, _ -> Some sol
+  let rec aux last_sol merged map hcs =
+    match map with
+    | [] -> last_sol, merged
+    | (p1,p2)::map' ->
+        let hcs' = List.map (subst_horn_clause p1 @@ make_var p2) hcs in
+        match solve_option hcs' with
+        | None -> aux last_sol merged map' hcs
+        | Some sol ->
+            if !!debug then Format.printf "SOLVED@.";
+            aux (Some sol) ((p1,p2)::merged) map' hcs'
   in
-  aux map
+  let sol,merged = aux (solve_option hcs) [] map hcs in
+  if !!debug then Format.printf "map: %a@." (List.print @@ Pair.print Id.print Id.print) map;
+  if !!debug then Format.printf "merged: %a@." (List.print @@ Pair.print Id.print Id.print) merged;
+  match sol with
+  | None -> None
+  | Some sol ->
+      if !!debug then Format.printf "Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
+      let aux (x,y) =
+        try
+          Some (get_pred_id x, List.assoc (get_pred_id y) sol)
+        with Not_found -> None
+      in
+      Some (List.filter_map aux merged @ sol)
 
 let assoc_pred_var p hcs =
   if 0=1 then Format.printf "APV: P_%d@." p;
@@ -1080,20 +1108,21 @@ let rec get_merge_candidates_aux typ1 typ2 =
   | PApp(typ1', _), _ -> get_merge_candidates_aux typ1' typ2
   | _, PApp(typ2', _) -> get_merge_candidates_aux typ1 typ2'
   | Fun(_, typ11, typ12), Fun(_, typ21, typ22) -> get_merge_candidates_aux typ11 typ21 @ get_merge_candidates_aux typ12 typ22
+  | Inter(_, typs), _ -> List.flatten_map (get_merge_candidates_aux typ2) typs
+  | _, Inter(_, typs) -> List.flatten_map (get_merge_candidates_aux typ1) typs
   | _ ->
       Format.printf "get_merge_candidates_aux typ1: %a@." print_template typ1;
       Format.printf "get_merge_candidates_aux typ2: %a@." print_template typ2;
       assert false
+
 let get_merge_candidates templates hcs =
-  let aux (_, typ) =
-    match typ with
-    | Inter(styp, [typ']) -> []
-    | Inter(styp, typ'::typs) ->
-        assert (List.for_all (function Inter _ -> false | _ -> true) (typ'::typs));
-        List.flatten_map (get_merge_candidates_aux typ') typs
-    | _ -> []
+  let aux typs =
+    List.flatten_map (get_merge_candidates_aux @@ List.hd typs) @@ List.tl typs
   in
   templates
+  |> List.map (Pair.map_fst fst)
+  |> List.classify ~eq:(Compare.eq_on ~eq:Id.eq fst)
+  |> List.map (List.flatten_map (snd |- decomp_inter))
   |> List.flatten_map aux
   |> List.map (fun (p1,p2) -> assoc_pred_var p1 hcs, assoc_pred_var p2 hcs)
 
@@ -1152,6 +1181,7 @@ let infer prog f typ ce_set =
   match solve_merged merge_candidates hcs with
   | None -> None
   | Some sol ->
+      if !!debug then Format.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
       let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
       if !!debug then Format.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
       let env' = List.filter_map (fun ((f,_),tmp) -> if Id.mem f top_funs then Some (f, apply_sol sol tmp) else None) templates in
