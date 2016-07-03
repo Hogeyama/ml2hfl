@@ -867,7 +867,9 @@ let assoc_typ_cps f typed =
   match assoc_typ_cps f typed with
   | [] -> raise Not_found
   | [typ] -> typ
-  | typs -> Format.printf "%a: %d@." Id.print f (List.length typs); assert false
+  | typs ->
+      if !!debug then Format.printf "%a: %d@." Id.print f (List.length typs);
+      assert false
 
 
 let rec uncps_ref_type rtyp e etyp =

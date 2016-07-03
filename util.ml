@@ -377,6 +377,16 @@ module List = struct
         then x, tbl'
         else decomp_assoc ~cmp k tbl' |> Pair.map_snd @@ cons (k', x)
 
+  let rec classify ?(eq=(=)) xs =
+    let rec aux rev_acc xs =
+      match xs with
+      | [] -> List.rev rev_acc
+      | x::xs' ->
+          let xs1,xs2 = List.partition (eq x) xs' in
+          aux ((x::xs1)::rev_acc) xs2
+    in
+    aux [] xs
+
   let assoc_all ?(cmp=(=)) k tbl = filter_map (fun (k',x) -> if cmp k k' then Some x else None) tbl
 (*
   let fold_righti f xs acc = snd @@ fold_right (fun x (i,acc) -> i+1, f i x acc) xs (0,acc)
@@ -666,14 +676,3 @@ let rec transitive_closure ?(eq=(=)) edges =
     List.fold_left aux edges' edges'
   in
   fixed_point ~eq:(List.Set.eq ~cmp:eq') f edges
-
-
-let rec classify ?(eq=(=)) xs =
-  let rec aux rev_acc xs =
-    match xs with
-    | [] -> List.rev rev_acc
-    | x::xs' ->
-        let xs1,xs2 = List.partition (eq x) xs' in
-        aux ((x::xs1)::rev_acc) xs2
-  in
-  aux [] xs

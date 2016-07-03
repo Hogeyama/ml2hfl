@@ -581,7 +581,7 @@ let decomp_funs_and_classify typs =
     in
     List.map decomp typs
   in
-  classify ~eq:(fun (_,typ1,_) (_,typ2,_) -> same typ1 typ2) typs'
+  List.classify ~eq:(fun (_,typ1,_) (_,typ2,_) -> same typ1 typ2) typs'
 let merge constr typs =
   let x,typ1,_ = List.hd typs in
   let typs' = List.map (fun (y,_,typ2) -> subst_var y x typ2) typs in
