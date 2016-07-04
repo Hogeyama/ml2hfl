@@ -75,7 +75,7 @@ let conv_const c =
         Fpat.Idnt.make "end")
   | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
   | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
-  | _ -> Format.printf "%a@." CEGAR_print.const c; assert false
+  | _ -> if false then Format.printf "%a@." CEGAR_print.const c; assert false
 
 let conv_var x =
   if Fpat.RefTypInfer.is_parameter x || S.is_extra_coeff_name x then
