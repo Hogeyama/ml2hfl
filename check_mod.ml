@@ -67,15 +67,17 @@ let merge_path path1 path2 =
   in
   List.fold_right aux path1 path2
 
+type value = Closure of ((id * value) list * typed_term)
+
 type dir = Single_to_Modular | Modular_to_Single
 type eval_result =
-  | Single of (typed_term * (int * int list) list * int list) list
-  | Modular of (typed_term * int list * (id * int list) list)
+  | Single of (value * (int * int list) list * int list) list
+  | Modular of (value * int list * (id * int list) list)
 
-let init_result_of_dir dir t ce_env =
+let init_result_of_dir dir vl ce_env =
   match dir with
-  | Modular_to_Single -> Single [t, ce_env, []]
-  | Single_to_Modular -> Modular(t, snd @@ List.get ce_env, [])
+  | Modular_to_Single -> Single [vl, ce_env, []]
+  | Single_to_Modular -> Modular(vl, snd @@ List.get ce_env, [])
 
 let decomp_single r =
   match r with
@@ -87,16 +89,16 @@ let decomp_modular r =
   | Single _ -> assert false
   | Modular r -> r
 
-let eta_decomp_funs t =
+let eta_decomp_funs (Closure(val_env,t)) =
   match t.desc with
   | Event("fail",false) ->
       let u = Id.new_var TUnit in
-      [u], make_app t [make_var u]
+      val_env, [u], make_app t [make_var u]
   | _ ->
       let xs,t' = decomp_funs t in
       let xs',_ = decomp_tfun t'.typ in
       let xs'' = List.map Id.new_var_id xs' in
-      xs@xs'', make_app t' @@ List.map make_var xs''
+      val_env, xs@xs'', make_app t' @@ List.map make_var xs''
 
 let counter = Counter.create ()
 let new_label () = Counter.gen counter
@@ -112,6 +114,13 @@ let add_label_term l t =
 let () = add_label.tr2_term <- add_label_term
 let add_label = add_label.tr2_term
 let get_label = get_id_option
+
+let rec assoc_val_rec x val_env =
+  let vl = Id.assoc x val_env in
+  let Closure(val_env, v) = vl in
+  match v.desc with
+  | Var y -> assoc_val_rec y val_env
+  | _ -> vl
 
 (* ASSUME: Input must be normal form *)
 (* In Single_to_Modular mode, ce_env must be of the form [0, ce] *)
@@ -130,9 +139,9 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
   | BinOp _
   | Not _
   | Fun _
-  | Event _ -> init_result_of_dir dir t ce_env
+  | Event _ -> init_result_of_dir dir (Closure(val_env, t)) ce_env
   | Var x -> init_result_of_dir dir (Id.assoc x val_env) ce_env
-  | _ when is_fail t -> init_result_of_dir dir t ce_env
+  | _ when is_fail t -> init_result_of_dir dir (Closure(val_env, t)) ce_env
   | Bottom ->
       assert (dir = Modular_to_Single);
       if dbg then Format.printf "BOTTOM@\n";
@@ -140,23 +149,26 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
   | App({desc=Const(RandValue _)}, [t2]) ->
       if dbg then Format.printf "Check_mod.eval APP1@\n";
       assert (t2 = unit_term);
-      init_result_of_dir dir t ce_env
+      init_result_of_dir dir (Closure(val_env, t)) ce_env
   | App({desc=Fun(x,t1)}, v::vs) when List.for_all is_value vs ->
       if dbg then Format.printf "Check_mod.eval APP2@\n";
-      let t' = make_app (subst x v t1) vs in
-      eval dir top_funs val_env ce_set ce_env label_env t'
+      let val_env' = (x, Closure(val_env, v))::val_env in
+      let t' = make_app t1 vs in
+      eval dir top_funs val_env' ce_set ce_env label_env t'
+(*
   | App(t1, ts) when is_fix t1 ->
       if dbg then Format.printf "Check_mod.eval APP3@\n";
       let n = get_arg_num t1 in
       if n < List.length ts then
         unsupported "Check_mod.eval: App(fix, _)"
       else if n > List.length ts then
-        init_result_of_dir dir t ce_env
+        init_result_of_dir dir (Closure(val_env, t)) ce_env
       else
         let f,xs,t1' = Option.get @@ decomp_fix t1 in
         let t1'' = subst f t1 t1' in
         let t' = List.fold_right2 subst xs ts t1'' in
         eval dir top_funs val_env ce_set ce_env label_env t'
+ *)
   | App({desc=Var f}, ts) when List.length ts > arity @@ Id.typ f ->
       if dbg then Format.printf "Check_mod.eval APP4@\n";
       let n = arity @@ Id.typ f in
@@ -166,10 +178,11 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
   | App({desc=Var f}, ts) ->
       if dbg then Format.printf "Check_mod.eval APP5@\n";
       if dbg then Format.printf "ASSOC: %a@\n" Id.print f;
-      let ys,t_f = eta_decomp_funs @@ Id.assoc f val_env in
+      let val_env_f,ys,t_f = eta_decomp_funs @@ Id.assoc f val_env in
       assert (List.length ts <= List.length ys);
       if List.length ts < List.length ys then
-        init_result_of_dir dir t ce_env
+        let () = if dbg then Format.printf "Check_mod.eval APP5-1@\n" in
+        init_result_of_dir dir (Closure(val_env, t)) ce_env
       else
         begin
           match dir with
@@ -186,65 +199,73 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
               in
               if dbg then Format.printf "PATHS: %a@\n" (List.print @@ List.print Format.pp_print_int) paths;
               if paths = [] then
+                let () = if dbg then Format.printf "Check_mod.eval APP5-2@\n" in
+                assert false
+(*
                 let xs,typ = Type.decomp_tfun t_f.typ in
                 let t' = make_funs xs @@ unit_term in
                 if dbg then Format.printf "typ: %a@\n" Print.typ typ;
                 assert (can_unify typ TUnit);
-                Single [t', ce_env, []]
+                Single [Closure(val_env, t'), ce_env, []]
+ *)
               else
                 let aux path =
                   if dbg then Format.printf "PATH: %d, %a@\n" label (List.print Format.pp_print_int) path;
-                  let t' = make_app (make_fix f ys t_f') ts in
+                  let ts1,ts2 = List.split_nth (List.length ys) ts in
+                  let val_env' = List.map2 (fun y t -> y, Closure(val_env, t)) ys ts1 @ val_env_f in
                   let ce_env' = (label,path)::ce_env in
-                  decomp_single @@ eval dir top_funs val_env ce_set ce_env' label_env' t'
+                  let t' = make_app t_f' ts2 in
+                  decomp_single @@ eval dir top_funs val_env' ce_set ce_env' label_env' t'
                 in
                 let r = List.flatten_map aux paths in
+                let () = if dbg then Format.printf "Check_mod.eval APP5-3@\n" in
                 if dbg then Format.printf "@]";
                 Single r
           | Single_to_Modular ->
-              let t' = make_app (make_fix f ys t_f) ts in
-              eval dir top_funs val_env ce_set ce_env label_env t'
+              let ts1,ts2 = List.split_nth (List.length ys) ts in
+              let val_env' = List.map2 (fun y t -> y, Closure(val_env, t)) ys ts1 @ val_env_f in
+              let t' = make_app t_f ts2 in
+              eval dir top_funs val_env' ce_set ce_env label_env t'
         end
   | App(t1, t2::ts) ->
       if dbg then Format.printf "Check_mod.eval APP6@\n";
       assert (not @@ is_value t1);
       assert (List.for_all is_value @@ t2::ts);
-      let r = eval dir top_funs val_env ce_set ce_env label_env t1 in
       begin
-        match r with
+        match eval dir top_funs val_env ce_set ce_env label_env t1 with
         | Single rs ->
-            let aux (v,ce_env,path) =
+            let aux (Closure(val_env,v),ce_env,path) =
               if is_fail v then
-                [fail_unit_term, ce_env, path]
+                [Closure(val_env, fail_unit_term), ce_env, path]
               else
                 match v.desc with
                 | Fun(x,t1') ->
-                    make_app (subst x t2 t1') ts
-                    |> eval dir top_funs val_env ce_set ce_env label_env
+                    let val_env' = (x, Closure(val_env, t2))::val_env in
+                    make_app t1' ts
+                    |> eval dir top_funs val_env' ce_set ce_env label_env
                     |> decomp_single
                 | _ -> assert false
             in
             let rs' = List.flatten_map aux rs in
             Single rs'
-        | Modular(v, ce, paths) ->
+        | Modular(Closure(val_env, v), ce, paths) ->
             if is_fail v then
-              Modular(fail_unit_term, ce, paths)
+              Modular(Closure(val_env, fail_unit_term), ce, paths)
             else
-              let t' =
+              let val_env',t' =
                 match v.desc with
-                | Fun(x,t1') -> make_app (subst x t2 t1') ts
+                | Fun(x,t1') ->
+                    (x, Closure(val_env, t2))::val_env,
+                    make_app t1' ts
                 | _ ->
-                    assert false
-(*
-                    Format.printf "v: %a@." Print.term v;
                     assert (is_fix v);
                     let f,xs,t1' = Option.get @@ decomp_fix v in
                     let ts1,ts2 = List.split_nth (List.length xs) (t2::ts) in
-                    let t1'' = subst f v t1' in
-                    make_app (List.fold_right2 subst xs ts1 t1'') ts2
- *)
+                    let rec val_env' = (f, Closure(val_env', make_funs xs t1'))::val_env in
+                    val_env',
+                    make_app t1' ts2
               in
-              eval dir top_funs val_env ce_set [0,ce] label_env t'
+              eval dir top_funs val_env' ce_set [0,ce] label_env t'
       end
   | If(_, t2, t3) ->
       begin
@@ -297,39 +318,39 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
                 if dbg then Format.printf "PATHS': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) paths';
                 Modular(v, ce_env, paths')
       end
-  | Let _ when is_fix t -> init_result_of_dir dir t ce_env
+  | Let _ when is_fix t -> init_result_of_dir dir (Closure(val_env, t)) ce_env
   | Let(flag, [], t2) -> eval dir top_funs val_env ce_set ce_env label_env t2
   | Let(Nonrecursive, [f,xs,t1], t2) ->
       if xs = [] then
         match eval dir top_funs val_env ce_set ce_env label_env t1 with
         | Single rs ->
-            let aux (v,ce_env,path) =
-              let val_env' = (f, v)::val_env in
+            let aux (Closure(val_env,v),ce_env,path) =
               if !!debug then Format.printf "%a |-> %a@\n" Id.print f Print.term t1;
               if is_fail v then
-                [fail_unit_term, ce_env, path]
+                [Closure(val_env, fail_unit_term), ce_env, path]
               else
+                let val_env' = (f, Closure(val_env, v))::val_env in
                 t2
                 |> eval dir top_funs val_env' ce_set ce_env label_env
                 |> decomp_single
                 |> append_path path
             in
             Single (List.flatten_map aux rs)
-        | Modular(v, ce, path) ->
-            let val_env' = (f, v)::val_env in
+        | Modular(Closure(_, v) as vl, ce, path) ->
             if !!debug then Format.printf "%a |-> %a@\n" Id.print f Print.term t1;
             if is_fail v then
-              Modular(fail_unit_term, ce, path)
+              Modular(vl, ce, path)
             else
+              let val_env' = (f, vl)::val_env in
               match eval dir top_funs val_env' ce_set [0,ce] label_env t2 with
               | Single _ -> assert false
               | Modular(v', ce', path') -> Modular(v', ce', merge_path path path')
       else
-        let val_env' = (f, make_funs xs t1) :: val_env in
+        let val_env' = (f, Closure(val_env, make_funs xs t1)) :: val_env in
         eval dir top_funs val_env' ce_set ce_env label_env t2
   | Let(Recursive, [f,xs,t1], t2) ->
       assert (xs <> []);
-      let val_env' = (f, make_fix f xs t1)::val_env in
+      let rec val_env' = (f, Closure(val_env', make_fix f xs t1))::val_env in
       eval dir top_funs val_env' ce_set ce_env label_env t2
   | Raise t ->
       assert false
@@ -337,16 +358,16 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
       begin
         match eval dir top_funs val_env ce_set ce_env label_env t1 with
         | Single _ -> assert false
-        | Modular({desc=Raise _}, ce, path) ->
+        | Modular(Closure(_,{desc=Raise _}), ce, path) ->
             assert false (*TODO*)
         | Modular(v, ce, path) ->
             Modular(v, ce, path)
       end
   | Tuple ts ->
-      init_result_of_dir dir t ce_env
+      init_result_of_dir dir (Closure(val_env, t)) ce_env
   | Proj(i, {desc=Var x}) ->
-      if !!debug then Format.printf "%a |-> %a@\n" Id.print x Print.term @@ Id.assoc x val_env;
-      init_result_of_dir dir (List.nth (tuple_of_term @@ Id.assoc x val_env) i) ce_env
+      let Closure(val_env', v) = assoc_val_rec x val_env in
+      init_result_of_dir dir (Closure(val_env', List.nth (tuple_of_term v) i)) ce_env
   | _ ->
       Format.printf "@.%a@." Print.term t;
       unsupported "Check_mod.eval"
@@ -431,12 +452,12 @@ let check prog f typ =
       if !!debug then Main_loop.report_unsafe main sol set_target;
       if !!debug then Format.printf "  Untypable@.@.";
       if !!debug then Format.printf "  CE_INIT: %a@\n" (List.print Format.pp_print_int) ce;
-      let v,ce',paths =
-        let fun_env'' = List.map (Pair.map_snd @@ Fun.uncurry make_funs) fun_env' in
-        decomp_modular @@ eval Single_to_Modular top_funs fun_env'' [] [0,ce] label_env t
+      let Closure(_,v),ce',paths =
+        let val_env = List.fold_left (fun val_env (f,(xs,t)) -> let rec val_env' = (f, Closure(val_env', make_funs xs t))::val_env in val_env') [] fun_env' in
+        decomp_modular @@ eval Single_to_Modular top_funs val_env [] [0,ce] label_env t
       in
       if !!debug then Format.printf "  PATHS: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) paths;
-      assert (v = fail_unit_term);
+      assert (is_fail v);
       assert (ce' = []);
       let paths' = List.filter_map (fun (f,_) -> if Id.mem_assoc f paths then None else Some(f,[])) fun_env @ paths in
       if !!debug then Format.printf "  PATHS': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) paths';
