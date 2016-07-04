@@ -216,7 +216,18 @@ let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
     |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter
   in
   let prog = CEGAR_trans.add_env abst_cegar_env prog in
-  let make_get_rtyp = List.fold_left (fun f (_,(_,g)) -> g -| f) make_get_rtyp_trans results in
+  let make_get_rtyp =
+    if !!debug then
+      let aux f (label,(_,g)) map x =
+        Format.printf "BEGIN %s@." @@ string_of_label label;
+        let r = try g (f map) x with _ -> Format.printf "GET_RTYP ERROR: %s@." @@ string_of_label label; assert false in
+        Format.printf "END %s@." @@ string_of_label label;
+        r
+        in
+      List.fold_left aux make_get_rtyp_trans results
+    else
+      List.fold_left (fun f (_,(_,g)) -> g -| f) make_get_rtyp_trans results
+  in
 
   let info =
     let orig_fun_list =

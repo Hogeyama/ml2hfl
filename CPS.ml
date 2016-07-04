@@ -873,16 +873,18 @@ let assoc_typ_cps f typed =
 
 
 let rec uncps_ref_type rtyp e etyp =
-  let dbg = 0=10 in
-  if !!debug then
-    Format.printf "rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
+  let dbg = 0=10 && !!debug in
+  if !!debug then Format.printf "rtyp:%a@." RT.print rtyp;
+  if !!debug then Format.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
+  if !!debug then Format.printf "e:%a@." print_effect e;
+  if !!debug then Format.printf "etyp:%a@.@." print_typ_cps etyp;
   match rtyp, e, etyp with
-  | RT.Inter(styp, rtyps), ENone, _ ->
+  | RT.Inter(styp, rtyps), e, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
       let typs = List.map (fun rtyp1 -> uncps_ref_type rtyp1 e etyp) rtyps in
       let styp' =
         match typs with
-        | [] -> RT.to_simple @@ uncps_ref_type (RT.of_simple styp) ENone etyp
+        | [] -> RT.to_simple @@ uncps_ref_type (RT.of_simple styp) e etyp
         | typ'::_ -> RT.to_simple typ'
       in
       RT.Inter(styp', typs)
@@ -908,9 +910,8 @@ let rec uncps_ref_type rtyp e etyp =
         | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type rtyp1 ENone etyp
         | _ -> assert false
       in
-      let rtyps' = List.map aux rtyps in
       let typ' =
-        match rtyps' with
+        match List.map aux rtyps with
         | [] -> typ_of_etyp etyp
         | rtyp'::_ -> RT.to_simple rtyp'
       in
@@ -922,8 +923,10 @@ let rec uncps_ref_type rtyp e etyp =
       if dbg then Format.printf "%s@.@." __LOC__;
       RT.ExtArg(x, rtyp1, uncps_ref_type rtyp2 e etyp)
   | _ ->
-      if !!debug then
-        Format.printf "@.rtyp:%a@.e:%a@.etyp:%a@." RT.print rtyp print_effect e print_typ_cps etyp;
+      if !!debug then Format.printf "rtyp:%a@." RT.print rtyp;
+      if !!debug then Format.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
+      if !!debug then Format.printf "e:%a@." print_effect e;
+      if !!debug then Format.printf "etyp:%a@." print_typ_cps etyp;
       assert false
 
 let infer_effect t =

@@ -147,7 +147,7 @@ let rec decomp_funs n typ =
       (x,typ1)::exts, typs, typ'
   | _ when n = 0 -> [], [], typ
   | _ ->
-      Format.printf "%a@." print typ;
+      if !!debug then Format.printf "%a@." print typ;
       assert false
 
 
@@ -230,7 +230,7 @@ let rec of_simple typ =
   | Type.TTuple _ -> unsupported "Ref_type.of_simple"
   | Type.TList _ -> unsupported "Ref_type.of_simple"
   | _ ->
-      Format.printf "%a@." Print.typ typ;
+      if !!debug then Format.printf "%a@." Print.typ typ;
       unsupported "Ref_type.of_simple"
 
 

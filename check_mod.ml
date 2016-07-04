@@ -87,7 +87,7 @@ let decomp_modular r =
   | Single _ -> assert false
   | Modular r -> r
 
-let eta_decomp_funs' t =
+let eta_decomp_funs t =
   match t.desc with
   | Event("fail",false) ->
       let u = Id.new_var TUnit in
@@ -166,7 +166,7 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
   | App({desc=Var f}, ts) ->
       if dbg then Format.printf "Check_mod.eval APP5@\n";
       if dbg then Format.printf "ASSOC: %a@\n" Id.print f;
-      let ys,t_f = eta_decomp_funs' @@ Id.assoc f val_env in
+      let ys,t_f = eta_decomp_funs @@ Id.assoc f val_env in
       assert (List.length ts <= List.length ys);
       if List.length ts < List.length ys then
         init_result_of_dir dir t ce_env
@@ -218,7 +218,10 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
                 [fail_unit_term, ce_env, path]
               else
                 match v.desc with
-                | Fun(x,t1') -> decomp_single @@ eval dir top_funs val_env ce_set ce_env label_env @@ make_app (subst x t2 t1') ts
+                | Fun(x,t1') ->
+                    make_app (subst x t2 t1') ts
+                    |> eval dir top_funs val_env ce_set ce_env label_env
+                    |> decomp_single
                 | _ -> assert false
             in
             let rs' = List.flatten_map aux rs in
@@ -322,12 +325,12 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
               | Single _ -> assert false
               | Modular(v', ce', path') -> Modular(v', ce', merge_path path path')
       else
-        let t2' = subst f (make_funs xs t1) t2 in
-        eval dir top_funs val_env ce_set ce_env label_env t2'
+        let val_env' = (f, make_funs xs t1) :: val_env in
+        eval dir top_funs val_env' ce_set ce_env label_env t2
   | Let(Recursive, [f,xs,t1], t2) ->
       assert (xs <> []);
-      let t2' = subst f (make_fix f xs t1) t2 in
-      eval dir top_funs val_env ce_set ce_env label_env t2'
+      let val_env' = (f, make_fix f xs t1)::val_env in
+      eval dir top_funs val_env' ce_set ce_env label_env t2
   | Raise t ->
       assert false
   | TryWith(t1, t2) ->
@@ -342,7 +345,7 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
   | Tuple ts ->
       init_result_of_dir dir t ce_env
   | Proj(i, {desc=Var x}) ->
-      if !!debug then Format.printf "%a |-> %a@\n@." Id.print x Print.term @@ Id.assoc x val_env;
+      if !!debug then Format.printf "%a |-> %a@\n" Id.print x Print.term @@ Id.assoc x val_env;
       init_result_of_dir dir (List.nth (tuple_of_term @@ Id.assoc x val_env) i) ce_env
   | _ ->
       Format.printf "@.%a@." Print.term t;
@@ -423,7 +426,7 @@ let check prog f typ =
       if !!debug then Format.printf "  env: %a@." (List.print @@ Pair.print Format.pp_print_string CEGAR_ref_type.print) env;
       let env' = (f,typ) :: Main_loop.trans_env (List.map fst fun_env) make_get_rtyp env in
       if !!debug then Format.printf "  env': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
-      Typable (Ref_type.Env.of_list env')
+      Typable (Ref_type.Env.normalize @@ Ref_type.Env.of_list env')
   | CEGAR.Unsafe(sol, ModelCheck.CESafety ce) ->
       if !!debug then Main_loop.report_unsafe main sol set_target;
       if !!debug then Format.printf "  Untypable@.@.";

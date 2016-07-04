@@ -367,7 +367,7 @@ let rec decomp_fun typ =
   | _ -> [], typ
 
 let base_of_typ typ =
-  match typ with
+  match elim_tpred typ with
   | TUnit -> Ref_type.Unit
   | TInt -> Ref_type.Int
   | TBool -> Ref_type.Bool
@@ -1055,8 +1055,11 @@ let merge_predicate_variables candidates hcs =
           (p1,p2) :: get_map candidates' dependencies'
   in
   get_dependencies hcs
+  |@!!debug&> (fun _ -> Format.printf "MGV1@.")
   |> transitive_closure
+  |@!!debug&> (fun _ -> Format.printf "MGV2@.")
   |> get_map candidates
+  |@!!debug&> (fun _ -> Format.printf "MGV3@.")
 
 let subst_horn_clause x t (body,head) =
   List.map (subst x t) body, subst x t head
@@ -1120,10 +1123,15 @@ let get_merge_candidates templates hcs =
     List.flatten_map (get_merge_candidates_aux @@ List.hd typs) @@ List.tl typs
   in
   templates
+  |@!!debug&> (fun _ -> Format.printf "GMC1@.")
   |> List.map (Pair.map_fst fst)
+  |@!!debug&> (fun _ -> Format.printf "GMC2@.")
   |> List.classify ~eq:(Compare.eq_on ~eq:Id.eq fst)
+  |@!!debug&> (fun _ -> Format.printf "GMC3@.")
   |> List.map (List.flatten_map (snd |- decomp_inter))
+  |@!!debug&> (fun _ -> Format.printf "GMC4@.")
   |> List.flatten_map aux
+  |@!!debug&> (fun _ -> Format.printf "GMC5@.")
   |> List.map (fun (p1,p2) -> assoc_pred_var p1 hcs, assoc_pred_var p2 hcs)
 
 let infer prog f typ ce_set =

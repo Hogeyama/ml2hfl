@@ -14,7 +14,7 @@ type label =
   | Spawn of id * id list option
   | Value of value
   | Fail
-  | Bottom
+  | Bottom (* Need? *)
 and t = node RT.t
 and node =
   {nid : nid; (* ID of node *)
@@ -76,7 +76,7 @@ and print_label fm label =
   | Spawn(f,gs) -> Format.fprintf fm "@[Spawn %a, %a@]" Id.print f (Option.print @@ List.print Id.print) gs
   | Value t -> Format.fprintf fm "@[Value %a@]" print_value t
   | Fail -> Format.fprintf fm "Fail"
-  | _ -> assert false
+  | Bottom -> Format.fprintf fm "Bottom"
 and print_value fm (Closure(var_env,val_env,t)) =
   Format.fprintf fm "Value %a" Print.term t
 and print_node fm {nid;var_env;val_env;label;ref_typ} =
@@ -278,7 +278,7 @@ let rec from_term
   | Const Unit -> []
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
       from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env t2
-  | App({desc=Fun(_, t)}, [{desc=App({desc=Const(RandValue _)}, [{desc=Const Unit}])}]) ->
+  | App({desc=Fun(_, t)}, [t2]) when is_base_typ t2.typ ->
       from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env t
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       if !!debug then Format.printf "  APP2,%a@\n" Id.print f;
@@ -400,7 +400,7 @@ let rec from_term
       in
       [RT.Node(node, [])]
   | _ ->
-      Format.printf "@.%a@." Print.term t;
+      Format.printf "@.t: @[%a@." Print.term t;
       Format.printf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
       Format.printf "Dom(fun_env): %a@." (List.print Id.print) @@ List.map fst fun_env;
       let f =
