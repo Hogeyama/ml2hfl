@@ -21,7 +21,7 @@ and node =
    val_env : val_env; (* Value environment *)
    var_env : var_env; (* Scope environment: var_env(x) is a set of variables which are visible from x *)
    label : label;
-   ref_typ : Ref_type.t option;
+   ref_typ : Ref_type.t option; (* Need? *)
    ce_env : (tid * (int * int list)) list}
 and nid = int
 and var_env = (id * id list) list

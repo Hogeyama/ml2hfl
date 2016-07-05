@@ -1031,12 +1031,14 @@ let add_context for_infer prog f typ =
   trans_CPS env' t'
 
 let get_dependencies hcs =
-  let aux (body,head) =
+  let aux acc (body,head) =
     let fv1 = get_fv @@ make_ands body in
     let fv2 = get_fv head in
-    List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1
+    let new_dep = List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1 in
+    let aux' acc (x,y) = List.filter_map (fun (z,w) -> if Id.same y z then Some (x, w) else None) acc @@@ acc in
+    List.fold_left aux' acc new_dep
   in
-  List.flatten_map aux hcs
+  List.fold_left aux [] hcs
 
 let merge_predicate_variables candidates hcs =
   let rec get_map candidates dependencies =
@@ -1056,7 +1058,7 @@ let merge_predicate_variables candidates hcs =
   in
   get_dependencies hcs
   |@!!debug&> (fun _ -> Format.printf "MGV1@.")
-  |> transitive_closure
+  |*> transitive_closure
   |@!!debug&> (fun _ -> Format.printf "MGV2@.")
   |> get_map candidates
   |@!!debug&> (fun _ -> Format.printf "MGV3@.")

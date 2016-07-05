@@ -112,9 +112,11 @@ let rec print fm = function
         print fm typ
       in
       Format.fprintf fm "(@[%a@])" (print_list pr " *@ ") @@ List.mapi Pair.pair xtyps
+  | Inter(styp, []) when !!debug -> Format.fprintf fm "Top(%a)" Print.typ styp
   | Inter(_, []) -> Format.fprintf fm "Top"
   | Inter(_, [typ]) -> print fm typ
   | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
+  | Union(styp, []) when !!debug -> Format.fprintf fm "Bottom(%a)" Print.typ styp
   | Union(_, []) -> Format.fprintf fm "Bottom"
   | Union(_, [typ]) -> print fm typ
   | Union(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ ") typs
@@ -227,8 +229,8 @@ let rec of_simple typ =
   | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
   | Type.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
-  | Type.TTuple _ -> unsupported "Ref_type.of_simple"
-  | Type.TList _ -> unsupported "Ref_type.of_simple"
+  | Type.TTuple xs ->
+      Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
   | _ ->
       if !!debug then Format.printf "%a@." Print.typ typ;
       unsupported "Ref_type.of_simple"

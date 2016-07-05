@@ -61,7 +61,6 @@ let rec main_loop c d prog cmp f typ ce_set =
       Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set1
   | Check_mod.Untypable ce_set1 ->
       if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d}:@ %a : %a@." Id.print f c d Id.print f Ref_type.print typ;
-      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d}:@ fv: %a@." Id.print f c d (List.print Id.print) (get_fv @@ Fun.uncurry make_funs @@ Id.assoc f fun_def_env);
       if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d} ce_set1:@ %a@.@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set1;
       let rec refine_loop ce_set2 =
         if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d} ce_set2:@ %a@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set2;
@@ -77,10 +76,10 @@ let rec main_loop c d prog cmp f typ ce_set =
             let _,env',ce_set3 = List.fold_left aux (Typable, env, ce_set2) candidate' in
             if env' <> env then
               main_loop (c+1) d {prog with fun_typ_env=env'} cmp f typ ce_set3
-            else if ce_set3 = ce_set2 then
-              raise NoProgress
-            else
+            else if ce_set3 <> ce_set2 then
               refine_loop ce_set3
+            else
+              raise NoProgress
       in
       refine_loop (merge_ce_set ce_set1 ce_set)
 let main_loop prog cmp f typ = main_loop 0 0 prog cmp f typ []
