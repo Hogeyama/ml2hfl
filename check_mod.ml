@@ -99,6 +99,14 @@ let eta_decomp_funs (Closure(val_env,t)) =
       let xs',_ = decomp_tfun t'.typ in
       let xs'' = List.map Id.new_var_id xs' in
       val_env, xs@xs'', make_app t' @@ List.map make_var xs''
+let eta_decomp_funs (Closure(val_env,t)) =
+  match t.desc with
+  | Event("fail",false) ->
+      let u = Id.new_var TUnit in
+      val_env, [u], make_app t [make_var u]
+  | _ ->
+      let xs,t' = decomp_funs t in
+      val_env, xs, t'
 
 let counter = Counter.create ()
 let new_label () = Counter.gen counter
@@ -179,7 +187,6 @@ let rec eval dir top_funs val_env ce_set ce_env label_env t =
       if dbg then Format.printf "Check_mod.eval APP5@\n";
       if dbg then Format.printf "ASSOC: %a@\n" Id.print f;
       let val_env_f,ys,t_f = eta_decomp_funs @@ Id.assoc f val_env in
-      assert (List.length ts <= List.length ys);
       if List.length ts < List.length ys then
         let () = if dbg then Format.printf "Check_mod.eval APP5-1@\n" in
         init_result_of_dir dir (Closure(val_env, t)) ce_env
