@@ -789,6 +789,10 @@ let rec simplify_if_term env t =
   match t with
   | Const c -> Const c
   | Var x -> Var x
+  | App(App(App(Const If, Const True), t2), t3) ->
+      simplify_if_term env t2
+  | App(App(App(Const If, Const False), t2), t3) ->
+      simplify_if_term env t3
   | App(App(App(Const If, t1), t2), t3) ->
       let add_env t env = if has_rand t then env else t::env in
       let t1' = simplify_if_term env t1 in

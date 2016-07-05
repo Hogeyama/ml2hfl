@@ -472,9 +472,11 @@ let pr s prog = if !!debug then Format.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." C
 let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
+  |@> pr "INPUT"
   |&!Flag.expand_nonrec&> expand_nonrec orig_fun_list force
-  |> CEGAR_trans.simplify_if
   |@!Flag.expand_nonrec&> pr "EXPAND_NONREC"
+  |> CEGAR_trans.simplify_if
+  |@!Flag.expand_nonrec&> pr "SIMPLIFY_IF"
   |> eta_expand
   |@> pr "ETA_EXPAND"
   |> abstract_prog
