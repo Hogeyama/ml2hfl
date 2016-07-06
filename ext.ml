@@ -12,6 +12,7 @@ module Env = struct
     type t
     val print : Format.formatter -> t -> unit
     val merge : t -> t -> t list
+    val eq : t -> t -> bool
   end
 
   module type ENV = sig
@@ -46,6 +47,8 @@ module Env = struct
     val filter_value_out : (value -> bool) -> t -> t
     val merge : t -> t -> t
     val normalize : t -> t
+
+    val eq : t -> t -> bool
 
     val print : Format.formatter -> t -> unit
   end
@@ -93,6 +96,18 @@ module Env = struct
       List.fold_right aux env1 env2
     let normalize env =
       List.fold_right (fun v acc -> merge [v] acc) env []
+
+    let rec eq env1 env2 =
+      match env1 with
+      | [] -> env2 = []
+      | (k,x)::env1' ->
+          let b,env2' =
+            try
+              let x',env2' = List.decomp_assoc k env2 in
+              Value.eq x x', env2'
+            with Not_found -> false, []
+          in
+          b && eq env1' env2'
 
     let print fm env =
       let pr fm (k,x) = Format.fprintf fm "@[%a |-> %a@]" Key.print k Value.print x in

@@ -7,7 +7,7 @@ LIMIT=30s
 
 COLS="$(tput cols)"
 
-OPTION=" -only-result -ignore-conf -modular"
+OPTION=" -only-result -ignore-conf -modular -horsat2"
 for i in $TEST
 do
     echo

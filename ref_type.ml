@@ -228,6 +228,7 @@ let rec of_simple typ =
   | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
+  | Type.TData(s,_) -> Base(Abst s, Id.new_var typ, U.true_term)
   | Type.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | Type.TTuple xs ->
       Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
@@ -241,7 +242,7 @@ let rec to_simple typ =
   | Base(Unit, _, _) -> Type.TUnit
   | Base(Bool, _, _) -> Type.TBool
   | Base(Int, _, _) -> Type.TInt
-  | Base(Abst _, _, _) -> Term_util.typ_result
+  | Base(Abst s, _, _) -> Type.TData(s, false)
   | Fun(x,typ1,typ2) -> Type.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
   | Tuple xtyps -> Type.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
   | Inter(typ, _) -> typ
@@ -254,7 +255,7 @@ let to_abst_typ_base b =
   | Unit -> Type.TUnit
   | Bool -> Type.TBool
   | Int -> Type.TInt
-  | Abst _ -> unsupported "to_abst_typ_base"
+  | Abst s -> Type.TData(s, false)
 
 let rec to_abst_typ typ =
   let r =
@@ -570,6 +571,7 @@ and make_weakest typ =
   | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
+  | Type.TData(s,_) -> Base(Abst s, Id.new_var typ, U.true_term)
   | Type.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | Type.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | Type.TList _ -> unsupported "Ref_type.make_weakest List"
@@ -757,7 +759,11 @@ and generate genv cenv typ =
       | Base(Unit, x, p) ->
           let genv',cenv',t_check = generate_check genv cenv x typ in
           genv', cenv', U.make_assume t_check U.unit_term
-      | Base(_, _, _) -> unsupported "Ref_type.generate: Base"
+      | Base(Abst s, x, p) ->
+          let typ' = to_simple typ in
+          let x' = Id.new_var typ' in
+          let genv',cenv',t_check = generate_check genv cenv x' typ in
+          genv', cenv', U.make_let [x',[],U.make_randvalue_unit typ'] @@ U.make_assume t_check @@ U.make_var x'
       | Fun(x,typ1,typ2) ->
           let x' = Id.new_var @@ to_abst_typ typ1 in
           let typ2' = subst_var x x' typ2 in
@@ -774,7 +780,7 @@ and generate genv cenv typ =
           let genv'',cenv'',t2 = generate genv' cenv' typ2' in
           genv'', cenv'', U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
       | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
-      | Inter(styp, []) -> generate genv cenv @@ of_simple styp
+      | Inter(styp, []) -> generate genv cenv @@ make_weakest styp
       | Inter(_, [typ]) -> generate genv cenv typ
       | Inter(_, Base(base,x,p)::typs) ->
           let p' =
@@ -915,11 +921,14 @@ and generate genv cenv typ =
     if !!debug then Format.printf "Ref_type.generate': %a@." print typ;
     genv', cenv', {t with S.typ = to_abst_typ typ}
 
+let equiv typ1 typ2 = subtype typ1 typ2 && subtype typ2 typ1
+
 module Value = struct
   type t' = t
   type t = t'
   let print = print
   let merge typ1 typ2 = [inter (to_simple typ1) [typ1; typ2]]
+  let eq = equiv
 end
 module Env = Ext.Env.Make(Syntax.ID)(Value)
 type env = Env.t

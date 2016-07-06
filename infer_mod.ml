@@ -866,6 +866,7 @@ let solve hcs =
     hcs
     |> List.flatten_map (fun (body,head) -> List.flatten_map pvars body @ pvars head)
     |> List.unique ~cmp:Id.eq
+    |@!!debug&> Format.printf "vars: %a@." (List.print Id.print)
   in
   let sol =
     let tr t =
@@ -883,23 +884,25 @@ let solve hcs =
   if !!debug then Format.printf "SOLUTION: %a@." Fpat.PredSubst.pr sol;
   let sol' =
     let tr_typ typ =
-      if typ = Fpat.Type.mk_int then
-        Type.TInt
-      else if typ = Fpat.Type.mk_bool then
-        Type.TBool
-      else if typ = Fpat.Type.mk_unit then
-        Type.TUnit
-      else
-        (Format.printf "%a@." Fpat.Type.pr typ;
-         assert false)
+      match typ with
+      | _ when typ = Fpat.Type.mk_int -> Type.TInt
+      | _ when typ = Fpat.Type.mk_bool -> Type.TBool
+      | _ when typ = Fpat.Type.mk_unit -> Type.TUnit
+      | _ ->
+          Format.printf "%a@." Fpat.Type.pr typ;
+          assert false
     in
     let aux p =
+      if !!debug then Format.printf "p: %a@." Print.id_typ p;
       let var_of_env (x,typ) = Id.from_string (Fpat.Idnt.string_of x) (tr_typ typ) in
       let sbst xtyp y = subst_var (var_of_env xtyp) y in
       let sol' = List.assoc_all (Fpat.Idnt.make @@ Id.to_string p) sol in
-      let xs = List.map var_of_env @@ fst @@ List.hd sol' in
-      let tr = CEGAR_trans.trans_inv_term -| FpatInterface.inv_term -| Fpat.Formula.term_of  in
-      xs, make_ors @@ List.map (fun (tenv,phi) -> List.fold_right2 sbst tenv xs @@ tr phi) sol'
+      match sol' with
+      | [] -> fst @@ Type.decomp_tfun @@ Id.typ p, false_term
+      | (env,_)::_ ->
+          let xs = List.map var_of_env env in
+          let tr = CEGAR_trans.trans_inv_term -| FpatInterface.inv_term -| Fpat.Formula.term_of  in
+          xs, make_ors @@ List.map (fun (tenv,phi) -> List.fold_right2 sbst tenv xs @@ tr phi) sol'
     in
     List.map (Pair.make Id.id aux) vars
   in
@@ -939,7 +942,7 @@ let rec apply_sol sol x vars tmp =
             if dbg then Format.printf "  xs: %a@." (List.print Id.print) xs;
             if dbg then Format.printf "  ts': %a@." (List.print Print.term) ts';
             List.fold_right2 subst xs ts' t
-          with Not_found -> false_term
+          with Not_found -> true_term
         in
         Ref_type.Base(base, x', p)
   | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
@@ -1255,8 +1258,7 @@ let infer prog f typ ce_set =
             if !!debug then Format.printf "  typ': %a@." Ref_type.print typ';
             make_get_rtyp (fun y -> assert (Id.same y x); Ref_type.simplify typ') x
           in
-          if !!debug then Format.printf "  typ_: %a@." Ref_type.print typ_;(*
-          let typ'' = CPS.uncps_ref_type typ' typ in*)
+          if !!debug then Format.printf "  typ_: %a@." Ref_type.print typ_;
           x', typ_
         in
         env'
@@ -1265,5 +1267,16 @@ let infer prog f typ ce_set =
         |> Ref_type.Env.of_list
         |> Ref_type.Env.normalize
       in
-      if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env'';
-      Some env''
+      let env_unused =
+        let aux f =
+          if Id.mem_assoc f env' then
+            None
+          else
+            let xs,typ = Type.decomp_tfun @@ Id.typ f in
+            Some (f, Ref_type.make_weakest @@ Id.typ f)
+        in
+        Ref_type.Env.of_list @@ List.filter_map aux top_funs
+      in
+      let env''' = Ref_type.Env.merge env_unused env'' in
+      if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env''';
+      Some env'''

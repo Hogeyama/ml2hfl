@@ -256,8 +256,10 @@ let eta_and_lift t = eta_and_lift.tr_term2 [] t
 (* 't' must be a CPS term *)
 let rec from_term
           (cnt : Counter.t)
-          (ext_funs : id list)
+          (ext_funs : id list) (* UNUSED? *)
           (args : id list)
+          (top_funs : id list)
+          (top_fun_args : id list)
           (typ_env : Ref_type.Env.t)
           (fun_env : (id * (id list * typed_term)) list)
           (var_env : var_env)
@@ -277,9 +279,9 @@ let rec from_term
   match t.desc with
   | Const Unit -> []
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
-      from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env t2
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env t2
   | App({desc=Fun(_, t)}, [t2]) when is_base_typ t2.typ ->
-      from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env t
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env t
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       if !!debug then Format.printf "  APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
@@ -301,7 +303,7 @@ let rec from_term
           in
           let ce_env' = (tid,(i,path))::ce_env in
           let t' = make_app (add_id tid @@ make_var f') ts in
-          from_term cnt ext_funs args typ_env fun_env var_env' val_env' ce_set ce_env' t'
+          from_term cnt ext_funs args (f'::top_funs) top_fun_args typ_env fun_env var_env' val_env' ce_set ce_env' t'
         in
         let paths = List.assoc_all ~cmp:Id.eq f ce_set in
         List.flatten_mapi aux paths
@@ -342,7 +344,8 @@ let rec from_term
         {nid; var_env; val_env; label; ref_typ; ce_env}
       in
       assert (List.Set.eq ~cmp:Id.eq (List.map fst var_env') (List.map fst val_env'));
-      [RT.Node(node, from_term cnt ext_funs args' typ_env fun_env var_env' val_env' ce_set ce_env t_f)]
+      let top_fun_args' = if Id.mem f top_funs then ys @ top_fun_args else top_fun_args in
+      [RT.Node(node, from_term cnt ext_funs args' top_funs top_fun_args' typ_env fun_env var_env' val_env' ce_set ce_env t_f)]
   | If(t1, t2, t3) ->
       if !!debug then Format.printf "  IF t1: %a@\n" Print.term t1;
       let tid = get_id_option t in
@@ -354,7 +357,7 @@ let rec from_term
           let ref_typ = None in
           {nid; var_env; val_env; label; ref_typ; ce_env}
         in
-        RT.Node(node, from_term cnt ext_funs args typ_env fun_env var_env val_env ce_set ce_env' t23)
+        RT.Node(node, from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env' t23)
       in
       begin
         match tid with
@@ -366,13 +369,51 @@ let rec from_term
             if !!debug then Format.printf "    ce: %a@\n" (List.print Format.pp_print_int) ce;
             begin
               match ce with
-              | [] -> []
+              | [] when false -> []
+              | [] ->
+                  if !!debug then Format.printf "    val_env: %a@\n" pr_env val_env;
+                  let fs =
+                    top_fun_args
+                    |> List.filter (List.mem_assoc -$- val_env)
+                    |> List.filter is_fun_var
+                  in
+                  if !!debug then Format.printf "    fs: %a@\n" (List.print Id.print) fs;
+                  let ts =
+                    let aux f =
+                      let xs,typ = decomp_tfun @@ Id.typ f in
+                      let aux' t x =
+                        let typ = Id.typ x in
+                        if is_base_typ @@ Id.typ x then
+                          make_app t [make_randvalue_unit typ]
+                        else
+                          let x' = Id.new_var_id x in
+                          make_let [x',[],make_bottom typ] @@ make_app t [make_var x']
+                      in
+                      List.fold_left aux' (make_var f) xs
+                    in
+                    List.map aux fs
+                  in
+                  if !!debug then Format.printf "    ts: %a@\n" (List.print Print.term) ts;
+                  let children = List.flatten_map (from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env) ts in
+                  let node =
+                    let label = Assume false_term in
+                    let ref_typ = None in
+                    {nid; var_env; val_env; label; ref_typ; ce_env}
+                  in
+                  [RT.Node(node, children)]
               | br::ce' ->
                   if !!debug then Format.printf "    CE[%d]: %a@\n" tid (List.print Format.pp_print_int) ce;
                   let ce_env'' = (tid,(i,ce'))::ce_env' in
                   [aux br ce_env'']
             end
       end
+  | App({desc=Fun _; typ} as t1, ts) ->
+      let f = Id.new_var typ in
+      make_app (make_var f) ts
+      |> make_let [f, [], t1]
+      |> from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env
+  | Let(flag, [f,[],({desc=Bottom} as t1)], _) ->
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env t1
   | Let(flag, [f,xs,t1], t2) ->
       if !!debug then Format.printf "  LET@\n";
       if !!debug then Format.printf "    t: %a@\n" Print.term t;
@@ -384,7 +425,7 @@ let rec from_term
         let ref_typ = None in
         {nid; var_env; val_env; label; ref_typ; ce_env}
       in
-      [RT.Node(node, from_term cnt ext_funs args typ_env fun_env var_env' val_env' ce_set ce_env t2)]
+      [RT.Node(node, from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set ce_env t2)]
   | _ when is_fail t ->
       let node =
         let label = Fail in
@@ -411,7 +452,7 @@ let rec from_term
       unsupported "Comp_tree.from_term")
 let from_term typ_env fun_env ce_set t =
   let ext_funs = Ref_type.Env.dom typ_env in
-  from_term (Counter.create()) ext_funs [] typ_env fun_env [] [] ce_set [] t
+  from_term (Counter.create()) ext_funs [] [] [] typ_env fun_env [] [] ce_set [] t
 
 
 
@@ -427,4 +468,4 @@ let from_program env fun_env (ce_set: (id * int list) list) t =
   |*@> Format.printf "normalized: %a@.@." Print.term
   |> from_term env fun_env ce_set
   |> List.get
-  |@!!debug&> Format.printf "from_program r:@.%a@.@." print
+  |@!!debug&> Format.printf "comp_tree:@.%a@.@." print

@@ -33,8 +33,10 @@ let merge_tenv env1 env2 =
   Format.printf "MERGE_TENV r: %a@\n" print_typ_env r;
   r
  *)
+(*
 let merge_tenv env' env = (* ??? *)
   Ref_type.Env.of_list @@ List.fold_right (fun (x,typ) acc -> if Id.mem_assoc x acc then acc else (x,typ)::acc) (Ref_type.Env.to_list env) (Ref_type.Env.to_list env')
+ *)
 
 let merge_ce_set ce_set' ce_set =
   let dbg = 0=1 in
@@ -47,43 +49,6 @@ let is_closed f def_env =
   let ys,t = Id.assoc f def_env in
   List.Set.subset ~cmp:Id.eq (get_fv t) (f::ys)
 
-let rec main_loop c d prog cmp f typ ce_set =
-  if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d} prog:@ %a@." Id.print f c d print_prog prog;
-  if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d} ce_set:@ %a@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
-  let {fun_typ_env=env; fun_def_env} = prog in
-  if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d}:@ %a :? %a@." Id.print f c d Id.print f Ref_type.print typ;
-  match Check_mod.check prog f typ with
-  | Check_mod.Typable env' ->
-      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] TYPABLE{%a,%d,%d}: %a :@ %a@.@." Id.print f c d Id.print f Ref_type.print typ;
-      Typable, merge_tenv env' env, ce_set
-  | Check_mod.Untypable ce_set1 when is_closed f fun_def_env ->
-      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d} (closed):@ %a : %a@.@." Id.print f c d Id.print f Ref_type.print typ;
-      Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set1
-  | Check_mod.Untypable ce_set1 ->
-      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d}:@ %a : %a@." Id.print f c d Id.print f Ref_type.print typ;
-      if !!debug then Format.printf "  @[<hov 2>#[MAIN_LOOP] UNTYPABLE{%a,%d,%d} ce_set1:@ %a@.@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set1;
-      let rec refine_loop ce_set2 =
-        if !!debug then Format.printf "@[<hov 2>#[MAIN_LOOP]{%a,%d,%d} ce_set2:@ %a@." Id.print f c d (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set2;
-        match Infer_mod.infer prog f typ ce_set2 with
-        | None ->
-            Untypable, prog.fun_typ_env, ce_set2
-        | Some candidate ->
-            let candidate' = List.sort ~cmp:(Compare.on ~cmp fst) @@ Ref_type.Env.to_list candidate in
-            if !!debug then Format.printf "    @[<hov 2>#[MAIN_LOOP] CANDIDATES{%a,%d,%d}:@ %a@.@." Id.print f c d Ref_type.Env.print candidate;
-            let aux (r,env',ce_set4) (g,typ') =
-              main_loop 0 (d+1) {prog with fun_typ_env=env'} cmp g typ' ce_set4
-            in
-            let _,env',ce_set3 = List.fold_left aux (Typable, env, ce_set2) candidate' in
-            if env' <> env then
-              main_loop (c+1) d {prog with fun_typ_env=env'} cmp f typ ce_set3
-            else if ce_set3 <> ce_set2 then
-              refine_loop ce_set3
-            else
-              raise NoProgress
-      in
-      refine_loop (merge_ce_set ce_set1 ce_set)
-let main_loop prog cmp f typ = main_loop 0 0 prog cmp f typ []
-
 let report_safe env =
   Format.printf "Safe!@.@.";
   Format.printf "Refinement types: %a@.@." Ref_type.Env.print env
@@ -91,6 +56,47 @@ let report_safe env =
 let report_unsafe ce_set =
   Format.printf "Unsafe!@.@.";
   Format.printf "Modular counterexamples: %a@.@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set
+
+
+let rec main_loop history c prog cmp f typ ce_set =
+  let pr f = if !!debug then Format.printf ("%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f) Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
+  pr " history: %a@." (List.print Id.print) history;
+  pr "%a{%a,%d}%t env:@ %a@." Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print prog.fun_typ_env;
+  pr "%a{%a,%d}%t ce_set:@ %a@." Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
+  let {fun_typ_env=env; fun_def_env} = prog in
+  pr "%a{%a,%d}%t:@ %a :? %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+  match Check_mod.check prog f typ with
+  | Check_mod.Typable env' ->
+      pr "%a{%a,%d}%t TYPABLE: %a :@ %a@.@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      Typable, merge_tenv env' env, ce_set
+  | Check_mod.Untypable ce_set1 when is_closed f fun_def_env ->
+      pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@.@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set1
+  | Check_mod.Untypable ce_set1 ->
+      pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      pr "%a{%a,%d}%t UNTYPABLE ce_set1:@ %a@.@." Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set1;
+      let rec refine_loop ce_set2 =
+        pr "%a{%a,%d}%t ce_set2:@ %a@." Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set2;
+        match Infer_mod.infer prog f typ ce_set2 with
+        | None ->
+            Untypable, prog.fun_typ_env, ce_set2
+        | Some candidate ->
+            let candidate' = List.sort ~cmp:(Compare.on ~cmp fst) @@ Ref_type.Env.to_list candidate in
+            let candidate'' = List.flatten_map (fun (g,typ) -> List.map (fun typ' -> g, typ') @@ Ref_type.decomp_inter typ) candidate' in
+            pr "%a{%a,%d}%t CANDIDATES:@ %a@.@." Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print candidate;
+            let aux (r,env',ce_set4) (g,typ') =
+              main_loop (f::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4
+            in
+            let _,env',ce_set3 = List.fold_left aux (Typable, env, ce_set2) candidate'' in
+            if not (Ref_type.Env.eq env' env) then
+              main_loop history (c+1) {prog with fun_typ_env=env'} cmp f typ ce_set3
+            else if ce_set3 <> ce_set2 then
+              refine_loop ce_set3
+            else
+              raise NoProgress
+      in
+      refine_loop (merge_ce_set ce_set1 ce_set)
+let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ []
 
 let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
@@ -129,8 +135,10 @@ let main _ spec parsed =
         |> List.map (fun (f,(xs,t)) -> f, List.Set.diff ~cmp:Id.eq (get_fv t) (f::xs))
         |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
       in
+      let unused = List.filter_map (fun (f,_) -> if List.exists (fun (g,h) -> Id.same f g || Id.same f h) edges then None else Some f) fun_env in
       edges
       |> topological_sort ~eq:Id.eq
+      |> (@) unused
       |> List.mapi (fun i x -> x, i)
     in
     Compare.on (Id.assoc -$- map)
