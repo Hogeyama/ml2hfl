@@ -135,12 +135,12 @@ let rec of_typed_term t =
       Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_typed_term t1; of_typed_term t2]
   | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
       let of_typ typ =
-        match typ with
+        match Type.elim_tpred typ with
         | Type.TUnit -> Fpat.Type.mk_unit
         | Type.TInt -> Fpat.Type.mk_int
         | Type.TBool -> Fpat.Type.mk_bool
         | _ ->
-            Format.printf "%a@." Print.typ typ;
+            Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
             assert false
       in
       let ts' =

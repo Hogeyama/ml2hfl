@@ -36,6 +36,10 @@ let make_pred_var p ts =
   Id.make p "P" typ
 let is_pred_var x = Id.name x = "P"
 let get_pred_id x = Id.id x
+let get_pred_id_of_term t =
+  match t.desc with
+  | App({desc=Var x}, ts) -> assert (is_pred_var x); Some (get_pred_id x)
+  | _ -> None
 
 let rec print_constr fm = function
   | Exp t -> Format.fprintf fm "%a" Print.term t
