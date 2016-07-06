@@ -44,6 +44,7 @@ let compare x y = Compare.on to_string x y
 let eq x y = compare x y = 0
 let same = eq
 
+let set_id x id = {x with id}
 let set_name x name = {x with name}
 let set_typ x typ = {x with typ}
 
