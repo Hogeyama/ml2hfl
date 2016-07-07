@@ -1055,11 +1055,21 @@ let save_dep hcs filename =
   if !!debug then Format.printf "Save %s@." filename;
   save_as_dot filename vertices edges
 
+module Dependency =
+  Set.Make(
+    struct
+      type t = int * int
+      let compare = compare
+    end)
+
+let (|+|) = Dependency.union
+
 let add_dependency deps (x,y) =
-  (x,y)
-  :: List.filter_map (fun (z,w) -> if y = z then Some (x, w) else None) deps
-  @@@ List.filter_map (fun (z,w) -> if x = w then Some (z, y) else None) deps
-  @@@ deps
+  let deps' = Dependency.elements deps in
+  Dependency.singleton (x,y)
+  |+| Dependency.of_list @@ List.filter_map (fun (z,w) -> if y = z then Some (x, w) else None) deps'
+  |+| Dependency.of_list @@ List.filter_map (fun (z,w) -> if x = w then Some (z, y) else None) deps'
+  |+| deps
 
 let get_dependencies hcs =
   let aux acc (body,head) =
@@ -1067,9 +1077,8 @@ let get_dependencies hcs =
     let fv2 = Option.to_list @@ get_pred_id_of_term head in
     let new_dep = List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1 in
     List.fold_left add_dependency acc new_dep
-    |> List.unique
   in
-  List.fold_left aux [] hcs
+  List.fold_left aux Dependency.empty hcs
 
 let merge_predicate_variables candidates hcs =
   let rec get_map candidates dependencies =
@@ -1091,13 +1100,12 @@ let merge_predicate_variables candidates hcs =
   let dependencies = get_dependencies hcs in
   let map =
     dependencies
-    |@!!debug&> Format.printf "MGV1: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int)
+    |@!!debug&> (fun _ -> Format.printf "MGV1@.")
     |*> transitive_closure
     |@!!debug&> (fun _ -> Format.printf "MGV2@.")
-    |> get_map candidates
-    |@!!debug&> (fun _ -> Format.printf "MGV3@.")
+    |*> get_map candidates
   in
-  dependencies, map
+  dependencies, candidates
 
 let subst_horn_clause x t (body,head) =
   List.map (subst x t) body, subst x t head
@@ -1113,40 +1121,53 @@ let replace_id p1 p2 t =
 
 let cnt = ref 0
 
+let same_last_sol last_sol p1 p2 =
+  try
+    let xs1,t1 = List.assoc p1 last_sol in
+    let xs2,t2 = List.assoc p2 last_sol in
+    t2 = List.fold_right2 subst_var xs1 xs2 t1
+  with Not_found -> false
+
 let solve_merged merge_candidates hcs =
   let dependencies,map = merge_predicate_variables merge_candidates hcs in
   let rec aux last_sol merged deps map hcs =
     match map with
     | [] -> last_sol, merged
-    | (p1,p2)::map' when List.mem (p1,p2) deps || List.mem (p2,p1) deps ->
+    | (p1,p2)::map' when Dependency.mem (p1,p2) deps || Dependency.mem (p2,p1) deps ->
         aux last_sol merged deps map' hcs
+    | (p1,p2)::map' when same_last_sol last_sol p1 p2 -> aux last_sol ((p1,p2)::merged) deps map' hcs
     | (p1,p2)::map' ->
         let hcs' = List.map (map_horn_clause @@ replace_id p1 p2) hcs in
-        if !!debug then save_dep hcs' @@ Format.sprintf "tmp/test%d.dot" !cnt;
+        if false && !!debug then save_dep hcs' @@ Format.sprintf "tmp/test%d.dot" !cnt;
         incr cnt;
         if !!debug then Format.printf "MERGE %d, %d@." p1 p2;
         match solve_option hcs' with
         | None -> aux last_sol merged deps map' hcs
         | Some sol ->
             if !!debug then Format.printf "SOLVED@.";
-            let deps' = add_dependency (add_dependency deps (p1,p2)) (p2,p1) in
-            if !!debug then Format.printf "new_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ List.Set.diff deps' deps;
-            aux (Some sol) ((p1,p2)::merged) deps' map' hcs'
+            if List.for_all (fun (_,(_,t)) -> t.desc = Const True) sol then
+              sol, merged
+            else
+              let deps' = add_dependency (add_dependency deps (p1,p2)) (p2,p1) in
+(*
+              if !!debug then Format.printf "new_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ List.Set.diff deps' deps;
+ *)
+              aux sol ((p1,p2)::merged) deps' map' hcs'
   in
-  if !!debug then Format.printf "init_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) dependencies;
-  let sol,merged = aux (solve_option hcs) [] dependencies map hcs in
-  if !!debug then Format.printf "map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) map;
-  if !!debug then Format.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
-  match sol with
+  if !!debug then Format.printf "init_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements dependencies;
+  match solve_option hcs with
   | None -> None
   | Some sol ->
-      if !!debug then Format.printf "Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
+      let sol',merged = aux sol [] dependencies map hcs in
+      if !!debug then Format.printf "map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) map;
+      if !!debug then Format.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
+      if !!debug then Format.printf "Dom(sol'): %a@." (List.print Format.pp_print_int) @@ List.map fst sol';
       let aux (x,y) =
         try
-          Some (x, List.assoc y sol)
+          Some (x, List.assoc y sol')
         with Not_found -> None
       in
-      Some (List.filter_map aux merged @ sol)
+      Some (List.filter_map aux merged @ sol')
 
 let assoc_pred_var p hcs =
   if 0=1 then Format.printf "APV: P_%d@." p;
