@@ -59,31 +59,31 @@ let report_unsafe ce_set =
 
 
 let rec main_loop history c prog cmp f typ ce_set =
-  let pr f = if !!debug then Format.printf ("%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f) Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
-  pr " history: %a@." (List.print Id.print) history;
-  pr "%a{%a,%d}%t env:@ %a@." Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print prog.fun_typ_env;
-  pr "%a{%a,%d}%t ce_set:@ %a@." Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
+  let space = String.make (8*List.length history) ' ' in
+  let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
+  pr " history: %a" (List.print Id.print) history;
+  pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print prog.fun_typ_env;
+  pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
   let {fun_typ_env=env; fun_def_env} = prog in
-  pr "%a{%a,%d}%t:@ %a :? %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+  pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
   match Check_mod.check prog f typ with
   | Check_mod.Typable env' ->
-      pr "%a{%a,%d}%t TYPABLE: %a :@ %a@.@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      pr "%a{%a,%d}%t TYPABLE: %a :@ %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       Typable, merge_tenv env' env, ce_set
   | Check_mod.Untypable ce_set1 when is_closed f fun_def_env ->
-      pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@.@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set1
   | Check_mod.Untypable ce_set1 ->
-      pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
-      pr "%a{%a,%d}%t UNTYPABLE ce_set1:@ %a@.@." Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set1;
+      pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       let rec refine_loop ce_set2 =
-        pr "%a{%a,%d}%t ce_set2:@ %a@." Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set2;
+        pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set2;
         match Infer_mod.infer prog f typ ce_set2 with
         | None ->
             Untypable, prog.fun_typ_env, ce_set2
         | Some candidate ->
             let candidate' = List.sort ~cmp:(Compare.on ~cmp fst) @@ Ref_type.Env.to_list candidate in
             let candidate'' = List.flatten_map (fun (g,typ) -> List.map (fun typ' -> g, typ') @@ Ref_type.decomp_inter typ) candidate' in
-            pr "%a{%a,%d}%t CANDIDATES:@ %a@.@." Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print candidate;
+            pr "%a{%a,%d}%t CANDIDATES:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print candidate;
             let aux (r,env',ce_set4) (g,typ') =
               main_loop (f::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4
             in

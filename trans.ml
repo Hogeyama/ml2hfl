@@ -817,16 +817,23 @@ let make_ext_env t = make_ext_env.col2_term (get_fv t) t
 
 
 
-let init_rand_int = make_trans ()
+let init_base_rand = make_trans ()
 
-let init_rand_int_term t =
+let init_base_rand_term t =
   match t.desc with
-  | App({desc=Const(RandValue(TInt,false))},[{desc=Const Unit}]) -> make_var @@ Id.new_var ~name:"_r" TInt
+  | App({desc=Const(RandValue(typ,false))},[{desc=Const Unit}]) when is_base_typ typ ->
+      let name =
+        match typ with
+        | TInt -> "_ri"
+        | TBool -> "_rb"
+        | _ -> "_r"
+      in
+      make_var @@ Id.new_var ~name typ
   | Const(RandValue(TInt,_)) -> assert false
-  | _ -> init_rand_int.tr_term_rec t
+  | _ -> init_base_rand.tr_term_rec t
 
-let () = init_rand_int.tr_term <- init_rand_int_term
-let init_rand_int = init_rand_int.tr_term
+let () = init_base_rand.tr_term <- init_base_rand_term
+let init_base_rand = init_base_rand.tr_term
 
 
 
@@ -1908,7 +1915,8 @@ let beta_reduce = make_trans ()
 
 let beta_reduce_desc desc =
   match desc with
-  | Let(Nonrecursive, [x,[],{desc=Var y}], t) -> (beta_reduce.tr_term @@ subst_with_rename ~check:true x (make_var y) t).desc
+  | Let(Nonrecursive, [x,[],{desc=Var y}], t) ->
+      (beta_reduce.tr_term @@ subst_with_rename ~check:true x (make_var y) t).desc
   | App(t, []) -> (beta_reduce.tr_term t).desc
   | App(t1, t2::ts) ->
       begin

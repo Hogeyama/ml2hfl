@@ -32,7 +32,7 @@ let pred_var = Id.make (-1) "v" TInt
 let pred_var_term = make_var pred_var
 let make_pred_var p ts =
   let typs = List.map Syntax.typ ts in
-  let typ = List.fold_right make_tfun typs TInt in
+  let typ = List.fold_right make_tfun typs TBool in
   Id.make p "P" typ
 let is_pred_var x = Id.name x = "P"
 let get_pred_id x = Id.id x
@@ -1245,7 +1245,7 @@ let infer prog f typ ce_set =
   let hcs =
     constrs
     |> List.flatten_map to_horn_clause
-    |> List.map @@ Pair.map (List.map Trans.init_rand_int) Trans.init_rand_int
+    |> List.map @@ Pair.map (List.map Trans.init_base_rand) Trans.init_base_rand
     |@!!debug&> Format.printf "HORN CLAUSES: @[%a@.@." print_horn_clauses
     |@!!debug&> check_arity
   in
@@ -1265,6 +1265,7 @@ let infer prog f typ ce_set =
   match solve_merged merge_candidates hcs with
   | None -> None
   | Some sol ->
+      if !!debug then Format.printf "TEMPLATES of TOP_FUNS: @[%a@.@." print_tmp_env @@ List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env') templates;
       if !!debug then Format.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
       let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
       if !!debug then Format.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
@@ -1293,7 +1294,6 @@ let infer prog f typ ce_set =
           if Id.mem_assoc f env' then
             None
           else
-            let xs,typ = Type.decomp_tfun @@ Id.typ f in
             Some (f, Ref_type.make_weakest @@ Id.typ f)
         in
         Ref_type.Env.of_list @@ List.filter_map aux top_funs

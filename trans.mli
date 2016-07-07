@@ -22,7 +22,7 @@ val eval : typed_term -> typed_term
 val get_and_list : typed_term -> typed_term list
 val elim_fun : typed_term -> typed_term
 val make_ext_env : typed_term -> env
-val init_rand_int : typed_term -> typed_term (** replace rand_int() with a fresh variable*)
+val init_base_rand : typed_term -> typed_term (** replace rand_int() with a fresh variable*)
 val inlined_f : id list -> typed_term -> typed_term
 val lift_fst_snd : typed_term -> typed_term
 val expand_let_val : typed_term -> typed_term
