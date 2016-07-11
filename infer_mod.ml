@@ -596,11 +596,11 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
           in
           let tmp1' =
             match tmp1 with
-            | Inter(styp, []) ->
+            | Inter(styp, []) -> Inter(styp, [])(*
                 styp
                 |> Ref_type.of_simple
                 |> from_ref_type
-                |> init_with_pred_var cnt
+                |> init_with_pred_var cnt*)
             | _ ->
                 _PApp tmp1 pargs
           in
@@ -947,6 +947,7 @@ let rec apply_sol sol x vars tmp =
         Ref_type.Base(base, x', p)
   | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
   | Fun(y,typ1,typ2) -> Ref_type.Fun(y, apply_sol sol (Some y) vars typ1, apply_sol sol None (y::vars) typ2)
+  | Inter(styp, []) -> Ref_type.of_simple styp
   | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol sol x vars) tmps)
   | _ ->
       Format.eprintf "%a@." print_template tmp;
@@ -1287,7 +1288,7 @@ let infer prog f typ ce_set =
         |> List.map aux
         |*> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_subtype @@ Ref_type.decomp_inter typ)
         |> Ref_type.Env.of_list
-        |> Ref_type.Env.normalize
+        |*> Ref_type.Env.normalize
       in
       let env_unused =
         let aux f =
