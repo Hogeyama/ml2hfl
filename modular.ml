@@ -74,13 +74,13 @@ let rec main_loop history c prog cmp f typ ce_set =
   pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
   match Check_mod.check prog f typ with
   | Check_mod.Typable env' ->
-      pr "%a{%a,%d}%t TYPABLE: %a :@ %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       Typable, merge_tenv env' env, ce_set
   | Check_mod.Untypable ce_set1 when is_closed f fun_def_env ->
-      pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set1
   | Check_mod.Untypable ce_set1 ->
-      pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+      pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       let rec refine_loop ce_set2 =
         pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set2;
         match Infer_mod.infer prog f typ ce_set2 with

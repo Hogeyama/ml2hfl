@@ -17,6 +17,11 @@ val _Inter : Syntax.typ -> t list -> t
 val _Union : Syntax.typ -> t list -> t
 val _ExtArg : Syntax.id -> t -> t -> t
 val typ_result : t
+val inter : Syntax.typ -> t list -> t
+val union : Syntax.typ -> t list -> t
+val top : Syntax.typ -> t
+val bottom : Syntax.typ -> t
+
 
 
 (** {6 Destructor} *)
@@ -24,14 +29,14 @@ val decomp_base : t -> (base * Syntax.id * Syntax.typed_term) option
 val decomp_fun : t -> (Syntax.id * t * t) option
 val decomp_list : t -> (Syntax.id * Syntax.typed_term * Syntax.id * Syntax.typed_term * t) option
 val decomp_inter : t -> t list
-val is_base : t -> bool
-val is_fun : t -> bool
-val is_list : t -> bool
 val decomp_funs : int -> t -> (Syntax.id * t) list * (Syntax.id * t) list * t
 val arg_num : t -> int
 
-val inter : Syntax.typ -> t list -> t
-val union : Syntax.typ -> t list -> t
+val is_base : t -> bool
+val is_fun : t -> bool
+val is_list : t -> bool
+val is_top' : t -> bool
+val is_bottom' : t -> bool
 
 
 (** {6 Transformation} *)

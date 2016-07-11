@@ -26,6 +26,9 @@ let _Inter styp typs = Inter(styp, typs)
 let _Union styp typs = Union(styp, typs)
 let _ExtArg x typ1 typ2 = ExtArg(x, typ1, typ2)
 
+let top styp = Inter(styp, [])
+let bottom styp = Union(styp, [])
+
 let decomp_base typ =
   match typ with
   | Base(base,x,t) -> Some (base, x, t)
@@ -57,6 +60,18 @@ let is_bottom typ =
 let is_top typ =
   match typ with
   | Inter(_, []) -> true
+  | _ -> false
+let rec is_bottom' typ =
+  match typ with
+  | Union(_, []) -> true
+  | Base(_, _, {S.desc=S.Const S.False}) -> true
+  | Fun(_, typ1, typ2) -> is_top' typ1 && is_bottom' typ2
+  | _ -> false
+and is_top' typ =
+  match typ with
+  | Inter(_, []) -> true
+  | Base(_, _, {S.desc=S.Const S.True}) -> true
+  | Fun(_, typ1, typ2) -> is_bottom' typ1 && is_top' typ2
   | _ -> false
 
 let print_base fm = function

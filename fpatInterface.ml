@@ -114,7 +114,7 @@ let rec of_typed_term t =
         match op with
         | S.Eq ->
             begin
-              match S.typ t1 with
+              match Type.elim_tpred @@ S.typ t1 with
               | Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
               | Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
               | typ when typ = Type.typ_unknown -> Fpat.Const.Eq Fpat.Type.mk_int

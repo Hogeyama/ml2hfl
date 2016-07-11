@@ -926,11 +926,11 @@ let rec uncps_ref_type rtyp e etyp =
   | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
       RT.ExtArg(x, rtyp1, uncps_ref_type rtyp2 e etyp)
+  | _, _, TBaseCPS styp when RT.is_top' rtyp ->
+      RT.top styp
+  | _, _, TBaseCPS styp when RT.is_bottom' rtyp ->
+      RT.bottom styp
   | _ ->
-      if !!debug then Format.printf "rtyp:%a@." RT.print rtyp;
-      if !!debug then Format.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
-      if !!debug then Format.printf "e:%a@." print_effect e;
-      if !!debug then Format.printf "etyp:%a@." print_typ_cps etyp;
       assert false
 
 let infer_effect t =
