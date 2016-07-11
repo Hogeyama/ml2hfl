@@ -40,9 +40,15 @@ let merge_tenv env' env = (* ??? *)
 
 let merge_ce_set ce_set' ce_set =
   let dbg = 0=1 in
+  let rec strict_prefix ce1 ce2 =
+    match ce1, ce2 with
+    | _, [] -> false
+    | [], _ -> true
+    | br1::ce1', br2::ce2' -> br1 = br2 && strict_prefix ce1' ce2'
+  in
   let cmp (x,ce) (x',ce') = Id.same x x' && ce = ce' in
   let ce_set'' = List.unique ~cmp @@ ce_set' @ ce_set in
-  List.filter_out (fun (x,ce) -> ce = [] && 2 <= List.length @@ List.assoc_all ~cmp:Id.eq x ce_set'') ce_set''
+  List.filter_out (fun (x,ce) -> List.exists (fun (y,ce') -> Id.same x y && strict_prefix ce ce') ce_set'') ce_set''
   |@dbg&> Format.printf "MERGE_CE_SET: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int)
 
 let is_closed f def_env =
