@@ -358,17 +358,7 @@ let rec arg_spec () =
                  Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
      " Check non-termination";
-     (* fair non-termination mode *)
-     "-fair-non-termination",
-     Arg.Unit (fun _ ->
-       Flag.mode := Flag.FairNonTermination;
-       Flag.church_encode := true;
-       Flag.mc := Flag.HorSatP),
-     " Check fair-non-termination";
-     "-expand-ce-count",
-     Arg.Int (fun c ->
-       Flag.expand_ce_count := c),
-     " Set the number of counterexample expansion for fair-non-termination-mode";
+     (* non-termination mode *)
      "-merge-paths",
        Arg.Set Flag.merge_paths_of_same_branch,
        " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
@@ -380,7 +370,22 @@ let rec arg_spec () =
        " (Option for non-termination checking) Do not use omega solver for under-approximation";
      "-use-omega-first",
        Arg.Set Flag.use_omega_first,
-       " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)"
+     " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)";
+     (* fair non-termination mode *)
+     "-fair-non-termination",
+     Arg.Unit (fun _ ->
+       Flag.mode := Flag.FairNonTermination;
+       Flag.church_encode := true;
+       Flag.mc := Flag.HorSatP),
+     " Check fair-non-termination";
+     "-expand-ce-iter-init",
+     Arg.Int (fun c ->
+       Flag.expand_ce_iter_init := c),
+     " Set the initial interation count of counterexample expansion for fair-non-termination-mode";
+     "-expand-ce-count",
+     Arg.Int (fun c ->
+       Flag.expand_ce_iter_init := c),
+     " Same as -expand-ce-iter-init";
     ]
 and print_option_and_exit () = print_string @@ String.join " " @@ List.map Triple.fst (arg_spec ()); exit 0
 let arg_spec = arg_spec ()
