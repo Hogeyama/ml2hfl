@@ -168,7 +168,7 @@ let verifyFile filename =
   match r with
   | "Satisfied"   | "safe"   -> Satisfied
   | "Unsatisfied" | "unsafe" -> Unsatisfied
-  | _ -> assert false
+  | _ -> failwith "Return value from HorSatP is invalid"
 
 (**
    Execute model checking by HorSatP
