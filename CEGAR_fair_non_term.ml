@@ -89,7 +89,7 @@ let rec expansion_loop prog0 labeled is_cp ce_rules prog start_symbol =
     (*feasiblity check and refinement is common with that of non-termination*)
     CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog
   with
-  | e ->
+  | CEGAR_syntax.NoProgress ->
      (Format.printf "Increase iteration of counterexample expansion@.";
       expansion_iter_count_ref := count + 5;
       expansion_loop prog0 labeled is_cp ce_rules prog start_symbol)
