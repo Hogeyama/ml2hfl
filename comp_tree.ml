@@ -230,7 +230,9 @@ let eta_expand t =
   let xs,t' = decomp_funs t in
   let ys,_ = decomp_tfun t'.typ in
   let ys' = List.map Id.new_var_id ys in
-  make_funs (xs@ys') @@ make_app t' @@ List.map make_var ys'
+  match t'.desc with
+  | Let(flag, bindings, t'') -> make_funs (xs@ys') @@ make_let_f flag bindings @@ make_app t'' @@ List.map make_var ys'
+  | _ -> make_funs (xs@ys') @@ make_app t' @@ List.map make_var ys'
 
 let make_arg_map var_env val_env _ xs ts =
   let value_of var_env val_env t = Closure(var_env, val_env, eta_expand t) in
@@ -419,7 +421,7 @@ let rec from_term
       if !!debug then Format.printf "    t: %a@\n" Print.term t;
       assert (xs <> []);
       let var_env' = (f, List.map fst val_env)::var_env in
-      let rec val_env' = (f, Closure(var_env', val_env', make_funs xs t1))::val_env in
+      let rec val_env' = (f, Closure(var_env', val_env', make_funs xs @@ eta_expand t1))::val_env in
       let node =
         let label = Let(f, make_funs xs t1) in
         let ref_typ = None in
