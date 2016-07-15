@@ -224,6 +224,7 @@ let rec eta_reduce_term = function
       let t' = eta_reduce_term t in
       match t' with
       | App(App(App(Const If,_),_),_) -> Fun(x, typ, t')
+      | App(Const (Label _), _) -> Fun(x, typ, t')
       | App(t, Var y) when x = y && not (List.mem y (get_fv t)) -> t
       | _ -> Fun(x, typ, t')
 
@@ -275,7 +276,7 @@ let rec abstract_rand_int n must env cond pts xs t =
 
 
 and abstract_term must env cond pts t typ =
-  if false && debug() then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  let r =
   match t with
   | Const CPS_result -> [Const Unit]
   | Const Bottom ->
@@ -366,6 +367,11 @@ and abstract_term must env cond pts t typ =
   | Var _ -> assert false
   | Const _ -> assert false
   | Let _ -> assert false
+  in
+  let dbg = false && !!debug in
+  if dbg then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if dbg then Format.printf "abstract_term r: %a@." (List.print CEGAR_print.term) r;
+  r
 
 
 
@@ -480,8 +486,9 @@ let abstract orig_fun_list force prog top_funs =
   |> eta_expand
   |@> pr "ETA_EXPAND"
   |> abstract_prog
-  |> CEGAR_trans.simplify_if
   |@> pr "ABST"
+  |> CEGAR_trans.simplify_if
+  |@> pr "SIMPLIFY_IF"
   |> Typing.infer -| initialize_env
   |@!Flag.debug_abst&> eval_step_by_step
   |> CEGAR_lift.lift2
