@@ -64,6 +64,15 @@ let report_unsafe ce_set =
   Format.printf "Modular counterexamples: %a@.@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set
 
 
+let extend_ce f ce_set =
+  if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
+  let r =
+    List.flatten_map (fun (g,ce) -> if Id.same f g then [f, ce@[0]; f, ce@[1]] else [g,ce]) ce_set
+  in
+  if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) r;
+  r;
+  List.flatten_map (fun (g,ce) -> if Id.same f g then [f, [0]@ce; f, [1]@ce] else [g,ce]) ce_set
+
 let rec main_loop history c prog cmp f typ ce_set =
   let space = String.make (8*List.length history) ' ' in
   let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
@@ -98,6 +107,12 @@ let rec main_loop history c prog cmp f typ ce_set =
               main_loop history (c+1) {prog with fun_typ_env=env'} cmp f typ ce_set3
             else if ce_set3 <> ce_set2 then
               refine_loop ce_set3
+            else if not !Infer_mod.infer_stronger then
+              (Infer_mod.infer_stronger := true;
+               refine_loop ce_set3)
+            else if true then
+              (Infer_mod.infer_stronger := false;
+               refine_loop (extend_ce f ce_set3))
             else
               raise NoProgress
       in

@@ -369,7 +369,7 @@ let rec from_term
             if !!debug then Format.printf "    ce: %a@\n" (List.print Format.pp_print_int) ce;
             begin
               match ce with
-              | [] when false -> []
+              | [] when true -> []
               | [] ->
                   if !!debug then Format.printf "    val_env: %a@\n" pr_env val_env;
                   let fs =

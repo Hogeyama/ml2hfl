@@ -9,6 +9,9 @@ let debug () = List.mem "Infer_mod" !Flag.debug_module
 module CT = Comp_tree
 
 
+let infer_stronger = ref false
+
+
 type constr =
   | Exp of typed_term
   | And of constr * constr
@@ -596,11 +599,14 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
           in
           let tmp1' =
             match tmp1 with
-            | Inter(styp, []) -> Inter(styp, [])(*
-                styp
-                |> Ref_type.of_simple
-                |> from_ref_type
-                |> init_with_pred_var cnt*)
+            | Inter(styp, []) ->
+                if false then
+                  Inter(styp, [])
+                else
+                  styp
+                  |> Ref_type.of_simple
+                  |> from_ref_type
+                  |> init_with_pred_var cnt
             | _ ->
                 _PApp tmp1 pargs
           in
@@ -914,7 +920,7 @@ let solve_option hcs =
 
 
 
-let rec apply_sol sol x vars tmp =
+let rec apply_sol sol x vars pos tmp =
   let dbg = 0=0 && !!debug in
   let r =
   match tmp with
@@ -942,13 +948,26 @@ let rec apply_sol sol x vars tmp =
             if dbg then Format.printf "  xs: %a@." (List.print Id.print) xs;
             if dbg then Format.printf "  ts': %a@." (List.print Print.term) ts';
             List.fold_right2 subst xs ts' t
-          with Not_found -> true_term
+          with Not_found ->
+               if pos && !infer_stronger then
+                 false_term
+               else
+                 true_term
         in
         Ref_type.Base(base, x', p)
   | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
-  | Fun(y,typ1,typ2) -> Ref_type.Fun(y, apply_sol sol (Some y) vars typ1, apply_sol sol None (y::vars) typ2)
-  | Inter(styp, []) -> Ref_type.of_simple styp
-  | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol sol x vars) tmps)
+  | Fun(y,typ1,typ2) ->
+      Ref_type.Fun(y, apply_sol sol (Some y) vars (not pos) typ1, apply_sol sol None (y::vars) pos typ2)
+  | Inter(styp, []) ->
+      let r =
+      if pos then
+        Ref_type.make_strongest styp
+      else
+        Ref_type.make_weakest styp
+      in
+      Format.printf "  AS TOP: %a ==> %a@." Print.typ styp Ref_type.print r;
+      if !infer_stronger then r else Ref_type.of_simple styp
+  | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol sol x vars pos) tmps)
   | _ ->
       Format.eprintf "%a@." print_template tmp;
       assert false
@@ -956,7 +975,7 @@ let rec apply_sol sol x vars tmp =
   if dbg then Format.printf "AS tmp: %a@." print_template tmp;
   if dbg then Format.printf "AS r: %a@." Ref_type.print r;
   r
-let apply_sol sol tmp = Ref_type.simplify @@ apply_sol sol None [] tmp
+let apply_sol sol pos tmp = Ref_type.simplify @@ apply_sol sol None [] pos tmp
 
 
 
@@ -1270,7 +1289,7 @@ let infer prog f typ ce_set =
       if !!debug then Format.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
       let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
       if !!debug then Format.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
-      let env' = List.filter_map (fun ((f,_),tmp) -> if Id.mem f top_funs then Some (f, apply_sol sol tmp) else None) templates in
+      let env' = List.filter_map (fun ((f,_),tmp) -> if Id.mem f top_funs then Some (f, apply_sol sol true tmp) else None) templates in
       let env'' =
         let aux (x,typ') =
           let typ = Ref_type.Env.assoc x prog.fun_typ_env in
@@ -1294,8 +1313,10 @@ let infer prog f typ ce_set =
         let aux f =
           if Id.mem_assoc f env' then
             None
+          else if !infer_stronger then
+            Some (f, Ref_type.make_strongest @@ Id.typ f)
           else
-            Some (f, Ref_type.make_weakest @@ Id.typ f)
+            Some (f, Ref_type.of_simple @@ Id.typ f)
         in
         Ref_type.Env.of_list @@ List.filter_map aux top_funs
       in

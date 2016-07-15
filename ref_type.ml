@@ -239,7 +239,7 @@ let rename typ =
 
 
 let rec of_simple typ =
-  match typ with
+  match Type.elim_tpred typ with
   | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
