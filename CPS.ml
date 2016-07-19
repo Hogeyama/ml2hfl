@@ -950,7 +950,7 @@ let make_get_rtyp typed get_rtyp f =
   if !!debug then
     Format.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
   let rtyp' = uncps_ref_type rtyp ENone etyp in
-  if Flag.print_ref_typ_debug then
+  if !!Flag.print_ref_typ_debug then
     Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 

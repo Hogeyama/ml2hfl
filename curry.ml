@@ -69,6 +69,7 @@ let rec uncurry_typ rtyp typ =
         | [] -> RT.to_simple @@ uncurry_typ (RT.of_simple typ) typ
         | rtyp'::_ -> RT.to_simple rtyp'
       in
+      if !!debug then Format.printf "UNCURRY_TYP TOP: %a => %a@." Print.typ typ Print.typ typ';
       RT.Inter(typ', rtyps')
   | RT.Union(typ, rtyps), _ ->
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
@@ -120,7 +121,7 @@ let uncurry_rtyp t get_rtyp f =
   let rtyp' = correct_arg_refer @@ uncurry_typ (RT.copy_fun_arg_to_base rtyp) typ in
   if debug()
   then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp Print.typ typ RT.print rtyp';
-  if Flag.print_ref_typ_debug
+  if !!Flag.print_ref_typ_debug
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 

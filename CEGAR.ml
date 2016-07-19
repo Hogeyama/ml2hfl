@@ -79,7 +79,7 @@ let rec loop prog0 is_cp ces info =
   let result = MC.check abst prog spec in
   match result, !Flag.mode with
   | MC.Safe env, _ ->
-      if Flag.print_ref_typ_debug
+      if !!Flag.print_ref_typ_debug
       then
         begin
           Format.printf "Intersection types:@.";
@@ -92,7 +92,7 @@ let rec loop prog0 is_cp ces info =
         with Not_found -> None
       in
       let env' = List.filter_map aux env in
-      if Flag.print_ref_typ_debug
+      if !!Flag.print_ref_typ_debug
       then
         begin
           Format.printf "Refinement types:@.";

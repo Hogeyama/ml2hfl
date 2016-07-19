@@ -90,3 +90,4 @@ val set_base_var : Syntax.id -> t -> t
 val copy_fun_arg_to_base : t -> t
 val same : t -> t -> bool
 val has_no_predicate : t -> bool
+val subtype : t -> t -> bool

@@ -412,7 +412,7 @@ let filter_assumption val_env assumption =
   |> List.map (fun t -> Exp t)
 
 let make_assumption templates val_env =
-  let dbg = 0=0 && !!debug in
+  let dbg = 0=1 && !!debug in
   if dbg then Format.printf "  MA: Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
   let aux x =
     let cmp (x1,id1) (x2,id2) = Id.eq x1 x2 && id1 = id2 in
@@ -868,11 +868,12 @@ let print_solution fm (p,(xs,t)) =
   Format.fprintf fm "P_%d(%a) := %a" p (print_list Id.print ",") xs Print.term t
 
 let solve hcs =
+  let dbg = 0=1 && !!debug in
   let vars =
     hcs
     |> List.flatten_map (fun (body,head) -> List.flatten_map pvars body @ pvars head)
     |> List.unique ~cmp:Id.eq
-    |@!!debug&> Format.printf "vars: %a@." (List.print Id.print)
+    |@dbg&> Format.printf "vars: %a@." (List.print Id.print)
   in
   let sol =
     let tr t =
@@ -1008,8 +1009,7 @@ let eta = eta.tr_term
 
 let normalize = Trans.reduce_fail_unit |- Trans.reconstruct
 
-let trans_CPS env t =
-  let fs = List.map fst env in
+let trans_CPS env funs t =
   let t',make_get_rtyp_cps =
     t
     |> make_letrecs @@ List.map Triple.of_pair_r env
@@ -1033,13 +1033,18 @@ let trans_CPS env t =
   in
   let make_get_rtyp = make_get_rtyp_cps -| make_get_rtyp_pair in
   let env1,env2 =
+    let fs = List.map fst env in
     env'
     |> List.flatten_map (snd |- List.map Triple.to_pair_r)
     |> List.partition (fst |- Id.mem -$- fs)
   in
-  if !!debug then Format.printf "fs: %a@." (List.print Id.print) fs;
+  if !!debug then Format.printf "funs: %a@." (List.print Id.print) funs;
   if !!debug then Format.printf "env1: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env1;
   if !!debug then Format.printf "env2: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env2;
+  if not @@ List.for_all (Id.mem_assoc -$- env1) funs then
+    (let removed = List.filter_out (Id.mem_assoc -$- env1) funs in
+     Format.printf "REMOVED: %a@." (List.print Id.print) removed;
+     assert false);
   env1, make_letrecs (List.map Triple.of_pair_r env2) t_main, make_get_rtyp
 
 let replace_if_with_bottom = make_trans ()
@@ -1058,8 +1063,13 @@ let add_context for_infer prog f typ =
 (*
   let env' = List.filter (fst |- Id.same f) prog.fun_def_env in
  *)
-  let env' = prog.fun_def_env in
-  trans_CPS env' t'
+  let env = prog.fun_def_env in
+  let funs =
+    env
+    |> List.map fst
+    |> List.takewhile (not -| Id.same f)
+  in
+  trans_CPS env funs t'
 
 module Dependency =
   Set.Make(
@@ -1069,17 +1079,23 @@ module Dependency =
     end)
 
 let add_dependency deps (x,y) =
-  if !!debug then Format.printf "ADD_DEP: %d -> %d@." x y;
+  if 0=1 && !!debug then Format.printf "ADD_DEP: %d -> %d@." x y;
   let deps' = Dependency.elements deps in
   let from_y = y :: List.filter_map (fun (z,w) -> if y = z then Some w else None) deps' in
   let to_x   = x :: List.filter_map (fun (z,w) -> if x = w then Some z else None) deps' in
   let new_dep = Dependency.of_list @@ List.map Pair.of_list @@ Combination.take_each [to_x; from_y] in
   Dependency.union new_dep deps
 
+let get_pred_ids_hcs hcs =
+  hcs
+  |> List.flatten_map (fun (body,head) -> (Option.to_list @@ get_pred_id_of_term head) @ List.filter_map get_pred_id_of_term body)
+  |> List.unique
+
 let get_dependencies hcs =
+  let dbg = 0=1 && !!debug in
   let aux acc (body,head) =
-    if !!debug then Format.printf "  HC: %a@." print_horn_clause (body,head);
-    if !!debug then Format.printf "  deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements acc;
+    if dbg then Format.printf "  HC: %a@." print_horn_clause (body,head);
+    if dbg then Format.printf "  deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements acc;
     let fv1 = List.filter_map get_pred_id_of_term body in
     let fv2 = Option.to_list @@ get_pred_id_of_term head in
     let new_dep = List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1 in
@@ -1091,6 +1107,7 @@ let transitive_closure deps =
   List.fold_left add_dependency Dependency.empty deps
 
 let save_dep deps_cls hcs filename =
+  let dbg = 0=1 in
   let aux acc (body,head) =
     let fv1 = List.filter_map get_pred_id_of_term body in
     let fv2 = Option.to_list @@ get_pred_id_of_term head in
@@ -1102,12 +1119,12 @@ let save_dep deps_cls hcs filename =
   let deps_cls' = transitive_closure deps in
   let vertices = List.map (fun x -> string_of_int x, "") @@ List.unique @@ List.flatten_map Pair.to_list deps in
   let edges = List.map (fun (x,y) -> string_of_int x, string_of_int y, "") deps in
-  if !!debug then Format.printf "Save %s@." filename;
+  Format.printf "Save %s@." filename;
   save_as_dot filename vertices edges;
-  Format.printf "deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps_cls;
-  Format.printf "deps_cls': %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps_cls';
-  Format.printf "deps_cls\\deps_cls': %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements @@ Dependency.diff deps_cls' deps_cls;
-  assert (false || Dependency.subset deps_cls' deps_cls)
+  if dbg then Format.printf "deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps_cls;
+  if dbg then Format.printf "deps_cls': %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps_cls';
+  if dbg then Format.printf "deps_cls'\\deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements @@ Dependency.diff deps_cls' deps_cls;
+  assert (Dependency.subset deps_cls' deps_cls)
 
 
 let merge_predicate_variables candidates hcs =
@@ -1164,18 +1181,19 @@ let same_last_sol last_sol p1 p2 =
 
 let solve_merged merge_candidates hcs =
   let dependencies,map = merge_predicate_variables merge_candidates hcs in
-  let rec aux last_sol merged deps map hcs =
+  let rec aux used last_sol merged deps map hcs =
     match map with
     | [] -> last_sol, merged
     | (p1,p2)::map' when Dependency.mem (p1,p2) deps || Dependency.mem (p2,p1) deps ->
-        aux last_sol merged deps map' hcs
-    | (p1,p2)::map' when same_last_sol last_sol p1 p2 -> aux last_sol ((p1,p2)::merged) deps map' hcs
+        aux used last_sol merged deps map' hcs
+    | (p1,p2)::map' when not (List.mem p1 used && List.mem p2 used) -> aux used last_sol ((p1,p2)::merged) deps map' hcs
+    | (p1,p2)::map' when same_last_sol last_sol p1 p2 -> aux used last_sol ((p1,p2)::merged) deps map' hcs
     | (p1,p2)::map' ->
         let hcs' = List.map (map_horn_clause @@ replace_id p1 p2) hcs in
         incr cnt;
         match solve_option hcs' with
-        | exception e -> Format.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int)@@ Dependency.elements deps;raise e
-        | None -> aux last_sol merged deps map' hcs
+        | exception e -> Format.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps; raise e
+        | None -> aux used last_sol merged deps map' hcs
         | Some sol ->
             if !!debug then Format.printf "MERGE %d, %d@." p1 p2;
             let deps' = add_dependency (add_dependency deps (p1,p2)) (p2,p1) in
@@ -1187,14 +1205,16 @@ let solve_merged merge_candidates hcs =
 (*
               if !!debug then Format.printf "new_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ List.Set.diff deps' deps;
  *)
-              aux sol ((p1,p2)::merged) deps' map' hcs'
+              let used' = List.remove used p1 in
+              aux used' sol ((p1,p2)::merged) deps' map' hcs'
   in
   if !!debug then Format.printf "init_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements dependencies;
-  save_dep dependencies hcs "tmp/test.dot";
+  if !!debug then save_dep dependencies hcs "tmp/test.dot";
   match solve_option hcs with
   | None -> None
   | Some sol ->
-      let sol',merged = aux sol [] dependencies map hcs in
+      let used = get_pred_ids_hcs hcs in
+      let sol',merged = aux used sol [] dependencies map hcs in
       if !!debug then Format.printf "map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) map;
       if !!debug then Format.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
       if !!debug then Format.printf "Dom(sol'): %a@." (List.print Format.pp_print_int) @@ List.map fst sol';
@@ -1323,7 +1343,7 @@ let infer prog f typ ce_set =
         |> List.map aux
         |*> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_subtype @@ Ref_type.decomp_inter typ)
         |> Ref_type.Env.of_list
-        |*> Ref_type.Env.normalize
+        |> Ref_type.Env.normalize
       in
       let env_unused =
         let aux f =

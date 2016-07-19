@@ -26,7 +26,7 @@ let get_rtyp_lift t f rtyp =
 
 let get_rtyp_lift t f rtyp =
   let rtyp' = get_rtyp_lift t f rtyp in
-  if Flag.print_ref_typ_debug
+  if !!Flag.print_ref_typ_debug
   then Format.printf "LIFT: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 

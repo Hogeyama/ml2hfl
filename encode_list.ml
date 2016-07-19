@@ -114,7 +114,7 @@ let make_get_rtyp_list_of typed get_rtyp f =
   let typ = Trans.assoc_typ f typed in
   let rtyp = get_rtyp f in
   let rtyp' = get_rtyp_list rtyp typ in
-  if Flag.print_ref_typ_debug
+  if !!Flag.print_ref_typ_debug
   then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
@@ -350,7 +350,7 @@ let rec get_rtyp_list_opt rtyp typ = raise (Fatal "not implemented get_rtyp_list
 let get_rtyp_list_of typed f rtyp =
   let typ = Trans.assoc_typ f typed in
   let rtyp' = get_rtyp_list_opt rtyp typ in
-  if Flag.print_ref_typ_debug
+  if !!Flag.print_ref_typ_debug
   then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
