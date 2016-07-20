@@ -101,6 +101,16 @@ let rec conv_term env t =
 
 let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
 
+let rec of_typ typ =
+  match Type.elim_tpred typ with
+  | Type.TUnit -> Fpat.Type.mk_unit
+  | Type.TInt -> Fpat.Type.mk_int
+  | Type.TBool -> Fpat.Type.mk_bool
+  | Type.TFun(x,typ) -> Fpat.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
+  | _ ->
+      Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
+      assert false
+
 let rec of_typed_term t =
   match S.desc t with
   | S.Const S.Unit -> Fpat.Term.mk_const @@ Fpat.Const.Unit
@@ -134,15 +144,6 @@ let rec of_typed_term t =
       in
       Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_typed_term t1; of_typed_term t2]
   | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
-      let of_typ typ =
-        match Type.elim_tpred typ with
-        | Type.TUnit -> Fpat.Type.mk_unit
-        | Type.TInt -> Fpat.Type.mk_int
-        | Type.TBool -> Fpat.Type.mk_bool
-        | _ ->
-            Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
-            assert false
-      in
       let ts' =
         ts
         |> List.map @@ Pair.add_right @@ of_typ -| S.typ
@@ -151,6 +152,17 @@ let rec of_typed_term t =
       Fpat.Pva.make (Fpat.Idnt.make @@ Id.to_string p) ts'
       |> Fpat.Pva.to_formula
       |> Fpat.Formula.term_of
+  | S.Proj(i, t) ->
+      let tys =
+        match t.S.typ with
+        | Type.TTuple xs ->
+            List.map (Id.typ |- of_typ) xs
+        | _ -> assert false
+      in
+      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_typed_term t]
+  | S.Tuple ts ->
+      let tys = List.map (S.typ |- of_typ) ts in
+      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Tuple tys) @@ List.map of_typed_term ts
   | desc ->
       Format.eprintf "desc: %a@." Print.desc desc;
       unsupported "FpatInterface.of_typed_term"
