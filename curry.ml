@@ -59,17 +59,17 @@ let rec correct_arg_refer rtyp =
   | RT.List _ -> assert false
 
 let rec uncurry_typ rtyp typ =
-  if debug() then
+  if !!debug then
     Format.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
   match rtyp,typ with
-  | RT.Inter(typ, rtyps), _ ->
+  | RT.Inter(styp, rtyps), _ ->
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
       let typ' =
         match rtyps' with
-        | [] -> RT.to_simple @@ uncurry_typ (RT.of_simple typ) typ
+        | [] -> RT.to_simple @@ uncurry_typ (RT.of_simple styp) typ
         | rtyp'::_ -> RT.to_simple rtyp'
       in
-      if !!debug then Format.printf "UNCURRY_TYP TOP: %a => %a@." Print.typ typ Print.typ typ';
+      if rtyps'=[] && !!debug then Format.printf "UNCURRY_TYP TOP: %a ===> %a@." Print.typ typ Print.typ typ';
       RT.Inter(typ', rtyps')
   | RT.Union(typ, rtyps), _ ->
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
