@@ -433,14 +433,15 @@ let rec subtype env typ1 typ2 =
   | _ -> unsupported "Ref_type.subtype"
 let subtype typ1 typ2 = subtype [] typ1 typ2
 
+let equiv typ1 typ2 = subtype typ1 typ2 && subtype typ2 typ1
 
-let rec remove_subtype typs =
+let rec remove_if f typs =
   let rec aux acc typs =
     match typs with
     | [] -> acc
     | typ::typs' ->
         let acc' =
-          if List.exists (subtype -$- typ) (acc@typs') then
+          if List.exists (f -$- typ) (acc@typs') then
             acc
           else
             typ::acc
@@ -449,12 +450,8 @@ let rec remove_subtype typs =
   in
   aux [] typs
 
-let remove_subtype typs =
-  if !!debug then Format.printf "RS: IN %a@." (List.print print) typs;
-  let r =remove_subtype typs in
-  if !!debug then Format.printf "RS: OUT %a@." (List.print print) r;
-  r
-
+let rec remove_subtype typs = remove_if subtype typs
+let rec remove_equiv typs = remove_if equiv typs
 
 let rec simplify_typs constr styp is_zero make_zero and_or typs =
   let decomp typ =
@@ -941,8 +938,6 @@ and generate genv cenv typ =
     in
     if !!debug then Format.printf "Ref_type.generate': %a@." print typ;
     genv', cenv', {t with S.typ = to_abst_typ typ}
-
-let equiv typ1 typ2 = subtype typ1 typ2 && subtype typ2 typ1
 
 module Value = struct
   type t' = t

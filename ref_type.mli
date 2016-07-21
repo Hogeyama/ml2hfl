@@ -42,6 +42,7 @@ val is_bottom' : t -> bool
 (** {6 Transformation} *)
 val simplify : t -> t
 val remove_subtype : t list -> t list
+val remove_equiv : t list -> t list
 
 (** {6 Converter} *)
 val of_simple : Syntax.typ -> t

@@ -69,7 +69,6 @@ let extend_ce f ce_set =
       List.flatten_map (fun (g,ce) -> if Id.same f g then [f, ce@[0]; f, ce@[1]] else [g,ce]) ce_set
   in
   if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) r;
-  assert false;
   r
 
 let rec main_loop history c prog cmp f typ ce_set =
@@ -101,7 +100,7 @@ let rec main_loop history c prog cmp f typ ce_set =
               candidate
               |> Ref_type.Env.to_list
               |> List.sort ~cmp:(Compare.on ~cmp fst)
-              |> List.flatten_map (fun (g,typ) -> List.map (fun typ' -> g, typ') @@ Ref_type.decomp_inter typ)
+              |> List.flatten_map (fun (g,typ) -> List.map (Pair.pair g) @@ Ref_type.decomp_inter typ)
             in
             let aux (r,env',ce_set4) (g,typ') =
               if Ref_type.subtype (Ref_type.Env.assoc g env') typ' then

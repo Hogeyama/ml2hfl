@@ -80,7 +80,10 @@ and print_label fm label =
 and print_value fm (Closure(var_env,val_env,t)) =
   Format.fprintf fm "Value %a" Print.term t
 and print_node fm {nid;var_env;val_env;label;ref_typ} =
-  Format.fprintf fm "%d,@ @[(*%a*)@],@ @[%a@],@ %a" nid (List.print Id.print) (List.map fst val_env) print_label label (Option.print Ref_type.print) ref_typ
+  if false then
+    Format.fprintf fm "%d,@ @[(*%a*)@],@ @[%a@],@ %a" nid (List.print Id.print) (List.map fst val_env) print_label label (Option.print Ref_type.print) ref_typ
+  else
+    Format.fprintf fm "%d,@ @[%a@],@ %a" nid print_label label (Option.print Ref_type.print) ref_typ
 let rec print fm (Rose_tree.Node(node,ts)) =
   Format.fprintf fm "(@[<hov>%a,@ %a@])" print_node node (List.print print) ts
 
@@ -282,8 +285,10 @@ let rec from_term
   | Const Unit -> []
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
       from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env t2
-  | App({desc=Fun(_, t)}, [t2]) when is_base_typ t2.typ ->
-      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set ce_env t
+  | App({desc=Fun(x, t)}, [t2]) when is_base_typ t2.typ ->
+      let val_env' = (x, Closure(var_env, val_env, t2))::val_env in
+      let var_env' = (x, List.map fst val_env)::var_env in
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set ce_env t
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       if !!debug then Format.printf "  APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
@@ -352,6 +357,7 @@ let rec from_term
       if !!debug then Format.printf "  IF t1: %a@\n" Print.term t1;
       let tid = get_id_option t in
       let aux br ce_env' =
+        let nid = Counter.gen cnt in
         let cond,t23 = if br = 0 then t1, t2 else make_not t1, t3 in
         if !!debug then Format.printf "    t23: %a@\n" Print.term t23;
         let node =

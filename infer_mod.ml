@@ -92,7 +92,7 @@ let print_horn_clause fm (pre,constr) =
   in
   if constr = false_term
   then Format.fprintf fm "@[?- %a.@]" (print_list pr ",@ ") pre
-  else Format.fprintf fm "@[%a :- %a.@]" pr constr (print_list pr ",@ ") pre
+  else Format.fprintf fm "@[<hov 4>%a :-@ %a.@]" pr constr (print_list pr ",@ ") pre
 let print_horn_clauses fm hcs =
   Format.fprintf fm "@[%a@]" (print_list print_horn_clause "@\n") hcs
 
@@ -415,27 +415,30 @@ let make_assumption templates val_env =
   let dbg = 0=1 && !!debug in
   if dbg then Format.printf "  MA: Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
   let aux x =
-    let cmp (x1,id1) (x2,id2) = Id.eq x1 x2 && id1 = id2 in
-    if dbg then Format.printf "    MA: x: %a@." Id.print x;(*
-    val_env
-    |> List.dropwhile (not -| Id.eq x -| fst)
-    |> List.map fst
-    |@> Format.printf "    MA: xs: %a@." (List.print Id.print)
-    |> List.filter is_base_var
-    |> List.map make_var
-                                                *)
-    make_var x
-    |> _PAppSelf @@ List.assoc ~cmp (x,None) templates
-    |@dbg&> Format.printf "      MA: typ of %a: %a@." Id.print x print_template
-    |> constr_of_typ
-    |@dbg&> Format.printf "      MA: constr: %a@." print_constr
+    try
+      let cmp (x1,id1) (x2,id2) = Id.eq x1 x2 && id1 = id2 in
+      if dbg then Format.printf "    MA: x: %a@." Id.print x;(*
+      val_env
+      |> List.dropwhile (not -| Id.eq x -| fst)
+      |> List.map fst
+      |@> Format.printf "    MA: xs: %a@." (List.print Id.print)
+      |> List.filter is_base_var
+      |> List.map make_var
+                                                  *)
+      make_var x
+      |> _PAppSelf @@ List.assoc ~cmp (x,None) templates
+      |@dbg&> Format.printf "      MA: typ of %a: %a@." Id.print x print_template
+      |> constr_of_typ
+      |@dbg&> Format.printf "      MA: constr: %a@." print_constr
+      |> Option.some
+    with Not_found -> None
   in
   val_env
   |> List.map fst
   |@dbg&> Format.printf "  MA: vars: %a@." (List.print Id.print)
   |> List.filter is_base_var
   |@dbg&> Format.printf "  MA: base_vars: %a@." (List.print Id.print)
-  |> List.map aux
+  |> List.filter_map aux
   |@dbg&> Format.printf "  MA: base_vars_constr: %a@." (List.print print_constr)
 
 
@@ -1179,23 +1182,51 @@ let same_last_sol last_sol p1 p2 =
     t2 = List.fold_right2 subst_var xs1 xs2 t1
   with Not_found -> false
 
+let add_merged (p1,p2) merged =
+  if List.mem_assoc p1 merged then
+    (p2, List.assoc p1 merged)::merged
+  else if List.mem_assoc p2 merged then
+    (p1, List.assoc p2 merged)::merged
+  else
+    (p1,p2)::merged
+
 let solve_merged merge_candidates hcs =
   let dependencies,map = merge_predicate_variables merge_candidates hcs in
+  let sbst (p1,p2) map =
+    let aux p = if p = p1 then p2 else p in
+    List.map (Pair.map aux aux) map
+  in
   let rec aux used last_sol merged deps map hcs =
+    if !!debug then Format.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
     match map with
     | [] -> last_sol, merged
-    | (p1,p2)::map' when Dependency.mem (p1,p2) deps || Dependency.mem (p2,p1) deps ->
+    | (p1,p2)::map' when p1 = p2 ->
         aux used last_sol merged deps map' hcs
-    | (p1,p2)::map' when not (List.mem p1 used && List.mem p2 used) -> aux used last_sol ((p1,p2)::merged) deps map' hcs
-    | (p1,p2)::map' when same_last_sol last_sol p1 p2 -> aux used last_sol ((p1,p2)::merged) deps map' hcs
+    | (p1,p2)::map' when Dependency.mem (p1,p2) deps || Dependency.mem (p2,p1) deps ->
+        if !!debug then Format.printf "NOT MERGE %d, %d@." p1 p2;
+        aux used last_sol merged deps map' hcs
+    | (p1,p2)::map' when not (List.mem p1 used && List.mem p2 used) ->
+        if !!debug then Format.printf "MERGE1 %d, %d@." p1 p2;
+        let merged' = add_merged (p1,p2) merged in
+        let map'' = sbst (p1,p2) map' in
+        aux used last_sol merged' deps map'' hcs
+    | (p1,p2)::map' when same_last_sol last_sol p1 p2 ->
+        if !!debug then Format.printf "MERGE2 %d, %d@." p1 p2;
+        let merged' = add_merged (p1,p2) merged in
+        let map'' = sbst (p1,p2) map' in
+        aux used last_sol merged' deps map'' hcs
     | (p1,p2)::map' ->
         let hcs' = List.map (map_horn_clause @@ replace_id p1 p2) hcs in
         incr cnt;
         match solve_option hcs' with
         | exception e -> Format.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps; raise e
-        | None -> aux used last_sol merged deps map' hcs
+        | None ->
+            if !!debug then Format.printf "CANNOT MERGE %d, %d@." p1 p2;
+            aux used last_sol merged deps map' hcs
         | Some sol ->
-            if !!debug then Format.printf "MERGE %d, %d@." p1 p2;
+            if !!debug then Format.printf "MERGE3 %d, %d@." p1 p2;
+            let merged' = add_merged (p1,p2) merged in
+            let map'' = sbst (p1,p2) map' in
             let deps' = add_dependency (add_dependency deps (p1,p2)) (p2,p1) in
             if !!debug then save_dep deps' hcs' @@ Format.sprintf "tmp/test%d.dot" !cnt;
             if !!debug then Format.printf "SOLVED@.";
@@ -1206,7 +1237,7 @@ let solve_merged merge_candidates hcs =
               if !!debug then Format.printf "new_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ List.Set.diff deps' deps;
  *)
               let used' = List.remove used p1 in
-              aux used' sol ((p1,p2)::merged) deps' map' hcs'
+              aux used' sol merged' deps' map'' hcs'
   in
   if !!debug then Format.printf "init_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements dependencies;
   if !!debug then save_dep dependencies hcs "tmp/test.dot";
@@ -1218,12 +1249,12 @@ let solve_merged merge_candidates hcs =
       if !!debug then Format.printf "map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) map;
       if !!debug then Format.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
       if !!debug then Format.printf "Dom(sol'): %a@." (List.print Format.pp_print_int) @@ List.map fst sol';
-      let aux (x,y) =
+      let aux' (x,y) =
         try
           Some (x, List.assoc y sol')
         with Not_found -> None
       in
-      Some (List.filter_map aux merged @ sol')
+      Some (List.filter_map aux' merged @ sol')
 
 let assoc_pred_var p hcs =
   if 0=1 then Format.printf "APV: P_%d@." p;
@@ -1254,16 +1285,13 @@ let rec get_merge_candidates_aux typ1 typ2 =
 
 let get_merge_candidates templates hcs =
   let aux typs =
+    if !!debug then Format.printf "GMC typs: %a@." (List.print print_template) typs;
     List.flatten_map (get_merge_candidates_aux @@ List.hd typs) @@ List.tl typs
   in
   templates
-  |@!!debug&> (fun _ -> Format.printf "GMC1@.")
   |> List.map (Pair.map_fst fst)
-  |@!!debug&> (fun _ -> Format.printf "GMC2@.")
   |> List.classify ~eq:(Compare.eq_on ~eq:Id.eq fst)
-  |@!!debug&> (fun _ -> Format.printf "GMC3@.")
   |> List.map (List.flatten_map (snd |- decomp_inter))
-  |@!!debug&> (fun _ -> Format.printf "GMC4@.")
   |> List.flatten_map aux
 
 let infer prog f typ ce_set =
@@ -1349,7 +1377,7 @@ let infer prog f typ ce_set =
         in
         env'
         |> List.map aux
-        |*> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_subtype @@ Ref_type.decomp_inter typ)
+        |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_equiv @@ Ref_type.decomp_inter typ)
         |> Ref_type.Env.of_list
         |*> Ref_type.Env.normalize
       in
