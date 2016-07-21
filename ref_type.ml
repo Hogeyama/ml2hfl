@@ -448,13 +448,13 @@ let rec remove_subtype typs =
         aux acc' typs'
   in
   aux [] typs
-(*
+
 let remove_subtype typs =
-  Format.printf "RS: IN %a@." (List.print print) typs;
+  if !!debug then Format.printf "RS: IN %a@." (List.print print) typs;
   let r =remove_subtype typs in
-  Format.printf "RS: OUT %a@." (List.print print) r;
+  if !!debug then Format.printf "RS: OUT %a@." (List.print print) r;
   r
- *)
+
 
 let rec simplify_typs constr styp is_zero make_zero and_or typs =
   let decomp typ =
@@ -463,6 +463,7 @@ let rec simplify_typs constr styp is_zero make_zero and_or typs =
     | Union(_, typs) -> typs
     | typ -> [typ]
   in
+  if !!debug then Format.printf "ST@.";
   let typs' =
     typs
     |> List.map simplify
@@ -472,6 +473,7 @@ let rec simplify_typs constr styp is_zero make_zero and_or typs =
     |> flatten
     |> decomp
   in
+  if !!debug then Format.printf "ST: @[%a ==>@ %a@." (List.print print) typs (List.print print) typs';
   if List.exists is_zero typs' then
     make_zero styp
   else
@@ -503,6 +505,7 @@ let rec simplify_typs constr styp is_zero make_zero and_or typs =
           flatten @@ constr styp typs'
 
 and simplify typ =
+  let r =
   match flatten typ with
   | Base(base, x, p) ->
       let p' = simplify_pred p in
@@ -526,6 +529,9 @@ and simplify typ =
       if p_len' = U.false_term
       then Union(to_simple typ, [])
       else List(x, p_len', y, simplify_pred p_i, simplify typ)
+  in
+  if !!debug then Format.printf "REF_TYPE SIMPLIFY @[@[%a@] ==>@ @[%a@]@." print typ print r;
+  r
 
 
 (*

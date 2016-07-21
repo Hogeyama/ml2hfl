@@ -976,7 +976,7 @@ let rec apply_sol sol x vars pos tmp =
   if dbg then Format.printf "AS tmp: %a@." print_template tmp;
   if dbg then Format.printf "AS r: %a@." Ref_type.print r;
   r
-let apply_sol sol pos tmp = Ref_type.simplify @@ apply_sol sol None [] pos tmp
+let apply_sol sol pos tmp = apply_sol sol None [] pos tmp
 
 
 
@@ -1325,7 +1325,15 @@ let infer prog f typ ce_set =
       if !!debug then Format.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
       let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
       if !!debug then Format.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
-      let env' = List.filter_map (fun ((f,_),tmp) -> if Id.mem f top_funs then Some (f, apply_sol sol true tmp) else None) templates in
+      let env' =
+        let aux ((f,_),tmp) =
+          if Id.mem f top_funs then
+            Some (f, apply_sol sol true tmp)
+          else
+            None
+        in
+        List.filter_map aux templates
+      in
       let env'' =
         let aux (x,typ') =
           let typ = Ref_type.Env.assoc x prog.fun_typ_env in
@@ -1334,7 +1342,7 @@ let infer prog f typ ce_set =
           let typ_ =
             if !!debug then Format.printf "  typ: %a@." Ref_type.print typ;
             if !!debug then Format.printf "  typ': %a@." Ref_type.print typ';
-            make_get_rtyp (fun y -> assert (Id.same y x); Ref_type.simplify typ') x
+            make_get_rtyp (fun y -> assert (Id.same y x); typ') x
           in
           if !!debug then Format.printf "  typ_: %a@." Ref_type.print typ_;
           x', typ_
@@ -1343,7 +1351,7 @@ let infer prog f typ ce_set =
         |> List.map aux
         |*> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_subtype @@ Ref_type.decomp_inter typ)
         |> Ref_type.Env.of_list
-        |> Ref_type.Env.normalize
+        |*> Ref_type.Env.normalize
       in
       let env_unused =
         let aux f =
