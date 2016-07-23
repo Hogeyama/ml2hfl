@@ -1294,10 +1294,10 @@ let get_merge_candidates templates hcs =
   |> List.map (List.flatten_map (snd |- decomp_inter))
   |> List.flatten_map aux
 
-let infer prog f typ ce_set =
+let infer prog f typ (ce_set:ce_set) =
   let ce_set =
     if 0=1 then
-      List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x (List.print Format.pp_print_int) ce; read_int() <> 0) ce_set
+      List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x print_ce ce; read_int() <> 0) ce_set
     else
       ce_set
   in

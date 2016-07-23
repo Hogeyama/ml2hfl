@@ -34,18 +34,13 @@ let merge_tenv env' env = (* ??? *)
   Ref_type.Env.of_list @@ List.fold_right (fun (x,typ) acc -> if Id.mem_assoc x acc then acc else (x,typ)::acc) (Ref_type.Env.to_list env) (Ref_type.Env.to_list env')
  *)
 
-let merge_ce_set ce_set' ce_set =
+let merge_ce_set (ce_set':ce_set) (ce_set:ce_set) =
   let dbg = 0=1 in
-  let rec strict_prefix ce1 ce2 =
-    match ce1, ce2 with
-    | _, [] -> false
-    | [], _ -> true
-    | br1::ce1', br2::ce2' -> br1 = br2 && strict_prefix ce1' ce2'
+  let prefix (f,ce1) (g,ce2) =
+    Id.same f g && List.for_all (fun (f,path) -> List.is_prefix path (List.assoc f ce2)) ce1
   in
-  let cmp (x,ce) (x',ce') = Id.same x x' && ce = ce' in
-  let ce_set'' = List.unique ~cmp @@ ce_set' @ ce_set in
-  List.filter_out (fun (x,ce) -> List.exists (fun (y,ce') -> Id.same x y && strict_prefix ce ce') ce_set'') ce_set''
-  |@dbg&> Format.printf "MERGE_CE_SET: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int)
+  List.remove_lower prefix (ce_set' @ ce_set)
+  |@dbg&> Format.printf "MERGE_CE_SET: %a@." print_ce_set
 
 let is_closed f def_env =
   let ys,t = Id.assoc f def_env in
@@ -57,10 +52,10 @@ let report_safe env =
 
 let report_unsafe ce_set =
   Format.printf "Unsafe!@.@.";
-  Format.printf "Modular counterexamples: %a@.@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set
+  Format.printf "Modular counterexamples: %a@.@." print_ce_set ce_set
 
 
-let extend_ce f ce_set =
+let extend_ce f ce_set = assert false(*
   if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
   let r =
     if 0=9 then
@@ -70,13 +65,14 @@ let extend_ce f ce_set =
   in
   if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) r;
   r
+*)
 
 let rec main_loop history c prog cmp f typ ce_set =
   let space = String.make (8*List.length history) ' ' in
   let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
   pr " history: %a" (List.print Id.print) history;
   pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print prog.fun_typ_env;
-  pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
+  pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
   let {fun_typ_env=env; fun_def_env} = prog in
   pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
   match Check_mod.check prog f typ with
@@ -89,7 +85,7 @@ let rec main_loop history c prog cmp f typ ce_set =
   | Check_mod.Untypable ce_set1 ->
       pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       let rec refine_loop ce_set2 =
-        pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set2;
+        pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set2;
         match Infer_mod.infer prog f typ ce_set2 with
         | None ->
             pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;

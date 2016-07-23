@@ -387,6 +387,15 @@ module List = struct
     in
     aux [] xs
 
+  let rec is_prefix ?(eq=(=)) xs ys =
+    match xs, ys with
+    | [], _ -> true
+    | _, [] -> false
+    | br1::ce1', br2::ce2' -> eq br1 br2 && is_prefix ce1' ce2'
+
+  let remove_lower is_lower xs =
+    List.fold_right (fun x acc -> if exists (is_lower x) acc then acc else x::acc) xs []
+
   let assoc_all ?(cmp=(=)) k tbl = filter_map (fun (k',x) -> if cmp k k' then Some x else None) tbl
 (*
   let fold_righti f xs acc = snd @@ fold_right (fun x (i,acc) -> i+1, f i x acc) xs (0,acc)

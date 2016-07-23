@@ -11,6 +11,9 @@ type program =
   {fun_typ_env : Ref_type.Env.t;
    fun_def_env : (id * (id list * typed_term)) list}
 
+type ce = (id * int list) list
+type ce_set = (id * ce) list
+
 let print_typ_env = Ref_type.Env.print
 let print_def_env fm def = List.print (Pair.print Id.print Print.term) fm @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) def
 
@@ -19,6 +22,9 @@ let print_prog fm {fun_typ_env; fun_def_env} =
   Format.fprintf fm "fun_typ_env: %a@\n" print_typ_env fun_typ_env;
   Format.fprintf fm "fun_def_env: %a@\n" print_def_env fun_def_env;
   Format.fprintf fm "@]"
+
+let print_ce fm ce = (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) fm ce
+let print_ce_set fm ce_set = (List.print @@ Pair.print Id.print print_ce) fm ce_set
 
 let rec is_atom t =
   match t.desc with

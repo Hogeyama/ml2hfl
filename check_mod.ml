@@ -9,11 +9,11 @@ let debug () = List.mem "Check_mod" !Flag.debug_module
 
 
 
-
+(*
 let print_ce_set fm ce_set =
   let pr fm (f, ce) = Format.fprintf fm "%a: %a" Id.print f (List.print Format.pp_print_int) ce in
   Format.fprintf fm "%a" (print_list pr ",@ ") ce_set
-
+ *)
 let to_CEGAR_ref_type_base base =
   match base with
   | Ref_type.Unit -> CEGAR_ref_type.Unit
@@ -100,16 +100,45 @@ let eta_decomp_funs (Closure(val_env,t)) =
 let counter = Counter.create ()
 let new_label () = Counter.gen counter
 
-let add_label = make_trans2 ()
-let add_label_term l t =
-  let t' = add_label.tr2_term_rec l t in
+
+let make_label_env = make_col2 [] (@)
+let make_label_env_term cnt t =
   match t.desc with
-  | If(t1, t2, t3) ->
+  | Let(_, bindings, t1) ->
+      let aux (g,xs,t) = if xs = [] then None else Some (g, Counter.gen cnt) in
+      List.filter_map aux bindings @ make_label_env.col2_term cnt t1
+  | _ -> make_label_env.col2_term_rec cnt t
+let () = make_label_env.col2_term <- make_label_env_term
+let make_label_env f t =
+  let cnt = Counter.create () in
+  (f, Counter.gen cnt) :: make_label_env.col2_term cnt t
+
+
+let add_label = make_trans2 ()
+let add_label_term (l,env) t =
+  match t.desc with
+  | If _ ->
+      let t' = add_label.tr2_term_rec (l,env) t in
       assert (Option.is_none @@ get_id_option t');
       add_id l t'
-  | _ -> t'
+  | Let(flag, bindings, t1) ->
+      let bindings' =
+        let aux (g,xs,t) =
+          g,
+          xs,
+          if xs = [] then
+            add_label.tr2_term (l,env) t
+          else
+            add_label.tr2_term (Id.assoc g env, env) t
+        in
+        List.map aux bindings
+      in
+      let t1' = add_label.tr2_term (l,env) t1 in
+      make_let_f flag bindings' t1'
+  | _ -> add_label.tr2_term_rec (l,env) t
 let () = add_label.tr2_term <- add_label_term
-let add_label = add_label.tr2_term
+let add_label l env = add_label.tr2_term (l, env)
+
 let get_label = get_id_option
 
 (* ASSUME: Input must be normal form *) (* TODO: remove this assumption *)
@@ -226,7 +255,7 @@ let rec eval top_funs val_env ce label_env t =
 
 type result =
   | Typable of Ref_type.env
-  | Untypable of (Syntax.id * int list) list
+  | Untypable of ce_set
 
 let add_context prog f typ =
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
@@ -239,8 +268,9 @@ let add_context prog f typ =
   in
 (*
   let label_env = List.mapi (fun i f -> f, i) fs in
- *)
   let label_env = [f, 0] in
+ *)
+  let label_env = make_label_env f @@ snd @@ Id.assoc f fun_env in
   let t' =
     unit_term
     |> Trans.ref_to_assert @@ Ref_type.Env.of_list [f,typ]
@@ -259,10 +289,33 @@ let add_context prog f typ =
   in
   let fun_env'' =
     List.map (Pair.map_snd @@ Pair.map_snd normalize) fun_env' @
-    [f, Pair.map_snd (add_label 0 -| normalize) @@ Id.assoc f fun_env]
+    [f, Pair.map_snd (add_label (List.assoc f label_env) label_env -| normalize) @@ Id.assoc f fun_env]
   in
   if dbg then Format.printf "ADD_CONTEXT fun_env'': %a@." Modular_syntax.print_def_env fun_env'';
   t', fun_env'', List.map Pair.swap label_env
+
+let complete_ce_set f t ce =
+  let let_fun_var = make_col [] (@@@) in
+  let let_fun_var_desc desc =
+    match desc with
+    | Let(flag,bindings,t) ->
+        let aux (f,xs,t) =
+          let fs = let_fun_var.col_term t in
+          if xs = [] then
+            fs
+          else
+            f::fs
+        in
+        let_fun_var.col_term t @@@ List.rev_map_flatten aux bindings
+    | _ -> let_fun_var.col_desc_rec desc
+  in
+  let_fun_var.col_desc <- let_fun_var_desc;
+  let fs = f :: let_fun_var.col_term t in
+  List.map (fun f -> f, if Id.mem_assoc f ce then Id.assoc f ce else []) fs
+
+let make_init_ce_set f t =
+  f, complete_ce_set f t []
+
 
 let check prog f typ =
   if !!debug then Format.printf "MAIN_LOOP prog: %a@." print_prog prog;
@@ -293,20 +346,20 @@ let check prog f typ =
       let env' = (f,typ) :: Main_loop.trans_env (List.map fst fun_env) make_get_rtyp env in
       if !!debug then Format.printf "  env': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
       Typable (Ref_type.Env.normalize @@ Ref_type.Env.of_list env')
-  | CEGAR.Unsafe(sol, ModelCheck.CESafety ce) ->
+  | CEGAR.Unsafe(sol, ModelCheck.CESafety ce_single) ->
       if !!debug then Main_loop.report_unsafe main sol set_target;
       if !!debug then Format.printf "  Untypable@.@.";
-      if !!debug then Format.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_int) ce;
+      if !!debug then Format.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_int) ce_single;
       if !!debug then Format.printf "    LABEL_ENV: %a@\n" (List.print @@ Pair.print Format.pp_print_int Id.print) label_env;
       if !!debug then Format.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
-      let ans,ce',paths =
+      let ans,ce_single',ce =
         let val_env = List.fold_left (fun val_env (f,(xs,t)) -> let rec val_env' = (f, Closure(val_env', make_funs xs t))::val_env in val_env') [] fun_env' in
-        eval top_funs val_env ce label_env t
+        eval top_funs val_env ce_single label_env t
       in
-      if !!debug then Format.printf "  PATHS: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) paths;
+      if !!debug then Format.printf "  CE: %a@\n" print_ce ce;
       assert (ans = Fail);
-      assert (ce' = []);
-      let paths' = List.filter_map (fun (f,_) -> if Id.mem_assoc f paths then None else Some(f,[])) fun_env @ paths in
-      if !!debug then Format.printf "  PATHS': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) paths';
-      Untypable paths'
+      assert (ce_single' = []);
+      let ce_set = (f, complete_ce_set f (snd @@ Id.assoc f fun_env) ce) :: List.map (fun (f,(xs,t)) -> make_init_ce_set f t) fun_env in
+      if !!debug then Format.printf "  PATHS': %a@\n" print_ce_set ce_set;
+      Untypable ce_set
   | CEGAR.Unsafe _ -> assert false

@@ -2,6 +2,7 @@ open Util
 open Syntax
 open Term_util
 open Type
+open Modular_syntax
 
 module RT = Rose_tree
 
@@ -99,17 +100,44 @@ let get_arg_num = List.length -| Triple.snd -| Option.get -| decomp_fix
 
 
 let counter = Counter.create ()
-let new_tid () = Counter.gen counter
+let make_new_ce_env ce =
+  let aux (f,path) =
+    f, Counter.gen counter, path
+  in
+  List.map aux ce
 
-let add_tid = make_trans2 ()
-let add_tid_term (f,l) t =
-  let t' = add_tid.tr2_term_rec (f,l) t in
+let add_tid_var = make_trans2 ()
+let add_tid_var_term (f,l) t =
+  let t' = add_tid_var.tr2_term_rec (f,l) t in
   match t.desc with
   | Var g when Id.same f g -> add_id l t'
-  | If _ -> add_id l t'
   | _ -> t'
-let () = add_tid.tr2_term <- add_tid_term
-let add_tid = add_tid.tr2_term
+let () = add_tid_var.tr2_term <- add_tid_var_term
+let add_tid_var = add_tid_var.tr2_term
+
+let add_tid_if = make_trans2 ()
+let add_tid_if_term (tid,env) t =
+  match t.desc with
+  | If _ ->
+      add_id tid @@ add_tid_if.tr2_term_rec (tid,env) t
+  | Let(flag, bindings, t1) ->
+      let bindings' =
+        let aux (g,xs,t) =
+          g,
+          xs,
+          if List.length xs <= 1 then
+            add_tid_if.tr2_term (tid,env) t
+          else try
+            add_tid_if.tr2_term (Id.assoc g env, env) t with Not_found -> Format.printf "g: %a@.xs: %a@." Id.print g (List.print Id.print) xs; assert false
+        in
+        List.map aux bindings
+      in
+      let t1' = add_tid_if.tr2_term (tid,env) t1 in
+      make_let_f flag bindings' t1'
+  | _ -> add_tid_if.tr2_term_rec (tid,env) t
+let () = add_tid_if.tr2_term <- add_tid_if_term
+let add_tid_if = add_tid_if.tr2_term
+
 let get_tid t = get_id t
 
 let term_of_value (Closure(_,_,t)) = t
@@ -269,7 +297,7 @@ let rec from_term
           (fun_env : (id * (id list * typed_term)) list)
           (var_env : var_env)
           (val_env : val_env)
-          (ce_set : (id * int list) list)
+          (ce_set : ce_set)
           (ce_env : (tid * (int * int list)) list)
           (t : typed_term)
         : t list =
@@ -294,21 +322,27 @@ let rec from_term
       let ys,t_f = Id.assoc f fun_env in
       if !!debug then Format.printf "    D:(%a %a = %a), A:(%a %a)@\n" Id.print f (List.print Id.print) ys Print.term t_f Id.print f (List.print Print.term) ts;
       assert (List.length ys = List.length ts);
-      let tid = new_tid () in
-      if !!debug then Format.printf "    tid: %d@\n" tid;
       let children =
-        let aux i path =
+        let aux i ce =
+          let new_ce_env = make_new_ce_env ce in
+          let tid_env = List.map (fun (f,tid,path) -> f, tid) new_ce_env in
+          let tid = Id.assoc f tid_env in
           let f' = Id.new_var_id f in
           if !!debug then Format.printf "    ALPHA: %a => %a@\n" Id.print f Id.print f';
           let var_env' = (f', []) :: var_env in
           let val_env' =
-            let t_f' = Trans.alpha_rename t_f in
-            let t_f'' = add_tid (f',tid) @@ subst_var f f' t_f' in
+            let t_f' =
+              t_f
+              |> add_tid_var (f, tid)
+              |> add_tid_if (tid, tid_env)
+              |> Trans.alpha_rename
+              |> subst_var f f'
+            in
             let var_env_f' = [f', []] in
-            let rec val_env_f' = [f', Closure(var_env_f', val_env_f', make_funs ys t_f'')] in
+            let rec val_env_f' = [f', Closure(var_env_f', val_env_f', make_funs ys t_f')] in
             val_env_f' @ val_env
           in
-          let ce_env' = (tid,(i,path))::ce_env in
+          let ce_env' = List.map (fun (f,tid,path) -> tid, (i, path)) new_ce_env @ ce_env in
           let t' = make_app (add_id tid @@ make_var f') ts in
           from_term cnt ext_funs args (f'::top_funs) top_fun_args typ_env fun_env var_env' val_env' ce_set ce_env' t'
         in
@@ -467,8 +501,8 @@ let from_term typ_env fun_env ce_set t =
 
 
 (* Dom(env) and Dom(fun_env) must be disjoint *)
-let from_program env fun_env (ce_set: (id * int list) list) t =
-  if !!debug then Format.printf "@.CE_SET: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
+let from_program env fun_env (ce_set:ce_set) t =
+  if !!debug then Format.printf "@.CE_SET: %a@." print_ce_set ce_set;
   if !!debug then Format.printf "ENV: %a@." Ref_type.Env.print env;
   if !!debug then Format.printf "FUN_ENV: %a@." (List.print @@ Pair.print Id.print Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) fun_env;
   if !!debug then Format.printf "from_program: %a@." Print.term t;
