@@ -31,6 +31,7 @@ and attr =
   | AComment of string
   | AId of int
   | AMark
+  | ADoNotInline
 
 and typed_term = {desc:term; typ:typ; attr:attr list}
 and term =

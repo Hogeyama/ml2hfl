@@ -105,8 +105,11 @@ let make_label_env = make_col2 [] (@)
 let make_label_env_term cnt t =
   match t.desc with
   | Let(_, bindings, t1) ->
-      let aux (g,xs,t) = if xs = [] then None else Some (g, Counter.gen cnt) in
-      List.filter_map aux bindings @ make_label_env.col2_term cnt t1
+      let aux (g,xs,t) =
+        let env = make_label_env.col2_term cnt t in
+        if xs = [] then env else (g, Counter.gen cnt)::env
+      in
+      List.flatten_map aux bindings @ make_label_env.col2_term cnt t1
   | _ -> make_label_env.col2_term_rec cnt t
 let () = make_label_env.col2_term <- make_label_env_term
 let make_label_env f t =
@@ -270,7 +273,13 @@ let add_context prog f typ =
   let label_env = List.mapi (fun i f -> f, i) fs in
   let label_env = [f, 0] in
  *)
-  let label_env = make_label_env f @@ snd @@ Id.assoc f fun_env in
+  let label_env =
+    Id.assoc f fun_env
+    |> snd
+    |@dbg&> Format.printf "AC body: %a@." Print.term
+    |> make_label_env f
+    |@dbg&> Format.printf "AC Dom(label_env): %a@." (List.print Id.print) -| List.map fst
+  in
   let t' =
     unit_term
     |> Trans.ref_to_assert @@ Ref_type.Env.of_list [f,typ]

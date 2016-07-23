@@ -1645,47 +1645,50 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 
 let elim_unused_let = make_trans2 ()
 
-let elim_unused_let_desc cbv desc =
+let elim_unused_let_term cbv t =
   let has_no_effect t =
     if false
     then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
     else has_no_effect t
   in
-  match desc with
-  | Let(Nonrecursive, bindings, t) ->
-      let t' = elim_unused_let.tr2_term cbv t in
-      let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
-      let fv = get_fv t' in
-      let used (f,xs,t) =
-        Id.mem f fv ||
-        cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
-      in
-      let bindings'' = List.filter used bindings' in
-      (make_let bindings'' t').desc
-  | Let(Recursive, bindings, t) ->
-      let t' = elim_unused_let.tr2_term cbv t in
-      let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
-      let fv = get_fv t' in
-      let used (f,xs,t) =
-        Id.mem f fv ||
-        cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
-      in
-      if List.exists used bindings'
-      then (make_letrec bindings' t').desc
-      else t'.desc
-  | _ -> elim_unused_let.tr2_desc_rec cbv desc
-
-let () = elim_unused_let.tr2_desc <- elim_unused_let_desc
+  let desc' =
+    let flag = List.mem ADoNotInline t.attr in
+    match t.desc with
+    | Let(Nonrecursive, bindings, t) when not flag ->
+        let t' = elim_unused_let.tr2_term cbv t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let fv = get_fv t' in
+        let used (f,xs,t) =
+          Id.mem f fv ||
+          cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+        in
+        let bindings'' = List.filter used bindings' in
+        (make_let bindings'' t').desc
+    | Let(Recursive, bindings, t) when not flag ->
+        let t' = elim_unused_let.tr2_term cbv t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let fv = get_fv t' in
+        let used (f,xs,t) =
+          Id.mem f fv ||
+          cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+        in
+        if List.exists used bindings'
+        then (make_letrec bindings' t').desc
+        else t'.desc
+    | _ -> elim_unused_let.tr2_desc_rec cbv t.desc
+  in
+  {t with desc=desc'}
+let () = elim_unused_let.tr2_term <- elim_unused_let_term
 let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
 
 
 
 let subst_with_rename = make_trans2 ()
 
-let subst_with_rename_term (x,t) t' =
-  match t'.desc with
-  | Var y when Id.same x y -> alpha_rename t
-  | Fun(y, t1) when Id.same x y -> t'
+let subst_with_rename_desc (x,t) desc =
+  match desc with
+  | Var y when Id.same x y -> (alpha_rename t).desc
+  | Fun(y, t1) when Id.same x y -> desc
   | Let(Nonrecursive, bindings, t2) ->
       let aux (f,xs,t1) =
         subst_with_rename.tr2_var (x,t) f,
@@ -1697,8 +1700,8 @@ let subst_with_rename_term (x,t) t' =
         then t2
         else subst_with_rename.tr2_term (x,t) t2
       in
-      make_let bindings' t2'
-  | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
+      Let(Nonrecursive, bindings', t2')
+  | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> desc
   | Let(Recursive, bindings, t2) ->
       let aux (f,xs,t1) =
         subst_with_rename.tr2_var (x,t) f,
@@ -1707,7 +1710,7 @@ let subst_with_rename_term (x,t) t' =
       in
       let bindings' = List.map aux bindings in
       let t2' = subst_with_rename.tr2_term (x,t) t2 in
-      make_letrec bindings' t2'
+      Let(Recursive, bindings', t2')
   | Match(t1,pats) ->
       let aux (pat,cond,t1) =
         let xs = get_vars_pat pat in
@@ -1715,10 +1718,10 @@ let subst_with_rename_term (x,t) t' =
         then pat, cond, t1
         else pat, subst_with_rename.tr2_term (x,t) cond, subst_with_rename.tr2_term (x,t) t1
       in
-      make_match (subst_with_rename.tr2_term (x,t) t1) (List.map aux pats)
-  | _ -> subst_with_rename.tr2_term_rec (x,t) t'
+      Match(subst_with_rename.tr2_term (x,t) t1, List.map aux pats)
+  | _ -> subst_with_rename.tr2_desc_rec (x,t) desc
 
-let () = subst_with_rename.tr2_term <- subst_with_rename_term
+let () = subst_with_rename.tr2_desc <- subst_with_rename_desc
 
 let subst_with_rename ?(check=false) x t1 t2 =
   if check && count_occurrence x t2 = 1
@@ -1913,34 +1916,31 @@ let rec eval_bexp t =
 (* input is assumed to be a CBN-program *)
 let beta_reduce = make_trans ()
 
-let beta_reduce_desc desc =
-  match desc with
-  | Let(Nonrecursive, [x,[],{desc=Var y}], t) ->
-      (beta_reduce.tr_term @@ subst_with_rename ~check:true x (make_var y) t).desc
-  | App(t, []) -> (beta_reduce.tr_term t).desc
+let beta_reduce_term t =
+  match t.desc with
+  | Let(Nonrecursive, [x,[],{desc=Var y}], t1) ->
+      beta_reduce.tr_term @@ subst_with_rename ~check:true x (make_var y) t1
+  | App(t1, []) ->
+      beta_reduce.tr_term t1
   | App(t1, t2::ts) ->
       begin
         match beta_reduce.tr_term t1 with
-        | {desc=Fun(x,t1')} -> beta_reduce.tr_desc @@ App(subst_with_rename ~check:true x t2 t1', ts)
-        | t1' -> App(t1', List.map beta_reduce.tr_term (t2::ts))
+        | {desc=Fun(x,t1')} -> beta_reduce.tr_term @@ make_app (subst_with_rename ~check:true x t2 t1') ts
+        | t1' -> make_app t1' @@ List.map beta_reduce.tr_term (t2::ts)
       end
-  | Proj(i, {desc=Tuple ts}) -> (beta_reduce.tr_term @@ List.nth ts i).desc
+  | Proj(i, {desc=Tuple ts}) -> beta_reduce.tr_term @@ List.nth ts i
   | If(t1,t2,t3) when is_simple_bexp t1 && get_fv t1 = [] ->
-      (beta_reduce.tr_term @@ if eval_bexp t1 then t2 else t3).desc
-  | _ -> beta_reduce.tr_desc_rec desc
+      beta_reduce.tr_term @@ if eval_bexp t1 then t2 else t3
+  | _ -> beta_reduce.tr_term_rec t
 
-let () = beta_reduce.tr_desc <- beta_reduce_desc
-let beta_reduce = beta_reduce.tr_term
+let () = beta_reduce.tr_term <- beta_reduce_term
+let beta_reduce t =
+  let t' = beta_reduce.tr_term t in
+  if List.mem ACPS t.attr => List.mem ACPS t'.attr then
+    t'
+  else
+    add_attr ACPS t'
 
-
-let test_term =
-  let x = Id.new_var (TFun(Id.new_var TInt, TInt)) in
-  let y = Id.new_var (TFun(Id.new_var TInt, TInt)) in
-  let k = Id.new_var (TFun(Id.new_var TInt, TInt)) in
-  let h = Id.new_var (TFun(Id.new_var TInt, TInt)) in
-  make_app (make_fun x @@ make_fun y @@ make_var y) [make_var k; make_var h]
-
-let () = if false then (Format.printf "%a@.@.%a@." Print.term test_term Print.term (beta_reduce test_term); assert false)
 
 let replace_bottom_def = make_trans ()
 

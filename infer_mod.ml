@@ -1015,7 +1015,7 @@ let normalize = Trans.reduce_fail_unit |- Trans.reconstruct
 let trans_CPS env funs t =
   let t',make_get_rtyp_cps =
     t
-    |> make_letrecs @@ List.map Triple.of_pair_r env
+    |> List.fold_right (fun (f,(xs,t1)) t -> add_attr ADoNotInline @@ make_letrec [f,xs,t1] t) env
     |@!!debug&> Format.printf "trans_CPS: %a@." Print.term
     |> CPS.trans_as_direct
   in

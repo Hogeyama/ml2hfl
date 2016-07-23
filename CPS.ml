@@ -659,7 +659,8 @@ let rec transform k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
           make_app_cont t_orig.effect (make_var f) (make_fun f' t'')
         in
         let t1'' = List.fold_right2 aux bindings bindings' @@ make_app_cont t1.effect t1' (make_var k) in
-        make_fun k @@ make_let_f flag bindings' t1''
+        make_fun k @@
+          {(make_let_f flag bindings' t1'') with attr=t_orig.attr}
     | LetCPS(flag, bindings, t1), EExcep ->
         let r = Id.new_var ~name:"r" @@ trans_typ typ_orig typ in
         let k = Id.new_var ~name:("k" ^ k_post) @@ TFun(r,typ_result) in
@@ -684,9 +685,9 @@ let rec transform k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         in
         make_fun k @@
           make_fun h @@
-            make_let_f flag bindings' @@
-              List.fold_right2 aux bindings bindings' @@
-              make_app_excep t1.effect t1' (make_var k) (make_var h)
+            {(make_let_f flag bindings' @@
+                List.fold_right2 aux bindings bindings' @@
+                  make_app_excep t1.effect t1' (make_var k) (make_var h)) with attr=t_orig.attr}
     | BinOpCPS(op, t1, t2), ENone ->
         let t1' = transform k_post t1 in
         let t2' = transform k_post t2 in
@@ -974,34 +975,34 @@ let inline_affine = make_trans2 ()
 
 let inline_affine_term env t =
   let t' =
-  match t.desc with
-  | App({desc=Var f}, ts) ->
-      begin
-        try
-          let xs,t = Id.assoc f env in
-          let ts' = List.map (inline_affine.tr2_term env) ts in
-          if List.length xs = List.length ts
-          then List.fold_right2 Trans.subst_with_rename xs ts' t
-          else raise Not_found
-        with Not_found -> inline_affine.tr2_term_rec env t
-      end
-  | Let(flag, bindings, t1) ->
-      let not_rand_int t =
-        match t.desc with
-        | App({desc=Const(RandValue(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
-        | _ -> true
-      in
-      let linear f xs t =
-        let fv = get_fv ~cmp:(fun _ _ -> false) t in
-        fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
-      in
-      let env' = List.filter_map (fun (f,xs,t) -> if not_rand_int t && linear f xs t then Some (f,(xs,t)) else None) bindings @ env in
-      let bindings' = List.map (Triple.map_trd @@ inline_affine.tr2_term env') bindings in
-      make_let_f flag bindings' @@ inline_affine.tr2_term env' t1
-  | _ -> inline_affine.tr2_term_rec env t
+    match t.desc with
+    | App({desc=Var f}, ts) ->
+        begin
+          try
+            let xs,t = Id.assoc f env in
+            let ts' = List.map (inline_affine.tr2_term env) ts in
+            if List.length xs = List.length ts
+            then List.fold_right2 Trans.subst_with_rename xs ts' t
+            else raise Not_found
+          with Not_found -> inline_affine.tr2_term_rec env t
+        end
+    | Let(flag, bindings, t1) ->
+        let not_rand_int t =
+          match t.desc with
+          | App({desc=Const(RandValue(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
+          | _ -> true
+        in
+        let linear f xs t =
+          let fv = get_fv ~cmp:(fun _ _ -> false) t in
+          fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
+        in
+        let check f xs t1 = not_rand_int t1 && linear f xs t1 && not @@ List.mem ADoNotInline t.attr in
+        let env' = List.filter_map (fun (f,xs,t) -> if check f xs t then Some (f,(xs,t)) else None) bindings @ env in
+        let bindings' = List.map (Triple.map_trd @@ inline_affine.tr2_term env') bindings in
+        make_let_f flag bindings' @@ inline_affine.tr2_term env' t1
+    | _ -> inline_affine.tr2_term_rec env t
   in
-  let attr = if List.mem ACPS t.attr then ACPS::t'.attr else t'.attr in
-  {t' with attr}
+  {t' with attr=t.attr}
 
 let () = inline_affine.tr2_term <- inline_affine_term
 let inline_affine t =

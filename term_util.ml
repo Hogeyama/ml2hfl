@@ -418,10 +418,10 @@ let is_poly_typ = is_poly_typ.col_typ
 let subst = make_trans2 ()
 
 (* [x |-> t], [t/x] *)
-let subst_term (x,t) t' =
-  match t'.desc with
-  | Var y when Id.same x y -> t
-  | Fun(y, t1) when Id.same x y -> t'
+let subst_desc (x,t) desc =
+  match desc with
+  | Var y when Id.same x y -> t.desc
+  | Fun(y, t1) when Id.same x y -> desc
   | Let(Nonrecursive, bindings, t2) ->
       let aux (f,xs,t1) =
         subst.tr2_var (x,t) f,
@@ -433,8 +433,8 @@ let subst_term (x,t) t' =
         then t2
         else subst.tr2_term (x,t) t2
       in
-      make_let bindings' t2'
-  | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
+      Let(Nonrecursive, bindings', t2')
+  | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> desc
   | Let(Recursive, bindings, t2) ->
       let aux (f,xs,t1) =
         subst.tr2_var (x,t) f,
@@ -443,7 +443,7 @@ let subst_term (x,t) t' =
       in
       let bindings' = List.map aux bindings in
       let t2' = subst.tr2_term (x,t) t2 in
-      make_letrec bindings' t2'
+      Let(Recursive, bindings', t2')
   | Match(t1,pats) ->
       let aux (pat,cond,t1) =
         let xs = get_vars_pat pat in
@@ -451,8 +451,8 @@ let subst_term (x,t) t' =
         then pat, cond, t1
         else pat, subst.tr2_term (x,t) cond, subst.tr2_term (x,t) t1
       in
-      make_match (subst.tr2_term (x,t) t1) (List.map aux pats)
-  | _ -> subst.tr2_term_rec (x,t) t'
+      Match(subst.tr2_term (x,t) t1, List.map aux pats)
+  | _ -> subst.tr2_desc_rec (x,t) desc
 
 
 let subst_int = make_trans2 ()
@@ -503,7 +503,7 @@ let () = subst_map.tr2_term <- subst_map_term
 let subst_map = subst_map.tr2_term
 
 
-let () = subst.tr2_term <- subst_term
+let () = subst.tr2_desc <- subst_desc
 let subst_type x t typ = subst.tr2_typ (x,t) typ
 let subst_type_var x y typ = subst_type x (make_var y) typ
 let subst x t1 t2 = subst.tr2_term (x,t1) t2

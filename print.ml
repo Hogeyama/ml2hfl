@@ -105,6 +105,7 @@ and print_attr fm = function
   | AComment s -> fprintf fm "AComment %S" s
   | AId n -> fprintf fm "AId %d" n
   | AMark -> fprintf fm "AMark"
+  | ADoNotInline -> fprintf fm "ADoNotInline"
 
 and ignore_attr_list = if true then const_attr else []
 
