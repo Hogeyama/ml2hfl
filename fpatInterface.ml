@@ -107,6 +107,7 @@ let rec of_typ typ =
   | Type.TInt -> Fpat.Type.mk_int
   | Type.TBool -> Fpat.Type.mk_bool
   | Type.TFun(x,typ) -> Fpat.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
+  | Type.TData("string", _) -> Fpat.Type.mk_string
   | _ ->
       Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
@@ -117,6 +118,7 @@ let rec of_typed_term t =
   | S.Const S.True -> Fpat.Term.mk_const @@ Fpat.Const.True
   | S.Const S.False -> Fpat.Term.mk_const @@ Fpat.Const.False
   | S.Const (S.Int n) -> Fpat.Term.mk_const @@ Fpat.Const.Int n
+  | S.Const (S.String s) -> Fpat.Term.mk_const @@ Fpat.Const.String s
   | S.Var x -> Fpat.Term.mk_var @@ Fpat.Idnt.make @@ Id.to_string x
   | S.Not t1 -> Fpat.Term.mk_app (Fpat.Term.mk_const Fpat.Const.Not) [of_typed_term t1]
   | S.BinOp(op, t1, t2) ->

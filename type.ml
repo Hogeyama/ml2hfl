@@ -34,6 +34,7 @@ let rec is_base_typ = function
   | TBool
   | TAbsBool
   | TInt
+  | TData("string", _)
   | TRInt _ -> true
   | TPred(x,_) -> is_base_typ @@ Id.typ x
   | _ -> false

@@ -182,8 +182,7 @@ let rec constr_of_typ typ =
   | PApp(Const(x, t), _) -> Exp t
   | Fun _
   | PApp(Fun _, _) -> Exp true_term
-  | Inter(_, []) -> Exp true_term
-  | Inter(_, typs) -> (* TODO *)
+  | Inter(_, typs) ->
       _Ands (List.map constr_of_typ typs)
   | _ ->
       Format.printf "  typ: %a@." print_template typ;
@@ -378,6 +377,7 @@ let base_of_typ typ =
   | TUnit -> Ref_type.Unit
   | TInt -> Ref_type.Int
   | TBool -> Ref_type.Bool
+  | TData(s,_) -> Ref_type.Abst s
   | _ ->
       Format.printf "%a@." Print.typ typ;
       assert false
@@ -391,7 +391,7 @@ let rec init_with_pred_var cnt typ =
   | Singleton _ -> assert false
   | Base None -> Base None
   | Base (Some (base, _)) -> new_pred base cnt
-  | Const(x, _) -> (try new_pred (base_of_typ @@ Id.typ x) cnt with _ -> Format.printf "%a@." print_template typ;  assert false)
+  | Const(x, _) -> new_pred (base_of_typ @@ Id.typ x) cnt
   | Fun(x, typ1, typ2) -> Fun(x, ip typ1, ip typ2)
   | Inter(styp, typs) -> _Inter styp @@ List.map ip typs
 
