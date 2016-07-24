@@ -424,7 +424,9 @@ let parse_arg () =
   Flag.input_cegar := String.ends_with !Flag.filename ".cegar";
   match !Flag.filename with
   | "" | "-" -> Flag.filename := "stdin"; stdin
-  | _ -> open_in !Flag.filename
+  | _ ->
+      Config.load_path := Filename.dirname !Flag.filename :: !Config.load_path;
+      open_in !Flag.filename
 
 
 (* called before parsing options *)
