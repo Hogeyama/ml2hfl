@@ -60,7 +60,11 @@ let merge_paths paths1 paths2 =
 let append_paths paths1 (vl, ce, paths2) =
   vl, ce, merge_paths paths1 paths2
 
-type answer = Closure of ((id * answer) list * typed_term) | VTuple of answer list | Fail | Excep of answer
+type answer =
+  | Closure of ((id * answer) list * typed_term)
+  | VTuple of answer list
+  | Fail
+  | Excep of answer
 
 let rec value_of ans =
   match ans with
@@ -74,28 +78,12 @@ let rec print_val_env n fm env =
     Format.fprintf fm "[...]"
   else
     List.print (fun fm (f, ans) -> Format.fprintf fm "%a |-> %a" Id.print f (print_value (n-1)) ans) fm env
-and print_value n fm (Closure(env, v)) = Format.fprintf fm "@[%a%a@]" (print_val_env n) env Print.term v
+and print_value n fm vl =
+  match vl with
+  | Closure(env, v) -> Format.fprintf fm "@[%a%a@]" (print_val_env n) env Print.term v
+  | _ -> unsupported "print_value"
 let print_val_env fm ans = print_val_env 1 fm ans
 let print_value fm ans = print_value 1 fm ans
-
-let eta_decomp_funs (Closure(val_env,t)) =
-  match t.desc with
-  | Event("fail",false) ->
-      let u = Id.new_var TUnit in
-      val_env, [u], make_app t [make_var u]
-  | _ ->
-      let xs,t' = decomp_funs t in
-      let xs',_ = decomp_tfun t'.typ in
-      let xs'' = List.map Id.new_var_id xs' in
-      val_env, xs@xs'', make_app t' @@ List.map make_var xs''
-let eta_decomp_funs (Closure(val_env,t)) =
-  match t.desc with
-  | Event("fail",false) ->
-      let u = Id.new_var TUnit in
-      val_env, [u], make_app t [make_var u]
-  | _ ->
-      let xs,t' = decomp_funs t in
-      val_env, xs, t'
 
 let counter = Counter.create ()
 let new_label () = Counter.gen counter

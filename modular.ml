@@ -68,7 +68,7 @@ let extend_ce f ce_set = assert false(*
 *)
 
 let incr_extend f ce_set extend =
-  let dbg = 0=0 && !!debug in
+  let dbg = 0=1 && !!debug in
   assert (ce_set <> []);
   if dbg then Format.printf "IE f: %a@." Id.print f;
   if dbg then Format.printf "IE CE_SET: %a@." print_ce_set ce_set;
