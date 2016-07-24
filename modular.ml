@@ -67,7 +67,37 @@ let extend_ce f ce_set = assert false(*
   r
 *)
 
-let rec main_loop history c prog cmp f typ ce_set =
+let incr_extend f ce_set extend =
+  let dbg = 0=0 && !!debug in
+  assert (ce_set <> []);
+  if dbg then Format.printf "IE f: %a@." Id.print f;
+  if dbg then Format.printf "IE CE_SET: %a@." print_ce_set ce_set;
+  if dbg then Format.printf "IE EXTEND: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
+  let extend' =
+    let aux g extend' =
+      try
+        snd @@ List.assoc_map ~cmp:Id.eq g succ extend'
+      with Not_found -> (g,1)::extend'
+    in
+    List.fold_left (fun extend' (g,_) -> aux g extend') extend @@ Id.assoc f ce_set
+  in
+  if dbg then Format.printf "IE EXTEND': %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
+  let new_ce_set =
+    let aux ce =
+      let rev xs =
+        if xs = [] then
+          []
+        else
+          let xs',last = List.decomp_snoc xs in
+          xs' @ [1-last]
+      in
+      List.map (Pair.map_snd rev) ce
+    in
+    snd @@ List.assoc_map ~cmp:Id.eq f aux ce_set
+  in
+  merge_ce_set new_ce_set ce_set, extend'
+
+let rec main_loop history c prog cmp f typ ce_set extend =
   let space = String.make (8*List.length history) ' ' in
   let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
   pr " history: %a" (List.print Id.print) history;
@@ -84,9 +114,9 @@ let rec main_loop history c prog cmp f typ ce_set =
       `Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set1
   | Check_mod.Untypable ce_set1 ->
       pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
-      let rec refine_loop ce_set2 =
+      let rec refine_loop ce_set2 extend' =
         pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set2;
-        match Infer_mod.infer prog f typ ce_set2 with
+        match Infer_mod.infer prog f typ ce_set2 extend' with
         | None ->
             pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
             `Untypable, prog.fun_typ_env, ce_set2
@@ -102,28 +132,29 @@ let rec main_loop history c prog cmp f typ ce_set =
               if Ref_type.subtype (Ref_type.Env.assoc g env') typ' then
                 (r,env',ce_set4)
               else
-                main_loop (f::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4
+                main_loop (f::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4 extend'
             in
             let _,env',ce_set3 = List.fold_left aux (`Typable, env, ce_set2) candidate' in
             if not @@ Ref_type.Env.eq env' env then
               (Infer_mod.infer_stronger := false;
-               main_loop history (c+1) {prog with fun_typ_env=env'} cmp f typ ce_set3)
+               main_loop history (c+1) {prog with fun_typ_env=env'} cmp f typ ce_set3 extend')
             else if not @@ List.Set.eq ce_set3 ce_set2 then
               (Infer_mod.infer_stronger := false;
-               refine_loop ce_set3)
+               refine_loop ce_set3 extend')
             else if not !Infer_mod.infer_stronger then
               (if !!debug then Format.printf "infer_stronger := true@.";
                Infer_mod.infer_stronger := true;
-               refine_loop ce_set3)
+               refine_loop ce_set3 extend')
             else if true then
               (if !!debug then Format.printf "extend counterexample@.";
                Infer_mod.infer_stronger := false;
-               refine_loop @@ extend_ce f ce_set3)
+               let ce_set4,extend'' = incr_extend f ce_set3 extend' in
+               refine_loop ce_set4 extend'')
             else
               raise NoProgress
       in
-      refine_loop @@ merge_ce_set ce_set1 ce_set
-let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ []
+      refine_loop (merge_ce_set ce_set1 ce_set) extend
+let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ [] []
 
 let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";

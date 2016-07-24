@@ -1294,7 +1294,7 @@ let get_merge_candidates templates hcs =
   |> List.map (List.flatten_map (snd |- decomp_inter))
   |> List.flatten_map aux
 
-let infer prog f typ (ce_set:ce_set) =
+let infer prog f typ (ce_set:ce_set) extend =
   let ce_set =
     if 0=1 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x print_ce ce; read_int() <> 0) ce_set
@@ -1318,7 +1318,7 @@ let infer prog f typ (ce_set:ce_set) =
     if !!debug then Format.printf "t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
     if !!debug then Format.printf "t: %a@.@." Print.term t;
     if !!debug then Format.printf "env': %a@.@." Ref_type.Env.print env';
-    Comp_tree.from_program env' fun_env' ce_set t
+    Comp_tree.from_program env' fun_env' ce_set extend t
   in
   let fun_env = [](*make_fun_env comp_tree*) in
   if !!debug then Format.printf "fun_env: %a@.@." (List.print @@ Pair.print Id.print @@ Pair.print Id.print @@ Option.print Format.pp_print_int) fun_env;
