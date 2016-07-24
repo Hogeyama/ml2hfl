@@ -416,7 +416,7 @@ let make_assumption templates val_env =
   if dbg then Format.printf "  MA: Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
   let aux x =
     try
-      let cmp (x1,id1) (x2,id2) = Id.eq x1 x2 && id1 = id2 in
+      let eq (x1,id1) (x2,id2) = Id.eq x1 x2 && id1 = id2 in
       if dbg then Format.printf "    MA: x: %a@." Id.print x;(*
       val_env
       |> List.dropwhile (not -| Id.eq x -| fst)
@@ -426,7 +426,7 @@ let make_assumption templates val_env =
       |> List.map make_var
                                                   *)
       make_var x
-      |> _PAppSelf @@ List.assoc ~cmp (x,None) templates
+      |> _PAppSelf @@ List.assoc ~eq (x,None) templates
       |@dbg&> Format.printf "      MA: typ of %a: %a@." Id.print x print_template
       |> constr_of_typ
       |@dbg&> Format.printf "      MA: constr: %a@." print_constr

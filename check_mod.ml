@@ -267,7 +267,7 @@ let add_context prog f typ =
   if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let fs =
     let xs,t = Id.assoc f fun_env in
-    List.Set.diff ~cmp:Id.eq (get_fv t) (f::xs)
+    List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)
   in
 (*
   let label_env = List.mapi (fun i f -> f, i) fs in

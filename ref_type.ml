@@ -88,7 +88,7 @@ let rec occur x = function
   | Union(_, typs) -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
   | List(_,p_len,_,p_i,typ) ->
-      let aux =  List.mem ~cmp:Id.eq x -| U.get_fv in
+      let aux =  Id.mem x -| U.get_fv in
       aux p_len || aux p_i || occur x typ
 
 let rec decomp_fun_full typ =
@@ -331,9 +331,9 @@ let rec same typ1 typ2 =
   | Tuple xtyps1, Tuple xtyps2 ->
       let typs1 = List.map snd xtyps1 in
       let typs2 = List.map (fun (_,typ) -> List.fold_left2 (fun typ (x1,_) (x2,_) -> subst_var x2 x1 typ) typ xtyps1 xtyps2) xtyps2 in
-      List.eq ~cmp:same typs1 typs2
-  | Inter(_, typs1), Inter(_, typs2) -> List.eq ~cmp:same typs1 typs2
-  | Union(_, typs1), Union(_, typs2) -> List.eq ~cmp:same typs1 typs2
+      List.eq ~eq:same typs1 typs2
+  | Inter(_, typs1), Inter(_, typs2) -> List.eq ~eq:same typs1 typs2
+  | Union(_, typs1), Union(_, typs2) -> List.eq ~eq:same typs1 typs2
   | ExtArg(x1,typ11,typ12), ExtArg(x2,typ21,typ22) -> same typ11 typ21 && same typ12 @@ subst_var x2 x1 typ22
   | List(x1,p1_len,y1,p1_i,typ1'), List(x2,p2_len,y2,p2_i,typ2') ->
       U.same_term p1_len @@ U.subst_var x2 x1 p2_len &&
@@ -684,9 +684,9 @@ let rec generate_check genv cenv x typ =
       in
       let typ1' = subst_var l l' typ1 in
       let genv',cenv',t =
-        if List.mem_assoc ~cmp:same typ cenv
+        if List.mem_assoc ~eq:same typ cenv
         then
-          let f,_,_ = List.assoc ~cmp:same typ cenv in
+          let f,_,_ = List.assoc ~eq:same typ cenv in
           genv, cenv, U.make_app (U.make_var f) [U.make_var x]
         else
           let zs = Id.new_var ~name:"xs" atyp in
@@ -709,7 +709,7 @@ let rec generate_check genv cenv x typ =
             let def = f, [zs], U.add_comment (Format.asprintf "CHECK: %a" print typ) t_body in
             if debug() then Format.printf "CHECK: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
             let t = U.make_app (U.make_var f) [U.make_var x] in
-            if List.Set.supset ~cmp:Id.eq [zs;U.length_var;f] @@ U.get_fv t_body
+            if List.Set.supset ~eq:Id.eq [zs;U.length_var;f] @@ U.get_fv t_body
             then genv'@[typ,def], cenv', t
             else genv', cenv', U.make_letrec [def] t
       in
@@ -915,9 +915,9 @@ and generate genv cenv typ =
             let l = Id.new_var ~name:"l" Type.TInt in
             let p_len' = U.subst_var x l p_len in
             let genv',cenv',t =
-              if List.mem_assoc ~cmp:same typ genv
+              if List.mem_assoc ~eq:same typ genv
               then
-                let f,_,_ = List.assoc ~cmp:same typ genv in
+                let f,_,_ = List.assoc ~eq:same typ genv in
                 let t = U.make_app (U.make_var f) [U.make_var l] in
                 genv, cenv, t
               else
@@ -930,7 +930,7 @@ and generate genv cenv typ =
                 let def = f, [n], U.add_comment (Format.asprintf "GEN LIST: %a" print typ) @@ U.make_if t_b t_nil t_cons in
                 let t = U.make_app (U.make_var f) [U.make_var l] in
                 if debug() then Format.printf "GEN: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
-                if List.Set.supset ~cmp:Id.eq [n] @@ U.get_fv @@ Triple.trd def
+                if List.Set.supset ~eq:Id.eq [n] @@ U.get_fv @@ Triple.trd def
                 then genv'@[typ,def], cenv', t
                 else genv', cenv', U.make_letrec [def] t
             in

@@ -72,10 +72,10 @@ module Env = struct
     let range = cod
 
     let find f env = List.find f env
-    let assoc k env = List.assoc ~cmp:eq_key k env
-    let mem_assoc k env = List.mem_assoc ~cmp:eq_key k env
-    let assoc_option k env = List.assoc_option ~cmp:eq_key k env
-    let assoc_all k env = List.assoc_all ~cmp:eq_key k env
+    let assoc k env = List.assoc ~eq:eq_key k env
+    let mem_assoc k env = List.mem_assoc ~eq:eq_key k env
+    let assoc_option k env = List.assoc_option ~eq:eq_key k env
+    let assoc_all k env = List.assoc_all ~eq:eq_key k env
 
     let map f env = List.map f env
     let map_key f env = List.map (Pair.map_fst f) env

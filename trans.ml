@@ -2179,7 +2179,7 @@ let copy_poly_funs t =
     |@> Type_check.check -$- Type.TUnit
   in
   let make_get_rtyp get_rtyp f =
-    let fs = List.assoc_all ~cmp:Id.same f map in
+    let fs = List.assoc_all ~eq:Id.eq f map in
     if fs = [] then raise Not_found;
     Ref_type.Inter(Id.typ f, List.map get_rtyp fs)
   in

@@ -44,7 +44,7 @@ let merge_ce_set (ce_set':ce_set) (ce_set:ce_set) =
 
 let is_closed f def_env =
   let ys,t = Id.assoc f def_env in
-  List.Set.subset ~cmp:Id.eq (get_fv t) (f::ys)
+  List.Set.subset ~eq:Id.eq (get_fv t) (f::ys)
 
 let report_safe env =
   Format.printf "Safe!@.@.";
@@ -76,7 +76,7 @@ let incr_extend f ce_set extend =
   let extend' =
     let aux g extend' =
       try
-        snd @@ List.assoc_map ~cmp:Id.eq g succ extend'
+        snd @@ List.assoc_map ~eq:Id.eq g succ extend'
       with Not_found -> (g,1)::extend'
     in
     List.fold_left (fun extend' (g,_) -> aux g extend') extend @@ Id.assoc f ce_set
@@ -93,7 +93,7 @@ let incr_extend f ce_set extend =
       in
       List.map (Pair.map_snd rev) ce
     in
-    snd @@ List.assoc_map ~cmp:Id.eq f aux ce_set
+    snd @@ List.assoc_map ~eq:Id.eq f aux ce_set
   in
   merge_ce_set new_ce_set ce_set, extend'
 
@@ -190,7 +190,7 @@ let main _ spec parsed =
     let map =
       let edges =
         fun_env
-        |> List.map (fun (f,(xs,t)) -> f, List.Set.diff ~cmp:Id.eq (get_fv t) (f::xs))
+        |> List.map (fun (f,(xs,t)) -> f, List.Set.diff ~eq:Id.eq (get_fv t) (f::xs))
         |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
       in
       let unused = List.filter_map (fun (f,_) -> if List.exists (fun (g,h) -> Id.same f g || Id.same f h) edges then None else Some f) fun_env in

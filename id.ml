@@ -51,9 +51,9 @@ let set_typ x typ = {x with typ}
 let add_name_before str x = set_name x (str ^ name x)
 let add_name_after str x = set_name x (name x ^ str)
 
-let mem x xs = List.mem ~cmp:eq x xs
-let assoc x xs = List.assoc ~cmp:eq x xs
-let mem_assoc x xs = List.mem_assoc ~cmp:eq x xs
+let mem x xs = List.mem ~eq x xs
+let assoc x xs = List.assoc ~eq x xs
+let mem_assoc x xs = List.mem_assoc ~eq x xs
 
 let print fm x =
   let s =

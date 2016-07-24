@@ -457,7 +457,7 @@ let compare_pair (x1,x2) (y1,y2) =
 
 let eq_pair x y = 0 = compare_pair x y
 
-let col_fun_arg = make_col [] (List.Set.union ~cmp:eq_pair)
+let col_fun_arg = make_col [] (List.Set.union ~eq:eq_pair)
 
 let col_fun_arg_desc desc =
   match desc with
@@ -539,7 +539,7 @@ let make_fun_tuple t =
   let aux assrt =
     let funs = col_app_head assrt in
     if debug() then List.iter (Format.printf "FUN: %a@." Id.print) funs;
-    let funs' = List.Set.diff ~cmp:Id.same funs rand_funs in
+    let funs' = List.Set.diff ~eq:Id.eq funs rand_funs in
     if debug() then List.iter (Format.printf "FUN': %a@." Id.print) funs';
     let rec get_pairs acc fs =
       match fs with
@@ -550,7 +550,7 @@ let make_fun_tuple t =
     if debug() then List.iter (fun (f,g) -> Format.printf "ALL_FUN_ARG: %a, %a@." Id.print f Id.print g) all_fun_pairs;
     let fun_args = col_fun_arg assrt in
     if debug() then List.iter (fun (f,g) -> Format.printf "FUN_ARG: %a, %a@." Id.print f Id.print g) fun_args;
-    let rel_funs = List.Set.diff ~cmp:eq_pair all_fun_pairs fun_args in
+    let rel_funs = List.Set.diff ~eq:eq_pair all_fun_pairs fun_args in
     if debug() then List.iter (fun (f,g) -> Format.printf "FUN_ARG': %a, %a@." Id.print f Id.print g) rel_funs;
     List.map (fun (f,g) -> [f;g]) rel_funs
   in

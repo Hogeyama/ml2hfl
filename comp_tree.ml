@@ -309,7 +309,7 @@ let rec from_term
   if !!debug then Format.printf "  val_env: %a@\n" pr_env val_env;
   if !!debug then Format.printf "Dom(var_env): %a@\n" (List.print Id.print) @@ List.map fst var_env;
   if !!debug then Format.printf "Dom(val_env): %a@\n" (List.print Id.print) @@ List.map fst val_env;
-  assert (List.Set.eq ~cmp:Id.eq (List.map fst var_env) (List.map fst val_env));
+  assert (List.Set.eq ~eq:Id.eq (List.map fst var_env) (List.map fst val_env));
   match t.desc with
   | Const Unit -> []
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
@@ -348,7 +348,7 @@ let rec from_term
           let t' = make_app (add_id tid @@ make_var f') ts in
           from_term cnt ext_funs args (f'::top_funs) top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env' t'
         in
-        let paths = List.assoc_all ~cmp:Id.eq f ce_set in
+        let paths = List.assoc_all ~eq:Id.eq f ce_set in
         List.flatten_mapi aux paths
       in
       [spawn true nid typ_env var_env val_env ce_env f children]
@@ -386,7 +386,7 @@ let rec from_term
         let ref_typ = Ref_type.Env.assoc_option f typ_env in
         {nid; var_env; val_env; label; ref_typ; ce_env}
       in
-      assert (List.Set.eq ~cmp:Id.eq (List.map fst var_env') (List.map fst val_env'));
+      assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
       let top_fun_args' = if Id.mem f top_funs then ys @ top_fun_args else top_fun_args in
       [RT.Node(node, from_term cnt ext_funs args' top_funs top_fun_args' typ_env fun_env var_env' val_env' ce_set extend ce_env t_f)]
   | If(t1, t2, t3) ->
@@ -415,7 +415,7 @@ let rec from_term
               match ce with
               | [] when List.mem_assoc f extend ->
                   let extend' =
-                    List.assoc_map ~cmp:Id.eq f pred extend
+                    List.assoc_map ~eq:Id.eq f pred extend
                     |> snd
                     |> List.filter_out (fun (_,n) -> n = 0)
                   in

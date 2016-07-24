@@ -313,31 +313,31 @@ module List = struct
   let update = replace_nth
   let set = replace_nth
 
-  let mem ?(cmp=(=)) x xs = exists (cmp x) xs
-  let mem_on ?(cmp=(=)) f x xs =
+  let mem ?(eq=(=)) x xs = exists (eq x) xs
+  let mem_on ?(eq=(=)) f x xs =
     let x' = f x in
-    exists (cmp x' -| f) xs
+    exists (eq x' -| f) xs
 
-  let find_eq_on ?(cmp=(=)) f x xs =
+  let find_eq_on ?(eq=(=)) f x xs =
     let x' = f x in
-    find (cmp x' -| f) xs
+    find (eq x' -| f) xs
 
-  let assoc ?(cmp=(=)) x xs =
-    snd @@ find (cmp x -| fst) xs
+  let assoc ?(eq=(=)) x xs =
+    snd @@ find (eq x -| fst) xs
 
-  let assoc_on ?(cmp=(=)) f x xs =
+  let assoc_on ?(eq=(=)) f x xs =
     let x' = f x in
-    snd @@ find_eq_on ~cmp (f -| fst) x' xs
+    snd @@ find_eq_on ~eq (f -| fst) x' xs
 
-  let mem_assoc ?(cmp=(=)) x xs =
+  let mem_assoc ?(eq=(=)) x xs =
     try
-      ignore @@ assoc ~cmp x xs;
+      ignore @@ assoc ~eq x xs;
       true
     with Not_found -> false
 
-  let mem_assoc_on ?(cmp=(=)) f x xs =
+  let mem_assoc_on ?(eq=(=)) f x xs =
     try
-      ignore @@ assoc_on ~cmp f x xs;
+      ignore @@ assoc_on ~eq f x xs;
       true
     with Not_found -> false
 
@@ -351,31 +351,31 @@ module List = struct
       Some (find f xs)
     with Not_found -> None
 
-  let assoc_default ?(cmp=(=)) x k tbl =
+  let assoc_default ?(eq=(=)) x k tbl =
     try
-      assoc ~cmp k tbl
+      assoc ~eq k tbl
     with Not_found -> x
 
-  let assoc_option ?(cmp=(=)) k tbl =
+  let assoc_option ?(eq=(=)) k tbl =
     try
-      Some (assoc ~cmp k tbl)
+      Some (assoc ~eq k tbl)
     with Not_found -> None
 
-  let rec assoc_map ?(cmp=(=)) k f tbl =
+  let rec assoc_map ?(eq=(=)) k f tbl =
     match tbl with
     | [] -> raise Not_found
     | (k',x)::tbl' ->
-        if cmp k k'
+        if eq k k'
         then x, (k', f x) :: tbl'
-        else assoc_map ~cmp k f tbl' |> Pair.map_snd @@ cons (k', x)
+        else assoc_map ~eq k f tbl' |> Pair.map_snd @@ cons (k', x)
 
-  let rec decomp_assoc ?(cmp=(=)) k tbl =
+  let rec decomp_assoc ?(eq=(=)) k tbl =
     match tbl with
     | [] -> raise Not_found
     | (k',x)::tbl' ->
-        if cmp k k'
+        if eq k k'
         then x, tbl'
-        else decomp_assoc ~cmp k tbl' |> Pair.map_snd @@ cons (k', x)
+        else decomp_assoc ~eq k tbl' |> Pair.map_snd @@ cons (k', x)
 
   let rec classify ?(eq=(=)) xs =
     let rec aux rev_acc xs =
@@ -403,20 +403,20 @@ module List = struct
     in
     aux [] xs
 
-  let assoc_all ?(cmp=(=)) k tbl = filter_map (fun (k',x) -> if cmp k k' then Some x else None) tbl
+  let assoc_all ?(eq=(=)) k tbl = filter_map (fun (k',x) -> if eq k k' then Some x else None) tbl
 (*
   let fold_righti f xs acc = snd @@ fold_right (fun x (i,acc) -> i+1, f i x acc) xs (0,acc)
   let fold_lefti f xs acc = snd @@ fold_left (fun (i,acc) x -> i+1, f i acc x) (0,acc) xs
  *)
-  let eq ?(cmp=(=)) xs ys = length xs = length ys && for_all2 cmp xs ys
+  let eq ?(eq=(=)) xs ys = length xs = length ys && for_all2 eq xs ys
 
   module Set = struct
-    let diff ?(cmp=(=)) l1 l2 = filter_out (mem ~cmp -$- l2) l1
-    let inter ?(cmp=(=)) l1 l2 = filter (mem ~cmp -$- l2) l1
-    let subset ?(cmp=(=)) l1 l2 = for_all (mem ~cmp -$- l2) l1
-    let supset ?(cmp=(=)) l1 l2 = subset ~cmp l2 l1
-    let eq ?(cmp=(=)) l1 l2 = subset ~cmp l1 l2 && supset ~cmp l1 l2
-    let union ?(cmp=(=)) l1 l2 = rev_append l1 @@ diff ~cmp l2 l1
+    let diff ?(eq=(=)) l1 l2 = filter_out (mem ~eq -$- l2) l1
+    let inter ?(eq=(=)) l1 l2 = filter (mem ~eq -$- l2) l1
+    let subset ?(eq=(=)) l1 l2 = for_all (mem ~eq -$- l2) l1
+    let supset ?(eq=(=)) l1 l2 = subset ~eq l2 l1
+    let eq ?(eq=(=)) l1 l2 = subset ~eq l1 l2 && supset ~eq l1 l2
+    let union ?(eq=(=)) l1 l2 = rev_append l1 @@ diff ~eq l2 l1
   end
 end
 
@@ -680,7 +680,7 @@ let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
 let rec transitive_closure ?(eq=(=)) edges =
   let eq' = Pair.eq eq eq in
   let cons (x,y) es =
-    if List.mem ~cmp:eq' (x,y) es then
+    if List.mem ~eq:eq' (x,y) es then
       es
     else
       (x,y)::es
@@ -691,4 +691,4 @@ let rec transitive_closure ?(eq=(=)) edges =
     in
     List.fold_left aux edges' edges'
   in
-  fixed_point ~eq:(List.Set.eq ~cmp:eq') f edges
+  fixed_point ~eq:(List.Set.eq ~eq:eq') f edges
