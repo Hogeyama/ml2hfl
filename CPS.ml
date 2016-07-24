@@ -982,7 +982,7 @@ let inline_affine_term env t =
             let xs,t = Id.assoc f env in
             let ts' = List.map (inline_affine.tr2_term env) ts in
             if List.length xs = List.length ts
-            then List.fold_right2 Trans.subst_with_rename xs ts' t
+            then List.fold_right2 (Trans.subst_with_rename ~check:true) xs ts' t
             else raise Not_found
           with Not_found -> inline_affine.tr2_term_rec env t
         end

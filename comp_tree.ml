@@ -320,12 +320,13 @@ let rec from_term
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       if !!debug then Format.printf "  APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
-      if !!debug then Format.printf "    D:(%a %a = %a), A:(%a %a)@\n" Id.print f (List.print Id.print) ys Print.term t_f Id.print f (List.print Print.term) ts;
+      if !!debug then Format.printf "    @[D:(%a %a = %a), A:(%a %a)@\n" Id.print f (List.print Id.print) ys Print.term t_f Id.print f (List.print Print.term) ts;
       assert (List.length ys = List.length ts);
       let children =
         let aux i ce =
           let new_ce_env = make_new_ce_env ce in
           let tid_env = List.map (fun (f,tid,path) -> f, tid) new_ce_env in
+          if !!debug then Format.printf "    TID_ENV: %a@\n" (List.print @@ Pair.print Id.print Format.pp_print_int) tid_env;
           let tid = Id.assoc f tid_env in
           let f' = Id.new_var_id f in
           if !!debug then Format.printf "    ALPHA: %a => %a@\n" Id.print f Id.print f';

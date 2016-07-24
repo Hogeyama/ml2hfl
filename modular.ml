@@ -105,10 +105,12 @@ let rec main_loop history c prog cmp f typ ce_set =
                 main_loop (f::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4
             in
             let _,env',ce_set3 = List.fold_left aux (`Typable, env, ce_set2) candidate' in
-            if not (Ref_type.Env.eq env' env) then
-              main_loop history (c+1) {prog with fun_typ_env=env'} cmp f typ ce_set3
+            if not @@ Ref_type.Env.eq env' env then
+              (Infer_mod.infer_stronger := false;
+               main_loop history (c+1) {prog with fun_typ_env=env'} cmp f typ ce_set3)
             else if not @@ List.Set.eq ce_set3 ce_set2 then
-              refine_loop ce_set3
+              (Infer_mod.infer_stronger := false;
+               refine_loop ce_set3)
             else if not !Infer_mod.infer_stronger then
               (if !!debug then Format.printf "infer_stronger := true@.";
                Infer_mod.infer_stronger := true;
@@ -120,7 +122,7 @@ let rec main_loop history c prog cmp f typ ce_set =
             else
               raise NoProgress
       in
-      refine_loop (merge_ce_set ce_set1 ce_set)
+      refine_loop @@ merge_ce_set ce_set1 ce_set
 let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ []
 
 let main _ spec parsed =
