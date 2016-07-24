@@ -394,7 +394,14 @@ module List = struct
     | br1::ce1', br2::ce2' -> eq br1 br2 && is_prefix ce1' ce2'
 
   let remove_lower is_lower xs =
-    List.fold_right (fun x acc -> if exists (is_lower x) acc then acc else x::acc) xs []
+    let rec aux acc_rev xs =
+      match xs with
+      | [] -> List.rev acc_rev
+      | x::xs' ->
+          let acc_rev' = if exists (is_lower x) acc_rev || exists (is_lower x) xs' then acc_rev else x::acc_rev in
+          aux acc_rev' xs'
+    in
+    aux [] xs
 
   let assoc_all ?(cmp=(=)) k tbl = filter_map (fun (k',x) -> if cmp k k' then Some x else None) tbl
 (*

@@ -37,7 +37,7 @@ let merge_tenv env' env = (* ??? *)
 let merge_ce_set (ce_set':ce_set) (ce_set:ce_set) =
   let dbg = 0=1 in
   let prefix (f,ce1) (g,ce2) =
-    Id.same f g && List.for_all (fun (f,path) -> List.is_prefix path (List.assoc f ce2)) ce1
+    Id.same f g && List.for_all (fun (f,path) -> List.is_prefix path (Id.assoc f ce2)) ce1
   in
   List.remove_lower prefix (ce_set' @ ce_set)
   |@dbg&> Format.printf "MERGE_CE_SET: %a@." print_ce_set
