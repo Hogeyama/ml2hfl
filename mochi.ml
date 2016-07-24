@@ -495,3 +495,4 @@ let () =
         Format.printf "Fatal error: %s@." s
     | Unsupported s ->
         Format.printf "Unsupported: %s@." s
+    | Sys_error s -> Format.printf "%s@." s

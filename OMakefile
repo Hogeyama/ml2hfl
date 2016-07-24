@@ -1,4 +1,4 @@
-FILES = Makefile $(glob *.ml *.mli)
+FILES = Makefile $(glob *.ml *.mli) .git/index
 
 DONE: $(FILES)
     make
