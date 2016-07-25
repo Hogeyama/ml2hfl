@@ -77,8 +77,7 @@ let rec check t typ =
       List.iter (fun (f,xs,t) -> aux t xs @@ Id.typ f) bindings;
       let aux' f =
         let fv = get_fv t2 in
-        Format.printf "%a@." Print.id_typ f;
-        List.for_all (fun f' -> Format.printf "  %a@." Print.id_typ f'; Id.same f f' => Type.can_unify (Id.typ f) (Id.typ f')) fv
+        List.for_all (fun f' -> Id.same f f' => Type.can_unify (Id.typ f) (Id.typ f')) fv
       in
       assert (List.for_all (aux' -| Triple.fst) bindings);
       check t2 typ'
