@@ -314,6 +314,7 @@ let rec make_term typ =
   | TData("X", false) -> cps_result
   | TData("char", false) -> {desc=Const(Char '\000'); typ; attr=[]}
   | TData("string", false) -> {desc=Const(String ""); typ; attr=[]}
+  | TData("float", false) -> {desc=Const(Float 0.); typ; attr=[]}
   | TList typ' -> make_nil typ'
   | _ -> Format.printf "ERROR: %a@." Print.typ typ; assert false
 

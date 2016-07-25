@@ -86,7 +86,7 @@ and print_const fm = function
   | Int n -> fprintf fm "%d" n
   | Char c -> fprintf fm "%C" c
   | String s -> fprintf fm "%S" s
-  | Float s -> fprintf fm "%s" s
+  | Float r -> fprintf fm "%f" r
   | Int32 n -> fprintf fm "%ldl" n
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n

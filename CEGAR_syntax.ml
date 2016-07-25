@@ -23,7 +23,7 @@ type const =
   | False
   | Char of char
   | String of string
-  | Float of string
+  | Float of float
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint

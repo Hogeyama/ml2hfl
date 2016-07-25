@@ -255,7 +255,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     | Tpat_constant(Const_char c) -> PConst {desc=Const(Char c);typ=typ'; attr=[]}
     | Tpat_constant(Const_string(s,None)) -> PConst {desc=Const(String s);typ=typ'; attr=[]}
     | Tpat_constant(Const_string(s,Some _)) -> unsupported "Const_string Some"
-    | Tpat_constant(Const_float s) -> PConst {desc=Const(Float s);typ=typ'; attr=[]}
+    | Tpat_constant(Const_float s) -> PConst {desc=Const(Float (float_of_string s));typ=typ'; attr=[]}
     | Tpat_constant(Const_int32 n) -> PConst {desc=Const(Int32 n);typ=typ'; attr=[]}
     | Tpat_constant(Const_int64 n) -> PConst {desc=Const(Int64 n);typ=typ'; attr=[]}
     | Tpat_constant(Const_nativeint n) -> PConst {desc=Const(Nativeint n);typ=typ'; attr=[]}
@@ -296,7 +296,7 @@ let from_constant = function
   | Const_char c -> Char c
   | Const_string(s, None) -> String s
   | Const_string(s, Some _) -> unsupported "Const_string Some"
-  | Const_float x -> Float x
+  | Const_float s -> Float (float_of_string s)
   | Const_int32 n -> Int32 n
   | Const_int64 n -> Int64 n
   | Const_nativeint n -> Nativeint n

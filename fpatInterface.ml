@@ -65,7 +65,7 @@ let conv_const c =
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
   | Char c -> Fpat.Const.Int (int_of_char c)
   | String s -> Fpat.Const.String s
-  | Float s -> Fpat.Const.Real (float_of_string s)
+  | Float r -> Fpat.Const.Real r
   | Int32 n -> Fpat.Const.Int (Int32.to_int n)
   | Int64 n -> Fpat.Const.Int (Int64.to_int n)
   | Nativeint n -> Fpat.Const.Int (Nativeint.to_int n)
@@ -202,7 +202,7 @@ let inv_const c =
   | Fpat.Const.Geq ty when Fpat.Type.is_ext ty ->
      Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">="))
   | Fpat.Const.String s -> String s
-  | Fpat.Const.Real x -> Float (string_of_float x)
+  | Fpat.Const.Real r -> Float r
   | Fpat.Const.UFun(ty, x)
        when Fpat.Idnt.string_of x = "end"
             && Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->

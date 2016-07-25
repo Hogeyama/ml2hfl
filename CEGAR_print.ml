@@ -81,7 +81,7 @@ and print_const fm = function
   | False -> Format.fprintf fm "false"
   | Char c -> Format.fprintf fm "%C" c
   | String s -> Format.fprintf fm "%S" s
-  | Float s -> Format.fprintf fm "%s" s
+  | Float r -> Format.fprintf fm "%f" r
   | Int32 n -> Format.fprintf fm "%ldl" n
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
@@ -285,7 +285,7 @@ and print_const_ML fm = function
   | False -> Format.fprintf fm "false"
   | Char c -> Format.fprintf fm "%C" c
   | String s -> Format.fprintf fm "%S" s
-  | Float s -> Format.fprintf fm "%s" s
+  | Float r -> Format.fprintf fm "%f" r
   | Int32 n -> Format.fprintf fm "%ldl" n
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
@@ -372,7 +372,7 @@ and print_const_as_tree fm = function
   | False -> Format.fprintf fm "False"
   | Char c -> Format.fprintf fm "%C" c
   | String s -> Format.fprintf fm "%S" s
-  | Float s -> Format.fprintf fm "%s" s
+  | Float r -> Format.fprintf fm "%f" r
   | Int32 n -> Format.fprintf fm "%ldl" n
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
