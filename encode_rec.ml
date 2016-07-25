@@ -153,7 +153,10 @@ let abst_recdata_term t =
       in
       let pats = List.mapi make_pat xtyps in
       let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
-      make_lets defs @@ make_pair unit_term(*for add predicates*) @@ make_fun path @@ make_match (make_var path) (pat0::pats)
+      make_lets defs @@
+        make_pair unit_term @@ (* for adding predicates *)
+          make_fun path @@
+            make_match (make_var path) (pat0::pats)
   | Match(t1,pats) ->
       let aux (p,c,t) =
         let p',c',bind = abst_recdata_pat p in

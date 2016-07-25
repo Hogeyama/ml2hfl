@@ -1766,7 +1766,8 @@ let replace_base_with_int_desc desc =
   match desc with
   | Const(Char c) -> Const (Int (int_of_char c))
   | Const(String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
-  | Const(RandValue(TData(s,_), b)) when is_base_typ s -> Const (RandValue(TInt,b))
+  | Const(RandValue(TData(s,_), b)) when is_base_typ s ->
+      Const (RandValue(TInt,b))
   | _ -> replace_base_with_int.tr_desc_rec desc
 
 let replace_base_with_int_typ typ =
