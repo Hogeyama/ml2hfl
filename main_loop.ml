@@ -100,12 +100,12 @@ let preprocesses spec : preprocess list =
     Make_fun_tuple,
     ((Fun.const !Flag.tupling),
      (fun acc -> Ref_trans.make_fun_tuple @@ last_t acc, get_rtyp_id));
-    Make_ext_funs,
-    (Fun.const true,
-     (fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
     Copy_poly,
     (Fun.const true,
      (fun acc -> Trans.copy_poly_funs @@ last_t acc));
+    Make_ext_funs,
+    (Fun.const true,
+     (fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
     Ignore_non_termination,
     ((Fun.const !Flag.ignore_non_termination),
      (fun acc -> Trans.ignore_non_termination @@ last_t acc, get_rtyp_id));

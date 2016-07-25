@@ -1291,7 +1291,7 @@ let make_ext_funs ?(fvs=[]) env t =
   if List.exists (is_poly_typ -| Id.typ) funs then
     unsupported "Trans.make_ext_funs (polymorphic functions)";
   let map,t'' = rename_ext_funs funs t' in
-  if dbg then Format.printf "MEF t'': %a@." Print.term t'';
+  if dbg then Format.printf "MEF t'': %a@." Print.term' t'';
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
@@ -1302,6 +1302,7 @@ let make_ext_funs ?(fvs=[]) env t =
     List.fold_left aux ([],[],[]) @@ Ref_type.Env.to_list env
   in
   let defs = List.map snd (genv @ cenv) in
+  if dbg then Format.printf "MEF t'': %a@." Print.term' t'';
   make_letrecs defs @@ make_lets defs2 @@ make_lets defs1 t''
 
 
@@ -2127,7 +2128,7 @@ let copy_poly_funs_desc map desc =
       let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
       let t2'' = inst_tvar_tunit t2' in
       let map_rename,t2''' = rename_poly_funs f t2'' in
-      if debug() && List.length map_rename >= 2 then
+      if !!debug then
         begin
           Format.printf "COPY: @[";
           List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map_rename;
