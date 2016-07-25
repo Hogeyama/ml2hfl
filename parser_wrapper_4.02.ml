@@ -7,6 +7,8 @@ open Term_util
 open Type
 
 
+let debug () = List.mem "Parser_wrapper" !Flag.debug_module
+
 type declaration =
     Decl_let of rec_flag * (id * typed_term) list
   | Decl_type of (string * (typ list * type_kind)) list
@@ -21,6 +23,7 @@ let prim_typs =
    "bool", TBool;
    "int", TInt;
    "Pervasives.format", TData("string", false);
+   "CamlinternalFormatBasics.fmt", TData("string", false);
 (*
    "Pervasives.in_channel", TUnit
 *)]
@@ -200,6 +203,7 @@ let rec from_type_declaration tenv decl =
 
 
 let rec add_type_env env typ =
+  if !!debug then Format.printf "add_type_env: %a@." Printtyp.type_expr typ;
   match (Ctype.repr typ).Types.desc with
   | Tvar _ -> ()
   | Tarrow(_,typ1,typ2,_) -> add_type_env env typ1; add_type_env env typ2
@@ -207,11 +211,16 @@ let rec add_type_env env typ =
   | Tconstr(path,typs,_) when Path.name path = "list" -> List.iter (add_type_env env) typs
   | Tconstr(path,typs,_) when Path.name path = "Pervasives.ref" -> List.iter (add_type_env env) typs
   | Tconstr(path,typs,_) when Path.name path = "option" -> List.iter (add_type_env env) typs
+  | Tconstr(path,typs,_) when List.mem_assoc (Path.name path) prim_typs -> List.iter (add_type_env env) typs
   | Tconstr(path,typs,_) ->
-      let {type_kind} = Env.find_type path env in
+      if !!debug then Format.printf "  add_type_env: %a@." Printtyp.type_expr typ;
+      let ({type_kind} as typ_decl) = Env.find_type path env in
       if type_kind <> Type_abstract then
         let typ_name = Path.name path in
-        Type_decl.add_typ_decl typ_name @@ Type_decl.from_type_kind @@ from_type_kind env type_kind
+        if !!debug then Format.printf "  typ_name: %s@." typ_name;
+        from_type_kind env type_kind
+        |> Type_decl.from_type_kind
+        |> Type_decl.add_typ_decl typ_name
   | Tobject _ -> unsupported "Tobject"
   | Tfield _ -> unsupported "Tfield"
   | Tnil -> unsupported "Tnil"
@@ -228,11 +237,10 @@ let add_exc_env cstr_desc env =
     | Tconstr(path,_,_) -> Path.name path
     | _ -> assert false
   in
-    if typ_name = "exn"
-    then
-      let name = get_constr_name cstr_desc cstr_desc.cstr_res env in
-      let typs = List.map (from_type_expr env) cstr_desc.cstr_args in
-      Type_decl.add_exc_decl name typs
+  if typ_name = "exn" then
+    let name = get_constr_name cstr_desc cstr_desc.cstr_res env in
+    let typs = List.map (from_type_expr env) cstr_desc.cstr_args in
+    Type_decl.add_exc_decl name typs
 
 let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
   add_type_env env typ;
@@ -294,7 +302,7 @@ let from_constant = function
   | Const_nativeint n -> Nativeint n
 
 
-let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
+let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   add_type_env env typ;
   let typ' = from_type_expr env typ in
   match exp_desc with
@@ -399,8 +407,11 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         | "::",[e1;e2] -> Cons(from_expression e1, from_expression e2)
         | "None",[] -> TNone
         | "Some",[e] -> TSome (from_expression e)
+        | "Format",_ -> Const (String "%some format%")
         | name,es ->
             add_exc_env desc env;
+            if !!debug then Format.printf "CONSTR: %s@." name;
+            if !!debug then Format.printf "   typ: %a@." Printtyp.type_expr typ;
             Constr(name, List.map from_expression es)
       in
       {desc=desc; typ=typ'; attr=[]}

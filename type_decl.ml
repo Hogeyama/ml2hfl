@@ -60,8 +60,7 @@ let need_add s =
   not (in_typ_decls s) && s <> "unit" && s <> "bool" && s <> "list"
 
 let add_typ_decl s k =
-  if need_add s
-  then
+  if need_add s then
     begin
       if !!debug then Format.printf "ADD %s = %a@." s print_kind k;
       typ_decls := (s,k)::!typ_decls
