@@ -340,9 +340,6 @@ let rec run_cegar prog =
       run_cegar prog
 
 
-let init_typ_excep () =
-  Term_util.typ_excep := Type.TData("exn",true)
-
 let insert_extra_param t =
   let t' =
     t
@@ -398,7 +395,6 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
     let result = CEGAR.run prog' info in
     result, make_get_rtyp, set_target'
   with e ->
-    init_typ_excep ();
     improve_precision e;
     loop ~make_pps ~fun_list exparam_sol ~spec parsed set_target
 

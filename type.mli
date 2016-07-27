@@ -9,10 +9,14 @@ type 'a t =
   | TFuns of 'a t Id.t list * 'a t
   | TList of 'a t
   | TTuple of 'a t Id.t list
-  | TData of string * bool
+  | TData of string
   | TRef of 'a t
   | TOption of 'a t
   | TPred of 'a t Id.t * 'a list
+  | TVariant of (string * 'a t list) list
+  | TRecord of (string * (mutable_flag * 'a t)) list
+  | Type of (string * 'a t) list * string
+and mutable_flag = Immutable | Mutable
 
 exception CannotUnify
 
@@ -26,9 +30,10 @@ val print_typ_init : Format.formatter -> 'a t -> unit
 val is_fun_typ : 'a t -> bool
 val is_base_typ : 'a t -> bool
 val can_unify : 'a t -> 'a t -> bool
-val occurs : 'a t option ref -> 'a t -> bool
-val same_shape : 'a t -> 'b t -> bool
+val data_occurs : string -> 'a t -> bool
+val same_shape : 'a t -> 'a t -> bool
 val has_pred : 'a t -> bool
+val is_mutable_record : 'a t -> bool
 
 val typ_unknown : 'a t
 val elim_tpred : 'a t -> 'a t
@@ -54,3 +59,5 @@ val option_typ : 'a t -> 'a t
 val arg_var : 'a t -> 'a t Id.t
 val result_typ : 'a t -> 'a t
 val decomp_ttuple : 'a t -> 'a t list
+val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
+val get_free_data_name : 'a t -> string list

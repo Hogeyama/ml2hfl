@@ -41,7 +41,7 @@ and term =
   | Event of string * bool (** true denotes CPS-term *)
   | Record of (string * typed_term) list
   | Field of string * typed_term
-  | SetField of string * typed_term * typed_term
+  | SetField of typed_term * string * typed_term
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
@@ -66,13 +66,12 @@ and info =
   | InfoIdTerm of id * typed_term
 
 and rec_flag = Nonrecursive | Recursive
-and mutable_flag = Immutable | Mutable
 
 
 and type_kind =
     KAbstract
   | KVariant of (string * typ list) list
-  | KRecord of (string * (mutable_flag * typ)) list
+  | KRecord of (string * (Type.mutable_flag * typ)) list
   | KOpen
 and pred = term
 and typed_pattern = {pat_desc:pattern; pat_typ:typ}

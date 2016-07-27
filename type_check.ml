@@ -2,7 +2,6 @@ open Util
 open Syntax
 open Term_util
 open Type
-open Type_decl
 
 let debug () = List.mem "Type_check" !Flag.debug_module
 
@@ -110,26 +109,36 @@ let rec check t typ =
   | Proj(i,t), typ ->
       assert (Type.can_unify typ @@ proj_typ i t.typ);
       check t t.typ
-  | Record [], typ -> assert false
-  | Record fields, typ ->
-      let c,kind = kind_of_field @@ fst @@ List.hd fields in
-      assert (Type.can_unify typ @@ TData(c,true));
-      List.iter (fun (s,t) -> check t @@ field_arg_typ s) fields
+  | Record fields, TRecord tfields ->
+      List.iter (fun (s,t) -> check t @@ snd @@ List.assoc s tfields) fields
+  | Record fields, typ -> assert false
   | Field(s,t), typ ->
-      assert (Type.can_unify typ @@ field_arg_typ s);
-      check t @@ field_typ s
-  | SetField(s,t1,t2), typ ->
+      begin
+        match t.typ with
+        | TRecord tfields -> assert (Type.can_unify typ @@ snd @@ List.assoc s tfields)
+        | _ -> assert false
+      end;
+      check t t.typ
+  | SetField(t1,s,t2), typ ->
       assert (Type.can_unify typ TUnit);
-      check t1 @@ field_typ s;
-      check t2 @@ field_arg_typ s
+      begin
+        match t.typ with
+        | TRecord tfields ->
+            let f,typ' = List.assoc s tfields in
+            assert (f = Mutable);
+            check t1 typ'
+        | _ -> assert false
+      end;
+      check t2 t2.typ
   | Nil, TList _ -> ()
   | Cons(t1,t2), TList typ' ->
       check t1 typ';
       check t2 typ
-  | Constr(s,ts), typ ->
-      let typs = Type_decl.constr_arg_typs s in
-      assert (List.length typs = List.length ts);
-      List.iter2 check ts typs
+  | Constr(s,ts), TVariant labels ->
+      List.iter2 check ts @@ List.assoc s labels
+  | Constr _, Type(decls, name) ->
+      let typ' = List.assoc name decls in
+      check {t with typ=typ'} typ'
   | Match(t,pats), typ' ->
       let aux (p,cond,t) =
         check cond TBool;
@@ -138,11 +147,10 @@ let rec check t typ =
       check t t.typ;
       List.iter aux pats
   | Raise t, _ ->
-      check t !typ_excep
+      check t t.typ
   | TryWith(t1,t2), typ ->
-      let e = Id.new_var ~name:"e" !typ_excep in
       check t1 typ;
-      check t2 (TFun(e,typ))
+      check t2 @@ make_tfun (TVar (ref None)) typ
   | Bottom, typ -> ()
   | Ref t, TRef typ ->
       check t typ

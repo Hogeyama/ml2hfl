@@ -1,5 +1,6 @@
-
 open Util
+
+let debug () = List.mem "Type" !Flag.debug_module
 
 type 'a t =
   | TUnit
@@ -12,17 +13,20 @@ type 'a t =
   | TFuns of 'a t Id.t list * 'a t
   | TList of 'a t
   | TTuple of 'a t Id.t list
-  | TData of string * bool
+  | TData of string
   | TRef of 'a t
   | TOption of 'a t
   | TPred of 'a t Id.t * 'a list
-(*| TLabel of 'a t Id.t * 'a t*)
+  | TVariant of (string * 'a t list) list
+  | TRecord of (string * (mutable_flag * 'a t)) list
+  | Type of (string * 'a t) list * string
+and mutable_flag = Immutable | Mutable
 
 exception CannotUnify
 
 let _TFun x typ = TFun(x, typ)
 
-let typ_unknown = TData("???", false)
+let typ_unknown = TData "???"
 
 let is_fun_typ = function
   | TFun(_,_) -> true
@@ -34,7 +38,7 @@ let rec is_base_typ = function
   | TBool
   | TAbsBool
   | TInt
-  | TData("string", _)
+  | TData "string"
   | TRInt _ -> true
   | TPred(x,_) -> is_base_typ @@ Id.typ x
   | _ -> false
@@ -58,11 +62,14 @@ let rec elim_tpred_all = function
   | TFun(x, typ) -> TFun(Id.map_typ elim_tpred_all x, elim_tpred_all typ)
   | TList typ -> TList (elim_tpred_all typ)
   | TTuple xs -> TTuple (List.map (Id.map_typ elim_tpred_all) xs)
-  | TData(s,b) -> TData(s,b)
+  | TData s -> TData s
   | TPred(x,_) -> elim_tpred_all @@ Id.typ x
   | TRef typ -> TRef (elim_tpred_all typ)
   | TOption typ -> TOption (elim_tpred_all typ)
-  | TFuns _ -> unsupported ""
+  | TFuns _ -> unsupported "elim_tpred_all"
+  | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ elim_tpred_all) labels)
+  | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ elim_tpred_all) fields)
+  | Type(decls, s) -> Type(List.map (Pair.map_snd @@ elim_tpred_all) decls, s)
 
 let rec decomp_tfun = function
   | TFun(x,typ) ->
@@ -113,11 +120,30 @@ let rec print occur print_pred fm typ =
         if occur x typ then Format.fprintf fm "%a:" Id.print x;
         Format.fprintf fm "%a" print' (Id.typ x)
       in
-      Format.fprintf fm "(@[<hov 2>%a@])" (print_list pr "@ *@ ") xs
-  | TData(s,_) -> Format.pp_print_string fm s
+      Format.fprintf fm "{@[<hov 2>%a@]}" (print_list pr "@ *@ ") xs
+  | TData s -> Format.pp_print_string fm s
   | TRef typ -> Format.fprintf fm "@[%a ref@]" print' typ
   | TPred(x,ps) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (Id.typ x) Id.print x print_preds ps
   | TOption typ -> Format.fprintf fm "@[%a option@]" print' typ
+  | TVariant labels ->
+      let pr fm (s, typs) =
+        if typs = [] then
+          Format.fprintf fm "%s" s
+        else
+          Format.fprintf fm "@[%s of %a@]" s (print_list print' "@ *@ ") typs
+      in
+      Format.fprintf fm "(@[%a@])" (print_list pr "@ |@ ") labels
+  | TRecord fields ->
+      let pr fm (s, (f, typ)) =
+        let sf = if f = Mutable then "Mutable" else "" in
+        Format.fprintf fm "@[%s%s: %a@]" sf s print' typ
+      in
+      Format.fprintf fm "{@[%a@]}" (print_list pr "@ |@ ") fields
+  | Type(decls, s) ->
+      let pr fm (s, typ) =
+        Format.fprintf fm "@[%s = %a@]" s print' typ
+      in
+      Format.fprintf fm "(@[type %a in %s@])" (print_list pr "@ and@ ") decls s
 
 let print ?(occur=fun _ _ -> false) print_pred fm typ =
   Format.fprintf fm "@[%a@]" (print occur print_pred) typ
@@ -144,11 +170,20 @@ let rec can_unify typ1 typ2 =
   | TTuple xs1, TTuple xs2 ->
       List.length xs1 = List.length xs2 &&
       List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2
-  | TData("event",_), TFun _ -> true
-  | TFun _, TData("event",_) -> true
+  | TData "event", TFun _ -> true
+  | TFun _, TData "event" -> true
   | TVar{contents=None}, _ -> true
   | _, TVar{contents=None} -> true
-  | TData(s1,_),TData(s2,_) -> s1 = s2
+  | TData s1, TData s2
+  | Type(_, s1), Type(_, s2)
+  | TData s1, Type(_, s2)
+  | Type(_, s1), TData s2 -> s1 = s2
+  | Type(decls, s), typ
+  | typ, Type(decls, s) -> can_unify (List.assoc s decls) typ
+  | TVariant labels1, TVariant labels2 ->
+      List.for_all2 (fun (s1,typs1) (s2,typs2) -> s1 = s2 && List.for_all2 can_unify typs1 typs2) labels1 labels2
+  | TRecord fields1, TRecord fields2 ->
+      List.for_all2 (fun (s1,(f1,typ1')) (s2,(f2,typ2')) -> s1 = s2 && f1 = f2 && can_unify typ1' typ2') fields1 fields2
   | _ -> false
 
 
@@ -157,6 +192,7 @@ let rec flatten typ =
       TVar{contents = Some typ'} -> flatten typ'
     | _ -> typ
 
+(* just for "unify"? *)
 let rec occurs r typ =
   match flatten typ with
   | TUnit -> false
@@ -169,11 +205,34 @@ let rec occurs r typ =
   | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
   | TList typ -> occurs r typ
   | TTuple xs -> List.exists (occurs r -| Id.typ) xs
-  | TData(s,b) -> false
+  | TData _ -> false
   | TPred(x,_) -> occurs r (Id.typ x)
   | TRef typ -> occurs r typ
   | TOption typ -> occurs r typ
   | TFuns _ -> unsupported ""
+  | TVariant labels -> List.exists (snd |- List.exists @@ occurs r) labels
+  | TRecord fields -> List.exists (snd |- snd |- occurs r) fields
+  | Type(decls, s) -> List.exists (snd |- occurs r) decls
+
+let rec data_occurs s typ =
+  match flatten typ with
+  | TUnit -> false
+  | TBool -> false
+  | TAbsBool -> false
+  | TInt -> false
+  | TRInt p -> assert false
+  | TVar r -> Option.exists (data_occurs s) !r
+  | TFun(x,typ) -> data_occurs s (Id.typ x) || data_occurs s typ
+  | TList typ -> data_occurs s typ
+  | TTuple xs -> List.exists (data_occurs s -| Id.typ) xs
+  | TData s' -> s = s'
+  | TPred(x,_) -> data_occurs s (Id.typ x)
+  | TRef typ -> data_occurs s typ
+  | TOption typ -> data_occurs s typ
+  | TFuns _ -> unsupported ""
+  | TVariant labels -> List.exists (snd |- List.exists @@ data_occurs s) labels
+  | TRecord fields -> List.exists (snd |- snd |- data_occurs s) fields
+  | Type(decls, s) -> List.exists (snd |- data_occurs s) decls
 
 
 let rec unify typ1 typ2 =
@@ -201,7 +260,8 @@ let rec unify typ1 typ2 =
         r := Some typ
   | TPred(x,_), typ
   | typ, TPred(x,_) -> unify (Id.typ x) typ
-  | TData(s1,_), TData(s2,_) -> assert (s1 = s2)
+  | TData s1, TData s2 -> assert (s1 = s2)
+  | Type(_,s1), Type(_,s2) -> assert (s1 = s2)
   | _ ->
       Format.printf "unification error: %a, %a@."
                     print_typ_init (flatten typ1) print_typ_init (flatten typ2);
@@ -222,7 +282,11 @@ let rec same_shape typ1 typ2 =
   | TTuple xs1, TTuple xs2 ->
       List.length xs1 = List.length xs2
       && List.for_all2 (fun x1 x2 -> same_shape (Id.typ x1) (Id.typ x2)) xs1 xs2
-  | TData(s1,_),TData(s2,_) -> s1 = s2
+  | TData s1, TData s2 -> s1 = s2
+  | Type(_, s1), Type(_, s2) -> s1 = s2
+  | TVariant labels1, TVariant labels2 ->
+      List.eq ~eq:(Compare.eq_on snd ~eq:(List.eq ~eq:same_shape)) labels1 labels2
+  | TRecord fields1, TRecord fields2 -> unsupported "same_shape"
   | _ -> false
 
 
@@ -290,6 +354,9 @@ let rec has_pred = function
   | TRef typ -> has_pred typ
   | TOption typ -> has_pred typ
   | TFuns _ -> unsupported ""
+  | TVariant labels -> List.exists (snd |- List.exists has_pred) labels
+  | TRecord fields -> List.exists (snd |- snd |- has_pred) fields
+  | Type(decls, _) -> List.exists (snd |- has_pred) decls
 
 let rec to_id_string = function
   | TUnit -> "unit"
@@ -305,11 +372,14 @@ let rec to_id_string = function
       let xs',x = List.decomp_snoc xs in
       let aux x s = to_id_string (Id.typ x) ^ "_x_" ^ s in
       List.fold_right aux xs' @@ to_id_string @@ Id.typ x
-  | TData(s,_) -> s
+  | TData s -> s
   | TPred(x,_) -> to_id_string (Id.typ x)
   | TRef typ -> to_id_string typ ^ "_ref"
   | TOption typ -> to_id_string typ ^ "_option"
   | TFuns _ -> unsupported ""
+  | TVariant labels -> String.join "_" @@ List.map fst labels
+  | TRecord fields -> String.join "_" @@ List.map fst fields
+  | Type(_, s) -> s
 
 
 (* order of simpl types *)
@@ -341,3 +411,41 @@ let decomp_ttuple typ =
   match typ with
   | TTuple xs -> List.map Id.typ xs
   | _ -> invalid_arg "decomp_ttuple"
+
+let rec decomp_trecord typ =
+  match typ with
+  | TRecord fields -> fields
+  | Type(decls, s) -> decomp_trecord @@ List.assoc s decls
+  | _ -> invalid_arg "decomp_trecord"
+
+
+
+let rec get_free_data_name typ =
+  match typ with
+  | TUnit -> []
+  | TAbsBool -> []
+  | TBool -> []
+  | TInt -> []
+  | TRInt p -> []
+  | TVar {contents=Some typ} -> get_free_data_name typ
+  | TVar {contents=None} -> []
+  | TFun(x, typ) -> get_free_data_name (Id.typ x) @ get_free_data_name typ
+  | TList typ -> get_free_data_name typ
+  | TTuple xs -> List.flatten_map (Id.typ |- get_free_data_name) xs
+  | TData s -> [s]
+  | TPred(x,_) -> get_free_data_name @@ Id.typ x
+  | TRef typ -> get_free_data_name typ
+  | TOption typ -> get_free_data_name typ
+  | TFuns _ -> unsupported "elim_tpred_all"
+  | TVariant labels -> List.flatten_map (snd |- List.flatten_map get_free_data_name) labels
+  | TRecord fields -> List.flatten_map (snd |- snd |- get_free_data_name) fields
+  | Type(decls, s) -> List.filter_out ((=) s) @@ List.flatten_map (snd |- get_free_data_name) decls
+let get_free_data_name typ = List.unique @@ get_free_data_name typ
+
+
+let rec is_mutable_record typ =
+  match typ with
+  | TRecord fields ->
+      List.exists (fun (_,(f,_)) -> f = Mutable) fields
+  | Type(decls, s) -> is_mutable_record @@ List.assoc s decls
+  | _ -> invalid_arg "is_mutable_record"

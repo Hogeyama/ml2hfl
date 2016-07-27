@@ -107,7 +107,7 @@ let rec of_typ typ =
   | Type.TInt -> Fpat.Type.mk_int
   | Type.TBool -> Fpat.Type.mk_bool
   | Type.TFun(x,typ) -> Fpat.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
-  | Type.TData("string", _) -> Fpat.Type.mk_string
+  | Type.TData "string" -> Fpat.Type.mk_string
   | _ ->
       Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
@@ -656,7 +656,7 @@ let insert_extra_param t =
       | Syntax.Event(s,b) -> Syntax.Event(s,b)
       | Syntax.Record fields -> Syntax.Record (List.map (Pair.map_snd @@ aux rfs bvs exs) fields)
       | Syntax.Field(s,t1) -> Syntax.Field(s,aux rfs bvs exs t1)
-      | Syntax.SetField(s,t1,t2) -> Syntax.SetField(s,aux rfs bvs exs t1,aux rfs bvs exs t2)
+      | Syntax.SetField(t1,s,t2) -> Syntax.SetField(aux rfs bvs exs t1,s,aux rfs bvs exs t2)
       | Syntax.Nil -> Syntax.Nil
       | Syntax.Cons(t1,t2) ->
          Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)

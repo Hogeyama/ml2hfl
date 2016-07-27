@@ -4,6 +4,7 @@ open CEGAR_type
 
 exception NoProgress
 exception CannotDiscoverPredicate
+exception NonLinear
 
 type var = string
 

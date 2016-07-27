@@ -46,7 +46,7 @@ and term =
   | Event of string * bool
   | Record of (string * typed_term) list
   | Field of string * typed_term
-  | SetField of string * typed_term * typed_term
+  | SetField of typed_term * string * typed_term
   | Nil
   | Cons of typed_term * typed_term
   | Constr of string * typed_term list
@@ -71,7 +71,6 @@ and info =
   | InfoIdTerm of id * typed_term
 
 and rec_flag = Nonrecursive | Recursive
-and mutable_flag = Immutable | Mutable
 
 
 and type_kind =
@@ -144,10 +143,13 @@ let trans_typ trans = function
   | TFuns(xs,typ) -> TFuns(List.map (Id.map_typ trans.tr_typ) xs, trans.tr_typ typ)
   | TList typ -> TList (trans.tr_typ typ)
   | TTuple xs -> TTuple (List.map trans.tr_var xs)
-  | TData(s,b) -> TData(s,b)
+  | TData s -> TData s
   | TPred(x,ps) -> TPred(trans.tr_var x, List.map trans.tr_term ps)
   | TRef typ -> TRef (trans.tr_typ typ)
   | TOption typ -> TOption (trans.tr_typ typ)
+  | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
+  | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd trans.tr_typ) fields)
+  | Type(decls, s) -> Type(List.map (Pair.map_snd trans.tr_typ) decls, s)
 
 let trans_var trans x = Id.map_typ trans.tr_typ x
 
@@ -206,7 +208,7 @@ let trans_desc trans = function
   | Event(s,b) -> Event(s,b)
   | Record fields ->  Record (List.map (Pair.map_snd trans.tr_term) fields)
   | Field(s,t1) -> Field(s,trans.tr_term t1)
-  | SetField(s,t1,t2) -> SetField(s,trans.tr_term t1,trans.tr_term t2)
+  | SetField(t1,s,t2) -> SetField(trans.tr_term t1,s,trans.tr_term t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(trans.tr_term t1, trans.tr_term t2)
   | Constr(s,ts) -> Constr(s, List.map trans.tr_term ts)
@@ -297,10 +299,14 @@ let trans2_gen_typ tr env = function
   | TFuns(xs,typ) -> TFuns(List.map (Id.map_typ @@ tr.tr2_typ env) xs, tr.tr2_typ env typ)
   | TList typ -> TList (tr.tr2_typ env typ)
   | TTuple xs -> TTuple (List.map (tr.tr2_var env) xs)
-  | TData(s,b) -> TData(s,b)
+  | TData s -> TData s
   | TPred(x,ps) -> TPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
   | TRef typ -> TRef (tr.tr2_typ env typ)
   | TOption typ -> TOption (tr.tr2_typ env typ)
+  | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
+  | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ tr.tr2_typ env) fields)
+  | Type(decls, s) -> Type(List.map (Pair.map_snd @@ tr.tr2_typ env) decls, s)
+
 
 let trans2_gen_var tr env x = Id.map_typ (tr.tr2_typ env) x
 
@@ -358,7 +364,7 @@ let trans2_gen_desc tr env = function
   | Event(s,b) -> Event(s,b)
   | Record fields ->  Record (List.map (Pair.map_snd @@ tr.tr2_term env) fields)
   | Field(s,t1) -> Field(s,tr.tr2_term env t1)
-  | SetField(s,t1,t2) -> SetField(s,tr.tr2_term env t1,tr.tr2_term env t2)
+  | SetField(t1,s,t2) -> SetField(tr.tr2_term env t1,s,tr.tr2_term env t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(tr.tr2_term env t1, tr.tr2_term env t2)
   | Constr(s,ts) -> Constr(s, List.map (tr.tr2_term env) ts)
@@ -451,10 +457,13 @@ let col_typ col = function
   | TFuns(xs,typ) -> col.col_app (List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs) (col.col_typ typ)
   | TList typ -> col.col_typ typ
   | TTuple xs -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs
-  | TData(s,b) -> col.col_empty
+  | TData s -> col.col_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_term p) (col.col_var x) ps
   | TRef typ -> col.col_typ typ
   | TOption typ -> col.col_typ typ
+  | TVariant labels -> List.fold_left (fun acc (_,typs) -> List.fold_left (fun acc' typ -> col.col_app acc' @@ col.col_typ typ) acc typs) col.col_empty labels
+  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> col.col_app acc @@ col.col_typ typ) col.col_empty fields
+  | Type(decls, _) -> List.fold_left (fun acc (_,typ) -> col.col_app acc @@ col.col_typ typ) col.col_empty decls
 
 let col_var col x = col.col_typ (Id.typ x)
 
@@ -507,7 +516,7 @@ let col_desc col = function
   | Event(s,b) -> col.col_empty
   | Record fields -> List.fold_left (fun acc (_,t1) -> col.col_app acc @@ col.col_term t1) col.col_empty fields
   | Field(s,t1) -> col.col_term t1
-  | SetField(s,t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
+  | SetField(t1,_,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Nil -> col.col_empty
   | Cons(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Constr(s,ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) col.col_empty ts
@@ -607,10 +616,13 @@ let col2_typ col env = function
   | TFuns(xs,typ) -> col.col2_app (List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs) (col.col2_typ env typ)
   | TList typ -> col.col2_typ env typ
   | TTuple xs -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs
-  | TData(s,b) -> col.col2_empty
+  | TData s -> col.col2_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_term env p) (col.col2_var env x) ps
   | TRef typ -> col.col2_typ env typ
   | TOption typ -> col.col2_typ env typ
+  | TVariant labels -> List.fold_left (fun acc (_, typs) -> List.fold_left (fun acc' typ -> col.col2_app acc @@ col.col2_typ env typ) acc typs) col.col2_empty labels
+  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty fields
+  | Type(decls, s) -> List.fold_left (fun acc (_,typ) -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty decls
 
 let col2_var col env x = col.col2_typ env (Id.typ x)
 
@@ -663,7 +675,7 @@ let col2_desc col env = function
   | Event(s,b) -> col.col2_empty
   | Record fields -> List.fold_left (fun acc (_,t1) -> col.col2_app acc @@ col.col2_term env t1) col.col2_empty fields
   | Field(s,t1) -> col.col2_term env t1
-  | SetField(s,t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
+  | SetField(t1,s,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Nil -> col.col2_empty
   | Cons(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Constr(s,ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) col.col2_empty ts
@@ -771,16 +783,16 @@ let tr_col2_typ tc env = function
       let acc2,typ' = tc.tr_col2_typ env typ in
       tc.tr_col2_app acc1 acc2, TFun(x', typ')
   | TFuns(xs,typ) ->
-      let acc1,xs' = tr_col2_list tc tc.tr_col2_var ~init:tc.tr_col2_empty env xs in
+      let acc1,xs' = tr_col2_list tc tc.tr_col2_var env xs in
       let acc2,typ' = tc.tr_col2_typ env typ in
       tc.tr_col2_app acc1 acc2, TFuns(xs', typ')
   | TList typ ->
       let acc,typ' = tc.tr_col2_typ env typ in
       acc, TList typ'
   | TTuple xs ->
-      let acc,xs' = tr_col2_list tc tc.tr_col2_var ~init:tc.tr_col2_empty env xs in
+      let acc,xs' = tr_col2_list tc tc.tr_col2_var env xs in
       acc, TTuple xs'
-  | TData(s,b) -> tc.tr_col2_empty, TData(s,b)
+  | TData s -> tc.tr_col2_empty, TData s
   | TPred(x,ps) ->
       let acc,x' = tc.tr_col2_var env x in
       let acc',ps' = tr_col2_list tc tc.tr_col2_term ~init:acc env ps in
@@ -791,6 +803,33 @@ let tr_col2_typ tc env = function
   | TOption typ ->
       let acc,typ' = tc.tr_col2_typ env typ in
       acc, TOption typ'
+  | TVariant labels ->
+      let acc,labels' =
+        let aux (s,typs) (acc,labels') =
+          let acc',typs' = tr_col2_list tc tc.tr_col2_typ ~init:acc env typs in
+          acc', (s,typs')::labels'
+        in
+        List.fold_right aux labels (tc.tr_col2_empty,[])
+      in
+      acc, TVariant labels'
+  | TRecord fields ->
+      let acc,fields' =
+        let aux env' (s,(f,typ)) =
+          let acc,typ' = tc.tr_col2_typ env typ in
+          acc, (s,(f,typ'))
+        in
+        tr_col2_list tc aux env fields
+      in
+      acc, TRecord fields'
+  | Type(decls, s) ->
+      let acc,decls' =
+        let aux env' (s,typ) =
+          let acc,typ' = tc.tr_col2_typ env typ in
+          acc, (s,typ')
+        in
+        tr_col2_list tc aux env decls
+      in
+      acc, Type(decls', s)
 
 let tr_col2_var tc env x =
   let acc,typ' = tc.tr_col2_typ env (Id.typ x) in
@@ -907,10 +946,10 @@ let tr_col2_desc tc env = function
   | Field(s,t1) ->
       let acc,t1' = tc.tr_col2_term env t1 in
       acc, Field(s,t1')
-  | SetField(s,t1,t2) ->
+  | SetField(t1,s,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, SetField(s,t1',t2')
+      tc.tr_col2_app acc1 acc2, SetField(t1',s,t2')
   | Nil -> tc.tr_col2_empty, Nil
   | Cons(t1,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
@@ -1028,7 +1067,7 @@ type 'a fold_tr =
    mutable fold_tr_const_rec: 'a -> const         -> 'a * const;
    mutable fold_tr_attr:      'a -> attr list     -> 'a * attr list}
 
-let fold_tr_list fld tr_col env xs =
+let fold_tr_list tr_col env xs =
   let aux x (env,xs) =
     let env',x' = tr_col env x in
     env', x'::xs
@@ -1053,12 +1092,12 @@ let fold_tr_typ fld env = function
       let env',typ' = fld.fold_tr_typ env typ in
       env', TList typ'
   | TTuple xs ->
-      let env',xs' = fold_tr_list fld fld.fold_tr_var env xs in
+      let env',xs' = fold_tr_list fld.fold_tr_var env xs in
       env', TTuple xs'
-  | TData(s,b) -> env, TData(s,b)
+  | TData s -> env, TData s
   | TPred(x,ps) ->
       let env',x' = fld.fold_tr_var env x in
-      let env'',ps' = fold_tr_list fld fld.fold_tr_term env' ps in
+      let env'',ps' = fold_tr_list fld.fold_tr_term env' ps in
       env'', TPred(x',ps')
   | TRef typ ->
       let env',typ' = fld.fold_tr_typ env typ in
@@ -1066,7 +1105,34 @@ let fold_tr_typ fld env = function
   | TOption typ ->
       let env',typ' = fld.fold_tr_typ env typ in
       env', TOption typ'
-  | TFuns _ -> unsupported ""
+  | TVariant labels ->
+      let env,labels' =
+        let aux (s,typs) (env,labels') =
+          let env',typs' = fold_tr_list fld.fold_tr_typ env typs in
+          env', (s,typs')::labels'
+        in
+        List.fold_right aux labels (env,[])
+      in
+      env, TVariant labels'
+  | TRecord fields ->
+      let env,fields' =
+        let aux env' (s,(f,typ)) =
+          let env,typ' = fld.fold_tr_typ env typ in
+          env, (s,(f,typ'))
+        in
+        fold_tr_list aux env fields
+      in
+      env, TRecord fields'
+  | Type(decls, s) ->
+      let env,decls' =
+        let aux env' (s,typ) =
+          let env,typ' = fld.fold_tr_typ env typ in
+          env, (s,typ')
+        in
+        fold_tr_list aux env decls
+      in
+      env, Type(decls', s)
+  | TFuns _ -> unsupported "fold_tr"
 
 let fold_tr_var fld env x =
   let env',typ' = fld.fold_tr_typ env (Id.typ x) in
@@ -1088,7 +1154,7 @@ let fold_tr_pat fld env p =
         let env'',t' = fld.fold_tr_term env' t in
         env'', PConst t'
     | PConstruct(s,ps) ->
-        let env'',ps' = fold_tr_list fld fld.fold_tr_pat env ps in
+        let env'',ps' = fold_tr_list fld.fold_tr_pat env ps in
         env'', PConstruct(s,ps')
     | PNil -> env', PNil
     | PCons(p1,p2) ->
@@ -1096,14 +1162,14 @@ let fold_tr_pat fld env p =
         let env''',p2' = fld.fold_tr_pat env'' p2 in
         env''', PCons(p1', p2')
     | PTuple ps ->
-        let env'',ps' = fold_tr_list fld fld.fold_tr_pat env' ps in
+        let env'',ps' = fold_tr_list fld.fold_tr_pat env' ps in
         env'', PTuple ps'
     | PRecord pats ->
         let aux env (s,p) =
           let env',p' = fld.fold_tr_pat env p in
           env', (s,p')
         in
-        let env'',pats' = fold_tr_list fld aux env' pats in
+        let env'',pats' = fold_tr_list aux env' pats in
         env'', PRecord pats'
     | POr(p1,p2) ->
         let env'',p1' = fld.fold_tr_pat env' p1 in
@@ -1148,7 +1214,7 @@ let fold_tr_desc fld env = function
       env'', Fun(y',t')
   | App(t1, ts) ->
       let env',t1' = fld.fold_tr_term env t1 in
-      let env'',ts' = fold_tr_list fld fld.fold_tr_term env' ts in
+      let env'',ts' = fold_tr_list fld.fold_tr_term env' ts in
       env'', App(t1', ts')
   | If(t1, t2, t3) ->
       let env',t1' = fld.fold_tr_term env t1 in
@@ -1158,11 +1224,11 @@ let fold_tr_desc fld env = function
   | Let(flag, bindings, t2) ->
       let aux env (f,xs,t) =
         let env',f' = fld.fold_tr_var env f in
-        let env'',xs' = fold_tr_list fld fld.fold_tr_var env' xs in
+        let env'',xs' = fold_tr_list fld.fold_tr_var env' xs in
         let env''',t' = fld.fold_tr_term env'' t in
         env''', (f',xs',t')
       in
-      let env',bindings' = fold_tr_list fld aux env bindings in
+      let env',bindings' = fold_tr_list aux env bindings in
       let env'',t2' = fld.fold_tr_term env' t2 in
       env'', Let(flag,bindings',t2')
   | BinOp(op, t1, t2) ->
@@ -1178,22 +1244,22 @@ let fold_tr_desc fld env = function
         let env',t1' = fld.fold_tr_term env t1 in
         env', (s,t1')
       in
-      let env',fields' = fold_tr_list fld aux env fields in
+      let env',fields' = fold_tr_list aux env fields in
       env', Record fields'
   | Field(s,t1) ->
       let env',t1' = fld.fold_tr_term env t1 in
       env', Field(s,t1')
-  | SetField(s,t1,t2) ->
+  | SetField(t1,s,t2) ->
       let env',t1' = fld.fold_tr_term env t1 in
       let env'',t2' = fld.fold_tr_term env' t2 in
-      env'', SetField(s,t1',t2')
+      env'', SetField(t1',s,t2')
   | Nil -> env, Nil
   | Cons(t1,t2) ->
       let env',t1' = fld.fold_tr_term env t1 in
       let env'',t2' = fld.fold_tr_term env' t2 in
       env'', Cons(t1',t2')
   | Constr(s,ts) ->
-      let env',ts' = fold_tr_list fld fld.fold_tr_term env ts in
+      let env',ts' = fold_tr_list fld.fold_tr_term env ts in
       env', Constr(s,ts')
   | Match(t1,pats) ->
       let aux env (pat,cond,t1) =
@@ -1203,7 +1269,7 @@ let fold_tr_desc fld env = function
         env''', (pat',cond',t1')
       in
       let env',t1' = fld.fold_tr_term env t1 in
-      let env'',pats' = fold_tr_list fld aux env' pats in
+      let env'',pats' = fold_tr_list aux env' pats in
       env'', Match(t1',pats')
   | Raise t ->
       let env',t' = fld.fold_tr_term env t in
@@ -1213,7 +1279,7 @@ let fold_tr_desc fld env = function
       let env'',t2' = fld.fold_tr_term env' t2 in
       env'', TryWith(t1',t2')
   | Tuple ts ->
-      let env',ts' = fold_tr_list fld fld.fold_tr_term env ts in
+      let env',ts' = fold_tr_list fld.fold_tr_term env ts in
       env', Tuple ts'
   | Proj(i,t) ->
       let env',t' = fld.fold_tr_term env t in

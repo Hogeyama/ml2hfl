@@ -2,7 +2,6 @@ open Util
 open Syntax
 open Term_util
 open Type
-open Type_decl
 
 
 module RT = Ref_type
@@ -22,7 +21,7 @@ let rec is_filled_pattern p =
     | PConst c -> Some c
     | PConstruct(c, ps) ->
         let ts = List.map is_filled_pattern ps in
-        Some (make_construct c @@ List.map Option.get ts)
+        Some (make_construct c (List.map Option.get ts) p.pat_typ)
     | PNil -> Some (make_nil @@ list_typ p.pat_typ)
     | PCons(p1,p2) ->
         let t1 = Option.get @@ is_filled_pattern p1 in
@@ -32,13 +31,9 @@ let rec is_filled_pattern p =
         let ts = List.map is_filled_pattern ps in
         Some (make_tuple @@ List.map Option.get ts)
     | PRecord fields ->
-        let sftyps =
-          match Type_decl.kind_of_field (fst @@ List.hd fields) with
-          | _, TKRecord sftyps -> sftyps
-          | _ -> assert false
-        in
+        let sftyps = decomp_trecord p.pat_typ in
         assert (List.length fields = List.length sftyps);
-        Some (make_record @@ List.map (Pair.map_snd @@ Option.get -| is_filled_pattern) fields)
+        Some (make_record (List.map (Pair.map_snd @@ Option.get -| is_filled_pattern) fields) p.pat_typ)
     | PNone -> Some (make_none @@ option_typ p.pat_typ)
     | PSome p1 -> Some (make_some @@ Option.get @@ is_filled_pattern p1)
     | POr _ -> None
@@ -281,7 +276,6 @@ let trans t =
   if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   let t' = Trans.inline_var_const t' in
   if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
-  typ_excep := abst_list.tr2_typ "" !typ_excep;
   Type_check.check t' Type.TUnit;
   t', make_get_rtyp_list_of t
 
@@ -455,7 +449,6 @@ let trans_opt t =
   let t' = Trans.subst_let_xy t' in
 *)
   if false then Format.printf "abst_list::@. @[%a@.@." Print.term t';
-  typ_excep := abst_list_opt.tr_typ !typ_excep;
   Type_check.check t' Type.TUnit;
   t', fun _ _ -> raise Not_found
 

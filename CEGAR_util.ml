@@ -407,7 +407,7 @@ let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
             begin
               match not_const xns1, not_const xns2 with
               | true, true ->
-                  unsupported @@ Format.asprintf "Nonlinear expression not supported: %a@." CEGAR_print.term (make_app op [t1;t2])
+                  raise NonLinear
               | false, true ->
                   let k = reduce xns1 in
                   List.rev_map (fun (x,n) -> x,n*k) xns2
@@ -499,7 +499,10 @@ let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
   | App(t1, t2) -> App(normalize_bool_term ~imply t1, normalize_bool_term ~imply t2)
   | Let _ -> assert false
   | Fun(x,typ,t) -> Fun(x, typ, normalize_bool_term ~imply t)
-
+let normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
+  try
+    normalize_bool_term ~imply t
+  with NonLinear -> t
 
 
 

@@ -100,7 +100,7 @@ let constr_typ s =
     | (_, TKRecord _)::kinds -> search kinds
     | (c, TKVariant stypss)::kinds ->
         if List.mem_assoc s stypss
-        then TData(c, true)
+        then TData c
         else search kinds
   in
   search !typ_decls
@@ -133,7 +133,7 @@ let kind_of_field s =
 
 let field_typ s =
   let c,_ = kind_of_field s in
-  TData(c, true)
+  TData c
 
 let field_arg_typ s =
   let sftyps =
@@ -184,14 +184,14 @@ let rec can_reach acc s1 s2 =
     then true, acc
     else
       match typ with
-      | TData(s,_) when not @@ List.mem s acc ->
+      | TData s when not @@ List.mem s acc ->
           can_reach (s::acc) s s2
       | _ -> false, acc
   in
   match assoc s1 with
   | Primitive -> false, acc
   | Abstract -> false, acc
-  | TKRecord sftyps when List.exists (function (_,(_,TData(s,_))) -> s = s2 | _ -> false) sftyps -> true, acc
+  | TKRecord sftyps when List.exists (function (_,(_,TData s)) -> s = s2 | _ -> false) sftyps -> true, acc
   | TKRecord sftyps ->
       List.fold_left (fun bacc (_,(_,typ)) -> aux bacc typ) (false,[]) sftyps
   | TKVariant stypss ->
@@ -205,7 +205,6 @@ let get_mutual_decls s =
 
 let get_ground_types s =
   let decls = get_mutual_decls s in
-  let names = List.map fst decls in
   let add typ typs = if List.exists (same_shape typ) typs then typs else typ::typs in
   let rec elim_and_decomp acc = function
     | [] -> acc
@@ -219,15 +218,10 @@ let get_ground_types s =
         | TVar({contents=None}) -> unsupported "(type 'a t = ...)"
         | TVar _ -> unsupported "(type 'a t = ...)"
         | TFun _ -> elim_and_decomp (add TInt acc) typs
-        | TList (TData(s',_) as typ') when can_reach s' s -> elim_and_decomp acc (typ'::typs)
+        | TList (TData s' as typ') when can_reach s' s -> elim_and_decomp acc (typ'::typs)
         | TList _ -> elim_and_decomp (add typ acc) typs
         | TTuple xs -> elim_and_decomp acc (List.map Id.typ xs @ typs)
-        | TData(s,true) ->
-            if List.mem s names then
-              elim_and_decomp acc typs
-            else
-              fatal "Not implemented (Type_decl.get_base_types)"
-        | TData(s,false) -> elim_and_decomp (add typ acc) typs
+        | TData _ -> elim_and_decomp (add typ acc) typs
         | _ -> assert false
   in
   let aux = function

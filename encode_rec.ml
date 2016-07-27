@@ -7,23 +7,102 @@ module RT = Ref_type
 
 let debug () = List.mem "Encode_rec" !Flag.debug_module
 
-let hd = function
-  | [x] -> x
-  | _ -> assert false
+let rec extract_decls_typ ?prev_type env typ =
+  match typ with
+  | Type(_, s) when List.mem s env ->
+      [], TData s
+  | Type(decls, s) ->
+      let typ' = List.assoc s decls in
+      let ds',typ'' = extract_decls_typ ~prev_type:s (s::env) typ' in
+      (s,typ'')::ds', TData s
+  | TVariant labels ->
+      let ds,labels' =
+        let aux (s,typs) (ds,ls) =
+          let ds',typs' = List.fold_right (fun typ (ds,typs) -> let ds',typ' = extract_decls_typ env typ in ds'@ds, typ'::typs) typs (ds,[]) in
+          ds', (s, typs')::ls
+        in
+        List.fold_right aux labels ([],[])
+      in
+      let typ' = TVariant labels' in
+      if prev_type <> None then
+        ds, typ'
+      else
+        if get_free_data_name typ = [] then
+          ds, typ'
+        else
+          begin
+            try
+              let s = List.find (data_occurs -$- typ) env ^ "'" in
+              (s,typ')::ds, TData s
+            with Not_found -> ds, typ'
+          end
+  | TRecord fields ->
+      unsupported "extract_decls_typ"
+  | _ -> [], typ
+let extract_decls_typ typ = extract_decls_typ [] typ
+
+
+let flatten_recdata_typ typ =
+  if !!debug then Format.printf "flatten_recdata_typ IN: %a@." Print.typ typ;
+  match fold_data_type typ with
+  | Type(_,s) ->
+      let decls',_ = extract_decls_typ typ in
+      Type(decls', s)
+      |@!!debug&> Format.printf "flatten_recdata_typ OUT: %a@." Print.typ
+  | _ -> invalid_arg "flatten_recdata_typ"
+
+
+let rec collect_leaf_aux typ =
+  match typ with
+  | Type _ -> invalid_arg "collect_leaf_aux"
+  | TData _ -> []
+  | TTuple [x] -> collect_leaf_aux @@ Id.typ x
+  | _ when get_free_data_name typ = [] -> [typ]
+  | TVariant labels -> List.flatten_map (snd |- List.flatten_map collect_leaf_aux) labels
+  | TRecord fields -> List.flatten_map (snd |- snd |- collect_leaf_aux) fields
+  | _ -> unsupported "collect_leaf_aux"; [typ]
+let collect_leaf_aux typ =
+  if !!debug then Format.printf "CLA: %a@." Print.typ typ;
+  List.unique @@ collect_leaf_aux typ
+let collect_leaf typ =
+  match typ with
+  | Type(decls, s) ->
+      let leaves = List.unique @@ List.flatten_map (snd |- collect_leaf_aux) decls in
+      if List.exists (data_occurs s) leaves then
+        unsupported "non-regular data types";
+      leaves
+  | TVariant _ -> collect_leaf_aux typ
+  | _ ->
+      if !!debug then Format.printf "%a@." Print.typ typ;
+      invalid_arg "collect_leaf"
+
 
 let abst_recdata = make_trans ()
 
+let abst_recdata_leaves typs =
+  let typs' = List.map abst_recdata.tr_typ typs in
+  let r_typ =
+    if typs = []
+    then TInt
+    else make_ttuple [TInt; make_ttuple typs']
+  in
+  make_ttuple [TUnit; (* extra-param *)
+               TFun(Id.new_var ~name:"path" (TList TInt), r_typ)]
+
 let abst_recdata_typ typ =
-  match typ with
-  | TData(s,true) when Type_decl.is_variant s ->
-      let typs = List.map abst_recdata.tr_typ @@ Type_decl.get_ground_types s in
-      let r_typ =
-        if typs = []
-        then TInt
-        else make_ttuple [TInt; make_ttuple typs]
-      in
-      make_ttuple [TUnit; (* extra-param *)
-                   TFun(Id.new_var ~name:"path" (TList TInt), r_typ)]
+  match fold_data_type typ with
+  | TRecord fields -> unsupported "abst_recdata_typ TRecord"
+  | TVariant labels ->
+      labels
+      |> List.flatten_map (snd |- List.flatten_map collect_leaf_aux)
+      |> List.unique
+      |> abst_recdata_leaves
+  | Type _ ->
+      typ
+      |> flatten_recdata_typ
+      |> collect_leaf
+      |> abst_recdata_leaves
+  (*
   | TData(s,true) when Type_decl.is_record s ->
       if Type_decl.is_mutable s
       then unsupported "Mutable records"
@@ -35,11 +114,26 @@ let abst_recdata_typ typ =
         in
         make_ttuple @@ List.map (abst_recdata.tr_typ -| snd -| snd) sftyps
   | TData(s,true) -> assert false
+ *)
   | TOption typ -> opt_typ (abst_recdata.tr_typ typ)
   | _ -> abst_recdata.tr_typ_rec typ
 
+let abst_label typ s =
+  let rec pos typ =
+    match typ with
+    | TVariant labels -> List.find_pos (fun _ (s',_) -> s = s') labels
+    | Type(decls, s') -> pos @@ List.assoc s' decls
+    | _ ->
+        Format.printf "%a@." Print.typ typ;
+        assert false
+  in
+  make_int (1 + pos typ)
 
-let abst_label c = make_int (1 + Type_decl.constr_pos c)
+let get_ground_types typ =
+  match abst_recdata.tr_typ typ with
+  | TTuple (_::[{Id.typ=TFun(_, TInt)}]) -> []
+  | TTuple (_::[{Id.typ=TFun(_, TTuple [_; {Id.typ=TTuple xs}])}]) -> List.map Id.typ xs
+  | _ -> assert false
 
 let rec abst_recdata_pat p =
   let typ = abst_recdata.tr_typ p.pat_typ in
@@ -54,12 +148,7 @@ let rec abst_recdata_pat p =
     | PConstruct(c,ps) ->
         let f = Id.new_var ~name:"f" typ in
         let ppcbs = List.map (Pair.add_right abst_recdata_pat) ps in
-        let typ_name =
-          match p.pat_typ with
-          | TData(s,true) -> s
-          | _ -> Format.printf "%a@." Print.typ p.pat_typ; assert false
-        in
-        let ground_types = Type_decl.get_ground_types typ_name in
+        let ground_types = get_ground_types p.pat_typ in
         let make_bind i (p,(p',_,_)) =
           let t =
             if List.mem p.pat_typ ground_types
@@ -89,7 +178,7 @@ let rec abst_recdata_pat p =
         let cond0 =
           let t = make_app (make_snd @@ make_var f) [make_nil TInt] in
           let t' = if ground_types = [] then t else make_proj 0 t in
-          make_eq t' (abst_label c) in
+          make_eq t' (abst_label p.pat_typ c) in
         let cond = List.fold_left make_and true_term (cond0 :: conds') in
         let bind = binds @ List.flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
         PVar f, cond, bind
@@ -129,28 +218,31 @@ let abst_recdata_term t =
   | Constr("Abst",[]) -> {desc=Constr("Abst",[]); typ=abst_recdata.tr_typ t.typ; attr=[]}
   | Constr(c,ts) ->
       let ts' = List.map abst_recdata.tr_term ts in
-      let typ_name = match t.typ with TData(s,true) -> s | _ -> assert false in
-      let ground_types = Type_decl.get_ground_types typ_name in
+      let ground_types = get_ground_types t.typ in
       let make_return label typ t =
-        let aux typ' = if typ = typ' then t else make_term @@ abst_recdata.tr_typ typ' in
         let head = Option.default (make_int 0) label in
-        let bodies = List.map aux ground_types in
-        match bodies with
+        match ground_types with
         | [] -> head
-        | _ -> make_pair head @@ make_tuple bodies
+        | _ ->
+            let bodies =
+              let aux typ' = if same_shape typ typ' then t else make_term @@ abst_recdata.tr_typ typ' in
+              List.map aux ground_types
+            in
+            make_pair head @@ make_tuple bodies
       in
       let path = Id.new_var ~name:"path" @@ TList TInt in
-      let pat0 = make_pnil TInt, true_term, make_return (Some (abst_label c)) TUnit unit_term in
-      let xtyps = List.map (fun t -> Id.new_var @@ abst_recdata.tr_typ t.typ, t.typ) ts in
+      let pat0 = make_pnil TInt, true_term, make_return (Some (abst_label t.typ c)) TUnit unit_term in
       let make_pat i (x,typ) =
         let path' = Id.new_var ~name:"path'" @@ TList TInt in
         let t =
-          if List.mem typ ground_types
-          then make_return None typ (make_var x)
-          else make_app (make_snd @@ make_var x) [make_var path']
+          if List.exists (same_shape @@ Id.typ x) ground_types then
+            make_return None typ @@ make_var x
+          else
+            make_app (make_snd @@ make_var x) [make_var path']
         in
         make_pcons (make_pconst @@ make_int i) (make_pvar path'), true_term, t
       in
+      let xtyps = List.map (fun t -> Id.new_var @@ abst_recdata.tr_typ t.typ |@> Format.printf "%a, %a@." Print.typ t.typ Print.id_typ, t.typ) ts in
       let pats = List.mapi make_pat xtyps in
       let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
       make_lets defs @@
@@ -173,18 +265,61 @@ let abst_recdata_term t =
   | TSome t -> make_some @@ abst_recdata.tr_term t
   | Record [] -> assert false
   | Record fields ->
-      if List.exists (fun (s,_) -> Type_decl.get_mutable_flag s = Mutable) fields
+      if List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord t.typ
       then unsupported "Mutable records"
       else make_tuple @@ List.map (abst_recdata.tr_term -| snd) fields
   | Field(s,t) ->
-      if Type_decl.is_mutable @@ fst @@ Type_decl.kind_of_field s
-      then unsupported "Mutable records"
-      else make_proj (Type_decl.get_pos s) @@ abst_recdata.tr_term t
+      let fields = decomp_trecord t.typ in
+      if Mutable = fst @@ List.assoc s fields then
+        unsupported "Mutable records"
+      else
+        make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ abst_recdata.tr_term t
   | SetField _ -> assert false
   | _ -> abst_recdata.tr_term_rec t
 
 let () = abst_recdata.tr_term <- abst_recdata_term
 let () = abst_recdata.tr_typ <- abst_recdata_typ
+
+
+
+
+
+
+let record_to_tuple = make_trans ()
+let record_to_tuple_typ typ =
+  match fold_data_type typ with
+  | TRecord fields ->
+      make_ttuple @@ List.map (fun (s,(f,typ)) -> if f = Mutable then unsupported "mutable record"; typ) fields
+  | _ -> record_to_tuple.tr_typ_rec typ
+
+let rec record_to_tuple_pat p =
+  match p.pat_desc with
+  | PRecord fields ->
+      let ps = List.map (snd |- record_to_tuple.tr_pat) fields in
+      let typ = record_to_tuple.tr_typ p.pat_typ in
+      {pat_desc=PTuple ps; pat_typ=typ}
+  | _ -> record_to_tuple.tr_pat_rec p
+
+let record_to_tuple_term t =
+  match t.desc with
+  | Record fields ->
+      if is_mutable_record t.typ then
+        unsupported "Mutable records";
+      make_tuple @@ List.map (record_to_tuple.tr_term -| snd) fields
+  | Field(s,t) ->
+      let fields = decomp_trecord t.typ in
+      if is_mutable_record t.typ then
+        unsupported "Mutable records";
+      make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ record_to_tuple.tr_term t
+  | SetField _ -> unsupported "Mutable records"
+  | _ -> record_to_tuple.tr_term_rec t
+
+let () = record_to_tuple.tr_term <- record_to_tuple_term
+let () = record_to_tuple.tr_pat <- record_to_tuple_pat
+let () = record_to_tuple.tr_typ <- record_to_tuple_typ
+
+
+
 
 
 let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
@@ -195,8 +330,9 @@ let trans t =
   |> Trans.remove_top_por
   |@> pr "remove_top_por"
   |@> Type_check.check -$- TUnit
+  |> record_to_tuple.tr_term
+  |@> Type_check.check -$- TUnit
   |> abst_recdata.tr_term
-  |@> (fun _ -> typ_excep := abst_recdata.tr_typ !typ_excep)
   |@> pr "abst_rec"
   |@> Type_check.check -$- TUnit
   |> Trans.simplify_match
