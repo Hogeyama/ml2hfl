@@ -11,7 +11,7 @@ and default_val' =
     | TInt -> Const (Int 0)
     | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var ~name:"_" t1, default_val t2)
     | TPred (t, _) -> default_val' (Id.typ t)
-    | TData (_, _) -> raise (Invalid_argument "default_val: not yet implemented syntax(Tconstr)")
+    | TData _ -> raise (Invalid_argument "default_val: not yet implemented syntax(Tconstr)")
     | TRInt _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TRInt)")
     | TAbsBool -> raise (Invalid_argument "default_val: not yet implemented syntax(TAbsBool)")
     | TList _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TList)")

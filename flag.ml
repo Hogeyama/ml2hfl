@@ -93,7 +93,7 @@ let time_interpolant = ref 0.
 let time_parameter_inference = ref 0.
 let result = ref ""
 
-let cegar_loop = ref 0
+let cegar_loop = ref 1
 let time_limit = ref 0
 let max_input_size = 65536
 let args = ref [""] (* command-line options *)

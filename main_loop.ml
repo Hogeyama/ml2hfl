@@ -89,7 +89,7 @@ let get_rtyp_id get_rtyp f = get_rtyp f
 let preprocesses spec : preprocess list =
   [
     Replace_const,
-    ((Fun.const !Flag.replace_const),
+    (Fun.const !Flag.replace_const,
      (fun acc -> CFA.replace_const @@ last_t acc, get_rtyp_id));
     Encode_mutable_record,
     (Fun.const true,
@@ -98,16 +98,16 @@ let preprocesses spec : preprocess list =
     (Fun.const true,
      (fun acc -> Trans.abst_ref @@ last_t acc, get_rtyp_id));
     Make_fun_tuple,
-    ((Fun.const !Flag.tupling),
+    (Fun.const !Flag.tupling,
      (fun acc -> Ref_trans.make_fun_tuple @@ last_t acc, get_rtyp_id));
-    Make_ext_funs,
-    (Fun.const true,
-     (fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
     Copy_poly,
     (Fun.const true,
      (fun acc -> Trans.copy_poly_funs @@ last_t acc));
+    Make_ext_funs,
+    (Fun.const true,
+     (fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
     Ignore_non_termination,
-    ((Fun.const !Flag.ignore_non_termination),
+    (Fun.const !Flag.ignore_non_termination,
      (fun acc -> Trans.ignore_non_termination @@ last_t acc, get_rtyp_id));
     Beta_reduce_trivial,
     (Fun.const true,
@@ -119,52 +119,52 @@ let preprocesses spec : preprocess list =
     (Fun.const true,
      (fun acc -> Trans.decomp_pair_eq @@ last_t acc, get_rtyp_id));
     Add_preds,
-    ((Fun.const (spec.Spec.abst_env <> [])),
+    (Fun.const (spec.Spec.abst_env <> []),
      (fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
     Replace_fali_with_raise,
-    ((Fun.const !Flag.fail_as_exception),
+    (Fun.const !Flag.fail_as_exception,
      (fun acc -> Trans.replace_fail_with_raise @@ last_t acc, get_rtyp_id));
     Encode_recdata,
     (Fun.const true,
      (fun acc -> Encode_rec.trans @@ last_t acc, get_rtyp_id));
     Replace_base_with_int,
-    ((Fun.const !Flag.base_to_int),
+    (Fun.const !Flag.base_to_int,
      (fun acc -> Trans.replace_base_with_int @@ last_t acc, get_rtyp_id));
     Encode_list,
     (Fun.const true,
      (fun acc -> Encode_list.trans @@ last_t acc));
     Ret_fun,
-    ((Fun.const !Flag.tupling),
+    (Fun.const !Flag.tupling,
      (fun acc -> Ret_fun.trans @@ last_t acc));
     Ref_trans,
-    ((Fun.const !Flag.tupling),
+    (Fun.const !Flag.tupling,
      (fun acc -> Ref_trans.trans @@ last_t acc));
     Tupling,
-    ((Fun.const !Flag.tupling),
+    (Fun.const !Flag.tupling,
      (fun acc -> Tupling.trans @@ last_t acc));
     Inline,
     (Fun.const true,
      (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
     CPS,
-    ((Fun.const !Flag.trans_to_CPS),
+    (Fun.const !Flag.trans_to_CPS,
      (fun acc -> CPS.trans @@ last_t acc));
     Remove_pair,
-    ((Fun.const !Flag.trans_to_CPS),
+    (Fun.const !Flag.trans_to_CPS,
      (fun acc -> Curry.remove_pair @@ last_t acc));
     Replace_bottom_def,
     (Fun.const true,
      (fun acc -> Trans.replace_bottom_def @@ last_t acc, get_rtyp_id));
     Add_preds,
-    ((Fun.const (spec.Spec.abst_cps_env <> [])),
+    (Fun.const (spec.Spec.abst_cps_env <> []),
      (fun acc -> Trans.replace_typ (Spec.get_abst_cps_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
     Eliminate_same_arguments,
-    ((Fun.const !Flag.elim_same_arg),
+    (Fun.const !Flag.elim_same_arg,
      (fun acc -> Elim_same_arg.trans @@ last_t acc, get_rtyp_id));
     Insert_unit_param,
-    ((Fun.const !Flag.insert_param_funarg),
+    (Fun.const !Flag.insert_param_funarg,
      (fun acc -> Trans.insert_param_funarg @@ last_t acc, get_rtyp_id));
     Preprocessfortermination,
-    ((Fun.const (!Flag.mode = Flag.Termination)),
+    (Fun.const (!Flag.mode = Flag.Termination),
      (fun acc -> !BRA_types.preprocessForTerminationVerification @@ last_t acc, get_rtyp_id));
   ]
 
@@ -340,9 +340,6 @@ let rec run_cegar prog =
       run_cegar prog
 
 
-let init_typ_excep () =
-  Term_util.typ_excep := Type.TData("exn",true)
-
 let insert_extra_param t =
   let t' =
     t
@@ -398,7 +395,6 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
     let result = CEGAR.run prog' info in
     result, make_get_rtyp, set_target'
   with e ->
-    init_typ_excep ();
     improve_precision e;
     loop ~make_pps ~fun_list exparam_sol ~spec parsed set_target
 

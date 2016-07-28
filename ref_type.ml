@@ -243,7 +243,7 @@ let rec of_simple typ =
   | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
-  | Type.TData(s,_) -> Base(Abst s, Id.new_var typ, U.true_term)
+  | Type.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
   | Type.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | Type.TTuple xs ->
       Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
@@ -257,7 +257,7 @@ let rec to_simple typ =
   | Base(Unit, _, _) -> Type.TUnit
   | Base(Bool, _, _) -> Type.TBool
   | Base(Int, _, _) -> Type.TInt
-  | Base(Abst s, _, _) -> Type.TData(s, false)
+  | Base(Abst s, _, _) -> Type.TData s
   | Fun(x,typ1,typ2) -> Type.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
   | Tuple xtyps -> Type.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
   | Inter(typ, _) -> typ
@@ -270,7 +270,7 @@ let to_abst_typ_base b =
   | Unit -> Type.TUnit
   | Bool -> Type.TBool
   | Int -> Type.TInt
-  | Abst s -> Type.TData(s, false)
+  | Abst s -> Type.TData s
 
 let rec to_abst_typ typ =
   let r =
@@ -575,7 +575,7 @@ let rec make_strongest typ =
   | Type.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.false_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.false_term)
-  | Type.TData(s,_) -> Base(Abst s, Id.new_var typ, U.false_term)
+  | Type.TData s -> Base(Abst s, Id.new_var typ, U.false_term)
   | Type.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
   | Type.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
   | Type.TList _ -> unsupported "Ref_type.make_strongest TList"
@@ -589,7 +589,7 @@ and make_weakest typ =
   | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
-  | Type.TData(s,_) -> Base(Abst s, Id.new_var typ, U.true_term)
+  | Type.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
   | Type.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | Type.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | Type.TList _ -> unsupported "Ref_type.make_weakest List"
@@ -853,7 +853,7 @@ and generate genv cenv typ =
             let aux typ1 (genv,cenv,tbs) =
               let genv', cenv', tb = generate_check genv cenv x typ1 in
               let tb' =
-                let e = Id.new_var ~name:"e" !U.typ_excep in
+                let e = Id.new_var ~name:"e" U.typ_exn in
                 U.make_trywith tb e [U.make_pany @@ Id.typ e, U.true_term, U.false_term]
                 |> U.make_or U.randbool_unit_term
                 |*> U.add_comment @@ Format.asprintf "GEN INTER: beta(%a)" print typ1

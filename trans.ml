@@ -157,75 +157,81 @@ let unify_pattern_var = unify_pattern_var.col_term
 
 
 
-let rec define_randvalue (env, defs as ed) typ =
-  if List.mem_assoc typ env
-  then (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
+let rec define_randvalue name (env, defs as ed) typ =
+  if List.mem_assoc typ env then
+    (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
   else
     match typ with
     | TUnit -> (env, defs), unit_term
     | TBool -> (env, defs), randbool_unit_term
     | TInt -> (env, defs), randint_unit_term
-    | TVar({contents=None} as r) -> r := Some TInt; define_randvalue ed TInt
-    | TVar{contents=Some typ} -> define_randvalue ed typ
+    | TVar({contents=None} as r) -> r := Some TInt; define_randvalue "" ed TInt
+    | TVar{contents=Some typ} -> define_randvalue "" ed typ
     | TFun(x,typ) ->
-        let ed',t = define_randvalue ed typ in
+        let ed',t = define_randvalue "" ed typ in
         ed', make_fun x t
     | TList (TVar({contents=None} as r)) ->
         r := Some TUnit;
-        define_randvalue ed typ
+        define_randvalue "" ed typ
     | TList typ' ->
         let u = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
-        let (env'',defs'),t_typ' = define_randvalue (env', defs) typ' in
+        let (env'',defs'),t_typ' = define_randvalue "" (env', defs) typ' in
         let t_typ = make_br (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term])) in
         (env'', (f,[u],t_typ)::defs'), make_app (make_var f) [unit_term]
     | TTuple xs ->
         let aux x (ed,ts) =
-          let ed',t = define_randvalue ed @@ Id.typ x in
+          let ed',t = define_randvalue "" ed @@ Id.typ x in
           ed', t::ts
         in
         let (env', defs'), ts = List.fold_right aux xs ((env,defs),[]) in
         (env', defs'), make_tuple ts
-    | TData(s,false) -> (env, defs), make_randvalue_unit typ
-    | TData(s,true) ->
+    | TRef typ ->
+        let ed',t = define_randvalue "" ed typ in
+        ed', make_ref t
+    | TData s -> (env, defs), make_randvalue_unit typ
+    | TVariant labels ->
         let u = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
-        let env' = (typ,f)::env in
+        let env' = (TData name,f)::(typ,f)::env in
+        let n = List.length labels in
+        let aux1 (s,typs) (ed,itss,i) =
+          let aux2 typ (ed,ts) =
+            let ed',t = define_randvalue "" ed typ in
+            ed', t::ts
+          in
+          let ed',ts' = List.fold_right aux2 typs (ed,[]) in
+          ed', (i-1,ts')::itss, i-1
+        in
+        let (env'',defs'),itss,_ = List.fold_right aux1 labels ((env',defs),[],n) in
+        let aux (s,typs) (i,ts) =
+          let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
+          p, true_term, {desc=Constr(s,ts); typ=typ; attr=[]}
+        in
+        let (env'',defs'),t = (env'', defs'), make_match randint_unit_term (List.map2 aux labels itss) in
+        (env'', (f,[u],t)::defs'), make_app (make_var f) [unit_term]
+    | TRecord fields ->
+        let u = Id.new_var ~name:"u" TUnit in
+        let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
+        let env' = (TData name,f)::(typ,f)::env in
         let (env'',defs'),t =
-          match Type_decl.assoc s with
-          | Type_decl.Primitive -> assert false
-          | Type_decl.Abstract -> assert false
-          | Type_decl.TKVariant stypss ->
-              let n = List.length stypss in
-              let aux1 (s,typs) (ed,itss,i) =
-                let aux2 typ (ed,ts) =
-                  let ed',t = define_randvalue ed typ in
-                  ed', t::ts
-                in
-                let ed',ts' = List.fold_right aux2 typs (ed,[]) in
-                ed', (i-1,ts')::itss, i-1
-              in
-              let (env'',defs'),itss,_ = List.fold_right aux1 stypss ((env',defs),[],n) in
-              let aux (s,typs) (i,ts) =
-                let p = if i < n-1 then make_pconst (make_int i) else make_pany TInt in
-                p, true_term, {desc=Constr(s,ts); typ=typ; attr=[]}
-              in
-              (env'', defs'), make_match randint_unit_term (List.map2 aux stypss itss)
-          | Type_decl.TKRecord sftyps ->
-              let aux (field,(flag,typ)) (ed,sfts) =
-                let ed', t = define_randvalue ed typ in
-                ed', (field,t)::sfts
-              in
-              let ed',sfts = List.fold_right aux sftyps ((env',defs),[]) in
-              ed', {desc=Record sfts; typ=typ; attr=[]}
+          let aux (field,(flag,typ)) (ed,sfts) =
+            let ed', t = define_randvalue "" ed typ in
+            ed', (field,t)::sfts
+          in
+          let ed',sfts = List.fold_right aux fields ((env',defs),[]) in
+          ed', {desc=Record sfts; typ=typ; attr=[]}
         in
         (env'', (f,[u],t)::defs'), make_app (make_var f) [unit_term]
-    | TRef typ ->
-        let ed',t = define_randvalue ed typ in
-        ed', make_ref t
+    | Type(decls, s) ->
+        let aux (s,typ') ed =
+          fst @@ define_randvalue s ed @@ subst_data_type s typ typ'
+        in
+        let env', defs' = List.fold_right aux decls (env,defs) in
+        (env', defs'), snd @@ define_randvalue "" (env',defs') (TData s)
     | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
-
+let define_randvalue ed typ = define_randvalue "" ed typ
 
 
 
@@ -922,7 +928,7 @@ let rec inlined_f inlined fs t =
     | Event(s,b) -> Event(s,b)
     | Record fields ->  Record (List.map (Pair.map_snd @@ inlined_f inlined fs) fields)
     | Field(s,t1) -> Field(s,inlined_f inlined fs t1)
-    | SetField(s,t1,t2) -> SetField(s,inlined_f inlined fs t1,inlined_f inlined fs t2)
+    | SetField(t1,s,t2) -> SetField(inlined_f inlined fs t1,s,inlined_f inlined fs t2)
     | Nil -> Nil
     | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)
     | Constr(s,ts) -> Constr(s, List.map (inlined_f inlined fs) ts)
@@ -1291,7 +1297,7 @@ let make_ext_funs ?(fvs=[]) env t =
   if List.exists (is_poly_typ -| Id.typ) funs then
     unsupported "Trans.make_ext_funs (polymorphic functions)";
   let map,t'' = rename_ext_funs funs t' in
-  if dbg then Format.printf "MEF t'': %a@." Print.term t'';
+  if dbg then Format.printf "MEF t'': %a@." Print.term' t'';
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
@@ -1302,6 +1308,7 @@ let make_ext_funs ?(fvs=[]) env t =
     List.fold_left aux ([],[],[]) @@ Ref_type.Env.to_list env
   in
   let defs = List.map snd (genv @ cenv) in
+  if dbg then Format.printf "MEF t'': %a@." Print.term' t'';
   make_letrecs defs @@ make_lets defs2 @@ make_lets defs1 t''
 
 
@@ -1765,19 +1772,18 @@ let replace_base_with_int_desc desc =
   match desc with
   | Const(Char c) -> Const (Int (int_of_char c))
   | Const(String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
-  | Const(RandValue(TData(s,_), b)) when is_base_typ s -> Const (RandValue(TInt,b))
+  | Const(RandValue(TData s, b)) when is_base_typ s ->
+      Const (RandValue(TInt,b))
   | _ -> replace_base_with_int.tr_desc_rec desc
 
 let replace_base_with_int_typ typ =
   match typ with
-  | TData(s, b) when is_base_typ s -> TInt
+  | TData s when is_base_typ s -> TInt
   | _ -> replace_base_with_int.tr_typ_rec typ
 
 let () = replace_base_with_int.tr_desc <- replace_base_with_int_desc
 let () = replace_base_with_int.tr_typ <- replace_base_with_int_typ
-let replace_base_with_int t =
-  typ_excep := replace_base_with_int.tr_typ !typ_excep;
-  replace_base_with_int.tr_term t
+let replace_base_with_int =  replace_base_with_int.tr_term
 
 
 
@@ -1805,8 +1811,6 @@ let abst_ref_typ typ =
 let () = abst_ref.tr_term <- abst_ref_term
 let () = abst_ref.tr_typ <- abst_ref_typ
 let abst_ref t =
-  typ_excep := abst_ref.tr_typ !typ_excep;
-  Type_decl.map abst_ref.tr_typ;
   t |> abst_ref.tr_term |> inst_randval
 
 
@@ -2127,7 +2131,7 @@ let copy_poly_funs_desc map desc =
       let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
       let t2'' = inst_tvar_tunit t2' in
       let map_rename,t2''' = rename_poly_funs f t2'' in
-      if debug() && List.length map_rename >= 2 then
+      if !!debug then
         begin
           Format.printf "COPY: @[";
           List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map_rename;
@@ -2262,23 +2266,13 @@ let encode_mutable_record = make_trans ()
 
 let encode_mutable_record_pat p =
   match p.pat_desc with
-  | PRecord fields when List.exists (fun (s,_) -> Type_decl.get_mutable_flag s = Mutable) fields ->
+  | PRecord _ when List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord p.pat_typ ->
       unsupported "Mutable record (encode_mutable_record_pat)"
   | _ -> encode_mutable_record.tr_pat_rec p
 
 let () = encode_mutable_record.tr_pat <- encode_mutable_record_pat
 
-let encode_mutable_record t =
-  let map_kind k =
-    let open Type_decl in
-    match k with
-    | Primitive -> Primitive
-    | Abstract -> Abstract
-    | TKVariant stypss -> TKVariant stypss
-    | TKRecord sftyps -> TKRecord (List.map (fun (s,(_,typ)) -> s, (Immutable, typ)) sftyps)
-  in
-  Ref.map (List.map @@ Pair.map Fun.id map_kind) Type_decl.typ_decls;
-  encode_mutable_record.tr_term t
+let encode_mutable_record = encode_mutable_record.tr_term
 
 
 let recover_const_attr_shallowly t =
@@ -2308,7 +2302,7 @@ let beta_reduce_trivial_term env t =
           let check t = has_no_effect t || List.Set.subset [ATerminate;ANotFail] t.attr in
           let ts' = List.map (beta_reduce_trivial.tr2_term env) ts in
           if n = List.length ts && List.for_all check ts'
-          then t
+          then alpha_rename t
           else raise Not_found
         with Not_found -> beta_reduce_trivial.tr2_term_rec env t
       end
@@ -2578,13 +2572,18 @@ let add_id t =
 let remove_id t = filter_attr (function AId _ -> false | _ -> true) t
 
 
-let replace_fail_with_raise = make_trans ()
-let replace_fail_with_raise_desc desc =
+let replace_fail_with_raise = make_trans2 ()
+let replace_fail_with_raise_desc exn_typ desc =
   match desc with
-  | App({desc=Event("fail", _)}, [{desc=Const Unit}]) -> Raise(make_construct "Assert_failure" [])
-  | _ -> replace_fail_with_raise.tr_desc_rec desc
-let () = replace_fail_with_raise.tr_desc <- replace_fail_with_raise_desc
-let replace_fail_with_raise = replace_fail_with_raise.tr_term
+  | App({desc=Event("fail", _)}, [{desc=Const Unit}]) -> Raise(make_construct "Assert_failure" [] exn_typ)
+  | _ -> replace_fail_with_raise.tr2_desc_rec exn_typ desc
+let () = replace_fail_with_raise.tr2_desc <- replace_fail_with_raise_desc
+let replace_fail_with_raise t =
+  let exn_typ =
+    Format.printf "WARNING: replace_fail_with_raise@.";
+    TData "exn"
+  in
+  replace_fail_with_raise.tr2_term exn_typ t
 
 
 

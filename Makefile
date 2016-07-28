@@ -55,28 +55,28 @@ CMI = $(MLI:.mli=.cmi)
 
 CMO = environment.cmo flag.cmo util.cmo ext.cmo color.cmo tree.cmo	\
 	rose_tree.cmo id.cmo type.cmo syntax.cmo print.cmo		\
-	type_decl.cmo term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo	\
-	CEGAR_print.cmo typing.cmo type_check.cmo CEGAR_ref_type.cmo	\
-	CEGAR_util.cmo fpatInterface.cmo ref_type.cmo trans.cmo		\
-	CFA.cmo uncurry.cmo lift.cmo fair_termination_util.cmo		\
-	CEGAR_lift.cmo slicer.cmo useless_elim.cmo inter_type.cmo	\
-	type_trans.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo			\
-	parser_wrapper.cmo encode_list.cmo encode_rec.cmo		\
-	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
-	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\
-	CEGAR_lexer.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
-	trecs_syntax.cmo trecs_parser.cmo trecs_lexer.cmo		\
-	trecsInterface.cmo horSat_syntax.cmo horSat_parser.cmo		\
-	horSat_lexer.cmo horSatInterface.cmo feasibility.cmo		\
-	refine.cmo CEGAR_non_term.cmo HORS_syntax.cmo HORS_lexer.cmo	\
-	HORS_parser.cmo horSatPInterface.cmo CEGAR_fair_non_term.cmo	\
-	ModelCheck.cmo CEGAR.cmo writeAnnot.cmo tupling.cmo		\
-	ref_trans.cmo ret_fun.cmo BRA_types.cmo BRA_util.cmo		\
-	BRA_state.cmo BRA_transform.cmo extraClsDepth.cmo		\
-	extraParamInfer.cmo eval.cmo elim_same_arg.cmo main_loop.cmo	\
-	modular_syntax.cmo comp_tree.cmo infer_mod.cmo check_mod.cmo	\
-	modular.cmo termination_loop.cmo fair_termination.cmo		\
-	verify_ref_typ.cmo mochi.cmo
+	term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo	\
+	typing.cmo type_check.cmo CEGAR_ref_type.cmo CEGAR_util.cmo	\
+	fpatInterface.cmo ref_type.cmo trans.cmo CFA.cmo uncurry.cmo	\
+	lift.cmo fair_termination_util.cmo CEGAR_lift.cmo slicer.cmo	\
+	useless_elim.cmo inter_type.cmo type_trans.cmo CPS.cmo		\
+	curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo encode_list.cmo	\
+	encode_rec.cmo omegaInterface.cmo CEGAR_abst_util.cmo		\
+	CEGAR_trans.cmo CEGAR_abst_CPS.cmo CEGAR_abst.cmo		\
+	CEGAR_parser.cmo CEGAR_lexer.cmo spec.cmo spec_parser.cmo	\
+	spec_lexer.cmo trecs_syntax.cmo trecs_parser.cmo		\
+	trecs_lexer.cmo trecsInterface.cmo horSat_syntax.cmo		\
+	horSat_parser.cmo horSat_lexer.cmo horSatInterface.cmo		\
+	feasibility.cmo refine.cmo CEGAR_non_term.cmo HORS_syntax.cmo	\
+	HORS_lexer.cmo HORS_parser.cmo horSatPInterface.cmo		\
+	CEGAR_fair_non_term.cmo ModelCheck.cmo CEGAR.cmo		\
+	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo		\
+	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo	\
+	extraClsDepth.cmo extraParamInfer.cmo eval.cmo			\
+	elim_same_arg.cmo main_loop.cmo modular_syntax.cmo		\
+	comp_tree.cmo infer_mod.cmo check_mod.cmo modular.cmo		\
+	termination_loop.cmo fair_termination.cmo verify_ref_typ.cmo	\
+	mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =

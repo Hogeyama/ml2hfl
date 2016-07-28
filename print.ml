@@ -1,4 +1,3 @@
-
 open Format
 open Util
 open Type
@@ -86,7 +85,7 @@ and print_const fm = function
   | Int n -> fprintf fm "%d" n
   | Char c -> fprintf fm "%C" c
   | String s -> fprintf fm "%S" s
-  | Float s -> fprintf fm "%s" s
+  | Float r -> fprintf fm "%f" r
   | Int32 n -> fprintf fm "%ldl" n
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
@@ -210,7 +209,7 @@ and print_desc pri typ fm desc =
       let aux fm (s,t) = fprintf fm "%s=%a" s (print_term 0 typ) t in
       fprintf fm "{%a}" (print_list aux ";@ ") fields
   | Field(s,t) -> fprintf fm "%a.%s" (print_term 9 typ) t s
-  | SetField(s,t1,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
+  | SetField(t1,s,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
       let p = 60 in
@@ -401,7 +400,7 @@ let rec print_term' pri fm t =
         let aux fm (s,t) = fprintf fm "%s=%a" s (print_term' 0) t in
         fprintf fm "{%a}" (print_list aux ";@ ") fields
     | Field(s,t) -> fprintf fm "%a.%s" (print_term' 9) t s
-    | SetField(s,t1,t2) -> fprintf fm "%a.%s <- %a" (print_term' 9) t1 s (print_term' 3) t2
+    | SetField(t1,s,t2) -> fprintf fm "%a.%s <- %a" (print_term' 9) t1 s (print_term' 3) t2
     | Nil -> fprintf fm "[]"
     | Cons(t1,t2) ->
         let p = 7 in
@@ -440,10 +439,18 @@ let rec print_term' pri fm t =
         fprintf fm "%stry %a with@ %a%s" s1 (print_term' p) t1 (print_term' p) t2 s2
     | Tuple ts ->
         fprintf fm "@[(%a)@]" (print_list (print_term' 0) ",@ ") ts
+    | Proj(0,t) when tuple_num t.typ = Some 2 ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%s@[fst %a@]%s" s1 (print_term' 1) t s2
+    | Proj(1,t) when tuple_num t.typ = Some 2 ->
+        let p = 4 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "%s@[snd %a@]%s" s1 (print_term' 1) t s2
     | Proj(i,t) ->
         let p = 4 in
         let s1,s2 = paren pri (p+1) in
-        fprintf fm "%s#%d %a%s" s1 i (print_term' 1) t s2
+        fprintf fm "%s@[#%d %a@]%s" s1 i (print_term' 1) t s2
     | Bottom -> fprintf fm "_|_"
     | Label(info, t) ->
         fprintf fm "(@[label[%a]@ %a@])" print_info info (print_term' 0) t

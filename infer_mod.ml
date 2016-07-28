@@ -377,7 +377,7 @@ let base_of_typ typ =
   | TUnit -> Ref_type.Unit
   | TInt -> Ref_type.Int
   | TBool -> Ref_type.Bool
-  | TData(s,_) -> Ref_type.Abst s
+  | TData s -> Ref_type.Abst s
   | _ ->
       Format.printf "%a@." Print.typ typ;
       assert false

@@ -65,7 +65,7 @@ let conv_const c =
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
   | Char c -> Fpat.Const.Int (int_of_char c)
   | String s -> Fpat.Const.String s
-  | Float s -> Fpat.Const.Real (float_of_string s)
+  | Float r -> Fpat.Const.Real r
   | Int32 n -> Fpat.Const.Int (Int32.to_int n)
   | Int64 n -> Fpat.Const.Int (Int64.to_int n)
   | Nativeint n -> Fpat.Const.Int (Nativeint.to_int n)
@@ -107,7 +107,7 @@ let rec of_typ typ =
   | Type.TInt -> Fpat.Type.mk_int
   | Type.TBool -> Fpat.Type.mk_bool
   | Type.TFun(x,typ) -> Fpat.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
-  | Type.TData("string", _) -> Fpat.Type.mk_string
+  | Type.TData "string" -> Fpat.Type.mk_string
   | _ ->
       Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
@@ -202,7 +202,7 @@ let inv_const c =
   | Fpat.Const.Geq ty when Fpat.Type.is_ext ty ->
      Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">="))
   | Fpat.Const.String s -> String s
-  | Fpat.Const.Real x -> Float (string_of_float x)
+  | Fpat.Const.Real r -> Float r
   | Fpat.Const.UFun(ty, x)
        when Fpat.Idnt.string_of x = "end"
             && Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
@@ -656,7 +656,7 @@ let insert_extra_param t =
       | Syntax.Event(s,b) -> Syntax.Event(s,b)
       | Syntax.Record fields -> Syntax.Record (List.map (Pair.map_snd @@ aux rfs bvs exs) fields)
       | Syntax.Field(s,t1) -> Syntax.Field(s,aux rfs bvs exs t1)
-      | Syntax.SetField(s,t1,t2) -> Syntax.SetField(s,aux rfs bvs exs t1,aux rfs bvs exs t2)
+      | Syntax.SetField(t1,s,t2) -> Syntax.SetField(aux rfs bvs exs t1,s,aux rfs bvs exs t2)
       | Syntax.Nil -> Syntax.Nil
       | Syntax.Cons(t1,t2) ->
          Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)

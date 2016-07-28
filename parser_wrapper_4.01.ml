@@ -1,3 +1,4 @@
+# 2 "parser_wrapper_4.01.ml"
 open Util
 open Asttypes
 open Typedtree
@@ -588,6 +589,7 @@ let from_top_level_phrase (env,defs) = function
 
 
 let from_use_file ast =
+  Format.printf "WARNING: Parser_wrapper for OCaml 4.01 is not maintained@.";
   let env = Compmisc.initial_env () in
   let _,defs = List.fold_left from_top_level_phrase (env,[]) ast in
   let aux t = function

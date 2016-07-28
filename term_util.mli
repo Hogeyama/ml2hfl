@@ -10,8 +10,7 @@ val typ_result : typ
 val typ_event : typ
 val typ_event' : typ
 val typ_event_cps : typ
-val typ_excep_init : typ
-val typ_excep : typ ref
+val typ_exn : typ
 
 val make_attr : ?attrs:attr list -> typed_term list -> attr list
 
@@ -102,8 +101,8 @@ val make_proj : int -> typed_term -> typed_term
 val make_ref : typed_term -> typed_term
 val make_deref : typed_term -> typed_term
 val make_setref : typed_term -> typed_term -> typed_term
-val make_construct : string -> typed_term list -> typed_term
-val make_record : (string * typed_term) list -> typed_term
+val make_construct : string -> typed_term list -> typ -> typed_term
+val make_record : (string * typed_term) list -> typ -> typed_term
 val make_raise : typed_term -> typ -> typed_term
 val make_trywith : typed_term -> id -> (typed_pattern * typed_term * typed_term) list -> typed_term
 val make_length : typed_term -> typed_term
@@ -145,6 +144,8 @@ val subst_map : (id * typed_term) list -> typed_term -> typed_term
 val subst_type : id -> typed_term -> typ -> typ
 val subst_type_var : id -> id -> typ -> typ
 val subst_var : id -> id -> typed_term -> typed_term
+val subst_data_type : string -> typ -> typ -> typ
+val subst_data_type_term : string -> typ -> typed_term -> typed_term
 val get_int : typed_term -> int list
 val get_args : typ -> id list
 val get_argvars : typ -> id list
@@ -187,3 +188,5 @@ val get_id_option : typed_term -> int option
 val get_id_map : typed_term -> (int, typed_term) Hashtbl.t
 val from_fpat_term : Fpat.Term.t -> typed_term
 val from_fpat_formula : Fpat.Formula.t -> typed_term
+val unfold_data_type : typ -> typ
+val fold_data_type : typ -> typ

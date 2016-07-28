@@ -351,6 +351,9 @@ module List = struct
       Some (find f xs)
     with Not_found -> None
 
+  let find_pos f xs =
+    fst @@ findi f xs
+
   let assoc_default ?(eq=(=)) x k tbl =
     try
       assoc ~eq k tbl
@@ -408,6 +411,14 @@ module List = struct
   let fold_righti f xs acc = snd @@ fold_right (fun x (i,acc) -> i+1, f i x acc) xs (0,acc)
   let fold_lefti f xs acc = snd @@ fold_left (fun (i,acc) x -> i+1, f i acc x) (0,acc) xs
  *)
+
+  let fold_trans_right tr dec cons env xs =
+    let aux x (env,rs) =
+      let env',r = tr env @@ dec x in
+      env', cons r::rs
+    in
+    fold_right aux xs (env,[])
+
   let eq ?(eq=(=)) xs ys = length xs = length ys && for_all2 eq xs ys
 
   module Set = struct

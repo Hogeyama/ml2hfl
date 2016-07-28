@@ -10,7 +10,7 @@ let get_fv = Syntax.get_fv
 
 (*** TERM CONSTRUCTORS ***)
 
-let typ_result = TData("X", false)
+let typ_result = TData "X"
 let typ_event = TFun(Id.new_var TUnit, TUnit)
 let typ_event' = TFun(Id.new_var TUnit, typ_result)
 let typ_event_cps =
@@ -18,8 +18,7 @@ let typ_event_cps =
   let r = Id.new_var TUnit in
   let k = Id.new_var @@ TFun(r,typ_result) in
   TFun(u, TFun(k, typ_result))
-let typ_excep_init = TData("exn",true)
-let typ_excep = ref typ_excep_init
+let typ_exn = TData "exn"
 
 let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
@@ -56,7 +55,7 @@ let make_event s = {desc=Event(s,false); typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true); typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
-let make_string s = {desc=Const(String s); typ=TData("string",false); attr=const_attr}
+let make_string s = {desc=Const(String s); typ=TData "string"; attr=const_attr}
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
 let make_randvalue_unit typ =
   match typ with
@@ -255,16 +254,9 @@ let make_label ?(label="") info t =
 let make_ref t = {desc=Ref t; typ=TRef t.typ; attr=[]}
 let make_deref t = {desc=Deref t; typ=ref_typ t.typ; attr=[]}
 let make_setref r t = {desc=SetRef(r, t); typ=TUnit; attr=[]}
-let make_construct c ts =
-  if Flag.check_typ
-  then
-    begin
-      let typs = Type_decl.constr_arg_typs c in
-      List.iter2 (fun t typ -> assert (Type.can_unify t.typ typ)) ts typs
-    end;
-  {desc=Constr(c,ts); typ=Type_decl.constr_typ c; attr=[]}
-let make_record fields =
-  let typ = Type_decl.field_typ @@ fst @@ List.hd fields in
+let make_construct c ts typ =
+  {desc=Constr(c,ts); typ; attr=[]}
+let make_record fields typ =
   {desc=Record fields; typ; attr=[]}
 let randint_term = {desc=Const(RandValue(TInt,false)); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
@@ -311,9 +303,10 @@ let rec make_term typ =
   | TInt -> make_int 0
   | TFun(x,typ) -> make_fun x (make_term typ)
   | TTuple xs -> make_tuple @@ List.map (make_term -| Id.typ) xs
-  | TData("X", false) -> cps_result
-  | TData("char", false) -> {desc=Const(Char '\000'); typ; attr=[]}
-  | TData("string", false) -> {desc=Const(String ""); typ; attr=[]}
+  | TData "X" -> cps_result
+  | TData "char" -> {desc=Const(Char '\000'); typ; attr=[]}
+  | TData "string" -> {desc=Const(String ""); typ; attr=[]}
+  | TData "float" -> {desc=Const(Float 0.); typ; attr=[]}
   | TList typ' -> make_nil typ'
   | _ -> Format.printf "ERROR: %a@." Print.typ typ; assert false
 
@@ -621,6 +614,13 @@ let rec merge_typ typ1 typ2 =
   | TRef typ1, TRef typ2 -> TRef (merge_typ typ1 typ2)
   | TData _, TData _ -> assert (typ1 = typ2); typ1
   | TOption typ1, TOption typ2 -> TOption (merge_typ typ1 typ2)
+  | Type(_,s1), Type(_,s2) -> assert (s1 = s2); typ1
+  | TVariant labels1, TVariant labels2 ->
+      let labels = List.map2 (fun (s1,typs1) (s2,typs2) -> assert (s1=s2); s1, List.map2 merge_typ typs1 typs2) labels1 labels2 in
+      TVariant labels
+  | TRecord fields1, TRecord fields2 ->
+      let fields = List.map2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1=s2 && f1=f2); s1, (f1, merge_typ typ1 typ2)) fields1 fields2 in
+      TRecord fields
   | _ -> Format.printf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
 
 let make_if t1 t2 t3 =
@@ -946,3 +946,58 @@ let rec from_fpat_term = function
   | t -> Fpat.Term.pr Format.std_formatter t; assert false
 
 let from_fpat_formula t = from_fpat_term @@ Fpat.Formula.term_of t
+
+
+
+let subst_data_type = make_trans2 ()
+let subst_data_type_typ (s,typ1) typ2 =
+  if typ2 = TData s then
+    typ1
+  else
+    subst_data_type.tr2_typ_rec (s,typ1) typ2
+let () = subst_data_type.tr2_typ <- subst_data_type_typ
+let subst_data_type_term s typ t = subst_data_type.tr2_term (s,typ) t
+let subst_data_type s typ1 typ2 = subst_data_type.tr2_typ (s,typ1) typ2
+
+let unfold_data_type typ =
+  match typ with
+  | Type(decls, s) -> subst_data_type s typ @@ List.assoc s decls
+  | _ -> invalid_arg "unfold_data_type"
+
+let get_type_decls_map = make_col [] (@@@)
+let get_type_decls_map_typ typ =
+  match typ with
+  | Type(decls, s) ->
+      let acc = List.flatten_map (snd |- get_type_decls_map.col_typ) decls in
+      let map =
+        let aux (s',typ') =
+          match typ' with
+          | TVariant labels -> List.map (fun (c,_) -> c, Type(decls, s')) labels
+          | TRecord fields -> List.map (fun (l,_) -> l, Type(decls, s')) fields
+          | _ -> invalid_arg "get_type_decls_map"
+        in
+        List.flatten_map aux decls
+      in
+      map @ acc
+  | _ -> get_type_decls_map.col_typ_rec typ
+let () = get_type_decls_map.col_typ <- get_type_decls_map_typ
+let get_type_decls_map = get_type_decls_map.col_typ
+
+let fold_data_type typ =
+  match typ with
+  | TVariant ((s,_)::_)
+  | TRecord ((s,(_,_))::_) ->
+      List.assoc_default typ s @@ get_type_decls_map typ
+  | _ -> typ
+
+(*
+let get_ground_types = make_col [] (@@@)
+let get_ground_types_typ typ =
+  match typ with
+  | TBool
+  | TInt -> [typ]
+  | _ -> get_ground_types.tr2_typ_rec (s,typ1) typ2
+let () = get_ground_types.tr2_typ <- get_ground_types_typ
+let get_ground_types_term s typ t = get_ground_types.tr2_term (s,typ) t
+let get_ground_types s typ1 typ2 = get_ground_types.tr2_typ (s,typ1) typ2
+ *)
