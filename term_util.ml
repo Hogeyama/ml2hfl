@@ -625,9 +625,9 @@ let rec merge_typ typ1 typ2 =
 
 let make_if t1 t2 t3 =
   assert (Flag.check_typ => Type.can_unify t1.typ TBool);
-  if Flag.check_typ && not @@ Type.can_unify t2.typ t3.typ
-  then Format.printf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
-  assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
+  if Flag.check_typ && not @@ Type.can_unify t2.typ t3.typ then
+    (Format.printf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
+     assert false);
   match t1.desc with
   | Const True -> t2
   | Const False -> t3

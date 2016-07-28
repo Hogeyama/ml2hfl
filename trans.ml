@@ -1565,9 +1565,9 @@ let normalize_let_term is_atom t =
       let bindings' = List.map aux bindings in
       let t1' = normalize_let.tr2_term is_atom t1 in
       make_let_f flag bindings' t1'
-  | Raise t ->
-     let t',post = normalize_let_aux is_atom t in
-     post @@ make_raise t' t.typ
+  | Raise t1 ->
+     let t1',post = normalize_let_aux is_atom t1 in
+     post @@ make_raise t1' t.typ
   | _ -> normalize_let.tr2_term_rec is_atom t
 
 let () = normalize_let.tr2_term <- normalize_let_term
