@@ -512,15 +512,17 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
         | Upto -> make_leq (make_var x') (make_var last)
         | Downto -> make_geq (make_var x') (make_var last)
       in
-      let x'' =
-        match dir with
-        | Upto -> make_add (make_var x') (make_int 1)
-        | Downto -> make_sub (make_var x') (make_int 1)
+      let t32 =
+        let x'' =
+          match dir with
+          | Upto -> make_add (make_var x') (make_int 1)
+          | Downto -> make_sub (make_var x') (make_int 1)
+        in
+        make_seq t3 @@ make_app (make_var f) [x'']
       in
-      let t32 = make_seq t3 @@ make_app (make_var f) [x''] in
       assert (Flag.check_typ => Type.can_unify t31.typ TBool);
       let t3' = make_if t31 t32 unit_term in
-      make_letrec [f, [x'], t3'] @@ make_lets [init,[],t1; last,[],t2] @@ make_app (make_var f) [make_var init]
+      make_lets [init,[],t1; last,[],t2] @@ make_letrec [f, [x'], t3'] @@ make_app (make_var f) [make_var init]
   | Texp_send _
   | Texp_new _ -> unsupported "expression (class)"
   | Texp_instvar _ -> unsupported "expression (instvar)"
