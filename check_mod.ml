@@ -321,7 +321,6 @@ let check prog f typ =
   let top_funs = List.map fst fun_env' in
   if !!debug then Format.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   if !!debug then Format.printf "  t: %a@." Print.term_typ t;
-  if !!debug then Format.printf "  t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
   let make_pps spec =
     let open Main_loop in
     preprocesses spec
@@ -330,6 +329,7 @@ let check prog f typ =
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_letrecs (List.map Triple.of_pair_r fun_env')
+    |@!!debug&> Format.printf "  t with def: %a@.@." Print.term
     |@> Type_check.check -$- TUnit
     |> Trans.map_main (make_seq -$- unit_term)
     |@!!debug&> Format.printf "  Check: %a@." Print.term_typ

@@ -123,12 +123,7 @@ let add_tid_if_term (tid,env) t =
   | Let(flag, bindings, t1) ->
       let bindings' =
         let aux (g,xs,t) =
-          g,
-          xs,
-          if List.length xs <= 1 then
-            add_tid_if.tr2_term (tid,env) t
-          else try
-            add_tid_if.tr2_term (Id.assoc g env, env) t with Not_found -> Format.printf "g: %a@.xs: %a@." Id.print g (List.print Id.print) xs; assert false
+          g, xs, add_tid_if.tr2_term (List.assoc_default ~eq:Id.eq tid g env, env) t
         in
         List.map aux bindings
       in

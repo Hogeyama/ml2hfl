@@ -258,8 +258,7 @@ let rec unify typ1 typ2 =
   | TVar({contents = None} as r), typ
   | typ, TVar({contents = None} as r) ->
       if occurs r typ then
-        (Format.printf "occurs check failure: %a, %a@."
-                       print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+        (Format.printf "occurs check failure: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
          raise CannotUnify)
       else
         r := Some typ
@@ -267,9 +266,10 @@ let rec unify typ1 typ2 =
   | typ, TPred(x,_) -> unify (Id.typ x) typ
   | TData s1, TData s2 -> assert (s1 = s2)
   | Type(_,s1), Type(_,s2) -> assert (s1 = s2)
+  | TVariant labels1, TVariant labels2 -> List.iter2 (fun (s1,typs1) (s2,typs2) -> assert (s1 = s2); List.iter2 unify typs1 typs2) labels1 labels2
+  | TRecord fields1, TRecord fields2 -> List.iter2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1 = s2 && f1 = f2); unify typ1 typ2) fields1 fields2
   | _ ->
-      Format.printf "unification error: %a, %a@."
-                    print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+      Format.printf "unification error: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
       raise CannotUnify
 
 

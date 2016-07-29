@@ -663,15 +663,11 @@ let rec generate_check genv cenv x typ =
         generate_check genv' cenv' r typ2'
       in
       genv'', cenv'', U.make_lets [z,[],t_typ1; r,[],t_typ2] t_typ2'
-  | Tuple [y,typ1;_,typ2] ->
-      let t1 = U.make_fst @@ U.make_var x in
-      let t2 = U.make_snd @@ U.make_var x in
-      let x1 = U.new_var_of_term t1 in
-      let x2 = U.new_var_of_term t2 in
-      let genv',cenv',t_typ1 = generate_check genv cenv x1 typ1 in
-      let genv'',cenv'',t_typ2 = generate_check genv' cenv' x2 @@ subst_var y x1 typ2 in
-      let t = U.make_and t_typ1 t_typ2 in
-      genv', genv'', U.make_lets [x1,[],t1; x2,[],t2] t
+  | Tuple xtyps ->
+      let xs' = List.map (fun (x,typ) -> Id.new_var ~name:(Id.name x) @@ to_simple typ) xtyps  in
+      let typs = List.fold_right2 (fun x' (x,typ) acc -> typ :: List.map (subst_var x x') acc) xs' xtyps [] in
+      let genv',cenv',ts = List.fold_right2 (fun x' typ (genv,cenv,ts) -> let genv',cenv',t = generate_check genv cenv x' typ in genv',cenv',t::ts) xs' typs (genv,cenv,[]) in
+      genv', cenv', U.make_lets (List.mapi (fun i x' -> x', [], U.make_proj i @@ U.make_var x) xs') @@ U.make_ands ts
   | List(l,p_len,y,p_i,typ1) when p_i.S.desc = S.Const S.True && not @@ occur y typ1 ->
       let styp = to_simple typ in
       let atyp1 = to_abst_typ typ1 in
@@ -732,213 +728,155 @@ let rec generate_check genv cenv x typ =
       let genv'',cenv'',ts = List.fold_left aux (genv,cenv,[]) typs in
       genv'', cenv'', U.make_ors ts
   | _ -> Format.printf "%a@." print typ; unsupported "Ref_type.generate_check"
-(*
-and generate_simple_aux typ =
-  match typ with
-  | T.TInt -> U.randint_unit_term
-  | T.TBool -> U.randbool_unit_term
-  | T.TUnit -> U.unit_term
-  | T.TFun(x,typ') -> U.make_fun (Id.new_var_id x) @@ generate_simple typ'
-  | T.TTuple xs -> U.make_tuple @@ List.map (generate_simple -| Id.typ) xs
-  | T.TList typ' ->
-      let open Type in
-      let open Term_util in
-      let u = Id.new_var ~name:"u" TUnit in
-      let f = Id.new_var ~name:("make_s_" ^ to_id_string typ) (TFun(u,typ)) in
-      let t_body =
-        let t_nil = make_nil typ' in
-        let t_cons = make_cons (generate_simple_aux typ') @@ make_app (make_var f) [unit_term] in
-        make_br t_nil t_cons
-      in
-      make_letrec [f,[u],t_body] @@ make_app (make_var f) [unit_term]
-  | _ -> unsupported "Ref_type.generate_simple"
-*)
 and generate_simple typ = U.make_fail typ
-(*
-  U.make_br (U.make_fail typ) (generate_simple_aux typ)
-*)
 
 and generate genv cenv typ =
   if !!debug then Format.printf "Ref_type.generate: %a@." print typ;
-(*
-  if has_no_predicate typ then
-    genv, cenv, make_rand @@ to_simple typ
-  else
- *)
-    let genv',cenv',t =
-      match typ with
-      | Base(Int, x, p) ->
-          let x' = Id.new_var T.TInt in
-          let genv',cenv',t_check = generate_check genv cenv x' typ in
-          genv', cenv', U.make_let [x',[],U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
-      | Base(Bool, x, p) ->
-          let x' = Id.new_var T.TBool in
-          let genv',cenv',t_check = generate_check genv cenv x' typ in
-          genv', cenv', U.make_let [x',[],U.randbool_unit_term] @@ U.make_assume t_check @@ U.make_var x'
-      | Base(Unit, x, p) ->
-          let genv',cenv',t_check = generate_check genv cenv x typ in
-          genv', cenv', U.make_assume t_check U.unit_term
-      | Base(Abst s, x, p) ->
-          let typ' = to_simple typ in
-          let x' = Id.new_var typ' in
-          let genv',cenv',t_check = generate_check genv cenv x' typ in
-          genv', cenv', U.make_let [x',[],U.make_randvalue_unit typ'] @@ U.make_assume t_check @@ U.make_var x'
-      | Fun(x,typ1,typ2) ->
-          let x' = Id.new_var @@ to_abst_typ typ1 in
-          let typ2' = subst_var x x' typ2 in
-          let genv',cenv',t_typ1 = generate_check genv cenv x' typ1 in
-          if !!debug then Format.printf "Ref_type.generate t_typ1: %a@." Print.term t_typ1;
-          let t1 = U.make_or U.randbool_unit_term t_typ1 in
-          let genv'',cenv'',t2 = generate genv' cenv' typ2' in
-          let t3 = generate_simple @@ to_simple typ2' in
-          genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "GEN FUN: %a" print typ2) @@ U.make_if t1 t2 t3
-      | Tuple [x,typ1;_,typ2] ->
-          let x' = Id.new_var ~name:(Id.name x) @@ to_simple typ1 in
-          let typ2' = subst_var x x' typ2 in
-          let genv',cenv',t1 = generate genv cenv typ1 in
-          let genv'',cenv'',t2 = generate genv' cenv' typ2' in
-          genv'', cenv'', U.make_let [x',[],t1] @@ U.make_tuple [U.make_var x'; t2]
-      | Tuple xtyps -> unsupported "Ref_type.generate: Tuple"
-      | Inter(styp, []) -> generate genv cenv @@ make_weakest styp
-      | Inter(_, [typ]) -> generate genv cenv typ
-      | Inter(_, Base(base,x,p)::typs) ->
-          let p' =
-            let aux p typ =
-              match typ with
-              | Base(base', x', p') ->
-                  assert (base = base');
-                  U.make_and p (U.subst_var x' x p')
-              | _ -> assert false
-            in
-            List.fold_left aux p typs
-          in
-          generate genv cenv @@ Base(base, x, p')
-(*
-      | Inter(_, [Fun(x1,typ11,typ12); Fun(x2,typ21,typ22)]) ->
-          assert !Flag.fail_as_exception;
-          let x = Id.new_var @@ to_abst_typ typ11 in
-          let typ22 = subst_var x1 x typ12 in
-          let typ22 = subst_var x2 x typ22 in
-          let b1 = Id.new_var ~name:"b" T.TBool in
-          let b2 = Id.new_var ~name:"b" T.TBool in
-          let e = Id.new_var ~name:"e" !U.typ_excep in
-          let genv,cenv,t1 = generate_check genv cenv x typ11 in
-          let genv,cenv,t2 = generate_check genv cenv x typ21 in
-          let genv,cenv,t_tt = generate genv cenv @@ Inter(to_simple typ12, [typ12; typ22]) in
-          let genv,cenv,t_tf = generate genv cenv typ12 in
-          let genv,cenv,t_ft = generate genv cenv typ22 in
-          let t_ff = U.make_fail t_tt.S.typ in
-          let tb1 = U.make_or U.randbool_unit_term @@ U.make_trywith t1 e [U.make_pany @@ Id.typ e, U.true_term, U.false_term] in
-          let tb2 = U.make_or U.randbool_unit_term @@ U.make_trywith t2 e [U.make_pany @@ Id.typ e, U.true_term, U.false_term] in
-          let t = U.make_if (U.make_var b1)
-                    (U.make_if (U.make_var b2) t_tt t_tf)
-                    (U.make_if (U.make_var b2) t_ft t_ff)
-          in
-          genv, cenv, U.make_fun x @@ U.make_lets [b1,[],tb1; b2,[],tb2] t
- *)
-      | Inter(_, ((Fun _)::_ as typs)) ->
-          Flag.fail_as_exception := true;
-          let bss = Combination.take_each @@ List.map (Fun.const [true;false]) typs in
-          if !!debug then Format.printf "GEN bss: %a@." (List.print @@ List.print Format.pp_print_bool) bss;
-          let x =
-            match typs with
-            | Fun(_,typ1,_)::_ -> Id.new_var @@ to_abst_typ typ1
+  let genv',cenv',t =
+    match typ with
+    | Base(Int, x, p) ->
+        let x' = Id.new_var T.TInt in
+        let genv',cenv',t_check = generate_check genv cenv x' typ in
+        genv', cenv', U.make_let [x',[],U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
+    | Base(Bool, x, p) ->
+        let x' = Id.new_var T.TBool in
+        let genv',cenv',t_check = generate_check genv cenv x' typ in
+        genv', cenv', U.make_let [x',[],U.randbool_unit_term] @@ U.make_assume t_check @@ U.make_var x'
+    | Base(Unit, x, p) ->
+        let genv',cenv',t_check = generate_check genv cenv x typ in
+        genv', cenv', U.make_assume t_check U.unit_term
+    | Base(Abst s, x, p) ->
+        let typ' = to_simple typ in
+        let x' = Id.new_var typ' in
+        let genv',cenv',t_check = generate_check genv cenv x' typ in
+        genv', cenv', U.make_let [x',[],U.make_randvalue_unit typ'] @@ U.make_assume t_check @@ U.make_var x'
+    | Fun(x,typ1,typ2) ->
+        let x' = Id.new_var @@ to_abst_typ typ1 in
+        let typ2' = subst_var x x' typ2 in
+        let genv',cenv',t_typ1 = generate_check genv cenv x' typ1 in
+        if !!debug then Format.printf "Ref_type.generate t_typ1: %a@." Print.term t_typ1;
+        let t1 = U.make_or U.randbool_unit_term t_typ1 in
+        let genv'',cenv'',t2 = generate genv' cenv' typ2' in
+        let t3 = generate_simple @@ to_simple typ2' in
+        genv'', cenv'', U.make_fun x' @@ U.add_comment (Format.asprintf "GEN FUN: %a" print typ2) @@ U.make_if t1 t2 t3
+    | Tuple xtyps ->
+        let xs' = List.map (fun (x,typ) -> Id.new_var ~name:(Id.name x) @@ to_simple typ) xtyps  in
+        let typs = List.fold_right2 (fun x' (x,typ) acc -> typ :: List.map (subst_var x x') acc) xs' xtyps [] in
+        let genv',cenv',ts = List.fold_right (fun typ (genv,cenv,ts) -> let genv',cenv',t = generate genv cenv typ in genv',cenv',t::ts) typs (genv,cenv,[]) in
+        genv', cenv', U.make_lets (List.map2 (fun x t -> x,[],t) xs' ts) @@ U.make_tuple @@ List.map U.make_var xs'
+    | Inter(styp, []) -> generate genv cenv @@ make_weakest styp
+    | Inter(_, [typ]) -> generate genv cenv typ
+    | Inter(_, Base(base,x,p)::typs) ->
+        let p' =
+          let aux p typ =
+            match typ with
+            | Base(base', x', p') ->
+                assert (base = base');
+                U.make_and p (U.subst_var x' x p')
             | _ -> assert false
           in
-          let typs1,typs2 = List.split_map (function Fun(y,typ1,typ2) -> typ1, subst_var y x typ2 | _ -> assert false) typs in
-          if !!debug then Format.printf "GEN typs1: %a@." (List.print print) typs1;
-          if !!debug then Format.printf "GEN typs2: %a@." (List.print print) typs2;
-          let xs = List.map (fun _ -> Id.new_var ~name:"b" T.TBool) typs in
-          if !!debug then Format.printf "GEN xs: %a@." (List.print Id.print) xs;
-          let genv',cenv',tbs =
-            let aux typ1 (genv,cenv,tbs) =
-              let genv', cenv', tb = generate_check genv cenv x typ1 in
-              let tb' =
-                let e = Id.new_var ~name:"e" U.typ_exn in
-                U.make_trywith tb e [U.make_pany @@ Id.typ e, U.true_term, U.false_term]
-                |> U.make_or U.randbool_unit_term
-                |*> U.add_comment @@ Format.asprintf "GEN INTER: beta(%a)" print typ1
-              in
-              genv', cenv', tb'::tbs
+          List.fold_left aux p typs
+        in
+        generate genv cenv @@ Base(base, x, p')
+    | Inter(_, ((Fun _)::_ as typs)) ->
+        Flag.fail_as_exception := true;
+        let bss = Combination.take_each @@ List.map (Fun.const [true;false]) typs in
+        if !!debug then Format.printf "GEN bss: %a@." (List.print @@ List.print Format.pp_print_bool) bss;
+        let x =
+          match typs with
+          | Fun(_,typ1,_)::_ -> Id.new_var @@ to_abst_typ typ1
+          | _ -> assert false
+        in
+        let typs1,typs2 = List.split_map (function Fun(y,typ1,typ2) -> typ1, subst_var y x typ2 | _ -> assert false) typs in
+        if !!debug then Format.printf "GEN typs1: %a@." (List.print print) typs1;
+        if !!debug then Format.printf "GEN typs2: %a@." (List.print print) typs2;
+        let xs = List.map (fun _ -> Id.new_var ~name:"b" T.TBool) typs in
+        if !!debug then Format.printf "GEN xs: %a@." (List.print Id.print) xs;
+        let genv',cenv',tbs =
+          let aux typ1 (genv,cenv,tbs) =
+            let genv', cenv', tb = generate_check genv cenv x typ1 in
+            let tb' =
+              let e = Id.new_var ~name:"e" U.typ_exn in
+              U.make_trywith tb e [U.make_pany @@ Id.typ e, U.true_term, U.false_term]
+              |> U.make_or U.randbool_unit_term
+              |*> U.add_comment @@ Format.asprintf "GEN INTER: beta(%a)" print typ1
             in
-            List.fold_right aux typs1 (genv,cenv,[])
+            genv', cenv', tb'::tbs
           in
-          if !!debug then Format.printf "GEN tbs: %a@." (List.print Print.term) tbs;
-          let tcs =
-            let aux bs =
-              xs
-              |> List.map U.make_var
+          List.fold_right aux typs1 (genv,cenv,[])
+        in
+        if !!debug then Format.printf "GEN tbs: %a@." (List.print Print.term) tbs;
+        let tcs =
+          let aux bs =
+            xs
+            |> List.map U.make_var
+            |> List.filter_map2 Option.some_if bs
+            |> U.make_ands
+          in
+          List.map aux bss
+        in
+        if !!debug then Format.printf "GEN tcs: %a@." (List.print Print.term) tcs;
+        let rstyp = to_simple @@ List.hd typs2 in
+        let genv'',cenv'',trs =
+          let aux bs (genv,cenv,trs) =
+            let typ =
+              typs2
               |> List.filter_map2 Option.some_if bs
-              |> U.make_ands
+              |> inter rstyp
             in
-            List.map aux bss
+            if !!debug then Format.printf "GEN typ: %a@." print typ;
+            let genv',cenv',tr = generate genv cenv typ in
+            genv', cenv', tr::trs
           in
-          if !!debug then Format.printf "GEN tcs: %a@." (List.print Print.term) tcs;
-(*
-          let typss = List.map (fun bs -> List.map) bss in
-          if !!debug then Format.printf "GEN |typss|: %d@." @@ List.length typss;
- *)
-          let rstyp = to_simple @@ List.hd typs2 in
-          let genv'',cenv'',trs =
-            let aux bs (genv,cenv,trs) =
-              let typ =
-                typs2
-                |> List.filter_map2 Option.some_if bs
-                |> inter rstyp
-              in
-              if !!debug then Format.printf "GEN typ: %a@." print typ;
-              let genv',cenv',tr = generate genv cenv typ in
-              genv', cenv', tr::trs
-            in
-            List.fold_right aux bss (genv',cenv',[])
+          List.fold_right aux bss (genv',cenv',[])
+        in
+        if !!debug then Format.printf "GEN trs: %a@." (List.print Print.term) trs;
+        let t =
+          U.make_bottom rstyp
+          |> List.fold_right2 U.make_if tcs trs
+          |> U.make_lets @@ List.map2 (fun x tb -> x, [], tb) xs tbs
+          |> U.make_fun x
+        in
+        if !!debug then Format.printf "GEN t: %a@."  Print.term t;
+        genv'', cenv'', t
+    | Inter(_, _) ->
+        Format.printf "INTER: %a@." print typ;
+        unsupported "Ref_type.generate: Inter"
+    | Union(styp, []) -> [], [], U.make_bottom styp
+    | Union(_, [typ]) -> generate genv cenv typ
+    | Union(_, typs) -> unsupported "Ref_type.generate: Union"
+    | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
+    | List(x,p_len,y,p_i,typ') ->
+        if p_i.S.desc <> S.Const S.True || occur y typ' then
+          unsupported "Ref_type.generate"
+        else
+          let styp = to_simple typ in
+          let l = Id.new_var ~name:"l" T.TInt in
+          let p_len' = U.subst_var x l p_len in
+          let genv',cenv',t =
+            if List.mem_assoc ~eq:same typ genv
+            then
+              let f,_,_ = List.assoc ~eq:same typ genv in
+              let t = U.make_app (U.make_var f) [U.make_var l] in
+              genv, cenv, t
+            else
+              let n = Id.new_var ~name:"n" T.TInt in
+              let f = Id.new_var ~name:("make_r_" ^ T.to_id_string styp) @@ T.TFun(n, to_abst_typ typ) in
+              let t_nil = U.make_nil2 styp in
+              let genv',cenv',t_typ' = generate genv cenv typ' in
+              let t_cons = U.make_cons t_typ' @@ U.make_app (U.make_var f) [U.make_sub (U.make_var n) (U.make_int 1)] in
+              let t_b = U.make_leq (U.make_var n) (U.make_int 0) in
+              let def = f, [n], U.add_comment (Format.asprintf "GEN LIST: %a" print typ) @@ U.make_if t_b t_nil t_cons in
+              let t = U.make_app (U.make_var f) [U.make_var l] in
+              if debug() then Format.printf "GEN: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
+              if List.Set.supset ~eq:Id.eq [n] @@ U.get_fv @@ Triple.trd def
+              then genv'@[typ,def], cenv', t
+              else genv', cenv', U.make_letrec [def] t
           in
-          if !!debug then Format.printf "GEN trs: %a@." (List.print Print.term) trs;
-          let t =
-            U.make_bottom rstyp
-            |> List.fold_right2 U.make_if tcs trs
-            |> U.make_lets @@ List.map2 (fun x tb -> x, [], tb) xs tbs
-            |> U.make_fun x
-          in
-          if !!debug then Format.printf "GEN t: %a@."  Print.term t;
-          genv'', cenv'', t
-      | Inter(_, _) ->
-          Format.printf "INTER: %a@." print typ;
-          unsupported "Ref_type.generate: Inter"
-      | Union(styp, []) -> [], [], U.make_bottom styp
-      | Union(_, [typ]) -> generate genv cenv typ
-      | Union(_, typs) -> unsupported "Ref_type.generate: Union"
-      | ExtArg(x,typ1,typ2) -> unsupported "Ref_type.generate: ExtArg"
-      | List(x,p_len,y,p_i,typ') ->
-          if p_i.S.desc <> S.Const S.True || occur y typ' then
-            unsupported "Ref_type.generate"
-          else
-            let styp = to_simple typ in
-            let l = Id.new_var ~name:"l" T.TInt in
-            let p_len' = U.subst_var x l p_len in
-            let genv',cenv',t =
-              if List.mem_assoc ~eq:same typ genv
-              then
-                let f,_,_ = List.assoc ~eq:same typ genv in
-                let t = U.make_app (U.make_var f) [U.make_var l] in
-                genv, cenv, t
-              else
-                let n = Id.new_var ~name:"n" T.TInt in
-                let f = Id.new_var ~name:("make_r_" ^ T.to_id_string styp) @@ T.TFun(n, to_abst_typ typ) in
-                let t_nil = U.make_nil2 styp in
-                let genv',cenv',t_typ' = generate genv cenv typ' in
-                let t_cons = U.make_cons t_typ' @@ U.make_app (U.make_var f) [U.make_sub (U.make_var n) (U.make_int 1)] in
-                let t_b = U.make_leq (U.make_var n) (U.make_int 0) in
-                let def = f, [n], U.add_comment (Format.asprintf "GEN LIST: %a" print typ) @@ U.make_if t_b t_nil t_cons in
-                let t = U.make_app (U.make_var f) [U.make_var l] in
-                if debug() then Format.printf "GEN: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
-                if List.Set.supset ~eq:Id.eq [n] @@ U.get_fv @@ Triple.trd def
-                then genv'@[typ,def], cenv', t
-                else genv', cenv', U.make_letrec [def] t
-            in
-            genv', cenv', U.make_let [l,[],U.randint_unit_term] @@ U.make_assume p_len' t
-    in
-    if !!debug then Format.printf "Ref_type.generate': %a@." print typ;
-    genv', cenv', {t with S.typ = to_abst_typ typ}
+          genv', cenv', U.make_let [l,[],U.randint_unit_term] @@ U.make_assume p_len' t
+  in
+  if !!debug then Format.printf "Ref_type.generate': %a@." print typ;
+  genv', cenv', {t with S.typ = to_abst_typ typ}
 
 module Value = struct
   type t' = t
