@@ -212,9 +212,7 @@ let get_ground_types s =
         match typ with
         | TUnit -> elim_and_decomp acc typs
         | TBool -> elim_and_decomp (add TBool acc) typs
-        | TAbsBool -> assert false
         | TInt -> elim_and_decomp (add TInt acc) typs
-        | TRInt _ -> assert false
         | TVar({contents=None}) -> unsupported "(type 'a t = ...)"
         | TVar _ -> unsupported "(type 'a t = ...)"
         | TFun _ -> elim_and_decomp (add TInt acc) typs

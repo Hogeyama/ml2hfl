@@ -128,9 +128,7 @@ let uncurry_rtyp t get_rtyp f =
 let rec remove_pair_typ = function
   | TUnit -> leaf TUnit
   | TBool -> leaf TBool
-  | TAbsBool -> leaf TAbsBool
   | TInt -> leaf TInt
-  | TRInt p -> leaf (TRInt p)
   | TVar _ -> assert false
   | TFun _ as typ ->
       let xs,typ' = decomp_tfun typ in

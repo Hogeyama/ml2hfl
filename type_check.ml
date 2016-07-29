@@ -21,7 +21,7 @@ let rec check t typ =
   | Const Unit, TUnit -> ()
   | Const CPS_result, typ when typ = typ_result -> ()
   | Const(True|False), TBool -> ()
-  | Const(Int _), (TInt | TRInt _) -> ()
+  | Const(Int _), TInt -> ()
   | Const _, TData _ -> ()
   | Const(RandValue(TInt,false)), TFun(x,TInt)->
       check_var x TUnit

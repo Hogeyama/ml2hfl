@@ -134,9 +134,7 @@ type trans =
 let trans_typ trans = function
     TUnit -> TUnit
   | TBool -> TBool
-  | TAbsBool -> TAbsBool
   | TInt -> TInt
-  | TRInt p -> TRInt (trans.tr_term p)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> trans.tr_typ typ
   | TFun(x,typ) -> TFun(Id.map_typ trans.tr_typ x, trans.tr_typ typ)
@@ -290,9 +288,7 @@ type 'a trans2 =
 let trans2_gen_typ tr env = function
   | TUnit -> TUnit
   | TBool -> TBool
-  | TAbsBool -> TAbsBool
   | TInt -> TInt
-  | TRInt p -> TRInt (tr.tr2_term env p)
   | TVar({contents=None} as x) -> TVar x
   | TVar{contents=Some typ} -> tr.tr2_typ env typ
   | TFun(x,typ) -> TFun(Id.map_typ (tr.tr2_typ env) x, tr.tr2_typ env typ)
@@ -448,9 +444,7 @@ type 'a col =
 let col_typ col = function
   | TUnit -> col.col_empty
   | TBool -> col.col_empty
-  | TAbsBool -> col.col_empty
   | TInt -> col.col_empty
-  | TRInt p -> col.col_empty
   | TVar{contents=None} -> col.col_empty
   | TVar{contents=Some typ} -> col.col_typ typ
   | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
@@ -607,9 +601,7 @@ type ('a,'b) col2 =
 let col2_typ col env = function
   | TUnit -> col.col2_empty
   | TBool -> col.col2_empty
-  | TAbsBool -> col.col2_empty
   | TInt -> col.col2_empty
-  | TRInt p -> col.col2_empty
   | TVar{contents=None} -> col.col2_empty
   | TVar{contents=Some typ} -> col.col2_typ env typ
   | TFun(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
@@ -771,11 +763,7 @@ let tr_col2_list tc tr_col ?(init=tc.tr_col2_empty) env xs =
 let tr_col2_typ tc env = function
   | TUnit -> tc.tr_col2_empty, TUnit
   | TBool -> tc.tr_col2_empty, TBool
-  | TAbsBool -> tc.tr_col2_empty, TAbsBool
   | TInt -> tc.tr_col2_empty, TInt
-  | TRInt p ->
-      let acc,p' = tc.tr_col2_term env p in
-      acc, TRInt p'
   | TVar({contents=None} as x) -> tc.tr_col2_empty, TVar x
   | TVar{contents=Some typ} -> tc.tr_col2_typ env typ
   | TFun(x,typ) ->
@@ -1077,11 +1065,7 @@ let fold_tr_list tr_col env xs =
 let fold_tr_typ fld env = function
   | TUnit -> env, TUnit
   | TBool -> env, TBool
-  | TAbsBool -> env, TAbsBool
   | TInt -> env, TInt
-  | TRInt p ->
-      let env',p' = fld.fold_tr_term env p in
-      env', TRInt p'
   | TVar({contents=None} as x) -> env, TVar x
   | TVar{contents=Some typ} -> fld.fold_tr_typ env typ
   | TFun(x,typ) ->

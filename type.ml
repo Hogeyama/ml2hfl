@@ -1,3 +1,4 @@
+
 open Util
 
 let debug () = List.mem "Type" !Flag.debug_module
@@ -5,9 +6,7 @@ let debug () = List.mem "Type" !Flag.debug_module
 type 'a t =
   | TUnit
   | TBool
-  | TAbsBool
   | TInt
-  | TRInt of 'a
   | TVar of 'a t option ref
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t
@@ -36,10 +35,8 @@ let is_fun_typ = function
 let rec is_base_typ = function
   | TUnit
   | TBool
-  | TAbsBool
   | TInt
-  | TData "string"
-  | TRInt _ -> true
+  | TData "string" -> true
   | TPred(x,_) -> is_base_typ @@ Id.typ x
   | _ -> false
 
@@ -53,10 +50,8 @@ let tfuns_to_tfun = function
 
 let rec elim_tpred_all = function
   | TUnit -> TUnit
-  | TAbsBool -> TAbsBool
   | TBool -> TBool
   | TInt -> TInt
-  | TRInt p -> TRInt p
   | TVar{contents=Some typ} -> elim_tpred_all typ
   | TVar r -> TVar r
   | TFun(x, typ) -> TFun(Id.map_typ elim_tpred_all x, elim_tpred_all typ)
@@ -88,10 +83,8 @@ let rec print occur print_pred fm typ =
   let print_preds ps = print_list print_pred "; " ps in
   match typ with
   | TUnit -> Format.fprintf fm "unit"
-  | TAbsBool -> Format.fprintf fm "abool"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TRInt p -> assert false (*Format.fprintf fm "{ %a | %a }" Id.print abst_var print_preds [p]*)
   | TVar{contents=Some typ} -> print' fm typ
   | TVar _ -> Format.fprintf fm "!!!"
   | TFun _ ->
@@ -157,8 +150,7 @@ let rec can_unify typ1 typ2 =
   | typ, TPred(x,_) -> can_unify (Id.typ x) typ
   | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
   | TUnit,TUnit -> true
-  | (TBool|TAbsBool),(TBool|TAbsBool) -> true
-  | (TInt|TRInt _),(TInt|TRInt _) -> true
+  | TInt,TInt -> true
   | TFuns([], typ1), typ2 -> can_unify typ1 typ2
   | typ1, TFuns([], typ2) -> can_unify typ1 typ2
   | TFuns(x::xs, typ1), typ2 -> can_unify (TFun(x, TFuns(xs, typ1))) typ2
@@ -197,9 +189,7 @@ let rec occurs r typ =
   match flatten typ with
   | TUnit -> false
   | TBool -> false
-  | TAbsBool -> false
   | TInt -> false
-  | TRInt p -> assert false
   | TVar({contents=None} as r') -> r == r'
   | TVar{contents=Some typ} -> assert false
   | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
@@ -218,9 +208,7 @@ let rec data_occurs s typ =
   match flatten typ with
   | TUnit -> false
   | TBool -> false
-  | TAbsBool -> false
   | TInt -> false
-  | TRInt p -> assert false
   | TVar r -> Option.exists (data_occurs s) !r
   | TFun(x,typ) -> data_occurs s (Id.typ x) || data_occurs s typ
   | TList typ -> data_occurs s typ
@@ -240,7 +228,6 @@ let rec unify typ1 typ2 =
   | TUnit, TUnit
   | TBool, TBool
   | TInt, TInt -> ()
-  | TRInt _, TRInt _ -> ()
   | TFun(x1, typ1), TFun(x2, typ2) ->
       unify (Id.typ x1) (Id.typ x2);
       unify typ1 typ2
@@ -272,9 +259,7 @@ let rec same_shape typ1 typ2 =
   match elim_tpred typ1, elim_tpred typ2 with
   | TUnit,TUnit -> true
   | TBool,TBool -> true
-  | TAbsBool,TAbsBool -> true
   | TInt,TInt -> true
-  | TRInt _, TRInt _ -> true
   | TVar{contents=None}, TVar{contents=None} -> true
   | TVar{contents=Some typ1},TVar{contents=Some typ2} -> same_shape typ1 typ2
   | TFun(x1,typ1),TFun(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
@@ -341,9 +326,7 @@ let option_typ typ =
 let rec has_pred = function
   | TUnit -> false
   | TBool -> false
-  | TAbsBool -> false
   | TInt -> false
-  | TRInt _ -> assert false
   | TVar{contents=None} -> false
   | TVar{contents=Some typ} -> has_pred typ
   | TFun(x,typ) -> has_pred (Id.typ x) || has_pred typ
@@ -361,9 +344,7 @@ let rec has_pred = function
 let rec to_id_string = function
   | TUnit -> "unit"
   | TBool -> "bool"
-  | TAbsBool -> assert false
   | TInt -> "int"
-  | TRInt _ -> assert false
   | TVar{contents=None} -> "abst"
   | TVar{contents=Some typ} -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
@@ -387,9 +368,7 @@ let rec order typ =
   match typ with
   | TUnit -> 0
   | TBool -> 0
-  | TAbsBool -> 0
   | TInt -> 0
-  | TRInt _ -> 0
   | TVar{contents=None} -> assert false
   | TVar{contents=Some typ} -> order typ
   | TFun(x,typ) -> max (order (Id.typ x) + 1) (order typ)
@@ -423,10 +402,8 @@ let rec decomp_trecord typ =
 let rec get_free_data_name typ =
   match typ with
   | TUnit -> []
-  | TAbsBool -> []
   | TBool -> []
   | TInt -> []
-  | TRInt p -> []
   | TVar {contents=Some typ} -> get_free_data_name typ
   | TVar {contents=None} -> []
   | TFun(x, typ) -> get_free_data_name (Id.typ x) @ get_free_data_name typ

@@ -1,9 +1,7 @@
 type 'a t =
     TUnit
   | TBool
-  | TAbsBool
   | TInt
-  | TRInt of 'a
   | TVar of 'a t option ref
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t

@@ -33,8 +33,6 @@ let rec from_type typ =
   | Type.TData _
   | Type.TRef _
   | Type.TOption _
-  | Type.TAbsBool
-  | Type.TRInt _
   | Type.TVar _
   | Type.TPred _
   | Type.TFuns _ -> unsupported "uncurry"
