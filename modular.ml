@@ -165,7 +165,9 @@ let main _ spec parsed =
       |> preprocess_before CPS
       |> preprocess_filter_out [(*Encode_mutable_record; Encode_recdata; Encode_list;*) Beta_reduce_trivial]
     in
-    Main_loop.run_preprocess pps parsed
+    parsed
+    |@!!debug&> Format.printf "PARSED: %a@.@." Print.term'
+    |> Main_loop.run_preprocess pps
     |> Main_loop.last_t
     |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term'
     |> normalize

@@ -131,27 +131,27 @@ let rec from_type_expr rec_env tenv typ =
       if List.mem name rec_env then
         TData name
       else
-      let typ'' =
-       try
-         match (Env.find_type path tenv).type_kind with
-         | Type_abstract -> TData name
-         | Type_variant decls ->
-             let aux {cd_id;cd_args} =
-               Ident.name cd_id, List.map (from_type_expr (name::rec_env) tenv) cd_args
-             in
-             TVariant (List.map aux decls)
-         | Type_record(decls,_) ->
-             let aux {ld_id;ld_mutable;ld_type} =
-               Ident.name ld_id, (from_mutable_flag ld_mutable, from_type_expr (name::rec_env) tenv ld_type)
-             in
-             TRecord (List.map aux decls)
-         | Type_open -> unsupported "Type_open"
-       with Not_found -> assert false
-      in
-      if typ'' <> TData name && data_occurs name typ'' then
-        Type([name, typ''], name)
-      else
-        typ''
+        let typ'' =
+          try
+            match (Env.find_type path tenv).type_kind with
+            | Type_abstract -> TData name
+            | Type_variant decls ->
+                let aux {cd_id;cd_args} =
+                  Ident.name cd_id, List.map (from_type_expr (name::rec_env) tenv) cd_args
+                in
+                TVariant (List.map aux decls)
+            | Type_record(decls,_) ->
+                let aux {ld_id;ld_mutable;ld_type} =
+                  Ident.name ld_id, (from_mutable_flag ld_mutable, from_type_expr (name::rec_env) tenv ld_type)
+                in
+                TRecord (List.map aux decls)
+            | Type_open -> unsupported "Type_open"
+          with Not_found -> assert false
+        in
+        if typ'' <> TData name && data_occurs name typ'' then
+          Type([name, typ''], name)
+        else
+          typ''
   | Tobject _ -> unsupported "Tobject"
   | Tfield _ -> unsupported "Tfield"
   | Tnil -> unsupported "Tnil"
