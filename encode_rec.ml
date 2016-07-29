@@ -87,7 +87,7 @@ let abst_recdata_leaves typs =
     else make_ttuple [TInt; make_ttuple typs']
   in
   make_ttuple [TUnit; (* extra-param *)
-               TFun(Id.new_var ~name:"path" (TList TInt), r_typ)]
+               TFun(Id.new_var ~name:"path" @@ make_tlist TInt, r_typ)]
 
 let abst_recdata_typ typ =
   match fold_data_type typ with
@@ -115,7 +115,7 @@ let abst_recdata_typ typ =
         make_ttuple @@ List.map (abst_recdata.tr_typ -| snd -| snd) sftyps
   | TData(s,true) -> assert false
  *)
-  | TOption typ -> opt_typ (abst_recdata.tr_typ typ)
+  | TApp(TOption, [typ]) -> opt_typ (abst_recdata.tr_typ typ)
   | _ -> abst_recdata.tr_typ_rec typ
 
 let abst_label typ s =
@@ -161,7 +161,7 @@ let rec abst_recdata_pat p =
               let t = make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_nil TInt)] in
               make_proj j @@ make_snd t
             else
-              let path = Id.new_var ~name:"path" (TList TInt) in
+              let path = Id.new_var ~name:"path" (make_tlist TInt) in
               make_pair unit_term @@ (* extra-param *)
                 make_fun path @@ make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_var path)]
           in
@@ -230,10 +230,10 @@ let abst_recdata_term t =
             in
             make_pair head @@ make_tuple bodies
       in
-      let path = Id.new_var ~name:"path" @@ TList TInt in
+      let path = Id.new_var ~name:"path" @@ make_tlist TInt in
       let pat0 = make_pnil TInt, true_term, make_return (Some (abst_label t.typ c)) TUnit unit_term in
       let make_pat i (x,typ) =
-        let path' = Id.new_var ~name:"path'" @@ TList TInt in
+        let path' = Id.new_var ~name:"path'" @@ make_tlist TInt in
         let t =
           if List.exists (same_shape @@ Id.typ x) ground_types then
             make_return None typ @@ make_var x

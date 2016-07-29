@@ -11,18 +11,19 @@ and default_val' =
     | TInt -> Const (Int 0)
     | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var ~name:"_" t1, default_val t2)
     | TPred (t, _) -> default_val' (Id.typ t)
-    | TData _ -> raise (Invalid_argument "default_val: not yet implemented syntax(Tconstr)")
-    | TList _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TList)")
-    | TTuple _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TTuple)")
-    | TRef _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TRef)")
-    | TOption _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TOption)")
+    | TData _ -> invalid_arg "default_val: not yet implemented syntax(Tconstr)"
+    | TApp _ -> invalid_arg "default_val: not yet implemented syntax(TApp)"
+    | TTuple _ -> invalid_arg "default_val: not yet implemented syntax(TTuple)"
     | TVar t ->
       begin
 	match !t with
 	  | None -> raise (Invalid_argument "default_val: not yet implemented syntax(TVar None)")
 	  | Some t' -> default_val' t'
       end
-    | TFuns _ -> raise (Invalid_argument "default_val: not yet implemented syntax(TFuns)")
+    | TFuns _ -> invalid_arg "default_val: not yet implemented syntax(TFuns)"
+    | TRecord _ -> invalid_arg "default_val: not yet implemented syntax(TRecord)"
+    | TVariant _ -> invalid_arg "default_val: not yet implemented syntax(TVariant)"
+    | Type _ -> invalid_arg "default_val: not yet implemented syntax(Type)"
 
 let state_transducer trans_prev_statevar trans_statevar trans_argvars state =
   {state with

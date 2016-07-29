@@ -2,6 +2,7 @@ open Util
 
 module S = Syntax
 module U = Term_util
+module T = Type
 
 let debug () = List.mem "Ref_type" !Flag.debug_module
 
@@ -171,9 +172,9 @@ let rec decomp_funs n typ =
 let rec arg_num = function
   | Base _ -> 0
   | Tuple _ -> 0
-  | Inter(typ, []) -> List.length @@ fst @@ Type.decomp_tfun typ
+  | Inter(typ, []) -> List.length @@ fst @@ T.decomp_tfun typ
   | Inter(_, typ::_) -> arg_num typ
-  | Union(typ, []) -> List.length @@ fst @@ Type.decomp_tfun typ
+  | Union(typ, []) -> List.length @@ fst @@ T.decomp_tfun typ
   | Union(_, typ::_) -> arg_num typ
   | Fun(_,_,typ2) -> 1 + arg_num typ2
   | ExtArg(_,_,typ2) -> arg_num typ2
@@ -239,13 +240,13 @@ let rename typ =
 
 
 let rec of_simple typ =
-  match Type.elim_tpred typ with
-  | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
-  | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
-  | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
-  | Type.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
-  | Type.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
-  | Type.TTuple xs ->
+  match T.elim_tpred typ with
+  | T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
+  | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
+  | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
+  | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
+  | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
+  | T.TTuple xs ->
       Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
   | _ ->
       if !!debug then Format.printf "%a@." Print.typ typ;
@@ -254,23 +255,23 @@ let rec of_simple typ =
 
 let rec to_simple typ =
   match typ with
-  | Base(Unit, _, _) -> Type.TUnit
-  | Base(Bool, _, _) -> Type.TBool
-  | Base(Int, _, _) -> Type.TInt
-  | Base(Abst s, _, _) -> Type.TData s
-  | Fun(x,typ1,typ2) -> Type.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
-  | Tuple xtyps -> Type.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
+  | Base(Unit, _, _) -> T.TUnit
+  | Base(Bool, _, _) -> T.TBool
+  | Base(Int, _, _) -> T.TInt
+  | Base(Abst s, _, _) -> T.TData s
+  | Fun(x,typ1,typ2) -> T.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
+  | Tuple xtyps -> T.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
   | Inter(typ, _) -> typ
   | Union(typ, _) -> typ
   | ExtArg _ -> assert false
-  | List(_,_,_,_,typ) -> Type.TList (to_simple typ)
+  | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple typ
 
 let to_abst_typ_base b =
   match b with
-  | Unit -> Type.TUnit
-  | Bool -> Type.TBool
-  | Int -> Type.TInt
-  | Abst s -> Type.TData s
+  | Unit -> T.TUnit
+  | Bool -> T.TBool
+  | Int -> T.TInt
+  | Abst s -> T.TData s
 
 let rec to_abst_typ typ =
   let r =
@@ -280,17 +281,17 @@ let rec to_abst_typ typ =
   | Base(b, x, t) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ_base b in
       let ps = Term_util.decomp_bexp @@ U.subst_var x x' t in
-      Type.TPred(x', ps)
+      T.TPred(x', ps)
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ1 in
       let typ2' = to_abst_typ @@ subst_var x x' typ2 in
-      Type.TFun(x', typ2')
+      T.TFun(x', typ2')
   | Tuple xtyps ->
       let aux (x,typ) xs =
         let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ in
         List.map (Id.map_typ @@ U.subst_type_var x x') (x'::xs)
       in
-      Type.TTuple (List.fold_right aux xtyps [])
+      T.TTuple (List.fold_right aux xtyps [])
   | Inter(styp, typs)
   | Union(styp, typs) ->
       List.fold_right (Term_util.merge_typ -| to_abst_typ) typs styp
@@ -300,10 +301,10 @@ let rec to_abst_typ typ =
         unsupported "Ref_type.to_abst_typ"
       else
         let typ1' = to_abst_typ typ1 in
-        let x' = Id.new_var ~name:"xs" @@ Type.TList typ1' in
+        let x' = Id.new_var ~name:"xs" @@ T.make_tlist typ1' in
         if p_len = U.true_term
         then Id.typ x'
-        else Type.TPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])
+        else T.TPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])
   in
   if !!debug then Format.printf "Ref_type.to_abst_typ IN: %a@." print typ;
   if !!debug then Format.printf "Ref_type.to_abst_typ OUT: %a@." Print.typ r;
@@ -541,28 +542,28 @@ let from_fpat_const typ =
   | _ -> unsupported "Ref_type.from_fpat"
 let rec from_fpat typ =
   match typ with
-  | Fpat.RefType.Bot -> Base(Int, Id.new_var Type.TInt, U.false_term)
-  | Fpat.RefType.Top -> Inter []
-  | Fpat.RefType.Base(x, c, p) ->
+  | Fpat.RefT.Bot -> Base(Int, Id.new_var T.TInt, U.false_term)
+  | Fpat.RefT.Top -> Inter []
+  | Fpat.RefT.Base(x, c, p) ->
       let base = from_fpat_const c in
       let typ =
         match base with
-        | Int -> Type.TInt
-        | Bool -> Type.TBool
-        | Unit -> Type.TUnit
+        | Int -> T.TInt
+        | Bool -> T.TBool
+        | Unit -> T.TUnit
         | _ -> assert false
       in
       let x' = Id.from_string (Fpat.Idnt.string_of x) typ in
       let t = U.from_fpat_formula p in
       Base(base, x', t)
-  | Fpat.RefType.Fun typs ->
+  | Fpat.RefT.Fun typs ->
       let aux (typ1,typ2) =
         let typ1' = from_fpat typ1 in
         let typ2' = from_fpat typ2 in
         let x =
           let typ1_simple = to_simple typ1' in
           if is_base typ1'
-          then Id.from_string (Fpat.Idnt.string_of @@ Fpat.RefType.bv_of typ1) typ1_simple
+          then Id.from_string (Fpat.Idnt.string_of @@ Fpat.RefT.bv_of typ1) typ1_simple
           else Id.new_var typ1_simple
         in
         Fun(x, typ1', typ2')
@@ -572,13 +573,13 @@ let rec from_fpat typ =
 
 let rec make_strongest typ =
   match typ with
-  | Type.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
-  | Type.TBool -> Base(Bool, Id.new_var typ, U.false_term)
-  | Type.TInt -> Base(Int, Id.new_var typ, U.false_term)
-  | Type.TData s -> Base(Abst s, Id.new_var typ, U.false_term)
-  | Type.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
-  | Type.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
-  | Type.TList _ -> unsupported "Ref_type.make_strongest TList"
+  | T.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
+  | T.TBool -> Base(Bool, Id.new_var typ, U.false_term)
+  | T.TInt -> Base(Int, Id.new_var typ, U.false_term)
+  | T.TData s -> Base(Abst s, Id.new_var typ, U.false_term)
+  | T.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
+  | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
+  | T.TApp(T.TList, _) -> unsupported "Ref_type.make_strongest TList"
   | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.false_term)
   | _ ->
       Format.printf "make_strongest: %a@." Print.typ typ;
@@ -586,13 +587,13 @@ let rec make_strongest typ =
 
 and make_weakest typ =
   match typ with
-  | Type.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
-  | Type.TBool -> Base(Bool, Id.new_var typ, U.true_term)
-  | Type.TInt -> Base(Int, Id.new_var typ, U.true_term)
-  | Type.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
-  | Type.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
-  | Type.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
-  | Type.TList _ -> unsupported "Ref_type.make_weakest List"
+  | T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
+  | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
+  | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
+  | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
+  | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
+  | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
+  | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
   | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.true_term)
   | _ ->
       Format.printf "make_weakest: %a@." Print.typ typ;
@@ -629,21 +630,21 @@ let rec push_inter_union_into typ =
 
 let rec make_rand typ =
   match typ with
-  | Type.TVar {contents=None} -> unsupported "make_randue_base"
-  | Type.TVar {contents=Some typ} -> make_rand typ
-  | Type.TFun(x,typ) ->
+  | T.TVar {contents=None} -> unsupported "make_randue_base"
+  | T.TVar {contents=Some typ} -> make_rand typ
+  | T.TFun(x,typ) ->
       let t =
         match Id.typ x with
-        | typ when Type.is_base_typ typ -> U.unit_term
-        | Type.TFun(x',typ') -> U.make_br U.unit_term @@ U.make_seq (U.make_app (U.make_var x) [make_rand @@ Id.typ x']) U.unit_term
+        | typ when T.is_base_typ typ -> U.unit_term
+        | T.TFun(x',typ') -> U.make_br U.unit_term @@ U.make_seq (U.make_app (U.make_var x) [make_rand @@ Id.typ x']) U.unit_term
         | _ -> unsupported "make_rand"
       in
       U.make_fun (Id.new_var_id x) @@ U.make_seq t @@ make_rand typ
-  | Type.TTuple xs -> U.make_tuple @@ List.map (make_rand -| Id.typ) xs
-  | Type.TData _ -> unsupported "make_rand"
-  | Type.TRef _ -> unsupported "make_rand"
-  | Type.TOption _ -> unsupported "make_rand"
-  | Type.TPred(x,_) -> make_rand @@ Id.typ x
+  | T.TTuple xs -> U.make_tuple @@ List.map (make_rand -| Id.typ) xs
+  | T.TData _ -> unsupported "make_rand"
+  | T.TApp(T.TRef, _) -> unsupported "make_rand"
+  | T.TApp(T.TOption, _) -> unsupported "make_rand"
+  | T.TPred(x,_) -> make_rand @@ Id.typ x
   | _ -> U.make_randvalue_unit typ
 
 
@@ -675,7 +676,7 @@ let rec generate_check genv cenv x typ =
       let styp = to_simple typ in
       let atyp1 = to_abst_typ typ1 in
       let atyp = to_abst_typ typ in
-      let l' = Id.new_var ~name:"l" Type.TInt in
+      let l' = Id.new_var ~name:"l" T.TInt in
       let add_len t =
         let t' = U.make_and t @@ U.subst_var l l' p_len in
         if t' = U.true_term
@@ -690,7 +691,7 @@ let rec generate_check genv cenv x typ =
           genv, cenv, U.make_app (U.make_var f) [U.make_var x]
         else
           let zs = Id.new_var ~name:"xs" atyp in
-          let f = Id.new_var ~name:("check_" ^ Type.to_id_string styp) @@ Type.TFun(zs,Type.TBool) in
+          let f = Id.new_var ~name:("check_" ^ T.to_id_string styp) @@ T.TFun(zs,T.TBool) in
           let z = Id.new_var ~name:"x" atyp1 in
           let zs' = Id.new_var ~name:"xs'" atyp in
           let genv',cenv',t_b1 = generate_check genv cenv z typ1' in
@@ -734,12 +735,12 @@ let rec generate_check genv cenv x typ =
 (*
 and generate_simple_aux typ =
   match typ with
-  | Type.TInt -> U.randint_unit_term
-  | Type.TBool -> U.randbool_unit_term
-  | Type.TUnit -> U.unit_term
-  | Type.TFun(x,typ') -> U.make_fun (Id.new_var_id x) @@ generate_simple typ'
-  | Type.TTuple xs -> U.make_tuple @@ List.map (generate_simple -| Id.typ) xs
-  | Type.TList typ' ->
+  | T.TInt -> U.randint_unit_term
+  | T.TBool -> U.randbool_unit_term
+  | T.TUnit -> U.unit_term
+  | T.TFun(x,typ') -> U.make_fun (Id.new_var_id x) @@ generate_simple typ'
+  | T.TTuple xs -> U.make_tuple @@ List.map (generate_simple -| Id.typ) xs
+  | T.TList typ' ->
       let open Type in
       let open Term_util in
       let u = Id.new_var ~name:"u" TUnit in
@@ -767,11 +768,11 @@ and generate genv cenv typ =
     let genv',cenv',t =
       match typ with
       | Base(Int, x, p) ->
-          let x' = Id.new_var Type.TInt in
+          let x' = Id.new_var T.TInt in
           let genv',cenv',t_check = generate_check genv cenv x' typ in
           genv', cenv', U.make_let [x',[],U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
       | Base(Bool, x, p) ->
-          let x' = Id.new_var Type.TBool in
+          let x' = Id.new_var T.TBool in
           let genv',cenv',t_check = generate_check genv cenv x' typ in
           genv', cenv', U.make_let [x',[],U.randbool_unit_term] @@ U.make_assume t_check @@ U.make_var x'
       | Base(Unit, x, p) ->
@@ -818,8 +819,8 @@ and generate genv cenv typ =
           let x = Id.new_var @@ to_abst_typ typ11 in
           let typ22 = subst_var x1 x typ12 in
           let typ22 = subst_var x2 x typ22 in
-          let b1 = Id.new_var ~name:"b" Type.TBool in
-          let b2 = Id.new_var ~name:"b" Type.TBool in
+          let b1 = Id.new_var ~name:"b" T.TBool in
+          let b2 = Id.new_var ~name:"b" T.TBool in
           let e = Id.new_var ~name:"e" !U.typ_excep in
           let genv,cenv,t1 = generate_check genv cenv x typ11 in
           let genv,cenv,t2 = generate_check genv cenv x typ21 in
@@ -847,7 +848,7 @@ and generate genv cenv typ =
           let typs1,typs2 = List.split_map (function Fun(y,typ1,typ2) -> typ1, subst_var y x typ2 | _ -> assert false) typs in
           if !!debug then Format.printf "GEN typs1: %a@." (List.print print) typs1;
           if !!debug then Format.printf "GEN typs2: %a@." (List.print print) typs2;
-          let xs = List.map (fun _ -> Id.new_var ~name:"b" Type.TBool) typs in
+          let xs = List.map (fun _ -> Id.new_var ~name:"b" T.TBool) typs in
           if !!debug then Format.printf "GEN xs: %a@." (List.print Id.print) xs;
           let genv',cenv',tbs =
             let aux typ1 (genv,cenv,tbs) =
@@ -912,7 +913,7 @@ and generate genv cenv typ =
             unsupported "Ref_type.generate"
           else
             let styp = to_simple typ in
-            let l = Id.new_var ~name:"l" Type.TInt in
+            let l = Id.new_var ~name:"l" T.TInt in
             let p_len' = U.subst_var x l p_len in
             let genv',cenv',t =
               if List.mem_assoc ~eq:same typ genv
@@ -921,8 +922,8 @@ and generate genv cenv typ =
                 let t = U.make_app (U.make_var f) [U.make_var l] in
                 genv, cenv, t
               else
-                let n = Id.new_var ~name:"n" Type.TInt in
-                let f = Id.new_var ~name:("make_r_" ^ Type.to_id_string styp) @@ Type.TFun(n, to_abst_typ typ) in
+                let n = Id.new_var ~name:"n" T.TInt in
+                let f = Id.new_var ~name:("make_r_" ^ T.to_id_string styp) @@ T.TFun(n, to_abst_typ typ) in
                 let t_nil = U.make_nil2 styp in
                 let genv',cenv',t_typ' = generate genv cenv typ' in
                 let t_cons = U.make_cons t_typ' @@ U.make_app (U.make_var f) [U.make_sub (U.make_var n) (U.make_int 1)] in

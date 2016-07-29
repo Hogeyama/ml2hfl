@@ -130,8 +130,8 @@ let rec check t typ =
         | _ -> assert false
       end;
       check t2 t2.typ
-  | Nil, TList _ -> ()
-  | Cons(t1,t2), TList typ' ->
+  | Nil, TApp(TList, _) -> ()
+  | Cons(t1,t2), TApp(TList, [typ']) ->
       check t1 typ';
       check t2 typ
   | Constr(s,ts), TVariant labels ->
@@ -152,15 +152,15 @@ let rec check t typ =
       check t1 typ;
       check t2 @@ make_tfun (TVar (ref None)) typ
   | Bottom, typ -> ()
-  | Ref t, TRef typ ->
+  | Ref t, TApp(TRef, [typ]) ->
       check t typ
   | Deref t, typ ->
-      check t (TRef typ)
+      check t (make_tref typ)
   | SetRef(t1,t2), TUnit ->
-      check t1 (TRef t2.typ);
+      check t1 (make_tref t2.typ);
       check t2 t2.typ
-  | TNone, TOption typ -> ()
-  | TSome t, TOption typ ->
+  | TNone, TApp(TOption, _) -> ()
+  | TSome t, TApp(TOption, [typ]) ->
       check t typ
   | _, TData _ -> assert false
   | _ ->

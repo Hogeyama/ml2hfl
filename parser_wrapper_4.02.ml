@@ -119,13 +119,13 @@ let rec from_type_expr rec_env tenv typ =
   | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
       List.assoc (Path.name path) prim_typs
   | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
-      TList (from_type_expr rec_env tenv type_expr)
+      TApp(TList, [from_type_expr rec_env tenv type_expr])
   | Tconstr(path, [type_expr], _) when Path.name path = "Pervasives.ref" ->
-      TRef (from_type_expr rec_env tenv type_expr)
+      TApp(TRef, [from_type_expr rec_env tenv type_expr])
   | Tconstr(path, [type_expr], _) when Path.name path = "option" ->
-      TOption (from_type_expr rec_env tenv type_expr)
+      TApp(TOption, [from_type_expr rec_env tenv type_expr])
   | Tconstr(path, [type_expr], _) when Path.name path = "array" ->
-      TRef (make_tpair TInt @@ TFun(Id.new_var TInt, from_type_expr rec_env tenv type_expr))
+      TApp(TRef, [make_tpair TInt @@ TFun(Id.new_var TInt, from_type_expr rec_env tenv type_expr)])
   | Tconstr(path, typs, m) ->
       let name = Path.name path in
       if List.mem name rec_env then

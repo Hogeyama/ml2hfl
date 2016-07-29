@@ -29,10 +29,8 @@ let rec from_type typ =
   | Type.TInt -> TBase
   | Type.TFun(x,typ') -> TFun(from_type @@ Id.typ x, 0, from_type typ')
   | Type.TTuple typs -> TTuple (List.map (from_type -| Id.typ) typs)
-  | Type.TList _
+  | Type.TApp _
   | Type.TData _
-  | Type.TRef _
-  | Type.TOption _
   | Type.TVar _
   | Type.TPred _
   | Type.TFuns _ -> unsupported "uncurry"

@@ -5,16 +5,18 @@ type 'a t =
   | TVar of 'a t option ref
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t
-  | TList of 'a t
   | TTuple of 'a t Id.t list
   | TData of string
-  | TRef of 'a t
-  | TOption of 'a t
   | TPred of 'a t Id.t * 'a list
   | TVariant of (string * 'a t list) list
   | TRecord of (string * (mutable_flag * 'a t)) list
   | Type of (string * 'a t) list * string
+  | TApp of constr * 'a t list
 and mutable_flag = Immutable | Mutable
+and constr =
+  | TList
+  | TRef
+  | TOption
 
 exception CannotUnify
 
@@ -59,3 +61,13 @@ val result_typ : 'a t -> 'a t
 val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
 val get_free_data_name : 'a t -> string list
+
+
+(** {6 Type constructor} *)
+val make_ttuple : 'a t list -> 'a t
+val make_ttuple' : 'a t list -> 'a t
+val make_tpair : 'a t -> 'a t -> 'a t
+val make_tfun : 'a t -> 'a t -> 'a t
+val make_tlist : 'a t -> 'a t
+val make_tref : 'a t -> 'a t
+val make_toption : 'a t -> 'a t

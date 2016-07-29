@@ -170,10 +170,10 @@ let rec define_randvalue name (env, defs as ed) typ =
     | TFun(x,typ) ->
         let ed',t = define_randvalue "" ed typ in
         ed', make_fun x t
-    | TList (TVar({contents=None} as r)) ->
+    | TApp(TList, [TVar({contents=None} as r)]) ->
         r := Some TUnit;
         define_randvalue "" ed typ
-    | TList typ' ->
+    | TApp(TList, [typ']) ->
         let u = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
@@ -187,7 +187,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         in
         let (env', defs'), ts = List.fold_right aux xs ((env,defs),[]) in
         (env', defs'), make_tuple ts
-    | TRef typ ->
+    | TApp(TRef, [typ]) ->
         let ed',t = define_randvalue "" ed typ in
         ed', make_ref t
     | TData s -> (env, defs), make_randvalue_unit typ
@@ -1805,7 +1805,7 @@ let abst_ref_term t =
 
 let abst_ref_typ typ =
   match typ with
-  | TRef _ -> TUnit
+  | TApp(TRef, _) -> TUnit
   | _ -> abst_ref.tr_typ_rec typ
 
 let () = abst_ref.tr_term <- abst_ref_term

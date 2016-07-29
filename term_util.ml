@@ -25,7 +25,7 @@ let abst_var = Id.make (-1) "v" typ_unknown
 let abst_var_int = Id.set_typ abst_var TInt
 let abst_var_bool = Id.set_typ abst_var TBool
 let length_var =
-  let x = Id.make (-1) "l" (TList typ_unknown) in
+  let x = Id.make (-1) "l" (TApp(TList, [typ_unknown])) in
   Id.make (-1) "length" (TFun(x, TInt))
 
 let make_attr ?(attrs=const_attr) ts =
@@ -135,8 +135,6 @@ let fail_unit_term = make_app fail_term [unit_term]
 let make_fail typ = make_seq fail_unit_term @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_funs = List.fold_right make_fun
-let make_tfun typ1 typ2 =
-  TFun(Id.new_var typ1, typ2)
 let make_not t =
   match t.desc with
   | Const True -> false_term
@@ -209,13 +207,6 @@ let make_geq t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Geq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
-let make_ttuple typs =
-  TTuple (List.map Id.new_var typs)
-let make_ttuple' typs =
-  match typs with
-  | [] -> TUnit
-  | [typ] -> typ
-  | _ -> make_ttuple typs
 let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
 let make_tuple' ts =
   match ts with
@@ -224,18 +215,17 @@ let make_tuple' ts =
   | _ -> make_tuple ts
 let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=[]}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=[]}
-let make_tpair typ1 typ2 = make_ttuple [typ1; typ2]
 let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ; attr=[]}
-let make_nil typ = {desc=Nil; typ=TList typ; attr=[]}
+let make_nil typ = {desc=Nil; typ=TApp(TList, [typ]); attr=[]}
 let make_nil2 typ = {desc=Nil; typ=typ; attr=[]}
 let make_cons t1 t2 =
-  assert (Flag.check_typ => Type.can_unify (TList t1.typ) t2.typ);
+  assert (Flag.check_typ => Type.can_unify (TApp(TList, [t1.typ])) t2.typ);
   {desc=Cons(t1,t2); typ=t2.typ; attr=[]}
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
 let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
 let make_ppair p1 p2 = {pat_desc=PTuple[p1;p2]; pat_typ=make_tpair p1.pat_typ p2.pat_typ}
-let make_pnil typ = {pat_desc=PNil; pat_typ=TList typ}
+let make_pnil typ = {pat_desc=PNil; pat_typ=make_tlist typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
 let make_match t1 pats =
@@ -251,7 +241,7 @@ let make_label ?(label="") info t =
   t
   |> make_label_aux info
   |& (label <> "") &> make_label_aux (InfoString label)
-let make_ref t = {desc=Ref t; typ=TRef t.typ; attr=[]}
+let make_ref t = {desc=Ref t; typ=make_tref t.typ; attr=[]}
 let make_deref t = {desc=Deref t; typ=ref_typ t.typ; attr=[]}
 let make_setref r t = {desc=SetRef(r, t); typ=TUnit; attr=[]}
 let make_construct c ts typ =
@@ -307,7 +297,7 @@ let rec make_term typ =
   | TData "char" -> {desc=Const(Char '\000'); typ; attr=[]}
   | TData "string" -> {desc=Const(String ""); typ; attr=[]}
   | TData "float" -> {desc=Const(Float 0.); typ; attr=[]}
-  | TList typ' -> make_nil typ'
+  | TApp(TList, [typ']) -> make_nil typ'
   | _ -> Format.printf "ERROR: %a@." Print.typ typ; assert false
 
 
@@ -604,16 +594,16 @@ let rec merge_typ typ1 typ2 =
       let x = Id.new_var ~name:(Id.name x1) x_typ in
       let typ = merge_typ (subst_type_var x1 x typ1) (subst_type_var x2 x typ2) in
       TFun(x, typ)
-  | TList typ1, TList typ2 -> TList (merge_typ typ1 typ2)
+  | TApp(c1,typs1), TApp(c2,typs2) ->
+      assert (c1 = c2);
+      TApp(c1, List.map2 merge_typ typs1 typs2)
   | TTuple xs1, TTuple xs2 ->
       let aux x1 x2 xs =
         let x = Id.set_typ x1 @@ merge_typ (Id.typ x1) (Id.typ x2) in
         List.map (Id.map_typ @@ subst_type_var x2 x1) @@ x::xs
       in
       TTuple (List.fold_right2 aux xs1 xs2 [])
-  | TRef typ1, TRef typ2 -> TRef (merge_typ typ1 typ2)
   | TData _, TData _ -> assert (typ1 = typ2); typ1
-  | TOption typ1, TOption typ2 -> TOption (merge_typ typ1 typ2)
   | Type(_,s1), Type(_,s2) -> assert (s1 = s2); typ1
   | TVariant labels1, TVariant labels2 ->
       let labels = List.map2 (fun (s1,typs1) (s2,typs2) -> assert (s1=s2); s1, List.map2 merge_typ typs1 typs2) labels1 labels2 in
@@ -726,7 +716,7 @@ let rec var_name_of_term t =
   | _, TInt -> "n"
   | _, TFun _ -> "f"
   | _, TTuple _ -> "p"
-  | _, TList _ -> "xs"
+  | _, TApp(TList,_) -> "xs"
   | Fun _, _ -> assert false
   | _, _ -> "x"
 

@@ -108,12 +108,6 @@ val make_trywith : typed_term -> id -> (typed_pattern * typed_term * typed_term)
 val make_length : typed_term -> typed_term
 val new_var_of_term : typed_term -> id
 
-(** {6 Type constructor} *)
-val make_ttuple : typ list -> typ
-val make_ttuple' : typ list -> typ
-val make_tpair : typ -> typ -> typ
-val make_tfun : typ -> typ -> typ
-
 
 (** {6 Term destructor} *)
 val is_none : typed_term -> bool

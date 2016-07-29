@@ -135,7 +135,9 @@ let rec remove_pair_typ = function
       let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
       leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
   | TTuple xs -> Node (None, List.map (remove_pair_typ -| Id.typ) xs)
-  | TList typ -> leaf (TList (root (remove_pair_typ typ)))
+(*
+  | TApp(TList, typs) -> leaf (TList (root (remove_pair_typ typ)))
+ *)
   | TData s -> leaf (TData s)
   | TPred({Id.typ=TTuple[x; {Id.typ=typ}]} as y, ps) ->
       begin

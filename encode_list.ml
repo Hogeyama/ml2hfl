@@ -74,17 +74,17 @@ let rec get_rtyp_list rtyp typ =
      RT.Inter(typ, List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Union(_, rtyps), _ ->
       RT.Union(typ, List.map (get_rtyp_list -$- typ) rtyps)
-  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Fun(y, RT.Base(RT.Int, y', p_i), typ2)], TList typ ->
+  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Fun(y, RT.Base(RT.Int, y', p_i), typ2)], TApp(TList, [typ]) ->
       let p_len' = subst_var x' x p_len in
       let p_i' = subst_var y' y p_i in
       RT.List(x, p_len', y, p_i', get_rtyp_list typ2 typ)
-  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter(_, [])], TList typ ->
+  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter(_, [])], TApp(TList, [typ]) ->
       let p_len' = subst_var x' x p_len in
       RT.List(x, p_len', Id.new_var typ_unknown, true_term, RT.Inter(typ, []))
-  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter(_, typs)], TList typ ->
+  | RT.Tuple[x, RT.Base(RT.Int, x', p_len); _, RT.Inter(_, typs)], TApp(TList, [typ]) ->
       let typs' = List.map (fun typ -> RT.Tuple [x, RT.Base(RT.Int, x', p_len); Id.new_var typ_unknown, typ]) typs in
-      get_rtyp_list (RT.Inter(typ_unknown, typs')) (TList typ)
-  | _, TList typ ->
+      get_rtyp_list (RT.Inter(typ_unknown, typs')) (make_tlist typ)
+  | _, TApp(TList, [typ]) ->
       Format.printf "%a@." RT.print rtyp;
       raise (Fatal "not implemented get_rtyp_list")
   | RT.Base(b,x,ps), _ -> RT.Base(b,x,ps)
@@ -138,7 +138,7 @@ let abst_list = make_trans2 ()
 let abst_list_typ post typ =
   match typ with
   | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
-  | TList typ ->
+  | TApp(TList, [typ]) ->
       let l = Id.new_var ~name:"l" TInt in
       TTuple[l; Id.new_var @@ TFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
   | _ -> abst_list.tr2_typ_rec post typ
@@ -184,7 +184,7 @@ let print_bind fm bind =
 
 let rec make_rand typ =
   match typ with
-  | TList typ' ->
+  | TApp(TList, [typ']) ->
       let l = Id.new_var ~name:"l" TInt in
       make_let [l, [], randint_unit_term] @@
         make_assume
@@ -296,8 +296,8 @@ let inst_list_eq_term f t =
       let t2' = inst_list_eq.tr2_term f t2 in
       begin
         match t1.typ with
-        | TList TInt -> inst_list_eq_flag := true; make_app (make_var f) [t1'; t2']
-        | TList _ ->
+        | TApp(TList, [TInt]) -> inst_list_eq_flag := true; make_app (make_var f) [t1'; t2']
+        | TApp(TList, _) ->
             Format.printf "%a@." Print.typ t1.typ;
             unsupported "inst_list_eq"
         | _ -> inst_list_eq.tr2_term_rec f t
@@ -306,18 +306,18 @@ let inst_list_eq_term f t =
 
 let () = inst_list_eq.tr2_term <- inst_list_eq_term
 let inst_list_eq t =
-  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ TList TInt, TFun(Id.new_var ~name:"xs" @@ TList TInt, TBool)) in
-  let xs = Id.new_var ~name:"xs'" (TList TInt) in
-  let ys = Id.new_var ~name:"ys'" (TList TInt) in
+  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ make_tlist TInt, TFun(Id.new_var ~name:"xs" @@ make_tlist TInt, TBool)) in
+  let xs = Id.new_var ~name:"xs'" @@ make_tlist TInt in
+  let ys = Id.new_var ~name:"ys'" @@ make_tlist TInt in
   let p1 = make_ppair (make_pnil TInt) (make_pnil TInt) in
   let t1 = true_term in
   let x = Id.new_var ~name:"x" TInt in
-  let xs' = Id.new_var ~name:"xs'" (TList TInt) in
+  let xs' = Id.new_var ~name:"xs'" @@ make_tlist TInt in
   let y = Id.new_var ~name:"y" TInt in
-  let ys' = Id.new_var ~name:"ys'" (TList TInt) in
+  let ys' = Id.new_var ~name:"ys'" @@ make_tlist TInt in
   let p2 = make_ppair (make_pcons (make_pvar x) (make_pvar xs')) (make_pcons (make_pvar y) (make_pvar ys')) in
   let t2 = make_and (make_eq (make_var x) (make_var y)) (make_app (make_var f) [make_var xs'; make_var ys']) in
-  let p3 = make_ppair (make_pany (TList TInt)) (make_pany (TList TInt)) in
+  let p3 = make_ppair (make_pany (make_tlist TInt)) (make_pany (make_tlist TInt)) in
   let t3 = false_term in
   let t_eq = make_match (make_pair (make_var xs) (make_var ys)) [p1,true_term,t1; p2,true_term,t2; p3,true_term,t3] in
   inst_list_eq_flag := false;
@@ -358,8 +358,8 @@ let abst_list_opt = make_trans ()
 
 let abst_list_opt_typ typ =
   match typ with
-    TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_opt_typ)")
-  | TList typ -> TFun(Id.new_var ~name:"i" TInt, opt_typ @@ abst_list_opt.tr_typ typ)
+  | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_opt_typ)")
+  | TApp(TList, [typ]) -> TFun(Id.new_var ~name:"i" TInt, opt_typ @@ abst_list_opt.tr_typ typ)
   | _ -> abst_list_opt.tr_typ_rec typ
 
 let rec get_match_bind_cond t p =

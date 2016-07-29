@@ -197,7 +197,7 @@ simple_type_core:
 | TRESULT { typ_result }
 | TBOOL { TBool }
 | TINT { TInt }
-| LPAREN typ LIST RPAREN { TList(Id.typ $2) }
+| LPAREN typ LIST RPAREN { make_tlist @@ Id.typ $2 }
 
 id_simple_type:
 | simple_type_core { make_self_id $1 }
@@ -237,7 +237,7 @@ typ:
     make_self_id @@ TFun(x, typ2'')
   }
 | typ LIST
-  { make_self_id @@ TList(Id.typ $1) }
+  { make_self_id @@ make_tlist @@ Id.typ $1 }
 
 ref_base:
 | TUNIT { RT.Unit }

@@ -139,12 +139,10 @@ let trans_typ trans = function
   | TVar{contents=Some typ} -> trans.tr_typ typ
   | TFun(x,typ) -> TFun(Id.map_typ trans.tr_typ x, trans.tr_typ typ)
   | TFuns(xs,typ) -> TFuns(List.map (Id.map_typ trans.tr_typ) xs, trans.tr_typ typ)
-  | TList typ -> TList (trans.tr_typ typ)
+  | TApp(c, typs) -> TApp(c, List.map trans.tr_typ typs)
   | TTuple xs -> TTuple (List.map trans.tr_var xs)
   | TData s -> TData s
   | TPred(x,ps) -> TPred(trans.tr_var x, List.map trans.tr_term ps)
-  | TRef typ -> TRef (trans.tr_typ typ)
-  | TOption typ -> TOption (trans.tr_typ typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd trans.tr_typ) fields)
   | Type(decls, s) -> Type(List.map (Pair.map_snd trans.tr_typ) decls, s)
@@ -293,12 +291,10 @@ let trans2_gen_typ tr env = function
   | TVar{contents=Some typ} -> tr.tr2_typ env typ
   | TFun(x,typ) -> TFun(Id.map_typ (tr.tr2_typ env) x, tr.tr2_typ env typ)
   | TFuns(xs,typ) -> TFuns(List.map (Id.map_typ @@ tr.tr2_typ env) xs, tr.tr2_typ env typ)
-  | TList typ -> TList (tr.tr2_typ env typ)
+  | TApp(c, typs) -> TApp(c, List.map (tr.tr2_typ env) typs)
   | TTuple xs -> TTuple (List.map (tr.tr2_var env) xs)
   | TData s -> TData s
   | TPred(x,ps) -> TPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
-  | TRef typ -> TRef (tr.tr2_typ env typ)
-  | TOption typ -> TOption (tr.tr2_typ env typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ tr.tr2_typ env) fields)
   | Type(decls, s) -> Type(List.map (Pair.map_snd @@ tr.tr2_typ env) decls, s)
@@ -449,12 +445,10 @@ let col_typ col = function
   | TVar{contents=Some typ} -> col.col_typ typ
   | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
   | TFuns(xs,typ) -> col.col_app (List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs) (col.col_typ typ)
-  | TList typ -> col.col_typ typ
+  | TApp(_, typs) -> List.fold_left (fun acc typ -> col.col_app acc @@ col.col_typ typ) col.col_empty typs
   | TTuple xs -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs
   | TData s -> col.col_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_term p) (col.col_var x) ps
-  | TRef typ -> col.col_typ typ
-  | TOption typ -> col.col_typ typ
   | TVariant labels -> List.fold_left (fun acc (_,typs) -> List.fold_left (fun acc' typ -> col.col_app acc' @@ col.col_typ typ) acc typs) col.col_empty labels
   | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> col.col_app acc @@ col.col_typ typ) col.col_empty fields
   | Type(decls, _) -> List.fold_left (fun acc (_,typ) -> col.col_app acc @@ col.col_typ typ) col.col_empty decls
@@ -606,12 +600,10 @@ let col2_typ col env = function
   | TVar{contents=Some typ} -> col.col2_typ env typ
   | TFun(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
   | TFuns(xs,typ) -> col.col2_app (List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs) (col.col2_typ env typ)
-  | TList typ -> col.col2_typ env typ
+  | TApp(_,typs) -> List.fold_left (fun acc typ -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty typs
   | TTuple xs -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs
   | TData s -> col.col2_empty
   | TPred(x,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_term env p) (col.col2_var env x) ps
-  | TRef typ -> col.col2_typ env typ
-  | TOption typ -> col.col2_typ env typ
   | TVariant labels -> List.fold_left (fun acc (_, typs) -> List.fold_left (fun acc' typ -> col.col2_app acc @@ col.col2_typ env typ) acc typs) col.col2_empty labels
   | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty fields
   | Type(decls, s) -> List.fold_left (fun acc (_,typ) -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty decls
@@ -774,9 +766,9 @@ let tr_col2_typ tc env = function
       let acc1,xs' = tr_col2_list tc tc.tr_col2_var env xs in
       let acc2,typ' = tc.tr_col2_typ env typ in
       tc.tr_col2_app acc1 acc2, TFuns(xs', typ')
-  | TList typ ->
-      let acc,typ' = tc.tr_col2_typ env typ in
-      acc, TList typ'
+  | TApp(c, typs) ->
+      let acc,typs' = tr_col2_list tc tc.tr_col2_typ env typs in
+      acc, TApp(c, typs')
   | TTuple xs ->
       let acc,xs' = tr_col2_list tc tc.tr_col2_var env xs in
       acc, TTuple xs'
@@ -785,12 +777,6 @@ let tr_col2_typ tc env = function
       let acc,x' = tc.tr_col2_var env x in
       let acc',ps' = tr_col2_list tc tc.tr_col2_term ~init:acc env ps in
       acc', TPred(x',ps')
-  | TRef typ ->
-      let acc,typ' = tc.tr_col2_typ env typ in
-      acc, TRef typ'
-  | TOption typ ->
-      let acc,typ' = tc.tr_col2_typ env typ in
-      acc, TOption typ'
   | TVariant labels ->
       let acc,labels' =
         let aux (s,typs) (acc,labels') =
@@ -1072,9 +1058,9 @@ let fold_tr_typ fld env = function
       let env',x' = fld.fold_tr_var env x in
       let env'',typ' = fld.fold_tr_typ env' typ in
       env'', TFun(x', typ')
-  | TList typ ->
-      let env',typ' = fld.fold_tr_typ env typ in
-      env', TList typ'
+  | TApp(c, typs) ->
+      let env',typs' = fold_tr_list fld.fold_tr_typ env typs in
+      env', TApp(c, typs')
   | TTuple xs ->
       let env',xs' = fold_tr_list fld.fold_tr_var env xs in
       env', TTuple xs'
@@ -1083,12 +1069,6 @@ let fold_tr_typ fld env = function
       let env',x' = fld.fold_tr_var env x in
       let env'',ps' = fold_tr_list fld.fold_tr_term env' ps in
       env'', TPred(x',ps')
-  | TRef typ ->
-      let env',typ' = fld.fold_tr_typ env typ in
-      env', TRef typ'
-  | TOption typ ->
-      let env',typ' = fld.fold_tr_typ env typ in
-      env', TOption typ'
   | TVariant labels ->
       let env,labels' =
         let aux (s,typs) (env,labels') =
