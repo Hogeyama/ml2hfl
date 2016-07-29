@@ -1787,33 +1787,6 @@ let replace_base_with_int =  replace_base_with_int.tr_term
 
 
 
-let abst_ref = make_trans ()
-
-let abst_ref_term t =
-  match t.desc with
-  | Ref t1 ->
-      make_ignore @@ abst_ref.tr_term t1
-  | Deref t1 ->
-      let t1' = abst_ref.tr_term t1 in
-      let typ = abst_ref.tr_typ t.typ in
-      make_seq t1' @@ make_randvalue_unit typ
-  | SetRef(t1, t2) ->
-      let t1' = abst_ref.tr_term t1 in
-      let t2' = abst_ref.tr_term t2 in
-      make_ignore @@ make_pair t1' t2'
-  | _ -> abst_ref.tr_term_rec t
-
-let abst_ref_typ typ =
-  match typ with
-  | TApp(TRef, _) -> TUnit
-  | _ -> abst_ref.tr_typ_rec typ
-
-let () = abst_ref.tr_term <- abst_ref_term
-let () = abst_ref.tr_typ <- abst_ref_typ
-let abst_ref t =
-  t |> abst_ref.tr_term |> inst_randval
-
-
 let remove_top_por = make_trans ()
 
 let remove_top_por_term t =
@@ -2260,19 +2233,6 @@ let ref_to_assert ref_env t =
   let map = List.map (Pair.map_snd Ref_type.to_abst_typ) ref_env in
   merge_bound_var_typ map @@ replace_main main t
 
-
-
-let encode_mutable_record = make_trans ()
-
-let encode_mutable_record_pat p =
-  match p.pat_desc with
-  | PRecord _ when List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord p.pat_typ ->
-      unsupported "Mutable record (encode_mutable_record_pat)"
-  | _ -> encode_mutable_record.tr_pat_rec p
-
-let () = encode_mutable_record.tr_pat <- encode_mutable_record_pat
-
-let encode_mutable_record = encode_mutable_record.tr_term
 
 
 let recover_const_attr_shallowly t =

@@ -36,11 +36,9 @@ val diff_terms : typed_term -> typed_term -> (typed_term * typed_term) list
 val remove_label : ?label:string -> typed_term -> typed_term
 val alpha_rename : typed_term -> typed_term
 val replace_base_with_int : typed_term -> typed_term
-val abst_ref : typed_term -> typed_term
 val remove_top_por : typed_term -> typed_term
 val replace_bottom_def : typed_term -> typed_term
 val merge_bound_var_typ : (id * typ) list -> typed_term -> typed_term
-val encode_mutable_record : typed_term -> typed_term
 val recover_const_attr : typed_term -> typed_term
 val recover_const_attr_shallowly : typed_term -> typed_term
 val subst_with_rename : ?check:bool -> id -> typed_term -> typed_term -> typed_term

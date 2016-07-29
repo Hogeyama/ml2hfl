@@ -86,86 +86,87 @@ let take_result l acc = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
 
+let map_trans tr acc = tr @@ last_t acc, get_rtyp_id
 let preprocesses spec : preprocess list =
   [
     Replace_const,
-    (Fun.const !Flag.replace_const,
-     (fun acc -> CFA.replace_const @@ last_t acc, get_rtyp_id));
+      (Fun.const !Flag.replace_const,
+       map_trans CFA.replace_const);
     Encode_mutable_record,
-    (Fun.const true,
-     (fun acc -> Trans.encode_mutable_record @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       map_trans Encode.mutable_record);
     Abst_ref,
-    (Fun.const true,
-     (fun acc -> Trans.abst_ref @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       map_trans Encode.abst_ref);
     Make_fun_tuple,
-    (Fun.const !Flag.tupling,
-     (fun acc -> Ref_trans.make_fun_tuple @@ last_t acc, get_rtyp_id));
+      (Fun.const !Flag.tupling,
+       map_trans Ref_trans.make_fun_tuple);
     Copy_poly,
-    (Fun.const true,
-     (fun acc -> Trans.copy_poly_funs @@ last_t acc));
+      (Fun.const true,
+       Trans.copy_poly_funs -| last_t);
     Make_ext_funs,
-    (Fun.const true,
-     (fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
     Ignore_non_termination,
-    (Fun.const !Flag.ignore_non_termination,
-     (fun acc -> Trans.ignore_non_termination @@ last_t acc, get_rtyp_id));
+      (Fun.const !Flag.ignore_non_termination,
+       map_trans Trans.ignore_non_termination);
     Beta_reduce_trivial,
-    (Fun.const true,
-     (fun acc -> Trans.beta_reduce_trivial @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       map_trans Trans.beta_reduce_trivial);
     Recover_const_attr,
-    (Fun.const true,
-     (fun acc -> Trans.recover_const_attr @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       map_trans Trans.recover_const_attr);
     Decomp_pair_eq,
-    (Fun.const true,
-     (fun acc -> Trans.decomp_pair_eq @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       map_trans Trans.decomp_pair_eq);
     Add_preds,
-    (Fun.const (spec.Spec.abst_env <> []),
-     (fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
+      (Fun.const (spec.Spec.abst_env <> []),
+       fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
     Replace_fali_with_raise,
-    (Fun.const !Flag.fail_as_exception,
-     (fun acc -> Trans.replace_fail_with_raise @@ last_t acc, get_rtyp_id));
+      (Fun.const !Flag.fail_as_exception,
+       map_trans Trans.replace_fail_with_raise);
     Encode_recdata,
-    (Fun.const true,
-     (fun acc -> Encode_rec.trans @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       map_trans Encode.recdata);
     Replace_base_with_int,
-    (Fun.const !Flag.base_to_int,
-     (fun acc -> Trans.replace_base_with_int @@ last_t acc, get_rtyp_id));
+      (Fun.const !Flag.base_to_int,
+       map_trans Trans.replace_base_with_int);
     Encode_list,
-    (Fun.const true,
-     (fun acc -> Encode_list.trans @@ last_t acc));
+      (Fun.const true,
+       Encode.list -| last_t);
     Ret_fun,
-    (Fun.const !Flag.tupling,
-     (fun acc -> Ret_fun.trans @@ last_t acc));
+      (Fun.const !Flag.tupling,
+       Ret_fun.trans -| last_t);
     Ref_trans,
-    (Fun.const !Flag.tupling,
-     (fun acc -> Ref_trans.trans @@ last_t acc));
+      (Fun.const !Flag.tupling,
+       Ref_trans.trans -| last_t);
     Tupling,
-    (Fun.const !Flag.tupling,
-     (fun acc -> Tupling.trans @@ last_t acc));
+      (Fun.const !Flag.tupling,
+       Tupling.trans -| last_t);
     Inline,
-    (Fun.const true,
-     (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
+      (Fun.const true,
+       (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
     CPS,
-    (Fun.const !Flag.trans_to_CPS,
-     (fun acc -> CPS.trans @@ last_t acc));
+      (Fun.const !Flag.trans_to_CPS,
+       CPS.trans -| last_t);
     Remove_pair,
-    (Fun.const !Flag.trans_to_CPS,
-     (fun acc -> Curry.remove_pair @@ last_t acc));
+      (Fun.const !Flag.trans_to_CPS,
+       Curry.remove_pair -| last_t);
     Replace_bottom_def,
-    (Fun.const true,
-     (fun acc -> Trans.replace_bottom_def @@ last_t acc, get_rtyp_id));
+      (Fun.const true,
+       map_trans Trans.replace_bottom_def);
     Add_preds,
-    (Fun.const (spec.Spec.abst_cps_env <> []),
-     (fun acc -> Trans.replace_typ (Spec.get_abst_cps_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id));
+      (Fun.const (spec.Spec.abst_cps_env <> []),
+       fun acc -> Trans.replace_typ (Spec.get_abst_cps_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
     Eliminate_same_arguments,
-    (Fun.const !Flag.elim_same_arg,
-     (fun acc -> Elim_same_arg.trans @@ last_t acc, get_rtyp_id));
+      (Fun.const !Flag.elim_same_arg,
+       map_trans Elim_same_arg.trans);
     Insert_unit_param,
-    (Fun.const !Flag.insert_param_funarg,
-     (fun acc -> Trans.insert_param_funarg @@ last_t acc, get_rtyp_id));
+      (Fun.const !Flag.insert_param_funarg,
+       map_trans Trans.insert_param_funarg);
     Preprocessfortermination,
-    (Fun.const (!Flag.mode = Flag.Termination),
-     (fun acc -> !BRA_types.preprocessForTerminationVerification @@ last_t acc, get_rtyp_id));
+      (Fun.const (!Flag.mode = Flag.Termination),
+       map_trans !BRA_types.preprocessForTerminationVerification);
   ]
 
 
