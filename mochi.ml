@@ -322,7 +322,6 @@ let rec arg_spec () =
      (* fair termination mode *)
      "-fair-termination", Arg.Unit (fun _ -> Flag.mode := Flag.FairTermination), " Check fair termination";
      "-expand-set-flag", Arg.Set Flag.expand_set_flag, "";
-     "-rank-widen", Arg.Set Fpat.RankFunInfer.rank_widen, " Use widening for ranking function synthesis";
      (* termination mode *)
      "-termination-disj",
        Arg.Unit (fun _ ->
