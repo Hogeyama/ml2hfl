@@ -97,6 +97,12 @@ let from_mutable_flag = function
   | Asttypes.Immutable -> Immutable
 
 
+let prim_typ_cons =
+  ["list", TList;
+   "Pervasives.ref", TRef;
+   "option", TOption;
+   "array", TArray]
+
 let rec from_type_expr rec_env tenv typ =
   let typ' = Ctype.repr typ in
   match typ'.Types.desc with
@@ -118,14 +124,8 @@ let rec from_type_expr rec_env tenv typ =
       make_ttuple (List.map (from_type_expr rec_env tenv) typs)
   | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
       List.assoc (Path.name path) prim_typs
-  | Tconstr(path, [type_expr], _) when Path.name path = "list" ->
-      TApp(TList, [from_type_expr rec_env tenv type_expr])
-  | Tconstr(path, [type_expr], _) when Path.name path = "Pervasives.ref" ->
-      TApp(TRef, [from_type_expr rec_env tenv type_expr])
-  | Tconstr(path, [type_expr], _) when Path.name path = "option" ->
-      TApp(TOption, [from_type_expr rec_env tenv type_expr])
-  | Tconstr(path, [type_expr], _) when Path.name path = "array" ->
-      TApp(TRef, [make_tpair TInt @@ TFun(Id.new_var TInt, from_type_expr rec_env tenv type_expr)])
+  | Tconstr(path, typs, _) when List.mem_assoc (Path.name path) prim_typ_cons ->
+      TApp(List.assoc (Path.name path) prim_typ_cons, List.map (from_type_expr rec_env tenv) typs)
   | Tconstr(path, typs, m) ->
       let name = Path.name path in
       if List.mem name rec_env then
@@ -478,22 +478,10 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   | Texp_setfield(e1,_,label,e2) ->
       {desc=SetField(from_expression e1, get_label_name label env, from_expression e2); typ=typ'; attr=[]}
   | Texp_array es ->
-      let typ'' =
-        match (Ctype.full_expand env @@ Ctype.repr typ).Types.desc with
-        | Tconstr(path, [type_expr], _) when Path.name path = "array" ->
-            from_type_expr env type_expr
-        | _ -> assert false
-      in
+      let typ'' = array_typ typ' in
       let ts = List.map from_expression es in
-      let n = List.length ts in
-      let len = make_int n in
-      let i = Id.new_var ~name:"i" TInt in
-      let ti = make_var i in
-      let t = List.fold_right (fun j t -> make_if (make_eq ti (make_int j)) (List.nth ts j) t) (List.init n Fun.id) (make_bottom typ'') in
-      make_ref @@
-        make_pair len @@
-          make_fun i @@
-            make_seq (make_assert @@ make_and (make_leq (make_int 0) ti) (make_lt ti len)) t
+      let array_of_list = make_var @@ Id.new_var ~name:"Array.of_list" @@ make_tfun (make_tlist typ'') typ' in
+      make_app array_of_list [List.fold_right make_cons ts (make_nil typ'')]
   | Texp_ifthenelse(e1,e2,e3) ->
       let t1 = from_expression e1 in
       let t2 = from_expression e2 in
@@ -530,6 +518,7 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
         | Downto -> make_sub (make_var x') (make_int 1)
       in
       let t32 = make_seq t3 @@ make_app (make_var f) [x''] in
+      assert (Flag.check_typ => Type.can_unify t31.typ TBool);
       let t3' = make_if t31 t32 unit_term in
       make_letrec [f, [x'], t3'] @@ make_lets [init,[],t1; last,[],t2] @@ make_app (make_var f) [make_var init]
   | Texp_send _

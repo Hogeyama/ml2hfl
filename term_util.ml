@@ -924,6 +924,13 @@ let decomp_binop t =
       end
   | _ -> None
 
+let rec decomp_list t =
+  match t.desc with
+  | Nil -> Some []
+  | Cons(t1, t2) -> Option.map (List.cons t1) @@ decomp_list t2
+  | _ -> None
+let is_list_literal t = None <> decomp_list t
+
 let rec from_fpat_term = function
   | Fpat.Term.Const c -> from_fpat_const c
   | Fpat.Term.Var x -> make_var (from_fpat_idnt x)

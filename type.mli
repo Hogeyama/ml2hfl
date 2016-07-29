@@ -17,6 +17,7 @@ and constr =
   | TList
   | TRef
   | TOption
+  | TArray
 
 exception CannotUnify
 
@@ -49,6 +50,7 @@ val to_id_string : 'a t -> string
 val order : 'a t -> int
 val arity : 'a t -> int
 
+(** {6 destructor} *)
 val tuple_num : 'a t -> int option
 val proj_typ : int -> 'a t -> 'a t
 val fst_typ : 'a t -> 'a t
@@ -61,6 +63,7 @@ val result_typ : 'a t -> 'a t
 val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
 val get_free_data_name : 'a t -> string list
+val array_typ : 'a t -> 'a t
 
 
 (** {6 Type constructor} *)
@@ -71,3 +74,4 @@ val make_tfun : 'a t -> 'a t -> 'a t
 val make_tlist : 'a t -> 'a t
 val make_tref : 'a t -> 'a t
 val make_toption : 'a t -> 'a t
+val make_tarray : 'a t -> 'a t

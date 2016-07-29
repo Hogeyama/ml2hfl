@@ -19,6 +19,7 @@ type preprocess_label =
   | Init
   | Replace_const
   | Encode_mutable_record
+  | Encode_array
   | Abst_ref
   | Make_fun_tuple
   | Make_ext_funs
@@ -54,6 +55,7 @@ let string_of_label = function
   | Init -> "Init"
   | Replace_const -> "Replace_const"
   | Encode_mutable_record -> "Encode_mutable_record"
+  | Encode_array -> "Encode_array"
   | Abst_ref -> "Abst_ref"
   | Make_fun_tuple -> "Make_fun_tuple"
   | Make_ext_funs -> "Make_ext_funs"
@@ -95,6 +97,9 @@ let preprocesses spec : preprocess list =
     Encode_mutable_record,
       (Fun.const true,
        map_trans Encode.mutable_record);
+    Encode_array,
+      (Fun.const true,
+       map_trans Encode.array);
     Abst_ref,
       (Fun.const true,
        map_trans Encode.abst_ref);

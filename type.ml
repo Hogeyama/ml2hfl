@@ -22,6 +22,7 @@ and constr =
   | TList
   | TRef
   | TOption
+  | TArray
 
 exception CannotUnify
 
@@ -48,7 +49,7 @@ let make_tpair typ1 typ2 = make_ttuple [typ1; typ2]
 let make_tlist typ = TApp(TList, [typ])
 let make_tref typ = TApp(TRef, [typ])
 let make_toption typ = TApp(TOption, [typ])
-
+let make_tarray typ = TApp(TArray, [typ])
 
 
 let is_fun_typ = function
@@ -134,7 +135,7 @@ let rec print occur print_pred fm typ =
         if occur x typ then Format.fprintf fm "%a:" Id.print x;
         Format.fprintf fm "%a" print' (Id.typ x)
       in
-      Format.fprintf fm "{@[<hov 2>%a@]}" (print_list pr "@ *@ ") xs
+      Format.fprintf fm "(@[<hov 2>%a@])" (print_list pr "@ *@ ") xs
   | TData s -> Format.pp_print_string fm s
   | TPred(x,ps) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (Id.typ x) Id.print x print_preds ps
   | TVariant labels ->
@@ -159,6 +160,7 @@ let rec print occur print_pred fm typ =
   | TApp(TRef, [typ]) -> Format.fprintf fm "@[%a ref@]" print' typ
   | TApp(TList, [typ]) -> Format.fprintf fm "@[%a list@]" print' typ
   | TApp(TOption, [typ]) -> Format.fprintf fm "@[%a option@]" print' typ
+  | TApp(TArray, [typ]) -> Format.fprintf fm "@[%a array@]" print' typ
   | TApp _ -> assert false
 
 let print ?(occur=fun _ _ -> false) print_pred fm typ =
@@ -173,6 +175,7 @@ let rec can_unify typ1 typ2 =
   | typ, TPred(x,_) -> can_unify (Id.typ x) typ
   | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
   | TUnit,TUnit -> true
+  | TBool,TBool -> true
   | TInt,TInt -> true
   | TFuns([], typ1), typ2 -> can_unify typ1 typ2
   | typ1, TFuns([], typ2) -> can_unify typ1 typ2
@@ -338,6 +341,12 @@ let option_typ typ =
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "option_typ"
 
+let array_typ typ =
+  match elim_tpred typ with
+  | TApp(TArray, [typ]) -> typ
+  | typ when typ = typ_unknown -> typ_unknown
+  | _ -> invalid_arg "array_typ"
+
 let rec has_pred = function
   | TUnit -> false
   | TBool -> false
@@ -370,6 +379,7 @@ let rec to_id_string = function
   | TPred(x,_) -> to_id_string (Id.typ x)
   | TApp(TRef, [typ]) -> to_id_string typ ^ "_ref"
   | TApp(TOption, [typ]) -> to_id_string typ ^ "_option"
+  | TApp(TArray, [typ]) -> to_id_string typ ^ "_array"
   | TApp _ -> assert false
   | TFuns _ -> unsupported ""
   | TVariant labels -> String.join "_" @@ List.map fst labels

@@ -190,6 +190,9 @@ let rec define_randvalue name (env, defs as ed) typ =
     | TApp(TRef, [typ]) ->
         let ed',t = define_randvalue "" ed typ in
         ed', make_ref t
+    | TApp(TArray, [typ]) ->
+        let ed',t = define_randvalue "" ed @@ make_tlist typ in
+        ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
     | TData s -> (env, defs), make_randvalue_unit typ
     | TVariant labels ->
         let u = Id.new_var ~name:"u" TUnit in
