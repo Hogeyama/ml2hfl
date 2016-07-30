@@ -4,7 +4,7 @@ type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
 let debug () = List.mem "Main_loop" !Flag.debug_module
 
-let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
+let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term') t =
   let b = !!debug in
   if b then Format.printf "START: %s@." desc;
   let r = f t in
@@ -19,6 +19,7 @@ type preprocess_label =
   | Init
   | Replace_const
   | Encode_mutable_record
+  | Encode_record
   | Encode_array
   | Abst_ref
   | Make_fun_tuple
@@ -55,6 +56,7 @@ let string_of_label = function
   | Init -> "Init"
   | Replace_const -> "Replace_const"
   | Encode_mutable_record -> "Encode_mutable_record"
+  | Encode_record -> "Encode_record"
   | Encode_array -> "Encode_array"
   | Abst_ref -> "Abst_ref"
   | Make_fun_tuple -> "Make_fun_tuple"
@@ -97,6 +99,9 @@ let preprocesses spec : preprocess list =
     Encode_mutable_record,
       (Fun.const true,
        map_trans Encode.mutable_record);
+    Encode_record,
+      (Fun.const true,
+       map_trans Encode.record);
     Encode_array,
       (Fun.const true,
        map_trans Encode.array);

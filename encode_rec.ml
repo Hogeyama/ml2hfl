@@ -285,43 +285,6 @@ let () = abst_recdata.tr_typ <- abst_recdata_typ
 
 
 
-let record_to_tuple = make_trans ()
-let record_to_tuple_typ typ =
-  match fold_data_type typ with
-  | TRecord fields ->
-      make_ttuple @@ List.map (fun (s,(f,typ)) -> if f = Mutable then unsupported "mutable record"; typ) fields
-  | _ -> record_to_tuple.tr_typ_rec typ
-
-let rec record_to_tuple_pat p =
-  match p.pat_desc with
-  | PRecord fields ->
-      let ps = List.map (snd |- record_to_tuple.tr_pat) fields in
-      let typ = record_to_tuple.tr_typ p.pat_typ in
-      {pat_desc=PTuple ps; pat_typ=typ}
-  | _ -> record_to_tuple.tr_pat_rec p
-
-let record_to_tuple_term t =
-  match t.desc with
-  | Record fields ->
-      if is_mutable_record t.typ then
-        unsupported "Mutable records";
-      make_tuple @@ List.map (record_to_tuple.tr_term -| snd) fields
-  | Field(t,s) ->
-      let fields = decomp_trecord t.typ in
-      if is_mutable_record t.typ then
-        unsupported "Mutable records";
-      make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ record_to_tuple.tr_term t
-  | SetField _ -> unsupported "Mutable records"
-  | _ -> record_to_tuple.tr_term_rec t
-
-let () = record_to_tuple.tr_term <- record_to_tuple_term
-let () = record_to_tuple.tr_pat <- record_to_tuple_pat
-let () = record_to_tuple.tr_typ <- record_to_tuple_typ
-
-
-
-
-
 let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
 let trans t =
@@ -329,8 +292,6 @@ let trans t =
   |@> pr "input"
   |> Trans.remove_top_por
   |@> pr "remove_top_por"
-  |@> Type_check.check -$- TUnit
-  |> record_to_tuple.tr_term
   |@> Type_check.check -$- TUnit
   |> abst_recdata.tr_term
   |@> pr "abst_rec"

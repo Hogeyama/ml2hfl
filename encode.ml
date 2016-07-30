@@ -115,5 +115,42 @@ let array = encode_array.tr_term
 
 
 
+let encode_record = make_trans ()
+let encode_record_typ typ =
+  match fold_data_type typ with
+  | TRecord fields ->
+      make_ttuple @@ List.map (fun (s,(f,typ)) -> if f = Mutable then unsupported "mutable record"; typ) fields
+  | _ -> encode_record.tr_typ_rec typ
+
+let rec encode_record_pat p =
+  match p.pat_desc with
+  | PRecord fields ->
+      let ps = List.map (snd |- encode_record.tr_pat) fields in
+      let typ = encode_record.tr_typ p.pat_typ in
+      {pat_desc=PTuple ps; pat_typ=typ}
+  | _ -> encode_record.tr_pat_rec p
+
+let encode_record_term t =
+  match t.desc with
+  | Record fields ->
+      if is_mutable_record t.typ then
+        unsupported "Mutable records";
+      make_tuple @@ List.map (encode_record.tr_term -| snd) fields
+  | Field(t,s) ->
+      let fields = decomp_trecord t.typ in
+      if is_mutable_record t.typ then
+        unsupported "Mutable records";
+      make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ encode_record.tr_term t
+  | SetField _ -> unsupported "Mutable records"
+  | _ -> encode_record.tr_term_rec t
+
+let () = encode_record.tr_term <- encode_record_term
+let () = encode_record.tr_pat <- encode_record_pat
+let () = encode_record.tr_typ <- encode_record_typ
+let record = encode_record.tr_term
+
+
+
+
 let recdata = Encode_rec.trans
 let list = Encode_list.trans
