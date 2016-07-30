@@ -105,14 +105,14 @@ let rec check t typ =
   | Event(s,true), typ' ->
       assert (Type.can_unify typ' typ_event_cps)
   | Tuple ts, TTuple xs ->
-      List.iter2 check ts @@ List.map Id.typ xs;
+      List.iter2 check ts @@ List.map Id.typ xs
   | Proj(i,t), typ ->
       assert (Type.can_unify typ @@ proj_typ i t.typ);
       check t t.typ
   | Record fields, TRecord tfields ->
       List.iter (fun (s,t) -> check t @@ snd @@ List.assoc s tfields) fields
   | Record fields, typ -> assert false
-  | Field(s,t), typ ->
+  | Field(t,s), typ ->
       begin
         match t.typ with
         | TRecord tfields -> assert (Type.can_unify typ @@ snd @@ List.assoc s tfields)
@@ -122,7 +122,7 @@ let rec check t typ =
   | SetField(t1,s,t2), typ ->
       assert (Type.can_unify typ TUnit);
       begin
-        match t.typ with
+        match t1.typ with
         | TRecord tfields ->
             let f,typ' = List.assoc s tfields in
             assert (f = Mutable);

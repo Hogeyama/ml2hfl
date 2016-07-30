@@ -655,7 +655,7 @@ let insert_extra_param t =
       | Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
       | Syntax.Event(s,b) -> Syntax.Event(s,b)
       | Syntax.Record fields -> Syntax.Record (List.map (Pair.map_snd @@ aux rfs bvs exs) fields)
-      | Syntax.Field(s,t1) -> Syntax.Field(s,aux rfs bvs exs t1)
+      | Syntax.Field(t1,s) -> Syntax.Field(aux rfs bvs exs t1,s)
       | Syntax.SetField(t1,s,t2) -> Syntax.SetField(aux rfs bvs exs t1,s,aux rfs bvs exs t2)
       | Syntax.Nil -> Syntax.Nil
       | Syntax.Cons(t1,t2) ->

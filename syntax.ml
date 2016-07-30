@@ -45,7 +45,7 @@ and term =
   | Not of typed_term
   | Event of string * bool
   | Record of (string * typed_term) list
-  | Field of string * typed_term
+  | Field of typed_term * string
   | SetField of typed_term * string * typed_term
   | Nil
   | Cons of typed_term * typed_term
@@ -203,7 +203,7 @@ let trans_desc trans = function
   | Not t1 -> Not (trans.tr_term t1)
   | Event(s,b) -> Event(s,b)
   | Record fields ->  Record (List.map (Pair.map_snd trans.tr_term) fields)
-  | Field(s,t1) -> Field(s,trans.tr_term t1)
+  | Field(t1,s) -> Field(trans.tr_term t1, s)
   | SetField(t1,s,t2) -> SetField(trans.tr_term t1,s,trans.tr_term t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(trans.tr_term t1, trans.tr_term t2)
@@ -355,7 +355,7 @@ let trans2_gen_desc tr env = function
   | Not t1 -> Not (tr.tr2_term env t1)
   | Event(s,b) -> Event(s,b)
   | Record fields ->  Record (List.map (Pair.map_snd @@ tr.tr2_term env) fields)
-  | Field(s,t1) -> Field(s,tr.tr2_term env t1)
+  | Field(t1,s) -> Field(tr.tr2_term env t1,s)
   | SetField(t1,s,t2) -> SetField(tr.tr2_term env t1,s,tr.tr2_term env t2)
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(tr.tr2_term env t1, tr.tr2_term env t2)
@@ -503,7 +503,7 @@ let col_desc col = function
   | Not t1 -> col.col_term t1
   | Event(s,b) -> col.col_empty
   | Record fields -> List.fold_left (fun acc (_,t1) -> col.col_app acc @@ col.col_term t1) col.col_empty fields
-  | Field(s,t1) -> col.col_term t1
+  | Field(t1,s) -> col.col_term t1
   | SetField(t1,_,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Nil -> col.col_empty
   | Cons(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
@@ -658,7 +658,7 @@ let col2_desc col env = function
   | Not t1 -> col.col2_term env t1
   | Event(s,b) -> col.col2_empty
   | Record fields -> List.fold_left (fun acc (_,t1) -> col.col2_app acc @@ col.col2_term env t1) col.col2_empty fields
-  | Field(s,t1) -> col.col2_term env t1
+  | Field(t1,s) -> col.col2_term env t1
   | SetField(t1,s,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
   | Nil -> col.col2_empty
   | Cons(t1,t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
@@ -917,9 +917,9 @@ let tr_col2_desc tc env = function
       in
       let acc,fields' = tr_col2_list tc aux env fields in
       acc, Record fields'
-  | Field(s,t1) ->
+  | Field(t1,s) ->
       let acc,t1' = tc.tr_col2_term env t1 in
-      acc, Field(s,t1')
+      acc, Field(t1',s)
   | SetField(t1,s,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
@@ -1210,9 +1210,9 @@ let fold_tr_desc fld env = function
       in
       let env',fields' = fold_tr_list aux env fields in
       env', Record fields'
-  | Field(s,t1) ->
+  | Field(t1,s) ->
       let env',t1' = fld.fold_tr_term env t1 in
-      env', Field(s,t1')
+      env', Field(t1',s)
   | SetField(t1,s,t2) ->
       let env',t1' = fld.fold_tr_term env t1 in
       let env'',t2' = fld.fold_tr_term env' t2 in

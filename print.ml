@@ -208,7 +208,7 @@ and print_desc pri typ fm desc =
   | Record fields ->
       let aux fm (s,t) = fprintf fm "%s=%a" s (print_term 0 typ) t in
       fprintf fm "{%a}" (print_list aux ";@ ") fields
-  | Field(s,t) -> fprintf fm "%a.%s" (print_term 9 typ) t s
+  | Field(t,s) -> fprintf fm "%a.%s" (print_term 9 typ) t s
   | SetField(t1,s,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
@@ -399,7 +399,7 @@ let rec print_term' pri fm t =
     | Record fields ->
         let aux fm (s,t) = fprintf fm "%s=%a" s (print_term' 0) t in
         fprintf fm "{%a}" (print_list aux ";@ ") fields
-    | Field(s,t) -> fprintf fm "%a.%s" (print_term' 9) t s
+    | Field(t,s) -> fprintf fm "%a.%s" (print_term' 9) t s
     | SetField(t1,s,t2) -> fprintf fm "%a.%s <- %a" (print_term' 9) t1 s (print_term' 3) t2
     | Nil -> fprintf fm "[]"
     | Cons(t1,t2) ->

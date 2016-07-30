@@ -412,7 +412,7 @@ let part_eval t =
       | Not t -> Not (aux apply t)
       | Event(s,b) -> Event(s,b)
       | Record fields -> Record (List.map (Pair.map_snd @@ aux apply) fields)
-      | Field(s,t) -> Field(s, aux apply t)
+      | Field(t,s) -> Field(aux apply t, s)
       | Nil -> Nil
       | Cons(t1,t2) -> Cons(aux apply t1, aux apply t2)
       | Constr(c,ts) -> Constr(c, List.map (aux apply) ts)
@@ -930,7 +930,7 @@ let rec inlined_f inlined fs t =
     | Not t1 -> Not (inlined_f inlined fs t1)
     | Event(s,b) -> Event(s,b)
     | Record fields ->  Record (List.map (Pair.map_snd @@ inlined_f inlined fs) fields)
-    | Field(s,t1) -> Field(s,inlined_f inlined fs t1)
+    | Field(t1,s) -> Field(inlined_f inlined fs t1,s)
     | SetField(t1,s,t2) -> SetField(inlined_f inlined fs t1,s,inlined_f inlined fs t2)
     | Nil -> Nil
     | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)

@@ -268,7 +268,7 @@ let abst_recdata_term t =
       if List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord t.typ
       then unsupported "Mutable records"
       else make_tuple @@ List.map (abst_recdata.tr_term -| snd) fields
-  | Field(s,t) ->
+  | Field(t,s) ->
       let fields = decomp_trecord t.typ in
       if Mutable = fst @@ List.assoc s fields then
         unsupported "Mutable records"
@@ -306,7 +306,7 @@ let record_to_tuple_term t =
       if is_mutable_record t.typ then
         unsupported "Mutable records";
       make_tuple @@ List.map (record_to_tuple.tr_term -| snd) fields
-  | Field(s,t) ->
+  | Field(t,s) ->
       let fields = decomp_trecord t.typ in
       if is_mutable_record t.typ then
         unsupported "Mutable records";

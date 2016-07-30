@@ -474,14 +474,14 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
             let _,_,e = List.find (fun (_,lbl',_) -> lbl = lbl') fields in
             name, from_expression e
           with Not_found ->
-            name, {desc=Field(name, make_var r); typ=from_type_expr env lbl.lbl_arg; attr=[]}
+            name, {desc=Field(make_var r,name); typ=from_type_expr env lbl.lbl_arg; attr=[]}
         in
         List.map aux labels
       in
       make_let [r, [], from_expression init] {desc=Record fields';typ=typ'; attr=[]}
   | Texp_field(e,_,label) ->
       let t = from_expression e in
-      {desc=Field(get_label_name label env, t); typ=typ'; attr=make_attr[t]}
+      {desc=Field(t, get_label_name label env); typ=typ'; attr=make_attr[t]}
   | Texp_setfield(e1,_,label,e2) ->
       {desc=SetField(from_expression e1, get_label_name label env, from_expression e2); typ=typ'; attr=[]}
   | Texp_array es ->

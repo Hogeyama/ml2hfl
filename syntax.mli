@@ -40,7 +40,7 @@ and term =
   | Not of typed_term
   | Event of string * bool (** true denotes CPS-term *)
   | Record of (string * typed_term) list
-  | Field of string * typed_term
+  | Field of typed_term * string
   | SetField of typed_term * string * typed_term
   | Nil
   | Cons of typed_term * typed_term
