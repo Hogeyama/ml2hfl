@@ -10,9 +10,37 @@ let encode_mutable_record = make_trans ()
 let encode_mutable_record_pat p =
   match p.pat_desc with
   | PRecord _ when List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord p.pat_typ ->
-      unsupported "Mutable record (encode_mutable_record_pat)"
+      unsupported "Pattern matching for mutable record (encode_mutable_record_pat)"
   | _ -> encode_mutable_record.tr_pat_rec p
 
+let encode_mutable_record_term t =
+  match t.desc with
+  | Record fields ->
+      let fields' =
+        let aux (s,t) (_,(f,_)) =
+          let t' = encode_mutable_record.tr_term t in
+          s, if f = Mutable then make_ref t' else t'
+        in
+        List.map2 aux fields @@ decomp_trecord t.typ
+      in
+      make_record fields' @@ encode_mutable_record.tr_typ t.typ
+  | SetField(t1,s,t2) ->
+      make_setref (make_field t1 s) t2
+  | _ -> encode_mutable_record.tr_term_rec t
+
+let encode_mutable_record_typ typ =
+  match typ with
+  | TRecord fields ->
+      let aux (s,(f,typ)) =
+        let typ' = encode_mutable_record.tr_typ typ in
+        let typ'' = if f = Mutable then make_tref typ' else typ' in
+        s, (Immutable, typ'')
+      in
+      TRecord (List.map aux fields)
+  | _ -> encode_mutable_record.tr_typ_rec typ
+
+let () = encode_mutable_record.tr_typ <- encode_mutable_record_typ
+let () = encode_mutable_record.tr_term <- encode_mutable_record_term
 let () = encode_mutable_record.tr_pat <- encode_mutable_record_pat
 
 let mutable_record = encode_mutable_record.tr_term

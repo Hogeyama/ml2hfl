@@ -103,6 +103,7 @@ val make_deref : typed_term -> typed_term
 val make_setref : typed_term -> typed_term -> typed_term
 val make_construct : string -> typed_term list -> typ -> typed_term
 val make_record : (string * typed_term) list -> typ -> typed_term
+val make_field : typed_term -> string -> typed_term
 val make_raise : typed_term -> typ -> typed_term
 val make_trywith : typed_term -> id -> (typed_pattern * typed_term * typed_term) list -> typed_term
 val make_length : typed_term -> typed_term

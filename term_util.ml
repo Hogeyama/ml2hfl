@@ -248,6 +248,13 @@ let make_construct c ts typ =
   {desc=Constr(c,ts); typ; attr=[]}
 let make_record fields typ =
   {desc=Record fields; typ; attr=[]}
+let make_field t s =
+  let _,typ =
+    t.typ
+    |> decomp_trecord
+    |> List.assoc s
+  in
+  {desc=Field(t,s); typ; attr=[]}
 let randint_term = {desc=Const(RandValue(TInt,false)); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
