@@ -126,7 +126,7 @@ let rec from_type_expr rec_env tenv typ =
       List.assoc (Path.name path) prim_typs
   | Tconstr(path, typs, _) when List.mem_assoc (Path.name path) prim_typ_cons ->
       TApp(List.assoc (Path.name path) prim_typ_cons, List.map (from_type_expr rec_env tenv) typs)
-  | Tconstr(path, typs, m) ->
+  | Tconstr(path, typs, _) ->
       let name = Path.name path in
       if List.mem name rec_env then
         TData name
@@ -134,7 +134,14 @@ let rec from_type_expr rec_env tenv typ =
         let typ'' =
           try
             match (Env.find_type path tenv).type_kind with
-            | Type_abstract -> TData name
+            | Type_abstract ->
+                begin
+                  try
+                    let typs,typ',n = Env.find_type_expansion path tenv in
+                    if typs <> [] then unsupported "Tconstr";
+                    from_type_expr rec_env tenv typ'
+                  with Not_found -> TData name
+                end
             | Type_variant decls ->
                 let aux {cd_id;cd_args} =
                   Ident.name cd_id, List.map (from_type_expr (name::rec_env) tenv) cd_args
