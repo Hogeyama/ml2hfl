@@ -240,7 +240,7 @@ let rec data_occurs s typ =
   | TFuns _ -> unsupported ""
   | TVariant labels -> List.exists (snd |- List.exists @@ data_occurs s) labels
   | TRecord fields -> List.exists (snd |- snd |- data_occurs s) fields
-  | Type(decls, s) -> List.exists (snd |- data_occurs s) decls
+  | Type(decls, _) -> List.exists (snd |- data_occurs s) decls
 
 
 let rec unify typ1 typ2 =
