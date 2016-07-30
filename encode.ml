@@ -50,29 +50,37 @@ let abst_ref t =
 
 let encode_array = make_trans ()
 
-let encode_array_term t =
-  match t.desc with
-  | App({desc=Var x}, [t]) when Id.name x = "Array.of_list" && is_list_literal t ->
-      let ts = Option.get @@ decomp_list t in
+let encode_array_desc desc =
+  match desc with
+  | App({desc=Var x}, [t1]) when Id.name x = "Array.of_list" && is_list_literal t1 ->
+      let ts =
+        t1
+        |> decomp_list
+        |> Option.get
+        |> List.map encode_array.tr_term
+      in
       let n = List.length ts in
       let len = make_int n in
       let i = Id.new_var ~name:"i" TInt in
       let ti = make_var i in
-      let typ' = list_typ t.typ in
+      let typ' = encode_array.tr_typ @@ list_typ t1.typ in
       let its = List.mapi Pair.pair ts in
-      let t = List.fold_right (fun (j,x) t -> make_if (make_eq ti (make_int j)) x t) its (make_bottom typ') in
+      let t' =
       make_ref @@
         make_pair len @@
           make_fun i @@
-            make_seq (make_assert @@ make_and (make_leq (make_int 0) ti) (make_lt ti len)) t
-  | _ -> encode_array.tr_term_rec t
+            make_seq (make_assert @@ make_and (make_leq (make_int 0) ti) (make_lt ti len)) @@
+              List.fold_right (fun (j,x) t -> make_if (make_eq ti (make_int j)) x t) its (make_bottom typ')
+      in
+      t'.desc
+  | _ -> encode_array.tr_desc_rec desc
 
 let encode_array_typ typ =
   match typ with
-  | TApp(TArray, [typ]) -> make_tref @@ make_tpair TInt @@ make_tfun TInt typ
+  | TApp(TArray, [typ]) -> make_tref @@ make_tpair TInt @@ make_tfun TInt @@ encode_array.tr_typ typ
   | _ -> encode_array.tr_typ_rec typ
 
-let () = encode_array.tr_term <- encode_array_term
+let () = encode_array.tr_desc <- encode_array_desc
 let () = encode_array.tr_typ <- encode_array_typ
 let array = encode_array.tr_term
 
