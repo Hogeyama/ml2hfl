@@ -2488,6 +2488,7 @@ let reconstruct_term t =
     | Not t -> make_not @@ reconstruct.tr_term t
     | Tuple ts -> make_tuple @@ List.map reconstruct.tr_term ts
     | Proj(i, t) -> make_proj i @@ reconstruct.tr_term t
+    | Field(t1, s) -> make_field (reconstruct.tr_term t1) s
     | _ -> reconstruct.tr_term_rec t
   in
   let attr' = List.unique (t.attr @ t'.attr) in

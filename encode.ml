@@ -25,7 +25,17 @@ let encode_mutable_record_term t =
       in
       make_record fields' @@ encode_mutable_record.tr_typ t.typ
   | SetField(t1,s,t2) ->
-      make_setref (make_field t1 s) t2
+      let t1' = encode_mutable_record.tr_term t1 in
+      let t2' = encode_mutable_record.tr_term t2 in
+      make_setref (make_field t1' s) t2'
+  | Field(t1,s) ->
+      let t1' = encode_mutable_record.tr_term t1 in
+      let f,_ = List.assoc s @@ decomp_trecord t1.typ in
+      let t' = make_field t1' s in
+      if f = Mutable then
+        make_deref t'
+      else
+        t'
   | _ -> encode_mutable_record.tr_term_rec t
 
 let encode_mutable_record_typ typ =

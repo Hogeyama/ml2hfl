@@ -4,7 +4,7 @@ type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
 let debug () = List.mem "Main_loop" !Flag.debug_module
 
-let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term') t =
+let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
   let b = !!debug in
   if b then Format.printf "START: %s@." desc;
   let r = f t in

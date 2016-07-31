@@ -44,9 +44,10 @@ let extract_decls_typ typ = extract_decls_typ [] typ
 
 let flatten_recdata_typ typ =
   if !!debug then Format.printf "flatten_recdata_typ IN: %a@." Print.typ typ;
-  match fold_data_type typ with
+  let typ' = fold_data_type typ in
+  match typ' with
   | Type(_,s) ->
-      let decls',_ = extract_decls_typ typ in
+      let decls',_ = extract_decls_typ typ' in
       Type(decls', s)
       |@!!debug&> Format.printf "flatten_recdata_typ OUT: %a@." Print.typ
   | _ -> invalid_arg "flatten_recdata_typ"
@@ -60,7 +61,7 @@ let rec collect_leaf_aux typ =
   | _ when get_free_data_name typ = [] -> [typ]
   | TVariant labels -> List.flatten_map (snd |- List.flatten_map collect_leaf_aux) labels
   | TRecord fields -> List.flatten_map (snd |- snd |- collect_leaf_aux) fields
-  | _ -> unsupported "collect_leaf_aux"; [typ]
+  | _ -> unsupported "non-regular data types"
 let collect_leaf_aux typ =
   if !!debug then Format.printf "CLA: %a@." Print.typ typ;
   List.unique @@ collect_leaf_aux typ
@@ -254,7 +255,9 @@ let abst_recdata_term t =
         let p',c',bind = abst_recdata_pat p in
         let t' = abst_recdata.tr_term t in
         let aux (t,p) t' =
-          make_match t [p,true_term,t'; make_pany p.pat_typ,true_term,make_bottom t'.typ]
+          make_match t
+                     [p, true_term, t';
+                      make_pany p.pat_typ, true_term, make_bottom t'.typ]
         in
         p', make_and c c', List.fold_right aux bind t'
       in

@@ -148,7 +148,7 @@ let rec print occur print_pred fm typ =
       Format.fprintf fm "(@[%a@])" (print_list pr "@ |@ ") labels
   | TRecord fields ->
       let pr fm (s, (f, typ)) =
-        let sf = if f = Mutable then "Mutable" else "" in
+        let sf = if f = Mutable then "mutable " else "" in
         Format.fprintf fm "@[%s%s: %a@]" sf s print' typ
       in
       Format.fprintf fm "{@[%a@]}" (print_list pr "@ |@ ") fields
