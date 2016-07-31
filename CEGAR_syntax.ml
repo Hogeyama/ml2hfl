@@ -28,9 +28,7 @@ type const =
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | RandInt of int option
-  | RandBool
-  | RandVal of string
+  | Rand of base * int option
   | And
   | Or
   | Not
@@ -168,7 +166,7 @@ let make_if t1 t2 t3 =
   | Const False -> t3
   | _ -> make_app (Const If) [t1;t2;t3]
 let make_int n = Const (Int n)
-let make_br t1 t2 = make_if (Const RandBool) t1 t2
+let make_br t1 t2 = make_if (Const (Rand(TBool, None))) t1 t2
 let make_and t1 t2 =
   match t1,t2 with
   | Const True, t
@@ -283,7 +281,7 @@ let is_app_randint t =
       let t',ts = decomp_app t in
       begin
         match t' with
-        | Const (RandInt _) -> true
+        | Const (Rand (TInt, _)) -> true
         | _ -> false
       end
   | _ -> false
@@ -314,7 +312,7 @@ let prog_size prog =
 let randint_ID_map = ref (fun _ -> "no corresponding identifier")
 let rec is_rand = function
   | App(t, _) -> is_rand t
-  | Const(RandInt(id)) -> id
+  | Const(Rand(TInt, id)) -> id
   | _ -> None
 let add_ID_map r = function
   | Some(n) ->

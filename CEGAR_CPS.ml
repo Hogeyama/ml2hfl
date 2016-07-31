@@ -20,7 +20,7 @@ let or_def = or_cps, ["x"; "y"; "k"], Const True, [], (make_if (Var "x") (App(Va
 let not_def = not_cps, ["x"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
 
 let rec trans_const = function
-  | Const (Int _ | Unit | True | False | RandBool | If | Tuple _ | Bottom | Label _ as c) -> Const c
+  | Const (Int _ | Unit | True | False | Rand(TBool,_) | If | Tuple _ | Bottom | Label _ as c) -> Const c
   | Const Not -> Var not_cps
   | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.const c; assert false
   | Var x -> Var x

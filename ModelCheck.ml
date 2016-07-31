@@ -131,11 +131,11 @@ let make_bottom {env;defs;main;info} =
 let rec eta_expand_term env = function
     Const c -> Const c
   | Var x -> Var x
-  | App(App(App(Const If, Const RandBool), t2), t3) ->
+  | App(App(App(Const If, Const (Rand(TBool,_))), t2), t3) ->
       let typ = get_typ env t2 in
       let xs = Array.to_list (Array.init (arg_num typ) (fun _ -> new_id "x")) in
       let aux t = List.fold_left (fun t x -> App(t, Var x)) (eta_expand_term env t) xs in
-      let t = make_if (Const RandBool) (aux t2) (aux t3) in
+      let t = make_if (Const (Rand(TBool,None))) (aux t2) (aux t3) in
         List.fold_right (fun x t -> Fun(x,None,t)) xs t
   | App(t1, t2) -> App(eta_expand_term env t1, eta_expand_term env t2)
   | Fun _ -> assert false
@@ -171,10 +171,10 @@ let rec church_encode_term = function
   | Const If -> assert false
   | Const c -> Const c
   | Var x -> Var x
-  | App(App(App(Const If, Const RandBool), t2), t3) ->
+  | App(App(App(Const If, Const (Rand(TBool,_))), t2), t3) ->
       let t2' = church_encode_term t2 in
       let t3' = church_encode_term t3 in
-      make_app (Const If) [Const RandBool; t2'; t3']
+      make_app (Const If) [Const (Rand(TBool,None)); t2'; t3']
   | App(App(App(Const If, Var b), t2), t3) ->
       let t2' = church_encode_term t2 in
       let t3' = church_encode_term t3 in

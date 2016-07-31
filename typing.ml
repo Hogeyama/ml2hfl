@@ -99,11 +99,11 @@ let get_typ_const = function
   | Int64 _ -> TAbst "int64"
   | Nativeint _ -> TAbst "nativeint"
   | CPS_result -> TResult
-  | RandBool -> TBool
-  | RandInt _ ->
+  | Rand(TBool,_) -> TBool
+  | Rand(TInt,_) ->
       let typ = new_tvar () in
       TFun(TFun(TInt,typ),typ)
-  | RandVal s -> TAbst s
+  | Rand _ -> assert false
   | EqUnit -> TFun(TUnit,TFun(TUnit,TBool))
   | EqInt -> TFun(TInt,TFun(TInt,TBool))
   | EqBool -> TFun(TBool,TFun(TBool,TBool))

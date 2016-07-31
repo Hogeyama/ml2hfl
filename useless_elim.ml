@@ -326,7 +326,7 @@ let rec reduce_constraint typ1 typ2 =
 
 let rec constraints_term env_orig env t typ =
   match t with
-      Const (Unit|Int _|True|False|RandBool) -> [TBase, typ]
+      Const (Unit|Int _|True|False|Rand(TBool,_)) -> [TBase, typ]
     | Const _ -> assert false
     | Var x -> reduce_constraint (List.assoc x env) typ
     | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul), t1), t2) ->

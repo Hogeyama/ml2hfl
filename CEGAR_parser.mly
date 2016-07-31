@@ -125,7 +125,7 @@ simple_term:
 | FALSE
   { Const False }
 | RANDINT
-  { Const (RandInt None) }
+  { Const (Rand(TInt, None)) }
 | END
   { Const CPS_result }
 

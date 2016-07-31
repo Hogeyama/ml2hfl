@@ -85,10 +85,9 @@ and print_const fm = function
   | Int32 n -> Format.fprintf fm "%ldl" n
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
-  | RandBool -> Format.fprintf fm "rand_bool"
-  | RandInt None -> Format.fprintf fm "rand_int"
-  | RandInt (Some n) -> Format.fprintf fm "rand_int[%d]" n
-  | RandVal s -> Format.fprintf fm "rand_%s" s
+  | Rand(base, id) ->
+      Format.fprintf fm "rand_%a" print_typ_base base;
+      Option.iter (Format.fprintf fm "[%d]") id
   | And -> Format.fprintf fm "&&"
   | Or -> Format.fprintf fm "||"
   | Not -> Format.fprintf fm "not"
@@ -122,8 +121,8 @@ and print_arg_var fm (x,typ) =
 and print_term fm = function
   | Const c -> print_const fm c
   | Var x -> print_var fm x
-  | App(App(App(Const If, Const RandBool), Const True), Const False) ->
-      print_const fm RandBool
+  | App(App(App(Const If, Const (Rand _ as randb)), Const True), Const False) ->
+      print_const fm randb
   | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "@[(%a@ %a@ %a)@]" print_term t1 print_const op print_term t2
   | App _ as t ->
@@ -289,9 +288,9 @@ and print_const_ML fm = function
   | Int32 n -> Format.fprintf fm "%ldl" n
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
-  | RandBool -> Format.fprintf fm "(Random.bool())"
-  | RandInt _ -> Format.fprintf fm "rand_int()"
-  | RandVal s -> Format.fprintf fm "rand_%s()" s
+  | Rand(TBool,_) -> Format.fprintf fm "(Random.bool())"
+  | Rand(TInt,_) -> Format.fprintf fm "rand_int()"
+  | Rand _ -> assert false
   | And -> Format.fprintf fm "(&&)"
   | Or -> Format.fprintf fm "(||)"
   | Not -> Format.fprintf fm "(not)"
@@ -376,9 +375,9 @@ and print_const_as_tree fm = function
   | Int32 n -> Format.fprintf fm "%ldl" n
   | Int64 n -> Format.fprintf fm "%LdL" n
   | Nativeint n -> Format.fprintf fm "%ndn" n
-  | RandBool -> Format.fprintf fm "RandBool"
-  | RandInt _ -> Format.fprintf fm "RandInt"
-  | RandVal s -> Format.fprintf fm "Rand_%s" s
+  | Rand(TBool,_) -> Format.fprintf fm "RandBool"
+  | Rand(TInt,_) -> Format.fprintf fm "RandInt"
+  | Rand _ -> assert false
   | And -> Format.fprintf fm "And"
   | Or -> Format.fprintf fm "Or"
   | Not -> Format.fprintf fm "Not"
@@ -463,8 +462,8 @@ and print_term' limit fm t =
   match t with
   | Const c -> print_const fm c
   | Var x -> print_var fm x
-  | App(App(App(Const If, Const RandBool), Const True), Const False) ->
-      print_const fm RandBool
+  | App(App(App(Const If, Const (Rand _ as r)), Const True), Const False) ->
+      print_const fm r
   | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(@[%a@ %a@ %a@])" (print_term' limit) t1 print_const op (print_term' limit) t2
   | App _ as t ->

@@ -61,7 +61,7 @@ let add_randint_precondition r n =
 let rec check_aux pr ce sat n constr env defs t k =
   if debug() then Format.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
-  | Const (RandInt _) -> assert false
+  | Const (Rand(TInt,_)) -> assert false
   | Const c -> k ce sat n constr env (Const c)
   | Var x -> k ce sat n constr env (Var x)
   | App(Const Not, t) ->
@@ -78,7 +78,7 @@ let rec check_aux pr ce sat n constr env defs t k =
      let t',randnum =
        let t_rand,ts = decomp_app t in
        match t_rand with
-       | Const (RandInt randnum) -> List.last ts, randnum
+       | Const (Rand(TInt,randnum)) -> List.last ts, randnum
        | _ -> assert false
      in
      let r = new_id "r" in
@@ -198,7 +198,7 @@ let assoc_def defs n t ce_br =
 let rec trans_ce ce ce_br env defs t k =
   if debug() then Format.printf "trans_ce[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
-  | Const (RandInt _) -> assert false
+  | Const (Rand(TInt,_)) -> assert false
   | Const c -> k ce ce_br env (Const c)
   | Var x -> k ce ce_br env (Var x)
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
@@ -208,10 +208,12 @@ let rec trans_ce ce ce_br env defs t k =
 (*
   | App(Const (Event s), t) -> trans_ce ce constr env defs (App(t,Const Unit)) k
 *)
-  | App(Const (RandInt None), t) ->
+  | App(Const (Rand(TInt,None)), t) ->
       let r = new_id "r" in
       let env' = (r,typ_int)::env in
       trans_ce ce ce_br env' defs (App(t,Var r)) k
+  | App(Const (Rand(_,Some _)), t) -> assert false
+  | App(Const (Rand(_,None)), t) -> assert false
   | App(t1,t2) ->
       trans_ce ce ce_br env defs t1 (fun ce ce_br env t1 ->
       trans_ce ce ce_br env defs t2 (fun ce ce_br env t2 ->

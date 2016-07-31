@@ -132,7 +132,7 @@ let decomp_tbase = function
   | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
 
 let rec is_base_term env = function
-  | Const (Unit | True | False | Int _ | RandInt _ | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _ | RandVal _) -> true
+  | Const (Unit | True | False | Int _ | Rand _ | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> true
   | Const _ -> false
   | Var x ->
       let typ =

@@ -11,6 +11,8 @@ module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
 
+let debug () = List.mem "FpatInterface" !Flag.debug_module
+
 let rec conv_typ ty =
   match ty with
   | TBase(TUnit, _) -> Fpat.Type.mk_unit
@@ -59,7 +61,8 @@ let conv_const c =
   | CmpPoly(typ,">=") ->
      Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
   | Int(n) -> Fpat.Const.Int(n)
-  | RandInt _ -> Fpat.Const.RandInt
+  | Rand(TInt, _) -> Fpat.Const.RandInt
+  | Rand(_, _) -> assert false
   | Add -> Fpat.Const.Add Fpat.Type.mk_int
   | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
@@ -75,7 +78,9 @@ let conv_const c =
         Fpat.Idnt.make "end")
   | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
   | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
-  | _ -> if false then Format.printf "%a@." CEGAR_print.const c; assert false
+  | _ ->
+      if !!debug then Format.printf "%a@." CEGAR_print.const c;
+      assert false
 
 let conv_var x =
   if Fpat.RefTypInfer.is_parameter x || S.is_extra_coeff_name x then
@@ -85,12 +90,11 @@ let conv_var x =
 
 let rec conv_term env t =
   match t with
-  | Const(RandInt (Some n)) ->
+  | Const(Rand(TInt, Some n)) ->
       let typs,_ = decomp_rand_typ @@ assoc_renv n env in
       let typs' = List.map conv_typ typs in
       Fpat.Term.mk_const @@ Fpat.Const.ReadInt (Fpat.Idnt.make @@ make_randint_name n, typs')
-  | Const(RandVal s) ->
-     Fpat.Term.mk_var (Fpat.Idnt.make (new_id "r")) (***)
+  | Const(Rand(_, Some _)) -> assert false
   | Const(c) ->
      Fpat.Term.mk_const (conv_const c)
   | Var(x) ->
@@ -185,7 +189,7 @@ let inv_const c =
   | Fpat.Const.Eq ty when Fpat.Type.is_bool ty -> EqBool
   | Fpat.Const.Eq ty when Fpat.Type.is_int ty -> EqInt
   | Fpat.Const.Int(n) -> Int(n)
-  | Fpat.Const.RandInt -> RandInt None
+  | Fpat.Const.RandInt -> Rand(TInt, None)
   | Fpat.Const.Add ty when Fpat.Type.is_int ty -> Add
   | Fpat.Const.Sub ty when Fpat.Type.is_int ty -> Sub
   | Fpat.Const.Mul ty when Fpat.Type.is_int ty -> Mul
