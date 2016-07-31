@@ -70,7 +70,7 @@ let rec trans_term br = function
   | Var x when is_uppercase x.[0] -> HS.PTapp(HS.NT (trans_id x), [])
   | Var x -> HS.PTapp (HS.Name (trans_id x), [])
   | App(Const (Label n), t) -> HS.PTapp(HS.Name ("l" ^ string_of_int n), [trans_term br t])
-  | App(App(App(Const If, Const RandBool), t2), t3) ->
+  | App(App(App(Const If, Const (Rand(TBool,_))), t2), t3) ->
       HS.PTapp(HS.Name br, [trans_term br t2; trans_term br t3])
   | App(App(App(Const If, t1), t2), t3) ->
       HS.PTapp(HS.CASE 2, [trans_term br t1; trans_term br t2; trans_term br t3])

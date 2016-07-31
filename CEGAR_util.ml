@@ -194,7 +194,7 @@ let mem_assoc_renv n env =
 
 let rec col_rand_ids t =
   match t with
-  | Const (RandInt (Some n)) -> [n]
+  | Const (Rand(TInt, Some n)) -> [n]
   | Const c -> []
   | Var x -> []
   | App(t1,t2) -> col_rand_ids t1 @ col_rand_ids t2
@@ -236,10 +236,10 @@ let get_const_typ env = function
   | Int32 _ -> typ_abst "int32"
   | Int64 _ -> typ_abst "int64"
   | Nativeint _ -> typ_abst "nativeint"
-  | RandInt None -> TFun(TFun(TBase(TInt,nil), fun _ -> typ_unit), fun _ -> typ_unit)
-  | RandInt (Some n) -> assoc_renv n env
-  | RandBool -> TBase(TBool,nil)
-  | RandVal s -> TBase(TAbst s,nil)
+  | Rand(TInt, None) -> TFun(TFun(TBase(TInt,nil), fun _ -> typ_unit), fun _ -> typ_unit)
+  | Rand(TInt, Some n) -> assoc_renv n env
+  | Rand(TBool, _) -> TBase(TBool,nil)
+  | Rand _ -> assert false
   | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
   | Or -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
   | Not -> TFun(TBase(TInt,nil), fun x -> typ_bool())
@@ -279,7 +279,7 @@ let rec get_typ env = function
   | Const c -> get_const_typ env c
   | Var x -> List.assoc x env
   | App(Const (Label _), t) -> get_typ env t
-  | App(Const (RandInt _), t) ->
+  | App(Const (Rand(TInt, _)), t) ->
       begin
         match get_typ env t with
         | TFun(_,typ) -> typ (Var "")
@@ -586,7 +586,7 @@ let eval_step_by_step  prog =
     match t with
     | Const True -> true
     | Const False -> false
-    | Const RandBool ->
+    | Const (Rand(TBool,_)) ->
         let aux = function App(Const (Label n), _) -> Some n | _ -> None in
         incr counter; get_tf (aux t_then) (aux t_else)
     | App(App(App(Const If, t1), t2), t3) ->
@@ -642,8 +642,8 @@ let assign_id_to_rand prog =
   let count = ref 0 in
   let rec aux t =
     match t with
-    | Const (RandInt None) -> Const (RandInt None)
-    | Const (RandInt (Some _)) -> incr count; Const (RandInt (Some !count))
+    | Const (Rand(TInt, None)) -> Const (Rand(TInt, None))
+    | Const (Rand(TInt, Some _)) -> incr count; Const (Rand(TInt, Some !count))
     | Const c -> Const c
     | Var x -> Var x
     | App(t1,t2) -> App(aux t1, aux t2)

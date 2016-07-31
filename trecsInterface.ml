@@ -44,7 +44,7 @@ let rec trans_term = function
   | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (trans_id x), [])
   | Var x -> TS.PTapp (TS.Name (trans_id x), [])
   | App(Const (Label n), t) -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [trans_term t])
-  | App(App(App(Const If, Const RandBool), t2), t3) ->
+  | App(App(App(Const If, Const (Rand(TBool,_))), t2), t3) ->
       TS.PTapp(TS.Name "br", List.map trans_term [t2; t3])
   | App(App(App(Const If, t1), t2), t3) ->
       TS.PTapp(TS.CASE 2, List.map trans_term [t1; t2; t3])

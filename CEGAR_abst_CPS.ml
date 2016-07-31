@@ -68,8 +68,8 @@ let rec trans_eager_bool f = function
   | Const True
   | Const False
   | Var _ as t -> App(Var f, t)
-  | Const RandBool
-  | App(App(App(Const If, Const RandBool), Const True), Const False) ->
+  | Const (Rand(TBool,_))
+  | App(App(App(Const If, Const (Rand(TBool,_))), Const True), Const False) ->
       make_br (App(Var f, Const True)) (App(Var f, Const False))
   | App(App(Const Or, t1), t2) ->
       let x = new_id "b" in
@@ -116,7 +116,7 @@ let rec trans_eager_term env c t =
         | App(Var k, Var y) when x = y -> trans_eager_bool k t
         | t' -> Let(f, Fun(x, None, t'), trans_eager_bool f t)
       end
-  | Const (RandBool | And | Or | Not | Lt | Gt | Leq | Geq | EqUnit | EqInt | EqBool) -> assert false
+  | Const (Rand(TBool,_) | And | Or | Not | Lt | Gt | Leq | Geq | EqUnit | EqInt | EqBool) -> assert false
   | Const _
   | Var _ -> c t
   | Fun(x,_,t) -> c (Fun(x, None, trans_eager_term env Fun.id t))
@@ -169,7 +169,7 @@ let rec eta_expand_term env t typ =
   if debug() then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
-  | Const (RandInt _)
+  | Const (Rand(TInt,_))
   | Const CPS_result -> t
   | (Var _ | Const _ | App _) when is_base_term env t -> t
   | Var x -> eta_expand_term_aux env t typ
@@ -295,13 +295,13 @@ and abstract_term must env cond pts t typ =
       let t3' = hd @@ abstract_term must env (make_not t1::cond) pts t3 typ in
       [make_if t1' t2' t3']
   | App(Const (Label n), t) -> [make_label n (hd @@ abstract_term must env cond pts t typ)]
-  | App(Const (RandInt None), t) ->
+  | App(Const (Rand(TInt,None)), t) ->
       abstract_term must env cond pts t (TFun(typ_int, fun _ -> typ))
   | App _ when is_app_randint t ->
       let t',ts = decomp_app t in
       let n =
         match t' with
-        | Const (RandInt (Some n)) -> n
+        | Const (Rand(TInt,Some n)) -> n
         | _ -> assert false
       in
       let ts',t'' = List.decomp_snoc ts in

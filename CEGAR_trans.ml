@@ -216,17 +216,25 @@ and trans_term post xs env t =
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let xs' = List.filter (fun x -> is_base @@ List.assoc x env) xs in
-      let head = Const (RandInt (if under then Some 0 else None)) in
+      let head = Const (Rand(TInt, if under then Some 0 else None)) in
       let args =if under then List.map _Var xs' @ [t2'] else [t2'] in
       defs1@defs2, make_app head args
   | S.App({S.desc=S.Const(S.RandValue(Type.TData s, true))}, [t1]) ->
+      assert false
+(*
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
+ *)
   | S.App({S.desc=S.Const(S.RandValue(typ,true))}, [t1;t2]) ->
       assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
-      defs1@defs2, App(t2', Const (RandVal (Format.asprintf "%a" Print.typ typ)))
+      let base =
+        match trans_typ typ with
+        | TBase(base, _) -> base
+        | _ -> assert false
+      in
+      defs1@defs2, App(t2', Const (Rand(base, None)))
   | S.Var x ->
       let x' = trans_var x in
       [], Var x'
@@ -587,7 +595,7 @@ let assoc_def labeled t ce defs =
 
 let rec is_value env = function
   | Const Bottom -> false
-  | Const RandBool -> false
+  | Const (Rand(TBool,_)) -> false
   | Const _ -> true
   | Var x -> get_arg_num (get_typ env (Var x)) > 0
   | App(App(App(Const If, _), _), _) -> false
@@ -608,7 +616,7 @@ let rec read_bool () =
 
 let rec step_eval_abst_cbn ce labeled env_abst defs = function
   | Const Bottom -> raise TypeBottom
-  | Const RandBool ->
+  | Const (Rand(TBool,_)) ->
       let t =
         if read_bool ()
         then Const True
@@ -722,7 +730,7 @@ let init_cont _ acc _ = List.rev acc
 let rec trans_ce_aux labeled ce acc defs t k =
   if debug () then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
-  | Const (RandInt _) -> assert false
+  | Const (Rand(TInt,_)) -> assert false
   | Const c -> k ce acc (Const c)
   | Var x -> k ce acc (Var x)
   | App(Const Not, t) ->
@@ -770,9 +778,7 @@ let eq_not t1 t2 = t1 = make_not t2 || make_not t1 = t2
 
 let rec has_rand t =
   match t with
-  | Const (RandInt _) -> true
-  | Const RandBool -> true
-  | Const (RandVal _) -> true
+  | Const (Rand(_,_)) -> true
   | Const _ -> false
   | Var _ -> false
   | App(t1,t2) -> has_rand t1 || has_rand t2
