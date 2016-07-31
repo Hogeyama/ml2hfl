@@ -22,17 +22,7 @@ let get_solution env t =
     |> Fpat.PolyConstrSolver.solve_dyn
     |> List.map (Pair.map Fpat.Idnt.string_of Fpat.IntTerm.int_of)
   in
-  let sol' =
-    let assoc (x,_) =
-      let r =
-        try
-          List.assoc x sol
-        with Not_found -> 0
-      in
-      x, r
-    in
-    List.map assoc env
-  in
+  let sol' = List.map (fun (x,_) -> x, List.assoc_default 0 x sol) env in
   List.map snd @@ List.sort sol'
 
 let init_cont ce sat n constr env _ = assert (!Flag.mode <> Flag.FairNonTermination => (ce=[])); constr, n, env

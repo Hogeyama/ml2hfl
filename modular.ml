@@ -175,7 +175,7 @@ let main _ spec parsed =
     |> decomp_prog
   in
   assert (body.desc = Const Unit);
-  if !!debug then Format.printf "TOP_FUNS: %a@." (List.print Print.id_typ) @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;
+  if !!debug then Format.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;
   if List.exists (snd |- List.exists (Triple.fst |- is_fun_var |- not)) fbindings then
     unsupported "top-level let-bindings of non-functions";
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
