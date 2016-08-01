@@ -431,7 +431,10 @@ let rec subtype env typ1 typ2 =
       in
       List.length xtyps1 = List.length xtyps2 &&
         snd @@ List.fold_left2 aux (env,true) xtyps1 xtyps2
-  | _ -> unsupported "Ref_type.subtype"
+  | _ ->
+      Format.printf "typ1: %a@." print typ1;
+      Format.printf "typ2: %a@." print typ2;
+      unsupported "Ref_type.subtype"
 let subtype typ1 typ2 = subtype [] typ1 typ2
 
 let equiv typ1 typ2 = subtype typ1 typ2 && subtype typ2 typ1

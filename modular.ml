@@ -100,9 +100,10 @@ let incr_extend f ce_set extend =
 let rec main_loop history c prog cmp f typ ce_set extend =
   let space = String.make (8*List.length history) ' ' in
   let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
-  pr " history: %a" (List.print Id.print) history;
+  pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
   pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print prog.fun_typ_env;
   pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
+  pr "%a{%a,%d}%t extend:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
   let {fun_typ_env=env; fun_def_env} = prog in
   pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
   match Check_mod.check prog f typ with
@@ -116,7 +117,9 @@ let rec main_loop history c prog cmp f typ ce_set extend =
       pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       let rec refine_loop ce_set2 extend' =
         pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set2;
+        pr "%a{%a,%d}%t extend':@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
         match Infer_mod.infer prog f typ ce_set2 extend' with
+        | exception Not_found -> assert false
         | None ->
             pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
             `Untypable, prog.fun_typ_env, ce_set2
@@ -126,13 +129,13 @@ let rec main_loop history c prog cmp f typ ce_set extend =
               candidate
               |> Ref_type.Env.to_list
               |> List.sort ~cmp:(Compare.on ~cmp fst)
-              |> List.flatten_map (fun (g,typ) -> List.map (Pair.pair g) @@ Ref_type.decomp_inter typ)
+              |*> List.flatten_map (fun (g,typ) -> List.map (Pair.pair g) @@ Ref_type.decomp_inter typ)
             in
             let aux (r,env',ce_set4) (g,typ') =
               if Ref_type.subtype (Ref_type.Env.assoc g env') typ' then
                 (r,env',ce_set4)
               else
-                main_loop (f::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4 extend'
+                main_loop ((f,typ)::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4 extend'
             in
             let _,env',ce_set3 = List.fold_left aux (`Typable, env, ce_set2) candidate' in
             if not @@ Ref_type.Env.eq env' env then
@@ -148,7 +151,7 @@ let rec main_loop history c prog cmp f typ ce_set extend =
             else if true then
               (if !!debug then Format.printf "extend counterexample@.";
                Infer_mod.infer_stronger := false;
-               let ce_set4,extend'' = incr_extend f ce_set3 extend' in
+               let ce_set4,extend'' = List.fold_left (fun (cs,ex) g -> incr_extend g cs ex) (ce_set3,extend') (f :: (List.unique ~cmp:Id.eq @@ Ref_type.Env.dom candidate)) in
                refine_loop ce_set4 extend'')
             else
               raise NoProgress
@@ -183,11 +186,10 @@ let main _ spec parsed =
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
   let prog =
-    let fs =
+    let env_init =
       List.flatten_map (snd |- List.map Triple.fst) fbindings
-      |> List.filter_out (Id.same main)
+      |> Ref_type.Env.create (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ)
     in
-    let env_init = Ref_type.Env.create fs (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ) in
     if !!debug then Format.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
     {fun_typ_env=env_init; fun_def_env=fun_env}
   in

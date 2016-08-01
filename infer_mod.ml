@@ -1309,9 +1309,6 @@ let infer prog f typ (ce_set:ce_set) extend =
     let env' =
       env
       |> Ref_type.Env.filter_key_out (Id.same f)
-(*
-      |*> List.map (Pair.map_snd @@ init_with_pred_var cnt -| from_ref_type)
- *)
       |> Ref_type.Env.map_value CPS.trans_ref_typ_as_direct
     in
     if !!debug then Format.printf "Dom(Fun_env'): %a@.@." (List.print Id.print) @@ List.map fst fun_env';
@@ -1334,29 +1331,17 @@ let infer prog f typ (ce_set:ce_set) extend =
     |@!!debug&> check_arity
   in
   let merge_candidates = get_merge_candidates templates hcs in
-(*
-  if false then Format.fprintf (Format.formatter_of_out_channel @@ open_out "test.hcs") "%a@." print_horn_clauses hc;
- *)
-  (*
-  let constr = inline_template templates constr in
-  Format.printf "CONSTR2: @[%a@.@." print_constr constr;
-  let pred_map = make_pred_map constr in
-  (*  Format.printf "PRED_MAP: @[%a@.@." (List.print @@ Pair.print Format.pp_print_int Id.print) pred_map;*)
-  let constr = decomp_constraints pred_map constr in
-  Format.printf "CONSTR3: @[%a@.@." print_constr constr;
-  let constr = flatten constr in
-  Format.printf "CONSTR4: @[%a@.@." print_horn_clauses constr;*)
   match solve_merged merge_candidates hcs with
   | None -> None
   | Some sol ->
       if !!debug then Format.printf "TEMPLATES of TOP_FUNS: @[%a@.@." print_tmp_env @@ List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env') templates;
       if !!debug then Format.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
-      let top_funs = List.filter_out (Id.same f) @@ Ref_type.Env.dom env in
+      let top_funs = used_by f prog in
       if !!debug then Format.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
       let env' =
-        let aux ((f,_),tmp) =
-          if Id.mem f top_funs then
-            Some (f, apply_sol sol true tmp)
+        let aux ((g,_),tmp) =
+          if Id.mem g top_funs then
+            Some (g, apply_sol sol true tmp)
           else
             None
         in
@@ -1364,7 +1349,7 @@ let infer prog f typ (ce_set:ce_set) extend =
       in
       let env'' =
         let aux (x,typ') =
-          let typ = Ref_type.Env.assoc x prog.fun_typ_env in
+          let typ = try Ref_type.Env.assoc x prog.fun_typ_env with Not_found -> Format.printf "%a@."Id.print x; assert false in
           let x',_ = Ref_type.Env.find (fst |- Id.same x) env in
           if !!debug then Format.printf "  %a: %a@." Id.print x' Ref_type.print typ';
           let typ_ =
@@ -1378,6 +1363,7 @@ let infer prog f typ (ce_set:ce_set) extend =
         env'
         |> List.map aux
         |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_equiv @@ Ref_type.decomp_inter typ)
+        |> List.filter_out (fun (g,typ') -> Id.same f g && Ref_type.subtype typ typ')
         |> Ref_type.Env.of_list
         |*> Ref_type.Env.normalize
       in
