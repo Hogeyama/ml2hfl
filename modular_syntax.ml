@@ -50,3 +50,15 @@ let normalize t =
         |- Trans.inline_simple_exp
         |- Trans.bool_eta_reduce
         |- Trans.reconstruct)
+
+(* `used_by f prog` returns top-level functions used (directly/indirectly) by f *)
+let used_by f prog =
+  let rec aux acc rest =
+    match rest with
+    | [] -> acc
+    | f::rest' when Id.mem f acc -> aux acc rest'
+    | f::rest' ->
+        let xs,t = Id.assoc f prog.fun_def_env in
+        aux (f::acc) (List.Set.diff ~eq:Id.eq (get_fv t) (f::xs) @ rest')
+  in
+  aux [] [f]

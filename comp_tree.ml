@@ -69,8 +69,10 @@ let rec print_fun_id fm (f, kind) =
 and print_tid = Format.pp_print_int
 and print_label fm label =
   match label with
-  | App(f,map) ->
+  | App(f,map) when false ->
       Format.fprintf fm "@[App %a %a@]" print_fun_id f pr_env map
+  | App(f,map) ->
+      Format.fprintf fm "@[App %a ...@]" print_fun_id f
   | Let(f,t) ->
       Format.fprintf fm "@[Let %a =@ %a@]" Id.print f Print.term t
   | Assume t -> Format.fprintf fm "@[Assume %a@]" Print.term t
