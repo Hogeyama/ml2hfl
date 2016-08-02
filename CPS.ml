@@ -1143,5 +1143,7 @@ let rec trans_ref_typ is_CPS typ =
 let trans_ref_typ typ = trans_ref_typ true typ
 and trans_ref_typ_as_direct typ = trans_ref_typ false typ
 
-(*let uncps_ref_type typ_cps typ = uncps_ref_type typ_cps ENone @@ force_cont @@ infer_effect_typ @@ Ref_type.to_simple typ
- *)
+let trans_no_main t =
+  match t.desc with
+  | Let _ -> Trans.add_main_and_trans (fst -| trans) t
+  | _ -> fst @@ trans t

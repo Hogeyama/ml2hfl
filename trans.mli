@@ -52,7 +52,7 @@ val remove_id : typed_term -> typed_term
 val replace_fail_with_raise : typed_term -> typed_term
 val remove_defs : id list -> typed_term -> typed_term
 val subst_let_xy : typed_term -> typed_term
-
+val add_main_and_trans : (typed_term -> typed_term) -> typed_term -> typed_term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> typed_term -> typed_term -> term
