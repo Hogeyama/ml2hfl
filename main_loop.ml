@@ -315,7 +315,7 @@ let report_unsafe main ce set_target =
       "Unsafe!"
   in
   Color.printf Color.Bright "%s@.@." s;
-  Option.may (fun (main_fun, arg_num) ->
+  Option.may (fun (main_fun, _, arg_num) ->
               Format.printf "Input for %s:@.  %a@." main_fun
                             (print_list Format.pp_print_int "; ") (List.take arg_num ce)) main;
   try
