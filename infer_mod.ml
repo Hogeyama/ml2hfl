@@ -1368,13 +1368,13 @@ let infer prog f typ (ce_set:ce_set) extend =
         |*> Ref_type.Env.normalize
       in
       let env_unused =
-        let aux f =
-          if Id.mem_assoc f env' then
+        let aux g =
+          if Id.mem_assoc g env' || Id.same f g then
             None
           else if !infer_stronger then
-            Some (f, Ref_type.make_strongest @@ Id.typ f)
+            Some (g, Ref_type.make_strongest @@ Id.typ g)
           else
-            Some (f, Ref_type.of_simple @@ Id.typ f)
+            Some (g, Ref_type.of_simple @@ Id.typ g)
         in
         Ref_type.Env.of_list @@ List.filter_map aux top_funs
       in
