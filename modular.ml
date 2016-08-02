@@ -123,38 +123,22 @@ let rec main_loop history c prog cmp f typ ce_set extend =
       refine_loop (merge_ce_set ce_set1 ce_set) extend
 let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ [] []
 
-let rec remove_new_main main t =
-  match t.desc with
-  | Let(_, [f,_,_], _) when Id.same f main -> unit_term
-  | Let(flag, bindings, t') -> {t with desc=Let(flag, bindings, remove_new_main main t')}
-  | _ -> invalid_arg "remove_new_main"
-
 let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
-  let new_main,(fbindings,body) =
-    let pps =
-      let open Main_loop in
-      preprocesses spec
-      |*> preprocess_before CPS
-      |*> preprocess_filter_out [(*Encode_mutable_record; Encode_recdata; Encode_list;*) Beta_reduce_trivial]
-    in
-    if !!debug then Format.printf "PARSED: %a@.@." Print.term' parsed;
-    let main,t = Trans.set_main parsed in
-    let new_main = Option.get @@ Triple.snd @@ Option.get main in
-    let r =
+  let (fbindings,body) =
+    let aux t =
       t
-      |@!!debug&> Format.printf "SET_MAIN: %a@.@." Print.term
-      |> Main_loop.run_preprocess pps
+      |@!!debug&> Format.printf "PARSED: %a@.@." Print.term'
+      |> Main_loop.run_preprocess @@ Main_loop.preprocesses spec
       |> Main_loop.last_t
       |> Trans.direct_from_CPS
       |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term'
       |> normalize
       |@!!debug&> Format.printf "NORMALIZED: %a@.@." Print.term
-      |> remove_new_main new_main
-      |@!!debug&> Format.printf "REMOVE_NEW_MAIN: %a@.@." Print.term
-      |> decomp_prog
     in
-    new_main, r
+    parsed
+    |> Trans.add_main_and_trans aux
+    |> decomp_prog
   in
   assert (body.desc = Const Unit);
   if !!debug then Format.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;

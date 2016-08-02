@@ -56,7 +56,7 @@ let make_event_cps s = {desc=Event(s,true); typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
 let make_string s = {desc=Const(String s); typ=TData "string"; attr=const_attr}
-let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
+let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=make_tfun TUnit typ; attr=[]}
 let make_randvalue_unit typ =
   match typ with
   | TUnit -> unit_term
@@ -255,7 +255,7 @@ let make_field t s =
     |> List.assoc s
   in
   {desc=Field(t,s); typ; attr=[]}
-let randint_term = {desc=Const(RandValue(TInt,false)); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
+let randint_term = make_randvalue TInt
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 let make_event_unit s = make_app (make_event s) [unit_term]

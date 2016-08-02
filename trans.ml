@@ -1304,7 +1304,7 @@ let make_ext_funs ?(fvs=[]) env t =
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
-      let genv',cenv',t = Ref_type.generate genv cenv typ in
+      let genv',cenv',t = Ref_type_gen.generate genv cenv typ in
       let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
       genv', cenv', (f',[],t)::defs
     in
@@ -2227,7 +2227,7 @@ let ref_to_assert ref_env t =
           Format.printf "  Spec: %a@." Ref_type.print typ;
           fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
         end;
-      let genv',cenv',t_typ = Ref_type.generate_check [] [] f typ in
+      let genv',cenv',t_typ = Ref_type_gen.generate_check [] [] f typ in
       let defs = List.map snd (genv' @ cenv') in
       make_letrecs defs @@ make_assert t_typ
     in
@@ -2617,3 +2617,22 @@ let bool_eta_reduce_term t =
   | _ -> t'
 let () = bool_eta_reduce.tr_term <- bool_eta_reduce_term
 let bool_eta_reduce = bool_eta_reduce.tr_term
+
+
+
+let rec remove_new_main main t =
+  match t.desc with
+  | Let(_, [f,_,_], _) when Id.same f main -> unit_term
+  | Let(flag, bindings, t') -> {t with desc=Let(flag, bindings, remove_new_main main t')}
+  | _ -> invalid_arg "remove_new_main"
+
+let add_main_and_trans f t =
+  let main,t' = set_main t in
+  match main with
+  | Some(_, Some new_main, _) ->
+      begin
+        try
+          remove_new_main new_main @@ f t'
+        with Invalid_argument "remove_new_main" -> invalid_arg "add_main_and_trans (the input function may change variable names?)"
+      end
+  | _ -> invalid_arg "add_main_and_trans"

@@ -281,7 +281,7 @@ let add_context prog f typ =
     |@dbg&> (fun x -> Format.printf "AAA@.")
     |> Ref_type.Env.to_list
     |@dbg&> (fun x -> Format.printf "AAA@.")
-    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type.generate [] [])
+    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate [] [])
     |@dbg&> Format.printf "ADD_CONTEXT fun_env': %a@." Modular_syntax.print_def_env
   in
   let fun_env'' =

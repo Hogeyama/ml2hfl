@@ -1,11 +1,11 @@
 
+open Syntax
+
 (** CPS-transformation for source language *)
 
-val trans : Syntax.typed_term -> Syntax.typed_term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-val trans_as_direct : Syntax.typed_term -> Syntax.typed_term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-val trans_typ : Syntax.typ -> Syntax.typ -> Syntax.typ
+val trans : typed_term -> typed_term * ((id -> Ref_type.t) -> id -> Ref_type.t)
+val trans_as_direct : typed_term -> typed_term * ((id -> Ref_type.t) -> id -> Ref_type.t)
+val trans_typ : typ -> typ -> typ
 val trans_ref_typ : Ref_type.t -> Ref_type.t
 val trans_ref_typ_as_direct : Ref_type.t -> Ref_type.t
-                                (*
-val uncps_ref_type : Ref_type.t -> Ref_type.t -> Ref_type.t
-                                 *)
+val trans_no_main : typed_term ->  typed_term
