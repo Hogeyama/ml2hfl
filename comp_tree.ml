@@ -361,9 +361,6 @@ let rec from_term
       let vars_f = Id.assoc f var_env in
       if !!debug then Format.printf "    APP1 vars_f: %a@\n" (List.print Id.print) vars_f;
       let var_env',_ = List.fold_left (fun (acc,vars) x -> (x, vars)::acc, x::vars) (var_env_f,vars_f) ys in
-(*
-      let var_env' = List.fold_left (fun acc x -> (x, List.map fst acc)::acc) [] ys @ var_env_f in
- *)
       if !!debug then Format.printf "    APP1 var_env': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env';
       let fun_id =
         let kind =
@@ -416,41 +413,8 @@ let rec from_term
                     |> snd
                     |> List.filter_out (fun (_,n) -> n = 0)
                   in
-                  [aux extend' 0 ce_env; aux extend 1 ce_env]
+                  [aux extend' 0 ce_env; aux extend' 1 ce_env]
               | [] -> []
-(*
-              | [] ->
-                  if !!debug then Format.printf "    val_env: %a@\n" pr_env val_env;
-                  let fs =
-                    top_fun_args
-                    |> List.filter (List.mem_assoc -$- val_env)
-                    |> List.filter is_fun_var
-                  in
-                  if !!debug then Format.printf "    fs: %a@\n" (List.print Id.print) fs;
-                  let ts =
-                    let aux f =
-                      let xs,typ = decomp_tfun @@ Id.typ f in
-                      let aux' t x =
-                        let typ = Id.typ x in
-                        if is_base_typ @@ Id.typ x then
-                          make_app t [make_randvalue_unit typ]
-                        else
-                          let x' = Id.new_var_id x in
-                          make_let [x',[],make_bottom typ] @@ make_app t [make_var x']
-                      in
-                      List.fold_left aux' (make_var f) xs
-                    in
-                    List.map aux fs
-                  in
-                  if !!debug then Format.printf "    ts: %a@\n" (List.print Print.term) ts;
-                  let children = List.flatten_map (from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env) ts in
-                  let node =
-                    let label = Assume false_term in
-                    let ref_typ = None in
-                    {nid; var_env; val_env; label; ref_typ; ce_env}
-                  in
-                  [RT.Node(node, children)]
- *)
               | br::ce' ->
                   if !!debug then Format.printf "    CE[%d]: %a@\n" tid (List.print Format.pp_print_int) ce;
                   let ce_env'' = (tid,(f,i,ce'))::ce_env' in
