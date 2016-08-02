@@ -2192,9 +2192,9 @@ let set_main t =
   else
     let f = Triple.fst @@ List.last @@ snd @@ List.last defs in
     let xs = get_args (Id.typ f) in
-    let t' =
+    let f',t' =
       if xs = [] && Id.typ f = TUnit then
-        replace_main (make_var f) t
+        None, replace_main (make_var f) t
       else
         let bindings =
           let aux i x =
@@ -2208,10 +2208,10 @@ let set_main t =
         let main = make_lets bindings main in
         let u = Id.new_var ~name:"main" main.typ in
         let main = make_let [u, [], main] unit_term in
-        replace_main main t
+        Some u, replace_main main t
     in
     let t'' = inst_randval t' in
-    Some (Id.name f, List.length xs), t''
+    Some (Id.name f, f', List.length xs), t''
 let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
