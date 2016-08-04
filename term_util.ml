@@ -1005,3 +1005,34 @@ let () = get_ground_types.tr2_typ <- get_ground_types_typ
 let get_ground_types_term s typ t = get_ground_types.tr2_term (s,typ) t
 let get_ground_types s typ1 typ2 = get_ground_types.tr2_typ (s,typ1) typ2
  *)
+
+
+let rec size t =
+  match t.desc with
+  | Const _ -> 1
+  | Var _ -> 1
+  | Fun(_, t) -> 1 + size t
+  | App(t, ts) -> 1 + size t + List.fold_left (fun acc t -> acc + size t) 0 ts
+  | If(t1, t2, t3) -> size t1 + size t2 + size t3
+  | Let(_, bindings, t) -> List.fold_left (fun acc (_,xs,t) -> 1 + List.length xs + size t + acc) (size t) bindings
+  | BinOp(_, t1, t2) -> 1 + size t1 + size t2
+  | Not t -> 1 + size t
+  | Event _ -> 1
+  | Record fields -> List.fold_left (fun acc (_,t) -> acc + size t) 1 fields
+  | Field(t, _) -> 1 + size t
+  | SetField(t1, _, t2) -> 1 + size t1 + size t2
+  | Nil -> 1
+  | Cons(t1, t2) -> 1 + size t1 + size t2
+  | Constr(_, ts) -> 1 + List.fold_left (fun acc t -> acc + size t) 0 ts
+  | Match _ -> assert false
+  | Raise _ -> assert false
+  | TryWith _ -> assert false
+  | Tuple ts -> 1 + List.fold_left (fun acc t -> acc + size t) 0 ts
+  | Proj(_,t) -> 1 + size t
+  | Bottom -> 1
+  | Label _ -> assert false
+  | Ref _ -> assert false
+  | Deref _ -> assert false
+  | SetRef _ -> assert false
+  | TNone -> 1
+  | TSome _ -> assert false
