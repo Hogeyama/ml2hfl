@@ -128,16 +128,18 @@ let main _ spec parsed =
   let (fbindings,body) =
     let aux t =
       t
-      |@!!debug&> Format.printf "PARSED: %a@.@." Print.term'
+      |@!!debug&> Format.printf "PARSED: %a@.@." Print.term
       |> Main_loop.run_preprocess @@ Main_loop.preprocesses spec
       |> Main_loop.last_t
+      |@!!debug&> Format.printf "REPROCESSED: %a@.@." Print.term
       |> Trans.direct_from_CPS
-      |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term'
+      |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term
       |> normalize
       |@!!debug&> Format.printf "NORMALIZED: %a@.@." Print.term
     in
     parsed
     |> Trans.add_main_and_trans aux
+    |@!!debug&> Format.printf "TRANSFORMED: %a@.@." Print.term
     |> decomp_prog
   in
   assert (body.desc = Const Unit);

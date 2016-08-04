@@ -11,7 +11,7 @@ val inst_randval : typed_term -> typed_term
 val ref_to_assert : Ref_type.env -> typed_term -> typed_term
 val replace_main : ?force:bool -> typed_term -> typed_term -> typed_term
 val map_main : (typed_term -> typed_term) -> typed_term -> typed_term
-val set_main : typed_term -> (string * id option * int) option * typed_term
+val set_main : ?do_not_inline:bool -> typed_term -> (string * id option * int) option * typed_term
 val merge_let_fun : typed_term -> typed_term
 val canonize : typed_term -> typed_term
 val part_eval : typed_term -> typed_term
