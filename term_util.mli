@@ -187,4 +187,3 @@ val from_fpat_term : Fpat.Term.t -> typed_term
 val from_fpat_formula : Fpat.Formula.t -> typed_term
 val unfold_data_type : typ -> typ
 val fold_data_type : typ -> typ
-val size : typed_term -> int
