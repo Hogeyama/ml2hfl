@@ -1047,8 +1047,7 @@ let find_exn_typ t =
 let trans_typ typ_excep typ = trans_typ typ_excep typ @@ force_cont @@ infer_effect_typ typ
 
 let pr2 s p t = if !!debug then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
-let pr_typ s t = pr2 s Print.term_typ t
-let pr s t = pr2 s Print.term t
+let pr s t = pr2 s Print.term_typ t
 
 let trans t =
   pr "INPUT" t;
@@ -1082,18 +1081,18 @@ let trans t =
     |> Trans.propagate_typ_arg
     |@> pr2 "propagate_typ_arg" Print.term
     |@> Type_check.check -$- typ_result
-    |*> Trans.beta_reduce
-    |*@> pr_typ "beta reduce"
+    |> Trans.beta_reduce
+    |@> pr "beta reduce"
     |@> Type_check.check -$- typ_result
     |> inline_affine
-    |@> pr_typ "inline affine functions"
+    |@> pr "inline affine functions"
     |@> Type_check.check -$- typ_result
     |> Trans.expand_let_val
-    |@> pr_typ "expand_let_val"
+    |@> pr "expand_let_val"
     |@> Type_check.check -$- typ_result
     |> Trans.elim_unused_let ~cbv:false
     |> Trans.elim_unused_branch
-    |@> pr_typ "elim_unused_let"
+    |@> pr "elim_unused_let"
   in
   t', make_get_rtyp typed
 

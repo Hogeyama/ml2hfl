@@ -1541,40 +1541,37 @@ let normalize_let_aux is_atom t =
       make_var x, post'
 
 let normalize_let_term is_atom t =
-  let t' =
-    match t.desc with
-    | _ when is_atom t -> t
-    | BinOp(op,t1,t2) ->
-        let t1',post1 = normalize_let_aux is_atom t1 in
-        let t2',post2 = normalize_let_aux is_atom t2 in
-        post1 @@ post2 @@ {desc=BinOp(op, t1', t2'); typ=t.typ; attr=[]}
-    | App(t, ts) ->
-       let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
-       let t',post = normalize_let_aux is_atom t in
-       let post' = List.fold_left (|-) post posts in
-       post' @@ make_app t' ts'
-    | Tuple ts ->
-        let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
-        List.fold_right (@@) posts @@ make_tuple ts'
-    | Proj(i,t) ->
-       let t',post = normalize_let_aux is_atom t in
-       post @@ make_proj i t'
-    | If(t1, t2, t3) ->
-        let t1',post = normalize_let_aux is_atom t1 in
-        let t2'  = normalize_let.tr2_term is_atom t2 in
-        let t3'  = normalize_let.tr2_term is_atom t3 in
-        post @@ make_if t1' t2' t3'
-    | Let(flag,bindings,t1) ->
-        let aux (f,xs,t) = f, xs, normalize_let.tr2_term is_atom t in
-        let bindings' = List.map aux bindings in
-        let t1' = normalize_let.tr2_term is_atom t1 in
-        make_let_f flag bindings' t1'
-    | Raise t1 ->
-       let t1',post = normalize_let_aux is_atom t1 in
-       post @@ make_raise t1' t.typ
-    | _ -> normalize_let.tr2_term_rec is_atom t
-  in
-  {t' with attr=t.attr}
+  match t.desc with
+  | _ when is_atom t -> t
+  | BinOp(op,t1,t2) ->
+      let t1',post1 = normalize_let_aux is_atom t1 in
+      let t2',post2 = normalize_let_aux is_atom t2 in
+      post1 @@ post2 @@ {desc=BinOp(op, t1', t2'); typ=t.typ; attr=[]}
+  | App(t, ts) ->
+     let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
+     let t',post = normalize_let_aux is_atom t in
+     let post' = List.fold_left (|-) post posts in
+     post' @@ make_app t' ts'
+  | Tuple ts ->
+      let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
+      List.fold_right (@@) posts @@ make_tuple ts'
+  | Proj(i,t) ->
+     let t',post = normalize_let_aux is_atom t in
+     post @@ make_proj i t'
+  | If(t1, t2, t3) ->
+      let t1',post = normalize_let_aux is_atom t1 in
+      let t2'  = normalize_let.tr2_term is_atom t2 in
+      let t3'  = normalize_let.tr2_term is_atom t3 in
+      post @@ make_if t1' t2' t3'
+  | Let(flag,bindings,t1) ->
+      let aux (f,xs,t) = f, xs, normalize_let.tr2_term is_atom t in
+      let bindings' = List.map aux bindings in
+      let t1' = normalize_let.tr2_term is_atom t1 in
+      make_let_f flag bindings' t1'
+  | Raise t1 ->
+     let t1',post = normalize_let_aux is_atom t1 in
+     post @@ make_raise t1' t.typ
+  | _ -> normalize_let.tr2_term_rec is_atom t
 
 let () = normalize_let.tr2_term <- normalize_let_term
 let normalize_let ?(is_atom=fun _ -> false) = normalize_let.tr2_term is_atom
@@ -1902,30 +1899,17 @@ let beta_reduce = make_trans ()
 let beta_reduce_term t =
   match t.desc with
   | Let(Nonrecursive, [x,[],{desc=Var y}], t1) ->
-      Format.printf "%s@." __LOC__;
       beta_reduce.tr_term @@ subst_with_rename ~check:true x (make_var y) t1
-  | App(t1, ts) ->
-      Format.printf "%s@." __LOC__;
-      let rec aux t1' ts =
-        match t1'.desc, ts with
-        | _, [] -> t1'
-        | Fun(x,t1''), t2::ts' ->
-            let t1'' = subst_with_rename ~check:true x t2 t1'' in
-            let t1''' =
-              match t2.desc with
-              | Fun _ -> beta_reduce.tr_term t1''
-              | _ -> t1''
-            in
-            aux t1''' ts'
-        | _ ->
-            make_app t1' ts
-      in
-      aux (beta_reduce.tr_term t1) @@ List.map beta_reduce.tr_term ts
-  | Proj(i, {desc=Tuple ts}) ->
-      Format.printf "%s@." __LOC__;
-      beta_reduce.tr_term @@ List.nth ts i
+  | App(t1, []) ->
+      beta_reduce.tr_term t1
+  | App(t1, t2::ts) ->
+      begin
+        match beta_reduce.tr_term t1 with
+        | {desc=Fun(x,t1')} -> beta_reduce.tr_term @@ make_app (subst_with_rename ~check:true x t2 t1') ts
+        | t1' -> make_app t1' @@ List.map beta_reduce.tr_term (t2::ts)
+      end
+  | Proj(i, {desc=Tuple ts}) -> beta_reduce.tr_term @@ List.nth ts i
   | If(t1,t2,t3) when is_simple_bexp t1 && get_fv t1 = [] ->
-      Format.printf "%s@." __LOC__;
       beta_reduce.tr_term @@ if eval_bexp t1 then t2 else t3
   | _ -> beta_reduce.tr_term_rec t
 
@@ -2199,7 +2183,8 @@ let rec replace_main ?(force=false) main t =
       assert (force || t.desc = Const Unit);
       main
 
-let set_main do_not_inline t =
+
+let set_main t =
   let defs, body = decomp_prog t in
   if defs = [] then
     let u = Id.new_var ~name:"main" t.typ in
@@ -2214,7 +2199,8 @@ let set_main do_not_inline t =
         let bindings =
           let aux i x =
             let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-            x', [], make_randvalue_unit @@ Id.typ x
+            let t = make_randvalue_unit @@ Id.typ x in
+            x', [], t
           in
           List.mapi aux xs
         in
@@ -2222,12 +2208,11 @@ let set_main do_not_inline t =
         let main = make_lets bindings main in
         let u = Id.new_var ~name:"main" main.typ in
         let main = make_let [u, [], main] unit_term in
-        let main = if do_not_inline then add_attr ADoNotInline main else main in
         Some u, replace_main main t
     in
-    Some (Id.name f, f', List.length xs),
-    inst_randval t'
-let set_main ?(do_not_inline=false) = set_main do_not_inline |- Pair.map_snd (flatten_tvar |- inline_var_const)
+    let t'' = inst_randval t' in
+    Some (Id.name f, f', List.length xs), t''
+let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
 
@@ -2284,7 +2269,7 @@ let beta_reduce_trivial_term env t =
           else raise Not_found
         with Not_found -> beta_reduce_trivial.tr2_term_rec env t
       end
-  | Let(flag, bindings, t1) when not @@ List.mem ADoNotInline t.attr ->
+  | Let(flag, bindings, t1) ->
       let env' = List.filter_map (fun (f,xs,t) -> if get_fv t = [] then Some (f,(List.length xs,t)) else None) bindings @ env in
       let bindings' = List.map (Triple.map_trd @@ beta_reduce_trivial.tr2_term env') bindings in
       make_let_f flag bindings' @@ beta_reduce_trivial.tr2_term env' t1
@@ -2348,44 +2333,47 @@ let null_tuple_to_unit = null_tuple_to_unit.tr_term
 
 
 let beta_full_app = make_trans2 ()
-let beta_full_app_desc (tr,f,xs,t) desc =
+let beta_full_app_desc (f,xs,t) desc =
   match desc with
-  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (tr @@ subst_map (List.combine xs ts) t).desc
-  | _ -> beta_full_app.tr2_desc_rec (tr,f,xs,t) desc
+  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (subst_map (List.combine xs ts) t).desc
+  | _ -> beta_full_app.tr2_desc_rec (f,xs,t) desc
 let () = beta_full_app.tr2_desc <- beta_full_app_desc
-let beta_full_app tr (f,xs,t) = beta_full_app.tr2_term (tr,f,xs,t)
+let beta_full_app = beta_full_app.tr2_term
 
-
-let not_rand_int t = (* for non-termination *)
-  match t.desc with
-  | App({desc=Const(RandValue _)}, _) -> false
-  | _ -> true
-
-let is_affine xs t1 =
-  let fv =
-    get_fv ~cmp:(fun _ _ -> false) t1
-    |> List.filter_out (Id.mem -$- xs)
-  in
-  List.length fv = List.length @@ List.unique ~cmp:Id.eq fv
 
 let beta_affine_fun = make_trans ()
-let beta_affine_fun_term t =
-  let t' = beta_affine_fun.tr_term_rec t in
-  let t'' =
-    match t'.desc with
-    | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] && not_rand_int t1 && is_affine xs t1 && not @@ List.mem ADoNotInline t.attr ->
-        begin
-          let t2' = beta_full_app beta_affine_fun.tr_term (f, xs, t1) t2 in
-          if Id.mem f @@ get_fv t2'
-          then make_let [f, xs, t1] t2'
-          else t2'
-        end
-    | App({desc=Fun(x,t1)}, t2::ts) when is_affine [x] t1 ->
-        make_app (subst x t2 t1) ts
-    | _ -> t'
-  in
-  {t'' with attr=t.attr}
-let () = beta_affine_fun.tr_term <- beta_affine_fun_term
+let beta_affine_fun_desc desc =
+  match desc with
+  | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] ->
+      let t1' = beta_affine_fun.tr_term t1 in
+      begin
+        match t1' with
+        | {desc=App(t0,ts)} ->
+            let size_1 t =
+              match t.desc with
+              | Const _
+              | Var _ -> true
+              | _ -> false
+            in
+            let used = List.Set.inter xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
+            let not_rand_int t = (* for non-termination *)
+              match t.desc with
+              | App({desc=Const(RandValue(TInt,_))}, _) -> false
+              | _ -> true
+            in
+            if List.for_all size_1 ts && used = List.unique used && not_rand_int t1
+            then
+              let t2' = beta_affine_fun.tr_term t2 in
+              let t2'' = beta_full_app (f, xs, t1') t2' in
+              let t2''' = beta_affine_fun.tr_term t2'' in
+              if Id.mem f @@ get_fv t2'''
+              then Let(Nonrecursive, [f, xs, t1'], t2''')
+              else t2'''.desc
+            else beta_affine_fun.tr_desc_rec desc
+        | _ -> beta_affine_fun.tr_desc_rec desc
+      end
+  | _ -> beta_affine_fun.tr_desc_rec desc
+let () = beta_affine_fun.tr_desc <- beta_affine_fun_desc
 let beta_affine_fun = beta_affine_fun.tr_term -| merge_let_fun
 
 
@@ -2639,11 +2627,9 @@ let rec remove_new_main main t =
   | _ -> invalid_arg "remove_new_main"
 
 let add_main_and_trans f t =
-  let main,t' = set_main ~do_not_inline:true t in
+  let main,t' = set_main t in
   match main with
   | Some(_, Some new_main, _) ->
-      if !!debug then Format.printf "add_main_and_trans new_main: %a@." Id.print new_main;
-      if !!debug then Format.printf "add_main_and_trans set_main: %a@." Print.term t';
       begin
         try
           remove_new_main new_main @@ f t'

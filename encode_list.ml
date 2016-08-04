@@ -193,82 +193,79 @@ let rec make_rand typ =
   | _ -> make_randvalue_unit typ
 
 let abst_list_term post t =
-  let t' =
-    match t.desc with
-    | App({desc=Const(RandValue(TInt,false)); attr}, t2) when List.mem AAbst_under attr -> (* for disproving termination  *)
-        assert (t2 = [unit_term]);
-        t
-    | App({desc=Const(RandValue(typ,false))}, t2) ->
-        assert (t2 = [unit_term]);
-        make_rand typ
-    | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
-        let t1' = abst_list.tr2_term post t1 in
+  match t.desc with
+  | App({desc=Const(RandValue(TInt,false)); attr}, t2) when List.mem AAbst_under attr -> (* for disproving termination  *)
+      assert (t2 = [unit_term]);
+      t
+  | App({desc=Const(RandValue(typ,false))}, t2) ->
+      assert (t2 = [unit_term]);
+      make_rand typ
+  | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
+      let t1' = abst_list.tr2_term post t1 in
+      let t2' = abst_list.tr2_term post t2 in
+      make_app (make_snd t1') [t2']
+  | App({desc=Var x}, [t]) when x = length_var -> make_fst @@ abst_list.tr2_term post t
+  | Let(flag, bindings, t2) ->
+      let aux (f,xs,t) =
+        let post' = "_" ^ Id.name f in
+        abst_list.tr2_var post f, List.map (abst_list.tr2_var post) xs, abst_list.tr2_term post' t
+      in
+      let bindings' = List.map aux bindings in
+      make_let_f flag bindings' (abst_list.tr2_term post t2)
+  | Nil ->
+      let typ'' = abst_list.tr2_typ post @@ list_typ t.typ in
+      make_pair (make_int 0) (make_fun (Id.new_var TInt) (make_bottom typ''))
+  | Cons _ when is_literal t ->
+      let typ'' = abst_list.tr2_typ post @@ list_typ t.typ in
+      let ts = decomp_literal t in
+      let ts' = List.map (abst_list.tr2_term post) ts in
+      let xs = List.map new_var_of_term ts' in
+      let bindings = List.rev_map2 (fun x t -> x, [], t) xs ts' in
+      let x = Id.new_var ~name:"i" TInt in
+      let aux y (i,t) =
+        i-1, make_if (make_eq (make_var x) @@ make_int i) (make_var y) t
+      in
+      let n = List.length ts in
+      let _,t = List.fold_right aux xs (n-1, make_bottom typ'') in
+      make_lets bindings @@ make_pair (make_int n) (make_fun x t)
+  | Cons(t1,t2) ->
+      let t1' = abst_list.tr2_term post t1 in
+      let t2' = abst_list.tr2_term post t2 in
+      let i = Id.new_var ~name:"i" TInt in
+      let x = Id.new_var ~name:"x" t1'.typ in
+      let xs = Id.new_var ~name:"xs" t2'.typ in
+      let t11 = make_eq (make_var i) (make_int 0) in
+      let t12 = make_var x in
+      let t13 = make_app (make_snd (make_var xs)) [make_sub (make_var i) (make_int 1)] in
+      let t_f = make_fun i (make_if t11 t12 t13) in
+      let t_len = make_add (make_fst (make_var xs)) (make_int 1) in
+      let cons = Id.new_var ~name:("cons"^post) (TFun(x,TFun(xs,t2'.typ))) in
+      make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1'; t2'])
+  | Constr("Abst",[]) -> t
+  | Constr(s,ts) -> assert false
+  | Match(t1,pats) ->
+      let x,bindx =
+        let x = Id.new_var ~name:"xs" (abst_list.tr2_typ post t1.typ) in
+        x, fun t -> make_let [x, [], abst_list.tr2_term post t1] t
+      in
+      let aux (p,cond,t2) t3 =
+        let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
+        let bind,cond' = get_match_bind_cond (make_var x) p in
+        if debug() then Format.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
+        let t_cond,bind' =
+          if cond = true_term
+          then cond, bind
+          else
+            let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
+            cond', bind
+        in
+        if debug() then Format.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
         let t2' = abst_list.tr2_term post t2 in
-        make_app (make_snd t1') [t2']
-    | App({desc=Var x}, [t]) when x = length_var -> make_fst @@ abst_list.tr2_term post t
-    | Let(flag, bindings, t2) ->
-        let aux (f,xs,t) =
-          let post' = "_" ^ Id.name f in
-          abst_list.tr2_var post f, List.map (abst_list.tr2_var post) xs, abst_list.tr2_term post' t
-        in
-        let bindings' = List.map aux bindings in
-        make_let_f flag bindings' (abst_list.tr2_term post t2)
-    | Nil ->
-        let typ'' = abst_list.tr2_typ post @@ list_typ t.typ in
-        make_pair (make_int 0) (make_fun (Id.new_var TInt) (make_bottom typ''))
-    | Cons _ when is_literal t ->
-        let typ'' = abst_list.tr2_typ post @@ list_typ t.typ in
-        let ts = decomp_literal t in
-        let ts' = List.map (abst_list.tr2_term post) ts in
-        let xs = List.map new_var_of_term ts' in
-        let bindings = List.rev_map2 (fun x t -> x, [], t) xs ts' in
-        let x = Id.new_var ~name:"i" TInt in
-        let aux y (i,t) =
-          i-1, make_if (make_eq (make_var x) @@ make_int i) (make_var y) t
-        in
-        let n = List.length ts in
-        let _,t = List.fold_right aux xs (n-1, make_bottom typ'') in
-        make_lets bindings @@ make_pair (make_int n) (make_fun x t)
-    | Cons(t1,t2) ->
-        let t1' = abst_list.tr2_term post t1 in
-        let t2' = abst_list.tr2_term post t2 in
-        let i = Id.new_var ~name:"i" TInt in
-        let x = Id.new_var ~name:"x" t1'.typ in
-        let xs = Id.new_var ~name:"xs" t2'.typ in
-        let t11 = make_eq (make_var i) (make_int 0) in
-        let t12 = make_var x in
-        let t13 = make_app (make_snd (make_var xs)) [make_sub (make_var i) (make_int 1)] in
-        let t_f = make_fun i (make_if t11 t12 t13) in
-        let t_len = make_add (make_fst (make_var xs)) (make_int 1) in
-        let cons = Id.new_var ~name:("cons"^post) (TFun(x,TFun(xs,t2'.typ))) in
-        make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1'; t2'])
-    | Constr("Abst",[]) -> t
-    | Constr(s,ts) -> assert false
-    | Match(t1,pats) ->
-        let x,bindx =
-          let x = Id.new_var ~name:"xs" (abst_list.tr2_typ post t1.typ) in
-          x, fun t -> make_let [x, [], abst_list.tr2_term post t1] t
-        in
-        let aux (p,cond,t2) t3 =
-          let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
-          let bind,cond' = get_match_bind_cond (make_var x) p in
-          if debug() then Format.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
-          let t_cond,bind' =
-            if cond = true_term
-            then cond, bind
-            else
-              let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
-              cond', bind
-          in
-          if debug() then Format.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
-          let t2' = abst_list.tr2_term post t2 in
-          make_if (make_and cond' t_cond) (add_bind bind' t2') t3
-        in
-        let t_pats = List.fold_right aux pats (make_bottom @@ abst_list.tr2_typ post t.typ) in
-        bindx t_pats
-    | _ -> abst_list.tr2_term_rec post t
-  in
-  {t' with attr=t.attr}
+        make_if (make_and cond' t_cond) (add_bind bind' t2') t3
+      in
+      let t_pats = List.fold_right aux pats (make_bottom @@ abst_list.tr2_typ post t.typ) in
+      bindx t_pats
+  | _ -> abst_list.tr2_term_rec post t
 
 let () = abst_list.tr2_term <- abst_list_term
 let () = abst_list.tr2_typ <- abst_list_typ
@@ -401,50 +398,46 @@ let rec get_match_bind_cond t p =
 
 let abst_list_opt_term t =
   let typ' = abst_list_opt.tr_typ t.typ in
-  let t' =
-    match t.desc with
-    | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
-        let t1' = abst_list_opt.tr_term t1 in
-        let t2' = abst_list_opt.tr_term t2 in
-        let t = make_app t1' [t2'] in
-        let x = Id.new_var t.typ in
-        make_let [x,[],t] @@ make_get_val @@ make_var x
-    | Nil ->
-        let el_typ = snd_typ @@ result_typ typ' in
-        make_fun (Id.new_var TInt) (make_none el_typ)
-    | Cons(t1,t2) ->
-        let t1' = abst_list_opt.tr_term t1 in
-        let t2' = abst_list_opt.tr_term t2 in
-        let i = Id.new_var ~name:"i" TInt in
-        let x = Id.new_var ~name:"x" t1'.typ in
-        let xs = Id.new_var ~name:"xs" t2'.typ in
-        let t11 = make_eq (make_var i) (make_int 0) in
-        let t12 = make_some (make_var x) in
-        let t13 = make_app (make_var xs) [make_sub (make_var i) (make_int 1)] in
-        if true
-        then
-          make_lets [x,[],t1'; xs,[],t2'] @@ make_fun i (make_if t11 t12 t13)
-        else
-          let cons = Id.new_var ~name:"cons" (TFun(x,TFun(xs,t2'.typ))) in
-          make_let [cons, [x;xs], make_fun i (make_if t11 t12 t13)] (make_app (make_var cons) [t1'; t2'])
-    | Match(t1,pats) ->
-        let x = Id.new_var ~name:"xs" (abst_list_opt.tr_typ t1.typ) in
-        let aux (p,cond,t) t' =
-          let bind,cond' = get_match_bind_cond (make_var x) p in
-          let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
-          let t_cond =
-            if cond = true_term
-            then cond
-            else add_bind (abst_list_opt.tr_term cond)
-          in
-          make_if (make_and cond' t_cond) (add_bind (abst_list_opt.tr_term t)) t'
+  match t.desc with
+  | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
+      let t1' = abst_list_opt.tr_term t1 in
+      let t2' = abst_list_opt.tr_term t2 in
+      let t = make_app t1' [t2'] in
+      let x = Id.new_var t.typ in
+      make_let [x,[],t] @@ make_get_val @@ make_var x
+  | Nil ->
+      let el_typ = snd_typ @@ result_typ typ' in
+      make_fun (Id.new_var TInt) (make_none el_typ)
+  | Cons(t1,t2) ->
+      let t1' = abst_list_opt.tr_term t1 in
+      let t2' = abst_list_opt.tr_term t2 in
+      let i = Id.new_var ~name:"i" TInt in
+      let x = Id.new_var ~name:"x" t1'.typ in
+      let xs = Id.new_var ~name:"xs" t2'.typ in
+      let t11 = make_eq (make_var i) (make_int 0) in
+      let t12 = make_some (make_var x) in
+      let t13 = make_app (make_var xs) [make_sub (make_var i) (make_int 1)] in
+      if true
+      then
+        make_lets [x,[],t1'; xs,[],t2'] @@ make_fun i (make_if t11 t12 t13)
+      else
+        let cons = Id.new_var ~name:"cons" (TFun(x,TFun(xs,t2'.typ))) in
+        make_let [cons, [x;xs], make_fun i (make_if t11 t12 t13)] (make_app (make_var cons) [t1'; t2'])
+  | Match(t1,pats) ->
+      let x = Id.new_var ~name:"xs" (abst_list_opt.tr_typ t1.typ) in
+      let aux (p,cond,t) t' =
+        let bind,cond' = get_match_bind_cond (make_var x) p in
+        let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
+        let t_cond =
+          if cond = true_term
+          then cond
+          else add_bind (abst_list_opt.tr_term cond)
         in
-        let t_pats = List.fold_right aux pats (make_bottom typ') in
-        make_let [x, [], abst_list_opt.tr_term t1] t_pats
-    | _ -> abst_list_opt.tr_term_rec t
-  in
-  {t' with attr=t.attr}
-
+        make_if (make_and cond' t_cond) (add_bind (abst_list_opt.tr_term t)) t'
+      in
+      let t_pats = List.fold_right aux pats (make_bottom typ') in
+      make_let [x, [], abst_list_opt.tr_term t1] t_pats
+  | _ -> abst_list_opt.tr_term_rec t
 
 let () = abst_list_opt.tr_typ <- abst_list_opt_typ
 let () = abst_list_opt.tr_term <- abst_list_opt_term
@@ -465,7 +458,6 @@ let pr s t = if debug () then Format.printf "##[encode_list] %s:@.%a@.@." s Prin
 
 let trans t =
   t
-  |@> pr "input"
   |> inst_list_eq
   |@> pr "inst_list_eq"
   |> subst_matched_var
