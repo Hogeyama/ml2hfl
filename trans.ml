@@ -1661,33 +1661,23 @@ let elim_unused_let_term cbv t =
     then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
     else has_no_effect t
   in
-  let desc' =
-    let flag = List.mem ADoNotInline t.attr in
-    match t.desc with
-    | Let(Nonrecursive, bindings, t) when not flag ->
-        let t' = elim_unused_let.tr2_term cbv t in
-        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
-        let fv = get_fv t' in
-        let used (f,xs,t) =
-          Id.mem f fv ||
-          cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
-        in
+  match t.desc with
+  | Let(flag, bindings, t1) when not @@ List.mem ADoNotInline t.attr ->
+      let t1' = elim_unused_let.tr2_term cbv t1 in
+      let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+      let fv = get_fv t1' in
+      let used (f,xs,t) =
+        Id.mem f fv ||
+        cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+      in
+      if flag = Nonrecursive then
         let bindings'' = List.filter used bindings' in
-        (make_let bindings'' t').desc
-    | Let(Recursive, bindings, t) when not flag ->
-        let t' = elim_unused_let.tr2_term cbv t in
-        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
-        let fv = get_fv t' in
-        let used (f,xs,t) =
-          Id.mem f fv ||
-          cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
-        in
-        if List.exists used bindings'
-        then (make_letrec bindings' t').desc
-        else t'.desc
-    | _ -> elim_unused_let.tr2_desc_rec cbv t.desc
-  in
-  {t with desc=desc'}
+        make_let ~attr:t.attr bindings'' t1'
+      else if List.exists used bindings' then
+        make_letrec ~attr:t.attr bindings' t1'
+      else
+        t1'
+  | _ -> elim_unused_let.tr2_term_rec cbv t
 let () = elim_unused_let.tr2_term <- elim_unused_let_term
 let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
 
@@ -2269,7 +2259,7 @@ let beta_reduce_trivial_term env t =
           else raise Not_found
         with Not_found -> beta_reduce_trivial.tr2_term_rec env t
       end
-  | Let(flag, bindings, t1) ->
+  | Let(flag, bindings, t1) when not @@ List.mem ADoNotInline t.attr ->
       let env' = List.filter_map (fun (f,xs,t) -> if get_fv t = [] then Some (f,(List.length xs,t)) else None) bindings @ env in
       let bindings' = List.map (Triple.map_trd @@ beta_reduce_trivial.tr2_term env') bindings in
       make_let_f flag bindings' @@ beta_reduce_trivial.tr2_term env' t1
@@ -2278,9 +2268,13 @@ let beta_reduce_trivial_term env t =
 let () = beta_reduce_trivial.tr2_term <- fun env t -> recover_const_attr_shallowly @@ beta_reduce_trivial_term env t
 let beta_reduce_trivial t =
   t
+  |@> Format.printf "INPUT: %a@." Print.term
   |> beta_reduce_trivial.tr2_term []
+  |@> Format.printf "BETA: %a@." Print.term
   |> elim_unused_let
+  |@> Format.printf "ELIM: %a@." Print.term
   |> inline_var_const
+  |@> Format.printf "INLINE: %a@." Print.term
 
 
 let exists_exception = make_col false (||)
@@ -2333,47 +2327,40 @@ let null_tuple_to_unit = null_tuple_to_unit.tr_term
 
 
 let beta_full_app = make_trans2 ()
-let beta_full_app_desc (f,xs,t) desc =
+let beta_full_app_desc (tr,f,xs,t) desc =
   match desc with
-  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (subst_map (List.combine xs ts) t).desc
-  | _ -> beta_full_app.tr2_desc_rec (f,xs,t) desc
+  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (tr @@ subst_map (List.combine xs ts) t).desc
+  | _ -> beta_full_app.tr2_desc_rec (tr,f,xs,t) desc
 let () = beta_full_app.tr2_desc <- beta_full_app_desc
-let beta_full_app = beta_full_app.tr2_term
+let beta_full_app tr (f,xs,t) = beta_full_app.tr2_term (tr,f,xs,t)
 
+
+let not_rand_int t = (* for non-termination *)
+  match t.desc with
+  | App({desc=Const(RandValue _)}, _) -> false
+  | _ -> true
+
+let is_affine xs t1 =
+  let fv =
+    get_fv ~cmp:(fun _ _ -> false) t1
+    |> List.filter_out (Id.mem -$- xs)
+  in
+  List.length fv = List.length @@ List.unique ~cmp:Id.eq fv
 
 let beta_affine_fun = make_trans ()
-let beta_affine_fun_desc desc =
-  match desc with
-  | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] ->
-      let t1' = beta_affine_fun.tr_term t1 in
-      begin
-        match t1' with
-        | {desc=App(t0,ts)} ->
-            let size_1 t =
-              match t.desc with
-              | Const _
-              | Var _ -> true
-              | _ -> false
-            in
-            let used = List.Set.inter xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
-            let not_rand_int t = (* for non-termination *)
-              match t.desc with
-              | App({desc=Const(RandValue(TInt,_))}, _) -> false
-              | _ -> true
-            in
-            if List.for_all size_1 ts && used = List.unique used && not_rand_int t1
-            then
-              let t2' = beta_affine_fun.tr_term t2 in
-              let t2'' = beta_full_app (f, xs, t1') t2' in
-              let t2''' = beta_affine_fun.tr_term t2'' in
-              if Id.mem f @@ get_fv t2'''
-              then Let(Nonrecursive, [f, xs, t1'], t2''')
-              else t2'''.desc
-            else beta_affine_fun.tr_desc_rec desc
-        | _ -> beta_affine_fun.tr_desc_rec desc
-      end
-  | _ -> beta_affine_fun.tr_desc_rec desc
-let () = beta_affine_fun.tr_desc <- beta_affine_fun_desc
+let beta_affine_fun_term t =
+  let t' = beta_affine_fun.tr_term_rec t in
+  match t'.desc with
+  | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] && not_rand_int t1 && is_affine xs t1 && not @@ List.mem ADoNotInline t.attr ->
+      let t2' = beta_full_app beta_affine_fun.tr_term (f, xs, t1) t2 in
+      if Id.mem f @@ get_fv t2'
+      then {(make_let [f, xs, t1] t2') with attr=t.attr}
+      else t2'
+  | App({desc=Fun(x,t1)}, t2::ts) when is_affine [x] t1 ->
+      let t1' = {(subst x t2 t1) with attr=t1.attr} in
+      make_app t1' ts
+  | _ -> {t' with attr=t.attr}
+let () = beta_affine_fun.tr_term <- beta_affine_fun_term
 let beta_affine_fun = beta_affine_fun.tr_term -| merge_let_fun
 
 

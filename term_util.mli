@@ -40,11 +40,11 @@ val make_randint_cps : bool -> typed_term
 val make_app : typed_term -> typed_term list -> typed_term
 val make_app_raw : typed_term -> typed_term list -> typed_term (** Does not merge arguments *)
 val make_fail : typ -> typed_term
-val make_let : (id * id list * typed_term) list -> typed_term -> typed_term
+val make_let : ?attr:attr list -> (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets : (id * id list * typed_term) list -> typed_term -> typed_term
 val make_letrecs : (id * id list * typed_term) list -> typed_term -> typed_term
-val make_letrec : (id * id list * typed_term) list -> typed_term -> typed_term
-val make_let_f : rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
+val make_letrec : ?attr:attr list -> (id * id list * typed_term) list -> typed_term -> typed_term
+val make_let_f : ?attr:attr list -> rec_flag -> (id * id list * typed_term) list -> typed_term -> typed_term
 val make_lets_f : (rec_flag * (id * id list * typed_term)) list -> typed_term -> typed_term
 val make_fun : id -> typed_term -> typed_term
 val make_funs : id list -> typed_term -> typed_term
