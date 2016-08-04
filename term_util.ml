@@ -101,7 +101,7 @@ let rec make_app t ts =
 let make_app_raw t ts =
   let t' = make_app t ts in
   {t' with desc=App(t,ts)}
-let make_let_f flag bindings t2 =
+let make_let_f ?(attr=[]) flag bindings t2 =
   if bindings = [] then
     t2
   else
@@ -112,9 +112,9 @@ let make_let_f flag bindings t2 =
       | _ -> f, xs, t
     in
     let bindings' = List.map aux bindings in
-    {desc=Let(flag,bindings',t2); typ=t2.typ; attr=[]}
-let make_let bindings t2 = make_let_f Nonrecursive bindings t2
-let make_letrec bindings t2 = make_let_f Recursive bindings t2
+    {desc=Let(flag,bindings',t2); typ=t2.typ; attr}
+let make_let ?(attr=[]) bindings t2 = make_let_f ~attr Nonrecursive bindings t2
+let make_letrec ?(attr=[]) bindings t2 = make_let_f ~attr Recursive bindings t2
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
 let make_letrecs bindings t2 =

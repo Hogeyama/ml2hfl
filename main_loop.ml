@@ -10,7 +10,7 @@ let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ)
   let r = f t in
   if b then Format.printf "END: %s@." desc;
   let t' = proj_out r in
-  if !Flag.debug_level > 0 && proj_in t <> t' && opt
+  if true|| !Flag.debug_level > 0 && proj_in t <> t' && opt
   then Format.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 

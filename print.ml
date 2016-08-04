@@ -106,7 +106,7 @@ and print_attr fm = function
   | AMark -> fprintf fm "AMark"
   | ADoNotInline -> fprintf fm "ADoNotInline"
 
-and ignore_attr_list = if true then const_attr else []
+and ignore_attr_list = if true then ADoNotInline::const_attr else []
 
 and print_attr_list fm attrs =
   List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
@@ -117,18 +117,18 @@ and print_term pri typ fm t =
     | AComment s -> Some s
     | _ -> None
   in
-  let pr fm desc =
+  let pr attr fm desc =
     let comments = List.filter_map decomp_comment t.attr in
     if comments = []
-    then fprintf fm "@[%a@]" (print_desc pri typ) desc
-    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc pri typ) desc
+    then fprintf fm "@[%a@]" (print_desc attr pri typ) desc
+    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc attr pri typ) desc
   in
   let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
   if List.Set.subset attr ignore_attr_list
-  then pr fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" pr t.desc print_attr_list t.attr
+  then pr t.attr fm t.desc
+  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list t.attr
 
-and print_desc pri typ fm desc =
+and print_desc attr pri typ fm desc =
   match desc with
   | Const c -> print_const fm c
   | Var x -> print_id fm x
@@ -181,7 +181,12 @@ and print_desc pri typ fm desc =
       let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
       let b = ref true in
       let print_binding fm (f,xs,t1) =
-        let pre = if !b then "let" ^ s_rec else "and" in
+        let pre =
+          if !b then
+            "let" ^ (if List.mem ADoNotInline attr then "!" else "") ^ s_rec
+          else
+            "and"
+        in
         fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
         b := false
       in
@@ -558,7 +563,7 @@ let id = print_id
 let id_typ = print_id_typ
 let pattern = print_pattern
 let const = print_const
-let desc = print_desc 0 false
+let desc = print_desc [] 0 false
 let term = print_term false
 let term' = print_term' 0
 let term_typ = print_term true

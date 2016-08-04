@@ -123,11 +123,20 @@ let rec main_loop history c prog cmp f typ ce_set extend =
       refine_loop (merge_ce_set ce_set1 ce_set) extend
 let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ [] []
 
+let rec add_ADoNotInline t =
+  match t.desc with
+  | Let(flag, bindings, t1) ->
+      let t1' = add_ADoNotInline t1 in
+      let attr = ADoNotInline::t.attr in
+      {t1' with desc=Let(flag,bindings,t1'); attr}
+  | _ -> t
+
 let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
   let (fbindings,body) =
     let aux t =
       t
+      |> add_ADoNotInline
       |@!!debug&> Format.printf "PARSED: %a@.@." Print.term'
       |> Main_loop.run_preprocess @@ Main_loop.preprocesses spec
       |> Main_loop.last_t
