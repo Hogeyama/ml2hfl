@@ -1304,7 +1304,7 @@ let make_ext_funs ?(fvs=[]) env t =
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
-      let genv',cenv',t = Ref_type_gen.generate genv cenv typ in
+      let genv',cenv',t = Ref_type.generate genv cenv typ in
       let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
       genv', cenv', (f',[],t)::defs
     in
@@ -1656,30 +1656,40 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 let elim_unused_let = make_trans2 ()
 
 let elim_unused_let_term cbv t =
-  let has_no_effect' t =
+  let has_no_effect t =
     if false
     then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
     else has_no_effect t
   in
-  match t.desc with
-  | Let(flag, bindings, t1) when not @@ List.mem ADoNotInline t.attr ->
-      let t1' = elim_unused_let.tr2_term cbv t1 in
-      let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
-      let fv = get_fv t1' in
-      let used (f,xs,t) =
-        Id.mem f fv ||
-        cbv && not @@ has_no_effect' @@ List.fold_right make_fun xs t
-      in
-      if flag = Nonrecursive then
+  let desc' =
+    let flag = List.mem ADoNotInline t.attr in
+    match t.desc with
+    | Let(Nonrecursive, bindings, t) when not flag ->
+        let t' = elim_unused_let.tr2_term cbv t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let fv = get_fv t' in
+        let used (f,xs,t) =
+          Id.mem f fv ||
+          cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+        in
         let bindings'' = List.filter used bindings' in
-        make_let ~attr:t.attr bindings'' t1'
-      else if List.exists used bindings' then
-        make_letrec ~attr:t.attr bindings' t1'
-      else
-        t1'
-  | _ -> elim_unused_let.tr2_term_rec cbv t
+        (make_let bindings'' t').desc
+    | Let(Recursive, bindings, t) when not flag ->
+        let t' = elim_unused_let.tr2_term cbv t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let fv = get_fv t' in
+        let used (f,xs,t) =
+          Id.mem f fv ||
+          cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+        in
+        if List.exists used bindings'
+        then (make_letrec bindings' t').desc
+        else t'.desc
+    | _ -> elim_unused_let.tr2_desc_rec cbv t.desc
+  in
+  {t with desc=desc'}
 let () = elim_unused_let.tr2_term <- elim_unused_let_term
-let elim_unused_let ?(cbv=true) = preserve_CPS @@ elim_unused_let.tr2_term cbv
+let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
 
 
 
@@ -2182,9 +2192,9 @@ let set_main t =
   else
     let f = Triple.fst @@ List.last @@ snd @@ List.last defs in
     let xs = get_args (Id.typ f) in
-    let f',t' =
+    let t' =
       if xs = [] && Id.typ f = TUnit then
-        None, replace_main (make_var f) t
+        replace_main (make_var f) t
       else
         let bindings =
           let aux i x =
@@ -2198,10 +2208,10 @@ let set_main t =
         let main = make_lets bindings main in
         let u = Id.new_var ~name:"main" main.typ in
         let main = make_let [u, [], main] unit_term in
-        Some u, replace_main main t
+        replace_main main t
     in
     let t'' = inst_randval t' in
-    Some (Id.name f, f', List.length xs), t''
+    Some (Id.name f, List.length xs), t''
 let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
@@ -2217,7 +2227,7 @@ let ref_to_assert ref_env t =
           Format.printf "  Spec: %a@." Ref_type.print typ;
           fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
         end;
-      let genv',cenv',t_typ = Ref_type_gen.generate_check [] [] f typ in
+      let genv',cenv',t_typ = Ref_type.generate_check [] [] f typ in
       let defs = List.map snd (genv' @ cenv') in
       make_letrecs defs @@ make_assert t_typ
     in
@@ -2259,7 +2269,7 @@ let beta_reduce_trivial_term env t =
           else raise Not_found
         with Not_found -> beta_reduce_trivial.tr2_term_rec env t
       end
-  | Let(flag, bindings, t1) when not @@ List.mem ADoNotInline t.attr ->
+  | Let(flag, bindings, t1) ->
       let env' = List.filter_map (fun (f,xs,t) -> if get_fv t = [] then Some (f,(List.length xs,t)) else None) bindings @ env in
       let bindings' = List.map (Triple.map_trd @@ beta_reduce_trivial.tr2_term env') bindings in
       make_let_f flag bindings' @@ beta_reduce_trivial.tr2_term env' t1
@@ -2268,13 +2278,9 @@ let beta_reduce_trivial_term env t =
 let () = beta_reduce_trivial.tr2_term <- fun env t -> recover_const_attr_shallowly @@ beta_reduce_trivial_term env t
 let beta_reduce_trivial t =
   t
-  |@> Format.printf "INPUT: %a@." Print.term
   |> beta_reduce_trivial.tr2_term []
-  |@> Format.printf "BETA: %a@." Print.term
   |> elim_unused_let
-  |@> Format.printf "ELIM: %a@." Print.term
   |> inline_var_const
-  |@> Format.printf "INLINE: %a@." Print.term
 
 
 let exists_exception = make_col false (||)
@@ -2327,40 +2333,47 @@ let null_tuple_to_unit = null_tuple_to_unit.tr_term
 
 
 let beta_full_app = make_trans2 ()
-let beta_full_app_desc (tr,f,xs,t) desc =
+let beta_full_app_desc (f,xs,t) desc =
   match desc with
-  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (tr @@ subst_map (List.combine xs ts) t).desc
-  | _ -> beta_full_app.tr2_desc_rec (tr,f,xs,t) desc
+  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (subst_map (List.combine xs ts) t).desc
+  | _ -> beta_full_app.tr2_desc_rec (f,xs,t) desc
 let () = beta_full_app.tr2_desc <- beta_full_app_desc
-let beta_full_app tr (f,xs,t) = beta_full_app.tr2_term (tr,f,xs,t)
+let beta_full_app = beta_full_app.tr2_term
 
-
-let not_rand_int t = (* for non-termination *)
-  match t.desc with
-  | App({desc=Const(RandValue _)}, _) -> false
-  | _ -> true
-
-let is_affine xs t1 =
-  let fv =
-    get_fv ~cmp:(fun _ _ -> false) t1
-    |> List.filter_out (Id.mem -$- xs)
-  in
-  List.length fv = List.length @@ List.unique ~cmp:Id.eq fv
 
 let beta_affine_fun = make_trans ()
-let beta_affine_fun_term t =
-  let t' = beta_affine_fun.tr_term_rec t in
-  match t'.desc with
-  | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] && not_rand_int t1 && is_affine xs t1 && not @@ List.mem ADoNotInline t.attr ->
-      let t2' = beta_full_app beta_affine_fun.tr_term (f, xs, t1) t2 in
-      if Id.mem f @@ get_fv t2'
-      then {(make_let [f, xs, t1] t2') with attr=t.attr}
-      else t2'
-  | App({desc=Fun(x,t1)}, t2::ts) when is_affine [x] t1 ->
-      let t1' = {(subst x t2 t1) with attr=t1.attr} in
-      make_app t1' ts
-  | _ -> {t' with attr=t.attr}
-let () = beta_affine_fun.tr_term <- beta_affine_fun_term
+let beta_affine_fun_desc desc =
+  match desc with
+  | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] ->
+      let t1' = beta_affine_fun.tr_term t1 in
+      begin
+        match t1' with
+        | {desc=App(t0,ts)} ->
+            let size_1 t =
+              match t.desc with
+              | Const _
+              | Var _ -> true
+              | _ -> false
+            in
+            let used = List.Set.inter xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
+            let not_rand_int t = (* for non-termination *)
+              match t.desc with
+              | App({desc=Const(RandValue(TInt,_))}, _) -> false
+              | _ -> true
+            in
+            if List.for_all size_1 ts && used = List.unique used && not_rand_int t1
+            then
+              let t2' = beta_affine_fun.tr_term t2 in
+              let t2'' = beta_full_app (f, xs, t1') t2' in
+              let t2''' = beta_affine_fun.tr_term t2'' in
+              if Id.mem f @@ get_fv t2'''
+              then Let(Nonrecursive, [f, xs, t1'], t2''')
+              else t2'''.desc
+            else beta_affine_fun.tr_desc_rec desc
+        | _ -> beta_affine_fun.tr_desc_rec desc
+      end
+  | _ -> beta_affine_fun.tr_desc_rec desc
+let () = beta_affine_fun.tr_desc <- beta_affine_fun_desc
 let beta_affine_fun = beta_affine_fun.tr_term -| merge_let_fun
 
 
@@ -2604,25 +2617,3 @@ let bool_eta_reduce_term t =
   | _ -> t'
 let () = bool_eta_reduce.tr_term <- bool_eta_reduce_term
 let bool_eta_reduce = bool_eta_reduce.tr_term
-
-
-
-let rec remove_new_main main t =
-  match t.desc with
-  | Let(_, [f,_,_], _) when Id.same f main -> unit_term
-  | Let(flag, bindings, t') -> {t with desc=Let(flag, bindings, remove_new_main main t')}
-  | _ -> invalid_arg "remove_new_main"
-
-let add_main_and_trans f t =
-  let main,t' = set_main t in
-  match main with
-  | Some(_, Some new_main, _) ->
-      Format.printf "new_main: %a@." Print.id_typ new_main;
-      let t'' = f t' in
-      if is_fun_var new_main then
-        try
-          remove_new_main new_main t''
-        with Invalid_argument "remove_new_main" -> invalid_arg "add_main_and_trans (the input function may change variable names?)"
-      else
-        t''
-  | _ -> invalid_arg "add_main_and_trans"

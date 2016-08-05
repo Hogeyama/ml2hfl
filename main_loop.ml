@@ -10,7 +10,7 @@ let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ)
   let r = f t in
   if b then Format.printf "END: %s@." desc;
   let t' = proj_out r in
-  if true|| !Flag.debug_level > 0 && proj_in t <> t' && opt
+  if !Flag.debug_level > 0 && proj_in t <> t' && opt
   then Format.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
@@ -315,7 +315,7 @@ let report_unsafe main ce set_target =
       "Unsafe!"
   in
   Color.printf Color.Bright "%s@.@." s;
-  Option.may (fun (main_fun, _, arg_num) ->
+  Option.may (fun (main_fun, arg_num) ->
               Format.printf "Input for %s:@.  %a@." main_fun
                             (print_list Format.pp_print_int "; ") (List.take arg_num ce)) main;
   try

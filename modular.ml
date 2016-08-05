@@ -8,7 +8,31 @@ let debug () = List.mem "Modular" !Flag.debug_module
 
 exception NoProgress
 
-let merge_tenv env' env = Ref_type.Env.merge env' env
+let merge_tenv env' env = Ref_type.Env.merge env' env (*
+  let aux acc (f,typ) =
+(*
+    Format.printf "MERGE_TENV acc: %a@\n" print_typ_env @@ Ref_type.Env.of_list acc;
+ *)
+    if Id.mem_assoc f acc then
+      List.map (fun (g,typ') -> g, if Id.same f g then Ref_type.inter (Ref_type.to_simple typ) [typ;typ'] else typ') acc
+    else
+      (f,typ)::acc
+  in
+  Ref_type.Env.to_list env' @ Ref_type.Env.to_list env
+  |> List.fold_left aux []
+  |> Ref_type.Env.of_list*)
+(*
+let merge_tenv env1 env2 =
+  Format.printf "MERGE_TENV env1: %a@\n" print_typ_env env1;
+  Format.printf "MERGE_TENV env1: %a@\n" print_typ_env env2;
+  let r = merge_tenv env1 env2 in
+  Format.printf "MERGE_TENV r: %a@\n" print_typ_env r;
+  r
+ *)
+(*
+let merge_tenv env' env = (* ??? *)
+  Ref_type.Env.of_list @@ List.fold_right (fun (x,typ) acc -> if Id.mem_assoc x acc then acc else (x,typ)::acc) (Ref_type.Env.to_list env) (Ref_type.Env.to_list env')
+ *)
 
 let merge_ce_set (ce_set':ce_set) (ce_set:ce_set) =
   let dbg = 0=1 in
@@ -30,6 +54,18 @@ let report_unsafe ce_set =
   Format.printf "Unsafe!@.@.";
   Format.printf "Modular counterexamples: %a@.@." print_ce_set ce_set
 
+
+let extend_ce f ce_set = assert false(*
+  if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
+  let r =
+    if 0=9 then
+      List.flatten_map (fun (g,ce) -> if Id.same f g then [f, 0::ce; f, 1::ce] else [g,ce]) ce_set
+    else
+      List.flatten_map (fun (g,ce) -> if Id.same f g then [f, ce@[0]; f, ce@[1]] else [g,ce]) ce_set
+  in
+  if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) r;
+  r
+*)
 
 let incr_extend f ce_set extend =
   let dbg = 0=1 && !!debug in
@@ -123,33 +159,28 @@ let rec main_loop history c prog cmp f typ ce_set extend =
       refine_loop (merge_ce_set ce_set1 ce_set) extend
 let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ [] []
 
-let rec add_ADoNotInline t =
-  match t.desc with
-  | Let(flag, bindings, t1) ->
-      let t1' = add_ADoNotInline t1 in
-      let attr = ADoNotInline::t.attr in
-      {t1' with desc=Let(flag,bindings,t1'); attr}
-  | _ -> t
-
 let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
-  let (fbindings,body) =
-    let aux t =
-      t
-      |> add_ADoNotInline
-      |@!!debug&> Format.printf "PARSED: %a@.@." Print.term'
-      |> Main_loop.run_preprocess @@ Main_loop.preprocesses spec
-      |> Main_loop.last_t
-      |> Trans.direct_from_CPS
-      |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term'
-      |> normalize
-      |@!!debug&> Format.printf "NORMALIZED: %a@.@." Print.term
+  let fbindings,body =
+    let pps =
+      let open Main_loop in
+      preprocesses spec
+      |> preprocess_before CPS
+      |> preprocess_filter_out [(*Encode_mutable_record; Encode_recdata; Encode_list;*) Beta_reduce_trivial]
     in
     parsed
-    |> Trans.add_main_and_trans aux
+    |@!!debug&> Format.printf "PARSED: %a@.@." Print.term'
+    |> Main_loop.run_preprocess pps
+    |> Main_loop.last_t
+    |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term'
+    |> normalize
+    |@!!debug&> Format.printf "NORMALIZED: %a@.@." Print.term
     |> decomp_prog
   in
+  assert (body.desc = Const Unit);
   if !!debug then Format.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;
+  if List.exists (snd |- List.exists (Triple.fst |- is_fun_var |- not)) fbindings then
+    unsupported "top-level let-bindings of non-functions";
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
   let fun_env = List.flatten_map (fun (_,bindings) -> List.map Triple.to_pair_r bindings) fbindings in
   let _,(main,_) = List.decomp_snoc fun_env in
