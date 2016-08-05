@@ -1656,7 +1656,7 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 let elim_unused_let = make_trans2 ()
 
 let elim_unused_let_term cbv t =
-  let has_no_effect t =
+  let has_no_effect' t =
     if false
     then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
     else has_no_effect t
@@ -1668,7 +1668,7 @@ let elim_unused_let_term cbv t =
       let fv = get_fv t1' in
       let used (f,xs,t) =
         Id.mem f fv ||
-        cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
+        cbv && not @@ has_no_effect' @@ List.fold_right make_fun xs t
       in
       if flag = Nonrecursive then
         let bindings'' = List.filter used bindings' in
@@ -1679,7 +1679,7 @@ let elim_unused_let_term cbv t =
         t1'
   | _ -> elim_unused_let.tr2_term_rec cbv t
 let () = elim_unused_let.tr2_term <- elim_unused_let_term
-let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
+let elim_unused_let ?(cbv=true) = preserve_CPS @@ elim_unused_let.tr2_term cbv
 
 
 
@@ -2617,9 +2617,12 @@ let add_main_and_trans f t =
   let main,t' = set_main t in
   match main with
   | Some(_, Some new_main, _) ->
-      begin
+      Format.printf "new_main: %a@." Print.id_typ new_main;
+      let t'' = f t' in
+      if is_fun_var new_main then
         try
-          remove_new_main new_main @@ f t'
+          remove_new_main new_main t''
         with Invalid_argument "remove_new_main" -> invalid_arg "add_main_and_trans (the input function may change variable names?)"
-      end
+      else
+        t''
   | _ -> invalid_arg "add_main_and_trans"
