@@ -8,7 +8,6 @@ open Modular_syntax
 let debug () = List.mem "Check_mod" !Flag.debug_module
 
 
-
 (*
 let print_ce_set fm ce_set =
   let pr fm (f, ce) = Format.fprintf fm "%a: %a" Id.print f (List.print Format.pp_print_int) ce in
@@ -64,14 +63,14 @@ type answer =
   | Closure of ((id * answer) list * typed_term)
   | VTuple of answer list
   | Fail
-  | Excep of answer
+
+exception Exception of answer * int list * (id * int list) list
 
 let rec value_of ans =
   match ans with
   | Closure(_, v) -> v
   | VTuple anss -> make_tuple (List.map value_of anss)
   | Fail -> fail_unit_term
-  | Excep ans -> make_raise (value_of ans) typ_unknown
 
 let rec print_val_env n fm env =
   if n <= 0 then
@@ -199,15 +198,13 @@ let rec eval top_funs val_env ce label_env t =
       let rec val_env' = (f, Closure(val_env', make_funs xs t1))::val_env in
       eval top_funs val_env' ce label_env t2
   | Raise t ->
-      assert false; (* TODO *)
       let ans, ce', paths' = eval top_funs val_env ce label_env t in
-      Excep ans, ce', paths' (* wrong *)
+      raise (Exception(ans, ce', paths'))
   | TryWith(t1, t2) ->
-      let ans, ce', paths' = eval top_funs val_env ce label_env t1 in
       begin
-        match ans with
-        | Excep _ -> assert false (* TODO *)
-        | _ -> ans, ce', paths'
+        try
+          eval top_funs val_env ce label_env t1
+        with Exception(ans, ce', paths') -> assert false
       end
   | Tuple ts ->
       let rec aux t (anss,ce,paths) =
@@ -351,7 +348,9 @@ let check prog f typ =
       if !!debug then Format.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
       let ans,ce_single',ce =
         let val_env = List.fold_left (fun val_env (f,(xs,t)) -> let rec val_env' = (f, Closure(val_env', make_funs xs t))::val_env in val_env') [] fun_env' in
-        eval top_funs val_env ce_single label_env t
+        try
+          eval top_funs val_env ce_single label_env t
+        with Exception(ans, ce, paths) -> Fail, ce, paths
       in
       if !!debug then Format.printf "  CE: %a@\n" print_ce ce;
       assert (ans = Fail);

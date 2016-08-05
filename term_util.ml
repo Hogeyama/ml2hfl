@@ -1005,3 +1005,23 @@ let () = get_ground_types.tr2_typ <- get_ground_types_typ
 let get_ground_types_term s typ t = get_ground_types.tr2_term (s,typ) t
 let get_ground_types s typ1 typ2 = get_ground_types.tr2_typ (s,typ1) typ2
  *)
+
+
+
+let find_exn_typ = make_col [] (@)
+let find_exn_typ_term t =
+  match t.desc with
+  | Raise t' ->
+      if !!debug then Format.printf "FOUND1: %a@." Print.typ t'.typ;
+      [t'.typ]
+  | TryWith(t', {typ=TFun(x, _)}) ->
+      if !!debug then Format.printf "FOUND2: %a@." Print.typ @@ Id.typ x;
+      [Id.typ x]
+  | _ -> find_exn_typ.col_term_rec t
+let find_exn_typ_typ typ = []
+let () = find_exn_typ.col_term <- find_exn_typ_term
+let () = find_exn_typ.col_typ <- find_exn_typ_typ
+let find_exn_typ t =
+  match find_exn_typ.col_term t with
+  | [] -> typ_unknown
+  | typ::_ -> typ

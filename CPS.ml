@@ -877,8 +877,8 @@ let assoc_typ_cps f typed =
       assert false
 
 
-let rec uncps_ref_type rtyp e etyp =
-  let dbg = 0=10 && !!debug in
+let rec uncps_ref_type typ_exn rtyp e etyp =
+  let dbg = 0=0 && !!debug in
   if !!debug then Format.printf "rtyp:%a@." RT.print rtyp;
   if !!debug then Format.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
   if !!debug then Format.printf "e:%a@." print_effect e;
@@ -886,33 +886,41 @@ let rec uncps_ref_type rtyp e etyp =
   match rtyp, e, etyp with
   | RT.Inter(styp, rtyps), e, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
-      let typs = List.map (fun rtyp1 -> uncps_ref_type rtyp1 e etyp) rtyps in
+      let typs = List.map (fun rtyp1 -> uncps_ref_type typ_exn rtyp1 e etyp) rtyps in
       let styp' =
         match typs with
-        | [] -> RT.to_simple @@ uncps_ref_type (RT.of_simple styp) e etyp
+        | [] -> RT.to_simple @@ uncps_ref_type typ_exn (RT.of_simple styp) e etyp
         | typ'::_ -> RT.to_simple typ'
       in
       RT.Inter(styp', typs)
   | RT.Base(b,x,ps), ENone, TBaseCPS _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
       RT.Base(b,x,ps)
+  | RT.Fun(x,rtyp1,rtyp2), ENone, TFunCPS(e,etyp1,etyp2) when !sol e <> EExcep ->
+      if dbg then Format.printf "%s@.@." __LOC__;
+      let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp1 in
+      let rtyp2' = uncps_ref_type typ_exn rtyp2 (!sol e) etyp2 in
+      RT.Fun(x, rtyp1', rtyp2')
   | RT.Fun(x,rtyp1,rtyp2), ENone, TFunCPS(e,etyp1,etyp2) ->
       if dbg then Format.printf "%s@.@." __LOC__;
-      let rtyp1' = uncps_ref_type rtyp1 ENone etyp1 in
-      let rtyp2' = uncps_ref_type rtyp2 (!sol e) etyp2 in
+      assert (!sol e = EExcep);
+      let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp1 in
+      let rtyp2' = uncps_ref_type typ_exn rtyp2 EExcep etyp2 in
       RT.Fun(x, rtyp1', rtyp2')
   | RT.Fun(_, RT.Fun(_,rtyp,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_)),
     ECont, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
-      uncps_ref_type rtyp ENone etyp
-  | RT.Fun(_, RT.Fun(_,rtyp, RT.Base(RT.Unit,_,_)), RT.Fun(_,_,RT.Base(RT.Unit,_,_))),
-    EExcep, _ -> (* TODO: refine *)
+      uncps_ref_type typ_exn rtyp ENone etyp
+  | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(RT.Unit,_,_)), RT.Fun(_,RT.Fun(_,rtyp2,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_))),
+    EExcep, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
-      uncps_ref_type rtyp ENone etyp
+      let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp in
+      let rtyp2' = uncps_ref_type typ_exn rtyp2 ENone typ_exn in
+      RT.Exn(rtyp1', rtyp2')
   | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(RT.Unit,_,_)), ECont, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
       let aux = function
-        | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type rtyp1 ENone etyp
+        | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type typ_exn rtyp1 ENone etyp
         | _ -> assert false
       in
       let typ' =
@@ -923,10 +931,10 @@ let rec uncps_ref_type rtyp e etyp =
       RT.union typ' @@ List.map aux rtyps
   | RT.Tuple xrtyps, _, TTupleCPS etyps ->
       if dbg then Format.printf "%s@.@." __LOC__;
-      RT.Tuple (List.map2 (fun (x,rtyp) etyp -> x, uncps_ref_type rtyp e etyp) xrtyps etyps)
+      RT.Tuple (List.map2 (fun (x,rtyp) etyp -> x, uncps_ref_type typ_exn rtyp e etyp) xrtyps etyps)
   | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
-      RT.ExtArg(x, rtyp1, uncps_ref_type rtyp2 e etyp)
+      RT.ExtArg(x, rtyp1, uncps_ref_type typ_exn rtyp2 e etyp)
   | _, _, TBaseCPS styp when RT.is_top' rtyp ->
       RT.top styp
   | _, _, TBaseCPS styp when RT.is_bottom' rtyp ->
@@ -945,12 +953,12 @@ let infer_effect t =
   let env = List.map (Pair.make Id.to_string (Id.typ |- infer_effect_typ |- force_cont)) ext_funs in
   infer_effect env t
 
-let make_get_rtyp typed get_rtyp f =
+let make_get_rtyp typ_exn typed get_rtyp f =
   let etyp = assoc_typ_cps f typed in
   let rtyp = get_rtyp f in
   if !!debug then
     Format.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
-  let rtyp' = uncps_ref_type rtyp ENone etyp in
+  let rtyp' = uncps_ref_type typ_exn rtyp ENone etyp in
   if !!Flag.print_ref_typ_debug then
     Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
@@ -1025,25 +1033,6 @@ let has_typ_result =
 
 
 
-let find_exn_typ = make_col [] (@)
-let find_exn_typ_term t =
-  match t.desc with
-  | Raise t' ->
-      if !!debug then Format.printf "FOUND1: %a@." Print.typ t'.typ;
-      [t'.typ]
-  | TryWith(t', {typ=TFun(x, _)}) ->
-      if !!debug then Format.printf "FOUND2: %a@." Print.typ @@ Id.typ x;
-      [Id.typ x]
-  | _ -> find_exn_typ.col_term_rec t
-let find_exn_typ_typ typ = []
-let () = find_exn_typ.col_term <- find_exn_typ_term
-let () = find_exn_typ.col_typ <- find_exn_typ_typ
-let find_exn_typ t =
-  match find_exn_typ.col_term t with
-  | [] -> typ_unknown
-  | typ::_ -> typ
-
-
 let trans_typ typ_excep typ = trans_typ typ_excep typ @@ force_cont @@ infer_effect_typ typ
 
 let pr2 s p t = if !!debug then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
@@ -1052,14 +1041,15 @@ let pr s t = pr2 s Print.term_typ t
 let trans t =
   pr "INPUT" t;
   initialize ();
+  let typ_excep = find_exn_typ t in
   let typ_excep' =
-    let typ_excep = find_exn_typ t in
     if !!debug then Format.printf "typ_excep: %a@." Print.typ typ_excep;
     if not @@ has_typ_result typ_excep then
       trans_typ typ_unknown typ_excep
     else
       typ_excep
   in
+  let typ_exn = force_cont @@ infer_effect_typ typ_excep in
   let t = Trans.short_circuit_eval t in
   let typed = infer_effect t in
   pr2 "infer_effect" print_typed_term typed;
@@ -1075,7 +1065,8 @@ let trans t =
     make_app_excep typed.effect t k h
   in
   let t' =
-    {t with attr = [ACPS]}
+    t
+    |> add_attr ACPS
     |@> pr "CPS"
     |@> Type_check.check -$- typ_result
     |> Trans.propagate_typ_arg
@@ -1094,7 +1085,7 @@ let trans t =
     |> Trans.elim_unused_branch
     |@> pr "elim_unused_let"
   in
-  t', make_get_rtyp typed
+  t', make_get_rtyp typ_exn typed
 
 
 let trans_as_direct t =
@@ -1142,6 +1133,3 @@ let rec trans_ref_typ is_CPS typ =
 
 let trans_ref_typ typ = trans_ref_typ true typ
 and trans_ref_typ_as_direct typ = trans_ref_typ false typ
-
-(*let uncps_ref_type typ_cps typ = uncps_ref_type typ_cps ENone @@ force_cont @@ infer_effect_typ @@ Ref_type.to_simple typ
- *)
