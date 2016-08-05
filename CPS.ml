@@ -487,27 +487,19 @@ let get_tfun_effect = function
   | TFunCPS(e, _, _) -> e
   | _ -> assert false
 
-let make_app' t1 ts =
-  match t1.desc, ts with
-  | Fun(x,t1'), [t2] -> subst x t2 t1'
-  | Fun _, [_;_] ->
-      Format.printf "CPS: TODO@.";
-      make_app t1 ts
-  | _ -> make_app t1 ts
-
 let make_app_cont e t k =
   match !sol e with
   | EUnknown -> assert false
-  | ENone -> make_app' k [t]
-  | ECont -> make_app' t [k]
+  | ENone -> make_app k [t]
+  | ECont -> make_app t [k]
   | EExcep -> assert false
 
 let make_app_excep e t k h =
   match !sol e with
   | EUnknown -> assert false
-  | ENone -> make_app' k [t]
-  | ECont -> make_app' t [k]
-  | EExcep -> make_app' t [k; h]
+  | ENone -> make_app k [t]
+  | ECont -> make_app t [k]
+  | EExcep -> make_app t [k; h]
 
 let new_k_var k_post typ =
   let r = Id.new_var ~name:"r" typ in
@@ -1016,11 +1008,8 @@ let () = inline_affine.tr2_term <- inline_affine_term
 let inline_affine t =
   t
   |> inline_affine.tr2_term []
-  |@> Format.printf "AFFINE: %a@." Print.term
   |> Trans.elim_unused_let
-  |@> Format.printf "ELIM: %a@." Print.term
   |> Trans.inline_var_const
-  |@> Format.printf "INLINE: %a@." Print.term
 
 
 let has_typ_result =
@@ -1086,8 +1075,7 @@ let trans t =
     make_app_excep typed.effect t k h
   in
   let t' =
-    t
-    |> add_attr ACPS
+    {t with attr = [ACPS]}
     |@> pr "CPS"
     |@> Type_check.check -$- typ_result
     |> Trans.propagate_typ_arg
@@ -1155,7 +1143,5 @@ let rec trans_ref_typ is_CPS typ =
 let trans_ref_typ typ = trans_ref_typ true typ
 and trans_ref_typ_as_direct typ = trans_ref_typ false typ
 
-let trans_no_main t =
-  match t.desc with
-  | Let _ -> Trans.add_main_and_trans (fst -| trans) t
-  | _ -> fst @@ trans t
+(*let uncps_ref_type typ_cps typ = uncps_ref_type typ_cps ENone @@ force_cont @@ infer_effect_typ @@ Ref_type.to_simple typ
+ *)
