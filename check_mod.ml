@@ -272,13 +272,14 @@ let add_context prog f typ =
     |> normalize
     |@dbg&> Format.printf "ADD_CONTEXT t': %a@." Print.term
   in
+  let typ_exn = find_exn_typ t' in
   let fun_env' =
     env
     |> Ref_type.Env.filter_key (Id.mem -$- fs)
     |@dbg&> (fun x -> Format.printf "AAA@.")
     |> Ref_type.Env.to_list
     |@dbg&> (fun x -> Format.printf "AAA@.")
-    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate [] [])
+    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate typ_exn [] [])
     |@dbg&> Format.printf "ADD_CONTEXT fun_env': %a@." Modular_syntax.print_def_env
   in
   let fun_env'' =

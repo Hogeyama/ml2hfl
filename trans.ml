@@ -1284,6 +1284,7 @@ let make_ext_fun_def f =
 
 let make_ext_funs ?(fvs=[]) env t =
   let dbg = 0=1 in
+  let typ_exn = find_exn_typ t in
   let t' = remove_defs (Ref_type.Env.dom env) t in
   if dbg then Format.printf "MEF t': %a@." Print.term t';
   if dbg then Format.printf "MEF env: %a@." Ref_type.Env.print env;
@@ -1304,7 +1305,7 @@ let make_ext_funs ?(fvs=[]) env t =
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
-      let genv',cenv',t = Ref_type_gen.generate genv cenv typ in
+      let genv',cenv',t = Ref_type_gen.generate typ_exn genv cenv typ in
       let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
       genv', cenv', (f',[],t)::defs
     in
@@ -2217,6 +2218,7 @@ let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
 let ref_to_assert ref_env t =
+  let typ_exn = find_exn_typ t in
   let ref_env = Ref_type.Env.to_list ref_env in
   let main =
     let aux (f, typ) =
@@ -2227,7 +2229,7 @@ let ref_to_assert ref_env t =
           Format.printf "  Spec: %a@." Ref_type.print typ;
           fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
         end;
-      let genv',cenv',t_typ = Ref_type_gen.generate_check [] [] f typ in
+      let genv',cenv',t_typ = Ref_type_gen.generate_check typ_exn [] [] f typ in
       let defs = List.map snd (genv' @ cenv') in
       make_letrecs defs @@ make_assert t_typ
     in
