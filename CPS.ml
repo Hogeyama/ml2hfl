@@ -1016,8 +1016,11 @@ let () = inline_affine.tr2_term <- inline_affine_term
 let inline_affine t =
   t
   |> inline_affine.tr2_term []
+  |@> Format.printf "AFFINE: %a@." Print.term
   |> Trans.elim_unused_let
+  |@> Format.printf "ELIM: %a@." Print.term
   |> Trans.inline_var_const
+  |@> Format.printf "INLINE: %a@." Print.term
 
 
 let has_typ_result =

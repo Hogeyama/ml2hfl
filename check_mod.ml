@@ -326,6 +326,7 @@ let check prog f typ =
     preprocesses spec
     |> preprocess_and_after CPS
   in
+  let make_pps _ = [] in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_letrecs (List.map Triple.of_pair_r fun_env')

@@ -868,7 +868,11 @@ let rec get_body t =
 let count_occurrence x t =
   List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t
 
-let add_attr attr t = {t with attr=attr::t.attr}
+let add_attr attr t =
+  if List.mem attr t.attr then
+    t
+  else
+    {t with attr=attr::t.attr}
 let add_comment s t = add_attr (AComment s) t
 let add_id id t = add_attr (AId id) t
 let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}
@@ -1005,3 +1009,11 @@ let () = get_ground_types.tr2_typ <- get_ground_types_typ
 let get_ground_types_term s typ t = get_ground_types.tr2_term (s,typ) t
 let get_ground_types s typ1 typ2 = get_ground_types.tr2_typ (s,typ1) typ2
  *)
+
+let preserve_CPS tr t =
+  let is_CPS = List.mem ACPS t.attr in
+  let r = tr t in
+  if is_CPS then
+    add_attr ACPS r
+  else
+    r
