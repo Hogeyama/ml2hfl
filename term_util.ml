@@ -263,6 +263,7 @@ let make_raise t typ = {desc=Raise t; typ; attr=[]}
 let make_trywith t x pats =
   let handler = make_fun x @@ make_match (make_var x) pats in
   {desc=TryWith(t, handler); typ=t.typ; attr=[]}
+let make_trywith_simple t handler = {desc=TryWith(t, handler); typ=t.typ; attr=[]}
 
 let make_imply t1 t2 = make_or (make_not t1) t2
 
@@ -547,7 +548,9 @@ and same_desc t1 t2 =
   | Nil, Nil -> true
   | Cons _, Cons _ -> unsupported "same_term 5"
   | Constr(c1, ts1), Constr(c2, ts2) -> c1 = c2 && List.for_all2 same_term ts1 ts2
-  | Match _, Match _ -> unsupported "same_term 7"
+  | Match(t1,pats1), Match(t2,pats2) ->
+      let eq (pat1,cond1,t1) (pat2,cond2,t2) = pat1 = pat2 && same_term cond1 cond2 && same_term t1 t2 in
+      same_term t1 t2 && List.eq ~eq pats1 pats2
   | Raise t1, Raise t2 -> same_term t1 t2
   | TryWith(t11,t12), TryWith(t21,t22) -> same_term t11 t21 && same_term t12 t22
   | Tuple ts1, Tuple ts2 -> List.length ts1 = List.length ts2 && List.for_all2 same_term ts1 ts2
@@ -1023,5 +1026,5 @@ let () = find_exn_typ.col_term <- find_exn_typ_term
 let () = find_exn_typ.col_typ <- find_exn_typ_typ
 let find_exn_typ t =
   match find_exn_typ.col_term t with
-  | [] -> typ_unknown
-  | typ::_ -> typ
+  | [] -> None
+  | typ::_ -> Some typ

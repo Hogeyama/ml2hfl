@@ -106,6 +106,7 @@ val make_record : (string * typed_term) list -> typ -> typed_term
 val make_field : typed_term -> string -> typed_term
 val make_raise : typed_term -> typ -> typed_term
 val make_trywith : typed_term -> id -> (typed_pattern * typed_term * typed_term) list -> typed_term
+val make_trywith_simple : typed_term -> typed_term -> typed_term
 val make_length : typed_term -> typed_term
 val new_var_of_term : typed_term -> id
 
@@ -187,4 +188,4 @@ val from_fpat_term : Fpat.Term.t -> typed_term
 val from_fpat_formula : Fpat.Formula.t -> typed_term
 val unfold_data_type : typ -> typ
 val fold_data_type : typ -> typ
-val find_exn_typ : typed_term -> typ
+val find_exn_typ : typed_term -> typ option

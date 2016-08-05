@@ -939,6 +939,8 @@ let rec uncps_ref_type typ_exn rtyp e etyp =
       RT.top styp
   | _, _, TBaseCPS styp when RT.is_bottom' rtyp ->
       RT.bottom styp
+  | RT.Fun(_, RT.Inter _, RT.Fun(_,RT.Fun _, RT.Base(_,_,_))),
+    EExcep, _ -> assert false
   | _ ->
       assert false
 
@@ -1041,7 +1043,7 @@ let pr s t = pr2 s Print.term_typ t
 let trans t =
   pr "INPUT" t;
   initialize ();
-  let typ_excep = find_exn_typ t in
+  let typ_excep = Option.default typ_unknown @@ find_exn_typ t in
   let typ_excep' =
     if !!debug then Format.printf "typ_excep: %a@." Print.typ typ_excep;
     if not @@ has_typ_result typ_excep then

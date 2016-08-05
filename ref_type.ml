@@ -92,6 +92,7 @@ let rec occur x = function
   | List(_,p_len,_,p_i,typ) ->
       let aux =  Id.mem x -| U.get_fv in
       aux p_len || aux p_i || occur x typ
+  | Exn(typ1, typ2) -> occur x typ1 || occur x typ2
 
 let rec decomp_fun_full typ =
   match typ with
@@ -320,6 +321,7 @@ let rec to_abst_typ typ =
         if p_len = U.true_term
         then Id.typ x'
         else T.TPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])
+  | Exn(typ1, _) -> to_abst_typ typ1
   in
   if !!debug then Format.printf "Ref_type.to_abst_typ IN: %a@." print typ;
   if !!debug then Format.printf "Ref_type.to_abst_typ OUT: %a@." Print.typ r;
@@ -455,7 +457,7 @@ let rec subtype env typ1 typ2 =
       subtype env typ11 typ21 && subtype env typ12 typ22
   | _, Exn(typ21,typ22) ->
       subtype env typ1 typ21
-  | Exn _, _ -> unsupported "Ref_type.subtype Exn"
+  | Exn _, _ -> false
   | _ ->
       Format.printf "typ1: %a@." print typ1;
       Format.printf "typ2: %a@." print typ2;
@@ -665,3 +667,29 @@ module Value = struct
 end
 module Env = Ext.Env.Make(Syntax.ID)(Value)
 type env = Env.t
+
+
+let rec contract typ =
+  match typ with
+  | Base _ -> typ
+  | Fun(x, typ1, typ2) -> Fun(x, contract typ1, contract typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd contract) xtyps)
+  | Inter(typ, typs) ->
+      let typs = List.map contract typs in
+      let typs' = List.fold_right (fun typ acc -> if List.exists (equiv typ) acc then acc else typ::acc) typs [] in
+      begin
+        match typs' with
+        | [typ'] -> typ'
+        | _ -> Inter(typ, typs')
+      end
+  | Union(typ, typs) ->
+      let typs = List.map contract typs in
+      let typs' = List.fold_right (fun typ acc -> if List.exists (equiv typ) acc then acc else typ::acc) typs [] in
+      begin
+        match typs' with
+        | [typ'] -> typ'
+        | _ -> Union(typ, typs')
+      end
+  | ExtArg(x,typ1,typ2) -> ExtArg(x, contract typ1, contract typ2)
+  | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, contract typ)
+  | Exn(typ1,typ2) -> Exn(contract typ1, contract typ2)
