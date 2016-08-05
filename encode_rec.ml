@@ -58,9 +58,9 @@ let rec collect_leaf_aux typ =
   | Type _ -> invalid_arg "collect_leaf_aux"
   | TData _ -> []
   | TTuple [x] -> collect_leaf_aux @@ Id.typ x
-  | _ when get_free_data_name typ = [] -> [typ]
   | TVariant labels -> List.flatten_map (snd |- List.flatten_map collect_leaf_aux) labels
   | TRecord fields -> List.flatten_map (snd |- snd |- collect_leaf_aux) fields
+  | _ when get_free_data_name typ = [] -> [typ]
   | _ -> unsupported "non-regular data types"
 let collect_leaf_aux typ =
   if !!debug then Format.printf "CLA: %a@." Print.typ typ;

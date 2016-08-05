@@ -19,9 +19,11 @@ type declaration =
 let () = Compmisc.init_path false
 
 
-let exc_init : (string * typ list) list =
+let exc_init : (string * typ list) list = []
+(*
   ["Assert_failure", [];
    "Not_found", []]
+ *)
 let exc_env = ref exc_init
 let init_exc_env () = exc_env := exc_init
 let add_exc_env name typs =

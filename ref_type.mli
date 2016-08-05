@@ -8,6 +8,7 @@ type t =
   | Union of Syntax.typ * t list
   | ExtArg of Syntax.id * t * t
   | List of Syntax.id * Syntax.typed_term * Syntax.id * Syntax.typed_term * t
+  | Exn of t * t
 module Env : Ext.Env.ENV with type key := Syntax.id with type value := t
 type env = Env.t
 

@@ -20,6 +20,7 @@ type t =
   | Union of S.typ * t list
   | ExtArg of S.id * t * t
   | List of S.id * S.typed_term * S.id * S.typed_term * t
+  | Exn of t * t
 
 let typ_result = Base(Abst "X", U.dummy_var, U.true_term)
 
@@ -108,6 +109,8 @@ let rec print fm = function
   | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, {S.desc=S.Const(S.Int n)})})
   | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
       Format.fprintf fm "{%d}" n
+  | Base(base,x,p) when p.S.desc = S.Const S.False ->
+      Format.fprintf fm "_|_"
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
   | Fun _ as typ ->
@@ -120,6 +123,14 @@ let rec print fm = function
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print typ1 aux (xtyps', typ)
       in
       Format.fprintf fm "(%a)" aux @@ decomp_fun_full typ
+  | Fun(x, typ1, Exn(typ2, typ3)) ->
+      let arg =
+        if occur x typ2 || occur x typ3 then
+          Format.asprintf "%a:" Id.print x
+        else
+          ""
+      in
+      Format.fprintf fm "(@[<hov 2>%s%a ->^{%a}@ %a@])" arg print typ1 print typ3 print typ2
   | Tuple xtyps ->
       let n = List.length xtyps in
       let pr fm (i,(x,typ)) =
@@ -152,6 +163,8 @@ let rec print fm = function
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;
       Format.fprintf fm " list@])"
+  | Exn(typ1, typ2) ->
+      Format.fprintf fm "(@[<hov 2>%a@ |^{%a}@])" print typ1 print typ2
 
 let rec decomp_funs n typ =
   match typ with
@@ -189,6 +202,7 @@ let rec map_pred f typ =
   | Union(typ, typs) -> Union(typ, List.map (map_pred f) typs)
   | ExtArg(y,typ1,typ2) -> ExtArg(y, map_pred f typ1, map_pred f typ2)
   | List(y,p_len,z,p_i,typ) -> List(y, f p_len, z, f p_i, map_pred f typ)
+  | Exn(typ1, typ2) -> Exn(map_pred f typ1, map_pred f typ2)
 
 let subst x t typ = map_pred (U.subst x t) typ
 let subst_var x y typ = map_pred (U.subst_var x y) typ
@@ -265,6 +279,7 @@ let rec to_simple typ =
   | Union(typ, _) -> typ
   | ExtArg _ -> assert false
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple typ
+  | Exn(typ1, _) -> to_simple typ1
 
 let to_abst_typ_base b =
   match b with
@@ -410,6 +425,11 @@ let make_env x typ =
   | Base(_,y,t) -> U.subst_var y x t
   | _ -> U.true_term
 let rec subtype env typ1 typ2 =
+  if 0=0 && !!debug then
+    begin
+      Format.printf "typ1: %a@." print typ1;
+      Format.printf "typ2: %a@." print typ2
+    end;
   match typ1, typ2 with
   | Base(base1, x, t1), Base(base2, y, t2) ->
       base1 = base2 && implies (t1::env) (U.subst_var y x t2)
@@ -431,6 +451,11 @@ let rec subtype env typ1 typ2 =
       in
       List.length xtyps1 = List.length xtyps2 &&
         snd @@ List.fold_left2 aux (env,true) xtyps1 xtyps2
+  | Exn(typ11,typ12), Exn(typ21,typ22) ->
+      subtype env typ11 typ21 && subtype env typ12 typ22
+  | _, Exn(typ21,typ22) ->
+      subtype env typ1 typ21
+  | Exn _, _ -> unsupported "Ref_type.subtype Exn"
   | _ ->
       Format.printf "typ1: %a@." print typ1;
       Format.printf "typ2: %a@." print typ2;
