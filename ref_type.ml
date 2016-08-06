@@ -443,7 +443,7 @@ let rec subtype env typ1 typ2 =
   | Inter(_, typs), _ ->
       List.exists (subtype env -$- typ2) typs
   | Union(_, typs), _ ->
-      List.for_all (subtype env typ1) typs
+      List.for_all (subtype env -$- typ2) typs
   | _, Union(_, typs) ->
       List.exists (subtype env -$- typ2) typs
   | Tuple xtyps1, Tuple xtyps2 ->
