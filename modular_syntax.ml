@@ -10,7 +10,8 @@ let debug () = List.mem "Modular_syntax" !Flag.debug_module
 type program =
   {fun_typ_env : Ref_type.Env.t;
    fun_typ_neg_env : Ref_type.Env.t;
-   fun_def_env : (id * (id list * typed_term)) list}
+   fun_def_env : (id * (id list * typed_term)) list;
+   exn_decl : (string * typ list) list}
 
 type ce = (id * int list) list
 type ce_set = (id * ce) list

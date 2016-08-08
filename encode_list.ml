@@ -271,12 +271,12 @@ let () = abst_list.tr2_term <- abst_list_term
 let () = abst_list.tr2_typ <- abst_list_typ
 
 let trans t =
-  Type_check.check t Type.TUnit;
   let t' = abst_list.tr2_term "" t in
   if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   let t' = Trans.inline_var_const t' in
   if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
-  Type_check.check t' Type.TUnit;
+  let typ = abst_list.tr2_typ "" t.typ in
+  Type_check.check t' typ;
   t', make_get_rtyp_list_of t
 
 
@@ -462,10 +462,16 @@ let trans t =
   |@> pr "inst_list_eq"
   |> subst_matched_var
   |@> pr "subst_matched_var"
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- t.typ
   |> Trans.remove_top_por
   |@> pr "remove_top_por"
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- t.typ
   |> if !Flag.encode_list_opt
      then trans_opt
      else trans
+
+let trans_typ typ =
+  if !Flag.encode_list_opt then
+    abst_list_opt.tr_typ typ
+  else
+    abst_list.tr2_typ "" typ

@@ -8,7 +8,7 @@ val rename_poly_funs : id -> typed_term -> (id * id) list * typed_term
 val copy_poly_funs : typed_term -> typed_term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 val define_randvalue : ((typ * id) list * (id * id list * typed_term) list) -> typ -> ((typ * id) list * (id * id list * typed_term) list) * typed_term
 val inst_randval : typed_term -> typed_term
-val ref_to_assert : Ref_type.env -> typed_term -> typed_term
+val ref_to_assert : ?make_fail:(typ -> typed_term) -> ?typ_exn:typ -> Ref_type.env -> typed_term -> typed_term
 val replace_main : ?force:bool -> typed_term -> typed_term -> typed_term
 val map_main : (typed_term -> typed_term) -> typed_term -> typed_term
 val set_main : typed_term -> (string * int) option * typed_term

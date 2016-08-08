@@ -2217,8 +2217,12 @@ let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
 
-let ref_to_assert ref_env t =
-  let typ_exn = find_exn_typ t in
+let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
+  let typ_exn =
+    match typ_exn with
+    | None -> find_exn_typ t
+    | Some typ -> Some typ
+  in
   let ref_env = Ref_type.Env.to_list ref_env in
   let main =
     let aux (f, typ) =
@@ -2229,7 +2233,7 @@ let ref_to_assert ref_env t =
           Format.printf "  Spec: %a@." Ref_type.print typ;
           fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
         end;
-      let genv',cenv',t_typ = Ref_type_gen.generate_check typ_exn [] [] f typ in
+      let genv',cenv',t_typ = Ref_type_gen.generate_check typ_exn ~make_fail [] [] f typ in
       let defs = List.map snd (genv' @ cenv') in
       make_letrecs defs @@ make_assert t_typ
     in
