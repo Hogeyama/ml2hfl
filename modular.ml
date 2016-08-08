@@ -50,8 +50,9 @@ let report_safe env =
   Format.printf "Safe!@.@.";
   Format.printf "Refinement types: %a@.@." Ref_type.Env.print env
 
-let report_unsafe ce_set =
+let report_unsafe neg_env ce_set =
   Format.printf "Unsafe!@.@.";
+  Format.printf "Negative refinement types: %a@.@." Ref_type.Env.print neg_env;
   Format.printf "Modular counterexamples: %a@.@." print_ce_set ce_set
 
 
@@ -102,17 +103,19 @@ let rec main_loop history c prog cmp f typ ce_set extend =
   let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
   pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
   pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print prog.fun_typ_env;
+  pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print prog.fun_typ_neg_env;
   pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
   pr "%a{%a,%d}%t extend:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
-  let {fun_typ_env=env; fun_def_env} = prog in
+  let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
   pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
   match Check_mod.check prog f typ with
   | Check_mod.Typable env' ->
       pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
-      `Typable, merge_tenv env' env, ce_set
+      `Typable, merge_tenv env' env, neg_env, ce_set
   | Check_mod.Untypable ce_set1 when is_closed f fun_def_env ->
       pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
-      `Untypable, prog.fun_typ_env, merge_ce_set ce_set ce_set1
+      let neg_env' = merge_tenv neg_env @@ Ref_type.Env.of_list [f, typ] in
+      `Untypable, prog.fun_typ_env, neg_env', merge_ce_set ce_set ce_set1
   | Check_mod.Untypable ce_set1 ->
       pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
       let rec refine_loop ce_set2 extend' =
@@ -122,7 +125,7 @@ let rec main_loop history c prog cmp f typ ce_set extend =
         | exception Not_found -> assert false
         | None ->
             pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
-            `Untypable, prog.fun_typ_env, ce_set2
+            `Untypable, prog.fun_typ_env, prog.fun_typ_neg_env, ce_set2
         | Some candidate ->
             pr "%a{%a,%d}%t CANDIDATES:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print candidate;
             let candidate' =
@@ -131,16 +134,16 @@ let rec main_loop history c prog cmp f typ ce_set extend =
               |> List.sort ~cmp:(Compare.on ~cmp fst)
               |*> List.flatten_map (fun (g,typ) -> List.map (Pair.pair g) @@ Ref_type.decomp_inter typ)
             in
-            let aux (r,env',ce_set4) (g,typ') =
+            let aux (r,env',neg_env',ce_set4) (g,typ') =
               if Ref_type.subtype (Ref_type.Env.assoc g env') typ' then
-                (r,env',ce_set4)
+                (r,env',neg_env',ce_set4)
               else
                 main_loop ((f,typ)::history) 0 {prog with fun_typ_env=env'} cmp g typ' ce_set4 extend'
             in
-            let _,env',ce_set3 = List.fold_left aux (`Typable, env, ce_set2) candidate' in
+            let _,env',neg_env',ce_set3 = List.fold_left aux (`Typable, env, neg_env, ce_set2) candidate' in
             if not @@ Ref_type.Env.eq env' env then
               (Infer_mod.infer_stronger := false;
-               main_loop history (c+1) {prog with fun_typ_env=env'} cmp f typ ce_set3 extend')
+               main_loop history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp f typ ce_set3 extend')
             else if not @@ List.Set.eq ce_set3 ce_set2 then
               (Infer_mod.infer_stronger := false;
                refine_loop ce_set3 extend')
@@ -191,7 +194,8 @@ let main _ spec parsed =
       |> Ref_type.Env.create (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ)
     in
     if !!debug then Format.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
-    {fun_typ_env=env_init; fun_def_env=fun_env}
+    let fun_typ_neg_env = Ref_type.Env.empty in
+    {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env}
   in
   let cmp =
     let map =
@@ -208,11 +212,11 @@ let main _ spec parsed =
     in
     Compare.on (Id.assoc -$- map)
   in
-  let r, env, ce_set = main_loop prog cmp main typ in
+  let r, env, neg_env, ce_set = main_loop prog cmp main typ in
   match r with
   | `Typable ->
       report_safe env;
       true
   | `Untypable ->
-      report_unsafe ce_set;
+      report_unsafe neg_env ce_set;
       false
