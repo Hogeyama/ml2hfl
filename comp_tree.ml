@@ -195,6 +195,7 @@ let assoc_fun is_arg f var_env val_env =
     var_env_f, val_env_f, (ys', t'')
 
 let spawn is_top nid env var_env val_env ce_env f children =
+  let children' = List.filter (RT.exists (fun {label} ->  label = Fail)) children in
   let label,ref_typ =
     if is_top then
       let aux (Rose_tree.Node({label},_)) =
@@ -205,11 +206,11 @@ let spawn is_top nid env var_env val_env ce_env f children =
 *)
         | _ -> assert false
       in
-      Spawn(f, Some (List.map aux children)), None
+      Spawn(f, Some (List.map aux children')), None
     else
       Spawn(f, None), Some (Ref_type.Env.assoc f env)
   in
-  RT.Node({nid; var_env; val_env; label; ref_typ; ce_env}, children)
+  RT.Node({nid; var_env; val_env; label; ref_typ; ce_env}, children')
 
 let value_of var_env val_env t = Closure(var_env, val_env, t)
 (*
@@ -467,8 +468,6 @@ let rec from_term
 let from_term typ_env fun_env ce_set extend t =
   let ext_funs = Ref_type.Env.dom typ_env in
   from_term (Counter.create()) ext_funs [] [] [] typ_env fun_env [] [] ce_set extend [] t
-
-
 
 
 
