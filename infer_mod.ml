@@ -1025,8 +1025,19 @@ let replace_if_with_bottom = replace_if_with_bottom.tr_term
 let add_context for_infer prog f typ =
   let dbg = 0=0 && !!debug in
   if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
-  let t' = Trans.ref_to_assert (Ref_type.Env.of_list [f,typ]) unit_term in
-  if dbg then Format.printf "ADD_CONTEXT t': %a@." Print.term t';
+  let t' =
+    let af = "Assert_failure" in
+    let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
+    let make_fail typ =
+      make_raise (make_construct af [] etyp) typ
+      |> Encode_rec.trans
+      |> Encode_list.trans
+      |> fst
+    in
+    let typ_exn = Encode_list.trans_typ @@ Encode_rec.trans_typ @@ etyp in
+    Trans.ref_to_assert ~make_fail ~typ_exn (Ref_type.Env.of_list [f,typ]) unit_term
+  in
+  if dbg then Format.printf "ADD_CONTEXT t': %a@." Print.term_typ t';
 (*
   let env' = List.filter (fst |- Id.same f) prog.fun_def_env in
  *)
@@ -1259,7 +1270,7 @@ let get_merge_candidates templates =
     match typs with
     | [] -> []
     | typ::typs' ->
-        if !!debug then Format.printf "GMC typs: %a@." (List.print print_template) typs;
+        if 0=1 && !!debug then Format.printf "GMC typs: %a@." (List.print print_template) typs;
         List.flatten_map (get_merge_candidates_aux @@ typ) @@ typs'
   in
   templates
@@ -1306,8 +1317,8 @@ let infer prog f typ (ce_set:ce_set) extend =
     |> HC.of_pair_list
     |@!!debug&> Format.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!debug&> check_arity
-    |> HC.inline need
-    |> List.rev
+    |*> HC.inline need
+    |*> List.rev
     |@!!debug&> Format.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates = get_merge_candidates templates in

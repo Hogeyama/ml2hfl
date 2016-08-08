@@ -195,7 +195,13 @@ let main _ spec parsed =
     in
     if !!debug then Format.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
     let fun_typ_neg_env = Ref_type.Env.empty in
-    {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env}
+    let exn_decl =
+      match find_exn_typ parsed with
+      | None -> []
+      | Some(Type(["exn", TVariant decl], "exn")) -> decl
+      | Some _ -> assert false
+    in
+    {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
   in
   let cmp =
     let map =

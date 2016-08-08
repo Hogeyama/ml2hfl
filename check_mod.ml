@@ -265,21 +265,27 @@ let add_context prog f typ =
     |> make_label_env f
     |@dbg&> Format.printf "AC Dom(label_env): %a@." (List.print Id.print) -| List.map fst
   in
+  let af = "Assert_failure" in
+  let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
+  let typ_exn = Encode_list.trans_typ @@ Encode_rec.trans_typ @@ etyp in
+  let make_fail typ =
+    make_raise (make_construct af [] etyp) typ
+    |> Encode_rec.trans
+    |> Encode_list.trans
+    |> fst
+  in
   let t' =
     unit_term
-    |> Trans.ref_to_assert @@ Ref_type.Env.of_list [f,typ]
+    |> Trans.ref_to_assert ~typ_exn ~make_fail @@ Ref_type.Env.of_list [f,typ]
     |@dbg&> Format.printf "ADD_CONTEXT t: %a@." Print.term
     |> normalize
     |@dbg&> Format.printf "ADD_CONTEXT t': %a@." Print.term
   in
-  let typ_exn = find_exn_typ t' in
   let fun_env' =
     env
     |> Ref_type.Env.filter_key (Id.mem -$- fs)
-    |@dbg&> (fun x -> Format.printf "AAA@.")
     |> Ref_type.Env.to_list
-    |@dbg&> (fun x -> Format.printf "AAA@.")
-    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate typ_exn [] [])
+    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate (Some typ_exn) ~make_fail [] [])
     |@dbg&> Format.printf "ADD_CONTEXT fun_env': %a@." Modular_syntax.print_def_env
   in
   let fun_env'' =
@@ -327,7 +333,7 @@ let check prog f typ =
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_letrecs (List.map Triple.of_pair_r fun_env')
-    |@!!debug&> Format.printf "  t with def: %a@.@." Print.term
+    |@!!debug&> Format.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check -$- TUnit
     |> Trans.map_main (make_seq -$- unit_term)
     |@!!debug&> Format.printf "  Check: %a@." Print.term_typ

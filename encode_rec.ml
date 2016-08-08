@@ -290,14 +290,16 @@ let () = abst_recdata.tr_typ <- abst_recdata_typ
 
 let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
+let trans_typ = abst_recdata.tr_typ
 let trans t =
+  let typ = trans_typ t.typ in
   t
   |@> pr "input"
   |> Trans.remove_top_por
   |@> pr "remove_top_por"
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- t.typ
   |> abst_recdata.tr_term
   |@> pr "abst_rec"
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- typ
   |> Trans.simplify_match
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- typ

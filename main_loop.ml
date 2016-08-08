@@ -30,7 +30,7 @@ type preprocess_label =
   | Recover_const_attr
   | Decomp_pair_eq
   | Add_preds
-  | Replace_fali_with_raise
+  | Replace_fail_with_raise
   | Encode_recdata
   | Replace_base_with_int
   | Encode_list
@@ -67,7 +67,7 @@ let string_of_label = function
   | Recover_const_attr -> "Recover_const_attr"
   | Decomp_pair_eq -> "Decomp_pair_eq"
   | Add_preds -> "Add_preds"
-  | Replace_fali_with_raise -> "Replace_fali_with_raise"
+  | Replace_fail_with_raise -> "Replace_fali_with_raise"
   | Encode_recdata -> "Encode_recdata"
   | Replace_base_with_int -> "Replace_base_with_int"
   | Encode_list -> "Encode_list"
@@ -132,7 +132,7 @@ let preprocesses spec : preprocess list =
     Add_preds,
       (Fun.const (spec.Spec.abst_env <> []),
        fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
-    Replace_fali_with_raise,
+    Replace_fail_with_raise,
       (Fun.const !Flag.fail_as_exception,
        map_trans Trans.replace_fail_with_raise);
     Encode_recdata,
