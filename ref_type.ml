@@ -532,7 +532,6 @@ let rec simplify_typs constr styp is_zero make_zero and_or typs =
           flatten @@ constr styp typs'
 
 and simplify typ =
-  let r =
   match flatten typ with
   | Base(base, x, p) ->
       let p' = simplify_pred p in
@@ -545,7 +544,12 @@ and simplify typ =
         | Union(_, []) -> Inter(to_simple typ, [])
         | typ1' -> Fun(x, typ1', simplify typ2)
       end
-  | Tuple xtyps -> Tuple (List.map (Pair.map_snd simplify) xtyps)
+  | Tuple xtyps ->
+      let xtyps' = List.map (Pair.map_snd simplify) xtyps in
+      if List.exists (snd |- is_bottom) xtyps' then
+        Union(to_simple typ, [])
+      else
+        Tuple xtyps'
   | Inter(styp, []) -> Inter(styp, [])
   | Inter(styp, typs) -> simplify_typs _Inter styp is_bottom (_Union -$- []) U.make_ands typs
   | Union(styp, []) -> Union(styp, [])
@@ -556,9 +560,14 @@ and simplify typ =
       if p_len' = U.false_term
       then Union(to_simple typ, [])
       else List(x, p_len', y, simplify_pred p_i, simplify typ)
-  in
-  if !!debug then Format.printf "REF_TYPE SIMPLIFY @[@[%a@] ==>@ @[%a@]@." print typ print r;
-  r
+  | Exn(typ1,typ2) ->
+      let typ1' = simplify typ1 in
+      let typ2' = simplify typ2 in
+      if is_bottom typ2' then
+        typ1'
+      else
+        Exn(typ1', typ2')
+
 
 
 (*

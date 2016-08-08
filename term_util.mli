@@ -133,6 +133,7 @@ val opt_typ : typ -> typ
 val is_base_var : id -> bool
 val is_fun_var : id -> bool
 val is_list_literal : typed_term -> bool
+val is_var : typed_term -> bool
 
 
 (** {6 Misc} *)

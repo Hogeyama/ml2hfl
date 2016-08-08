@@ -3,11 +3,11 @@ open Syntax
 open Term_util
 open Type
 open Modular_syntax
-open Horn_clause
 
 let debug () = List.mem "Infer_mod" !Flag.debug_module
 
 module CT = Comp_tree
+module HC = Horn_clause
 
 
 let infer_stronger = ref false
@@ -24,7 +24,7 @@ and type_template =
   | Arg of type_template * typed_term list
   | PApp of type_template * typed_term list
   | Singleton of typed_term
-  | Base of (Ref_type.base * pred_var) option (** None represents the result type X *)
+  | Base of (Ref_type.base * HC.pred_var) option (** None represents the result type X *)
   | Const of id * typed_term
   | Fun of id * type_template * type_template
   | Inter of typ * type_template list
@@ -119,6 +119,7 @@ let rec from_ref_type typ =
   | Ref_type.Union _ -> assert false
   | Ref_type.ExtArg _ -> assert false
   | Ref_type.List _ -> assert false
+  | Ref_type.Exn _ -> assert false
 
 let rec get_fv_typ = function
   | Var f -> [f]
@@ -142,7 +143,7 @@ let rec constr_of_typ typ =
   | PApp(Base(Some(_,p1)), ts) ->
       let ts' = List.filter_out (Syntax.typ |- is_fun_typ) ts in
       if !!debug then Format.printf "      constr_of_typ: ts: %a@." (List.print Print.term) ts;
-      Exp (make_app (make_var @@ make_pred_var p1 ts') ts')
+      Exp (make_app (make_var @@ HC.make_pred_var p1 ts') ts')
   | PApp(Const(x, t), _) -> Exp t
   | Fun _
   | PApp(Fun _, _) -> Exp true_term
@@ -251,9 +252,9 @@ let rec inline_sub templates typ1 typ2 =
   | Singleton t, _ -> constr_of_typ @@ _PAppSelf typ2 t
   | Base None, Base None -> Exp true_term
   | PApp(Base(Some p1) as typ1', ts1), PApp(Base(Some p2) as typ2', ts2) ->
-      _PApp typ2' (pred_var_term::ts2)
+      _PApp typ2' (HC.pred_var_term::ts2)
       |> constr_of_typ
-      |> _Imply [constr_of_typ @@ _PApp typ1' (pred_var_term::ts1)]
+      |> _Imply [constr_of_typ @@ _PApp typ1' (HC.pred_var_term::ts1)]
   | Fun(_, (Fun _ as typ11), typ12), Fun(_, (Fun _ as typ21), typ22) ->
       _And (inline_sub templates typ21 typ11) (inline_sub templates typ12 typ22)
   | Fun(x1,typ11,typ12), Fun(x2,typ21,typ22) ->
@@ -808,7 +809,7 @@ let rec to_horn_clause asm constr =
 let to_horn_clause constr = to_horn_clause [] constr
 
 let check_arity hcs =
-  let ts = List.flatten_map (Fun.uncurry List.snoc) hcs in
+  let ts = List.flatten_map (fun {HC.head;HC.body} -> head::body) hcs in
   let aux env t =
     match t.desc with
     | App({desc=Var f}, ts) ->
@@ -838,7 +839,7 @@ let solve hcs =
   let dbg = 0=1 && !!debug in
   let vars =
     hcs
-    |> List.flatten_map (fun (body,head) -> List.flatten_map pvars body @ pvars head)
+    |> List.flatten_map (fun {HC.body;HC.head} -> List.flatten_map pvars body @ pvars head)
     |> List.unique ~cmp:Id.eq
     |@dbg&> Format.printf "vars: %a@." (List.print Id.print)
   in
@@ -849,8 +850,7 @@ let solve hcs =
       |> Fpat.Formula.of_term
     in
     hcs
-    |> List.map @@ Pair.map (List.map tr) tr
-    |> List.map @@ Pair.swap
+    |> List.map (fun {HC.head;HC.body} -> tr head, List.map tr body)
     |> List.map (Fun.uncurry Fpat.HornClause.of_formulas)
     |> Fpat.HCCSSolver.solve_dyn
     |> Fpat.PredSubst.normalize
@@ -933,7 +933,7 @@ let rec apply_sol sol x vars pos tmp =
       else
         Ref_type.make_weakest styp
       in
-      Format.printf "  AS TOP: %a ==> %a@." Print.typ styp Ref_type.print r;
+      if dbg then Format.printf "  AS TOP: %a ==> %a@." Print.typ styp Ref_type.print r;
       if !infer_stronger then r else Ref_type.of_simple styp
   | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol sol x vars pos) tmps)
   | _ ->
@@ -1053,18 +1053,13 @@ let add_dependency deps (x,y) =
   let new_dep = Dependency.of_list @@ List.map Pair.of_list @@ Combination.take_each [to_x; from_y] in
   Dependency.union new_dep deps
 
-let get_pred_ids_hcs hcs =
-  hcs
-  |> List.flatten_map (fun (body,head) -> (Option.to_list @@ get_pred_id_of_term head) @ List.filter_map get_pred_id_of_term body)
-  |> List.unique
-
 let get_dependencies hcs =
   let dbg = 0=1 && !!debug in
-  let aux acc (body,head) =
-    if dbg then Format.printf "  HC: %a@." print_horn_clause (body,head);
+  let aux acc {HC.body;HC.head} =
+    if dbg then Format.printf "  HC: %a@." HC.print {HC.body;HC.head};
     if dbg then Format.printf "  deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements acc;
-    let fv1 = List.filter_map get_pred_id_of_term body in
-    let fv2 = Option.to_list @@ get_pred_id_of_term head in
+    let fv1 = List.filter_map HC.get_pred_id_of_term body in
+    let fv2 = Option.to_list @@ HC.get_pred_id_of_term head in
     let new_dep = List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1 in
     List.fold_left add_dependency acc new_dep
   in
@@ -1075,9 +1070,9 @@ let transitive_closure deps =
 
 let save_dep deps_cls hcs filename =
   let dbg = 0=1 in
-  let aux acc (body,head) =
-    let fv1 = List.filter_map get_pred_id_of_term body in
-    let fv2 = Option.to_list @@ get_pred_id_of_term head in
+  let aux acc {HC.body;HC.head} =
+    let fv1 = List.filter_map HC.get_pred_id_of_term body in
+    let fv2 = Option.to_list @@ HC.get_pred_id_of_term head in
     let new_dep = List.flatten_map (fun x -> List.map (Pair.pair x) fv2) fv1 in
     let aux' acc (x,y) = new_dep @@@ acc in
     List.fold_left aux' acc new_dep
@@ -1131,8 +1126,8 @@ let subst_horn_clause x t (body,head) =
 
 let replace_id p1 p2 t =
   match t.desc with
-  | App({desc=Var x}, ts) when get_pred_id x = p1 ->
-      assert (is_pred_var x);
+  | App({desc=Var x}, ts) when HC.get_pred_id x = p1 ->
+      assert (HC.is_pred_var x);
       make_app (make_var @@ Id.set_id x p2) ts
   | _ -> t
 
@@ -1180,7 +1175,7 @@ let solve_merged merge_candidates hcs =
         let map'' = sbst (p1,p2) map' in
         aux used last_sol merged' deps map'' hcs
     | (p1,p2)::map' ->
-        let hcs' = List.map (map_horn_clause @@ replace_id p1 p2) hcs in
+        let hcs' = List.map (Horn_clause.map @@ replace_id p1 p2) hcs in
         incr cnt;
         match solve_option hcs' with
         | exception e -> Format.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps; raise e
@@ -1208,7 +1203,7 @@ let solve_merged merge_candidates hcs =
   match solve_option hcs with
   | None -> None
   | Some sol ->
-      let used = get_pred_ids_hcs hcs in
+      let used = HC.get_pred_ids_hcs hcs in
       let sol',merged = aux used sol [] dependencies map hcs in
       if !!debug then Format.printf "map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) map;
       if !!debug then Format.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
@@ -1224,13 +1219,25 @@ let assoc_pred_var p hcs =
   if 0=1 then Format.printf "APV: P_%d@." p;
   let rec find hcs =
     match hcs with
-    | [] -> make_pred_var p []
+    | [] -> HC.make_pred_var p []
     | (body,head)::hcs' ->
-        match List.find_option (fun x -> is_pred_var x && Id.id x = p) @@ get_fv @@ make_ands (head::body) with
+        match List.find_option (fun x -> HC.is_pred_var x && Id.id x = p) @@ get_fv @@ make_ands (head::body) with
         | None -> find hcs'
         | Some x -> x
   in
   find hcs
+
+let rec get_pred_ids tmp =
+  match tmp with
+  | Var _ -> []
+  | Arg(tmp', _) -> get_pred_ids tmp'
+  | PApp(tmp', _) -> get_pred_ids tmp'
+  | Singleton _ -> []
+  | Base None -> []
+  | Base(Some(_,p)) -> [p]
+  | Const _ -> []
+  | Fun(_, tmp1, tmp2) -> get_pred_ids tmp1 @ get_pred_ids tmp2
+  | Inter(_, tmps) -> List.flatten_map get_pred_ids tmps
 
 let rec get_merge_candidates_aux typ1 typ2 =
   match typ1, typ2 with
@@ -1247,10 +1254,13 @@ let rec get_merge_candidates_aux typ1 typ2 =
       Format.printf "get_merge_candidates_aux typ2: %a@." print_template typ2;
       assert false
 
-let get_merge_candidates templates hcs =
+let get_merge_candidates templates =
   let aux typs =
-    if !!debug then Format.printf "GMC typs: %a@." (List.print print_template) typs;
-    List.flatten_map (get_merge_candidates_aux @@ List.hd typs) @@ List.tl typs
+    match typs with
+    | [] -> []
+    | typ::typs' ->
+        if !!debug then Format.printf "GMC typs: %a@." (List.print print_template) typs;
+        List.flatten_map (get_merge_candidates_aux @@ typ) @@ typs'
   in
   templates
   |> List.map (Pair.map_fst fst)
@@ -1287,14 +1297,20 @@ let infer prog f typ (ce_set:ce_set) extend =
   if !!debug then Format.printf "TEMPLATES: @[%a@.@." print_tmp_env templates;
   let constrs = generate_constraints templates comp_tree in
   if !!debug then Format.printf "CONSTR: @[%a@.@." (List.print print_constr) constrs;
+  let need = List.flatten_map (fun ((f,_),tmp) -> if Id.mem_assoc f fun_env' then get_pred_ids tmp else []) templates in
+  if !!debug then Format.printf "NEED: @[%a@.@." (List.print Format.pp_print_int) need;
   let hcs =
     constrs
     |> List.flatten_map to_horn_clause
     |> List.map @@ Pair.map (List.map Trans.init_base_rand) Trans.init_base_rand
-    |@!!debug&> Format.printf "HORN CLAUSES: @[%a@.@." print_horn_clauses
+    |> HC.of_pair_list
+    |@!!debug&> Format.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!debug&> check_arity
+    |> HC.inline need
+    |> List.rev
+    |@!!debug&> Format.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
-  let merge_candidates = get_merge_candidates templates hcs in
+  let merge_candidates = get_merge_candidates templates in
   match solve_merged merge_candidates hcs with
   | None -> None
   | Some sol ->

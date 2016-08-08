@@ -349,6 +349,7 @@ let decomp_var t =
   match t.desc with
   | Var x -> Some x
   | _ -> None
+let is_var t = Option.is_some @@ decomp_var t
 
 let rec decomp_funs = function
   | {desc=Fun(x,t)} ->
