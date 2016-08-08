@@ -3,6 +3,7 @@ open Syntax
 open Term_util
 open Type
 open Modular_syntax
+open Horn_clause
 
 let debug () = List.mem "Infer_mod" !Flag.debug_module
 
@@ -27,22 +28,7 @@ and type_template =
   | Const of id * typed_term
   | Fun of id * type_template * type_template
   | Inter of typ * type_template list
-and pred_var = int
-and horn_clause = typed_term list * typed_term
-and horn_clauses = horn_clause list
 
-let pred_var = Id.make (-1) "v" TInt
-let pred_var_term = make_var pred_var
-let make_pred_var p ts =
-  let typs = List.map Syntax.typ ts in
-  let typ = List.fold_right make_tfun typs TBool in
-  Id.make p "P" typ
-let is_pred_var x = Id.name x = "P"
-let get_pred_id x = Id.id x
-let get_pred_id_of_term t =
-  match t.desc with
-  | App({desc=Var x}, ts) -> assert (is_pred_var x); Some (get_pred_id x)
-  | _ -> None
 
 let rec print_constr fm = function
   | Exp t -> Format.fprintf fm "%a" Print.term t
@@ -73,28 +59,6 @@ let print_tmp_env fm env =
   in
   Format.fprintf fm "%a" (List.print @@ Pair.print print_idx print_template) env
 
-let print_horn_clause fm (pre,constr) =
-  let pr_aux fm t =
-    if true then
-      Print.term fm t
-    else (* For rcaml *)
-      t
-      |> Format.asprintf "%a" Print.term
-      |> String.remove_char '_'
-      |> String.remove_char '\''
-      |> Format.fprintf fm "@[%s@]"
-  in
-  let pr fm t =
-    match t.desc with
-    | Var p when is_pred_var p -> Format.fprintf fm "%a()" pr_aux t
-    | App(p, ts) -> Format.fprintf fm "@[%a(%a)@]" pr_aux p (print_list pr_aux ",") ts
-    | _ -> pr_aux fm t
-  in
-  if constr = false_term
-  then Format.fprintf fm "@[?- %a.@]" (print_list pr ",@ ") pre
-  else Format.fprintf fm "@[<hov 4>%a :-@ %a.@]" pr constr (print_list pr ",@ ") pre
-let print_horn_clauses fm hcs =
-  Format.fprintf fm "@[%a@]" (print_list print_horn_clause "@\n") hcs
 
 let _And c1 c2 =
   if c1 = Exp true_term then

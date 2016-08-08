@@ -75,9 +75,9 @@ CMO = environment.cmo flag.cmo util.cmo ext.cmo color.cmo tree.cmo	\
 	ref_trans.cmo ret_fun.cmo BRA_types.cmo BRA_util.cmo		\
 	BRA_state.cmo BRA_transform.cmo extraClsDepth.cmo		\
 	extraParamInfer.cmo eval.cmo elim_same_arg.cmo main_loop.cmo	\
-	modular_syntax.cmo comp_tree.cmo infer_mod.cmo check_mod.cmo	\
-	modular.cmo termination_loop.cmo fair_termination.cmo		\
-	verify_ref_typ.cmo mochi.cmo
+	modular_syntax.cmo comp_tree.cmo horn_clause.cmo		\
+	infer_mod.cmo check_mod.cmo modular.cmo termination_loop.cmo	\
+	fair_termination.cmo verify_ref_typ.cmo mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =
