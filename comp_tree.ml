@@ -194,8 +194,10 @@ let assoc_fun is_arg f var_env val_env =
     let t'' = List.fold_right2 subst_var ys ys' t' in
     var_env_f, val_env_f, (ys', t'')
 
+let ends_with_fail = RT.exists (fun {label} ->  label = Fail)
+
 let spawn is_top nid env var_env val_env ce_env f children =
-  let children' = List.filter (RT.exists (fun {label} ->  label = Fail)) children in
+  let children' = List.filter ends_with_fail children in
   let label,ref_typ =
     if is_top then
       let aux (Rose_tree.Node({label},_)) =
@@ -311,11 +313,14 @@ let rec from_term
   match t.desc with
   | Const Unit -> []
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
-      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env t2
+      let t2' = subst_var x (Id.new_var_id x) t2 in
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env t2'
   | App({desc=Fun(x, t)}, [t2]) when is_base_typ t2.typ ->
-      let val_env' = (x, Closure(var_env, val_env, t2))::val_env in
-      let var_env' = (x, List.map fst val_env)::var_env in
-      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env t
+      let x' = Id.new_var_id x in
+      let t' = subst_var x x' t in
+      let val_env' = (x', Closure(var_env, val_env, t2))::val_env in
+      let var_env' = (x', List.map fst val_env)::var_env in
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env t'
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       if !!debug then Format.printf "  APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
@@ -398,7 +403,7 @@ let rec from_term
         in
         RT.Node(node, from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend' ce_env' t23)
       in
-      begin
+      let rs =
         match tid with
         | None ->
             [aux extend 0 ce_env; aux extend 1 ce_env]
@@ -421,7 +426,8 @@ let rec from_term
                   let ce_env'' = (tid,(f,i,ce'))::ce_env' in
                   [aux extend br ce_env'']
             end
-      end
+      in
+      List.filter ends_with_fail rs
   | App({desc=Fun _; typ} as t1, ts) ->
       let f = Id.new_var typ in
       make_app (make_var f) ts
