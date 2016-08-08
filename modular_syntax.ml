@@ -9,6 +9,7 @@ let debug () = List.mem "Modular_syntax" !Flag.debug_module
 
 type program =
   {fun_typ_env : Ref_type.Env.t;
+   fun_typ_neg_env : Ref_type.Env.t;
    fun_def_env : (id * (id list * typed_term)) list}
 
 type ce = (id * int list) list
@@ -17,9 +18,10 @@ type ce_set = (id * ce) list
 let print_typ_env = Ref_type.Env.print
 let print_def_env fm def = List.print (Pair.print Id.print Print.term) fm @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) def
 
-let print_prog fm {fun_typ_env; fun_def_env} =
+let print_prog fm {fun_typ_env; fun_typ_neg_env; fun_def_env} =
   Format.fprintf fm "@[";
   Format.fprintf fm "fun_typ_env: %a@\n" print_typ_env fun_typ_env;
+  Format.fprintf fm "fun_typ_neg_env: %a@\n" print_typ_env fun_typ_neg_env;
   Format.fprintf fm "fun_def_env: %a@\n" print_def_env fun_def_env;
   Format.fprintf fm "@]"
 
