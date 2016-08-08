@@ -63,4 +63,8 @@ let used_by f prog =
         let xs,t = Id.assoc f prog.fun_def_env in
         aux (f::acc) (List.Set.diff ~eq:Id.eq (get_fv t) (f::xs) @ rest')
   in
-  aux [] [f]
+  let fs = List.unique ~cmp:Id.eq @@ aux [] [f] in
+  if Id.mem f @@ get_fv @@ snd @@ Id.assoc f prog.fun_def_env then
+    fs
+  else
+    List.filter_out (Id.same f) fs

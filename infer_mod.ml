@@ -1343,7 +1343,8 @@ let infer prog f typ (ce_set:ce_set) extend =
         in
         env'
         |> List.map aux
-        |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.remove_equiv @@ Ref_type.decomp_inter typ)
+        |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
+        |> List.remove_lower (fun (x,typ) (x',typ') -> Id.same x x' && Ref_type.equiv typ typ')
         |> List.filter_out (fun (g,typ') -> Id.same f g && Ref_type.subtype typ typ')
         |> Ref_type.Env.of_list
         |*> Ref_type.Env.normalize
@@ -1359,6 +1360,8 @@ let infer prog f typ (ce_set:ce_set) extend =
         in
         Ref_type.Env.of_list @@ List.filter_map aux top_funs
       in
+      if !!debug then Format.printf "env_unused: %a@.@." Ref_type.Env.print env_unused;
+      if !!debug then Format.printf "env'': %a@.@." Ref_type.Env.print env'';
       let env''' = Ref_type.Env.merge env_unused env'' in
       if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env''';
       Some env'''
