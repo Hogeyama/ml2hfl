@@ -60,17 +60,29 @@ let rec print_typ_cps' fm = function
   | TTupleCPS typs ->
       Format.fprintf fm "(%a)" (print_list print_typ_cps' " *@ ") typs
 
-let rec print_typ_cps fm = function
+let rec print_typ_cps fm typ =
+  match typ with
   | TBaseCPS typ -> Format.fprintf fm "%a" Print.typ typ
-  | TFunCPS(e,typ1,typ2) when !sol e = EUnknown ->
-      Format.fprintf fm "(@[%a -%a->@ %a@])" print_typ_cps typ1 print_evar e print_typ_cps typ2
-  | TFunCPS(e,typ1,typ2) when !sol e = ENone ->
-      Format.fprintf fm "(@[%a ->@ %a@])" print_typ_cps typ1 print_typ_cps typ2
-  | TFunCPS(e,typ1,typ2) when !sol e = ECont ->
-      Format.fprintf fm "(@[%a =>@ %a@])" print_typ_cps typ1 print_typ_cps typ2
-  | TFunCPS(e,typ1,typ2) when !sol e = EExcep ->
-      Format.fprintf fm "(@[%a -=>@ %a@])" print_typ_cps typ1 print_typ_cps typ2
-  | TFunCPS _ -> assert false
+  | TFunCPS _ ->
+      let rec decomp typ =
+        match typ with
+        | TFunCPS(e,typ1,typ2) ->
+            let etyps,typ2' = decomp typ2 in
+            (e,typ1)::etyps, typ2'
+        | _ -> [], typ
+      in
+      let pr fm (e,typ1) =
+        let ar =
+          match !sol e with
+          | EUnknown -> Format.asprintf "-%a->" print_evar e
+          | ENone -> "->"
+          | ECont -> "=>"
+          | EExcep -> "-=>"
+        in
+        Format.fprintf fm "%a %s@ " print_typ_cps typ1 ar
+      in
+      let etyps,typ2 = decomp typ in
+      Format.fprintf fm "(@[%a%a@])" (print_list pr "") etyps print_typ_cps typ2
   | TTupleCPS typs ->
       Format.fprintf fm "(%a)" (print_list print_typ_cps " *@ ") typs
 
@@ -312,8 +324,12 @@ let rec infer_effect env t =
       let typed1 = infer_effect env t1 in
       let typed2 = infer_effect env t2 in
       let e = new_evar () in
+      let typ = infer_effect_typ t.typ in
+      let e2,typ2 = match typed2.typ_cps with TFunCPS(e,typ1,typ2) -> e,typ2 | _ -> assert false in
+      unify typed1.typ_cps typ2;
+      unify typed1.typ_cps typ;
       constraints := CGeqVar(e, typed1.effect) :: !constraints;
-      {t_orig=t; t_cps=TryWithCPS(typed1,typed2); typ_cps=infer_effect_typ t.typ; effect=e}
+      {t_orig=t; t_cps=TryWithCPS(typed1,typed2); typ_cps=typ; effect=e}
   | Raise t1 ->
       let typed = infer_effect env t1 in
       let e = new_evar () in
@@ -327,7 +343,7 @@ let rec infer_effect env t =
 exception Loop of effect_var list
 
 let solve_constraints constrs =
-  if debug() then
+  if 0=1 && debug() then
     begin
       Format.printf "@.CONSTRAINTS:@.";
       List.iter (Format.printf " %a@." print_econstr) constrs;
@@ -360,16 +376,17 @@ let solve_constraints constrs =
     | Some e -> e
 
 let check_solution () =
+  let dbg = 0 = 1 in
   let check e1 e2 = assert (effect_max e1 e2 = e1) in
   let aux = function
     | CGeqVar(x, y) ->
         let e1 = !sol x in
         let e2 = !sol y in
-        Format.printf "%a(%a) :> %a(%a)@." print_evar x print_effect e1 print_evar y print_effect e2;
+        if dbg then Format.printf "%a(%a) :> %a(%a)@." print_evar x print_effect e1 print_evar y print_effect e2;
         check e1 e2
     | CGeq(x, e) ->
         let e1 = !sol x in
-        Format.printf "%a(%a) :> %a@." print_evar x print_effect e1 print_effect e;
+        if dbg then Format.printf "%a(%a) :> %a@." print_evar x print_effect e1 print_effect e;
         check e1 e
   in
   List.iter aux !constraints
@@ -487,19 +504,33 @@ let get_tfun_effect = function
   | TFunCPS(e, _, _) -> e
   | _ -> assert false
 
+let make_app' t1 ts =
+  match t1.desc, ts with
+  | Fun(x,t1'), [t2] -> subst x t2 t1'
+  | Fun(x1,{desc=Fun(x2,t1')}), [t2;t3] -> subst x1 t2 @@ subst x2 t3 t1'
+  | _ -> make_app t1 ts
+
 let make_app_cont e t k =
   match !sol e with
   | EUnknown -> assert false
-  | ENone -> make_app k [t]
-  | ECont -> make_app t [k]
+  | ENone -> make_app' k [t]
+  | ECont -> make_app' t [k]
   | EExcep -> assert false
 
-let make_app_excep e t k h =
+let make_app_excep e t k h = try
   match !sol e with
   | EUnknown -> assert false
-  | ENone -> make_app k [t]
-  | ECont -> make_app t [k]
-  | EExcep -> make_app t [k; h]
+  | ENone -> make_app' k [t]
+  | ECont -> make_app' t [k]
+  | EExcep -> make_app' t [k; h]
+  with _ ->
+    Format.printf "@.t: %a@." Print.term t;
+    Format.printf "k: %a@." Print.term k;
+    Format.printf "h: %a@.@." Print.term h;
+    Format.printf "t: %a@." Print.term' t;
+    Format.printf "k: %a@." Print.term' k;
+    Format.printf "h: %a@.@." Print.term' h;
+    assert false
 
 let new_k_var k_post typ =
   let r = Id.new_var ~name:"r" typ in
@@ -659,8 +690,7 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
           make_app_cont t_orig.effect (make_var f) (make_fun f' t'')
         in
         let t1'' = List.fold_right2 aux bindings bindings' @@ make_app_cont t1.effect t1' (make_var k) in
-        make_fun k @@
-          {(make_let_f flag bindings' t1'') with attr=t_orig.attr}
+        make_fun k {(make_let_f flag bindings' t1'') with attr=t_orig.attr}
     | LetCPS(flag, bindings, t1), EExcep ->
         let r = Id.new_var ~name:"r" @@ trans_typ typ_excep typ_orig typ in
         let k = Id.new_var ~name:("k" ^ k_post) @@ TFun(r,typ_result) in
