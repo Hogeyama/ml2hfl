@@ -69,3 +69,10 @@ let used_by f prog =
     fs
   else
     List.filter_out (Id.same f) fs
+
+let term_of_prog prog =
+  prog.fun_def_env
+  |> List.last
+  |> fst
+  |> make_var
+  |> make_letrecs (List.map Triple.of_pair_r prog.fun_def_env)
