@@ -28,7 +28,7 @@ let exc_env = ref exc_init
 let init_exc_env () = exc_env := exc_init
 let add_exc_env name typs =
   if List.mem_assoc name !exc_env then
-    if List.assoc name !exc_env <> typs then
+    if not @@ List.eq ~eq:Type.same_shape (List.assoc name !exc_env) typs then
       unsupported "Same name exception"
     else
       ()
