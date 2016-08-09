@@ -2213,7 +2213,6 @@ let set_main t =
     in
     let t'' = inst_randval t' in
     Some (Id.name f, List.length xs), t''
-let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
 

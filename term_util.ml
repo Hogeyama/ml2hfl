@@ -1029,3 +1029,14 @@ let find_exn_typ t =
   match find_exn_typ.col_term t with
   | [] -> None
   | typ::_ -> Some typ
+
+
+
+let col_typ_var = make_col [] (@)
+let col_typ_var_typ typ =
+  match typ with
+  | TVar({contents=None} as r) -> [r]
+  | _ -> col_typ_var.col_typ_rec typ
+let () = col_typ_var.col_typ <- col_typ_var_typ
+let col_typ_var t =
+  List.unique ~cmp:(==) @@ col_typ_var.col_term t

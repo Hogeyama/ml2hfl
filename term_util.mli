@@ -190,3 +190,4 @@ val from_fpat_formula : Fpat.Formula.t -> typed_term
 val unfold_data_type : typ -> typ
 val fold_data_type : typ -> typ
 val find_exn_typ : typed_term -> typ option
+val col_typ_var : typed_term -> typ option ref list

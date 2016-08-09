@@ -150,37 +150,45 @@ let rec abst_recdata_pat p =
         let f = Id.new_var ~name:"f" typ in
         let ppcbs = List.map (Pair.add_right abst_recdata_pat) ps in
         let ground_types = get_ground_types p.pat_typ in
-        let make_bind i (p,(p',_,_)) =
-          let t =
-            if List.mem p.pat_typ ground_types
-            then
-              let rec find c = function
-                | [] -> assert false
-                | typ::typs -> if typ = p.pat_typ then c else find (c+1) typs
-              in
-              let j = find 0 ground_types in
-              let t = make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_nil TInt)] in
-              make_proj j @@ make_snd t
-            else
-              let path = Id.new_var ~name:"path" (make_tlist TInt) in
-              make_pair unit_term @@ (* extra-param *)
-                make_fun path @@ make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_var path)]
+        let binds =
+          let make_bind i (p,(p',_,_)) =
+            let t =
+              if List.mem ~eq:Type.same_shape p.pat_typ ground_types then
+                let rec find c = function
+                  | [] -> assert false
+                  | typ::typs -> if Type.same_shape typ p.pat_typ then c else find (c+1) typs
+                in
+                let j = find 0 ground_types in
+                let t = make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_nil TInt)] in
+                make_proj j @@ make_snd t
+              else
+                let path = Id.new_var ~name:"path" (make_tlist TInt) in
+                make_pair unit_term @@ (* extra-param *)
+                  make_fun path @@
+                    make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_var path)]
+            in
+            t, p'
           in
-          t, p'
+          List.mapi make_bind ppcbs
         in
-        let binds = List.mapi make_bind ppcbs in
-        let make_cond (t,pt) (_,(p,cond,_)) =
-          match p.pat_desc with
-          | PAny
-          | PVar _ -> true_term
-          | _ -> make_match t [pt,true_term,true_term; make_pany p.pat_typ,true_term,false_term]
+        let cond =
+          let conds' =
+            let make_cond (t,pt) (_,(p,cond,_)) =
+              match p.pat_desc with
+              | PAny
+              | PVar _ -> true_term
+              | _ -> make_match t [pt,true_term,true_term; make_pany p.pat_typ,true_term,false_term]
+            in
+            List.map2 make_cond binds ppcbs
+          in
+          let cond0 =
+            let t = make_app (make_snd @@ make_var f) [make_nil TInt] in
+            Format.printf "ground_types: %a@." (List.print Print.typ) ground_types;
+            let t' = if ground_types = [] then t else make_proj 0 t in
+            make_eq t' (abst_label p.pat_typ c)
+          in
+          List.fold_left make_and true_term (cond0 :: conds')
         in
-        let conds' = List.map2 make_cond binds ppcbs in
-        let cond0 =
-          let t = make_app (make_snd @@ make_var f) [make_nil TInt] in
-          let t' = if ground_types = [] then t else make_proj 0 t in
-          make_eq t' (abst_label p.pat_typ c) in
-        let cond = List.fold_left make_and true_term (cond0 :: conds') in
         let bind = binds @ List.flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
         PVar f, cond, bind
     | PNil -> PNil, true_term, []
