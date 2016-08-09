@@ -131,8 +131,22 @@ let add_label l env = add_label.tr2_term (l, env)
 
 let get_label = get_id_option
 
+let rec eval_app top_funs val_env ce label_env ans1 paths1 ans2 paths2 =
+  match ans1 with
+  | Closure(_, {desc=Const (RandValue _)}) ->
+      Closure(val_env, make_int 0), ce, merge_paths paths1 paths2
+  | Closure(_, {desc=Event("fail",_)}) -> Fail, ce, paths1
+  | Fail -> Fail, ce, paths1
+  | Closure(val_env1, {desc=Fun(x, t')}) ->
+      let val_env' = (x,ans2)::val_env1 in
+      eval top_funs val_env' ce label_env t'
+      |> append_paths paths2
+      |> append_paths paths1
+  | _ ->
+      assert false
+
 (* ASSUME: Input must be normal form *) (* TODO: remove this assumption *)
-let rec eval top_funs val_env ce label_env t =
+and eval top_funs val_env ce label_env t =
   let dbg = 0=0 && !!debug && (match t.desc with Const _ | BinOp _ | Not _ | Fun _ | Event _  | Var _  | App(_, []) -> false | _ -> true) in
   if dbg then Format.printf "@[ORIG: %a@\n  @[" Print.term t;
   let r =
@@ -153,21 +167,7 @@ let rec eval top_funs val_env ce label_env t =
       let ts',t2 = List.decomp_snoc ts in
       let ans1, ce, paths1 = eval top_funs val_env ce label_env @@ make_app t1 ts' in
       let ans2, ce, paths2 = eval top_funs val_env ce label_env t2 in
-      begin
-        match ans1 with
-        | Closure(_, {desc=Const (RandValue _)}) ->
-            Closure(val_env, make_int 0), ce, merge_paths paths1 paths2
-        | Closure(_, {desc=Event("fail",_)}) -> Fail, ce, paths1
-        | Fail -> Fail, ce, paths1
-        | Closure(val_env1, {desc=Fun(x, t')}) ->
-            let val_env' = (x,ans2)::val_env1 in
-            eval top_funs val_env' ce label_env t'
-            |> append_paths paths2
-            |> append_paths paths1
-        | _ ->
-            Format.printf "t: %a@." Print.term t;
-            assert false
-      end
+      eval_app top_funs val_env ce label_env ans1 paths1 ans2 paths2
   | If(_, t2, t3) ->
       let label = get_label t in
       begin
@@ -204,7 +204,9 @@ let rec eval top_funs val_env ce label_env t =
       begin
         try
           eval top_funs val_env ce label_env t1
-        with Exception(ans, ce', paths') -> assert false
+        with Exception(ans1, ce, paths1) ->
+             let ans2, ce, paths2 = eval top_funs val_env ce label_env t2 in
+             eval_app top_funs val_env ce label_env ans2 paths2 ans1 paths1
       end
   | Tuple ts ->
       let rec aux t (anss,ce,paths) =
@@ -335,9 +337,7 @@ let check prog f typ =
     |> make_letrecs (List.map Triple.of_pair_r fun_env')
     |@!!debug&> Format.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check -$- TUnit
-    |> Trans.map_main (make_seq -$- unit_term)
-    |@!!debug&> Format.printf "  Check: %a@." Print.term_typ
-    |@> Type_check.check -$- TUnit
+    |> Trans.map_main (make_seq -$- unit_term) (* ??? *)
     |> Main_loop.verify ~make_pps:(Some(make_pps)) ~fun_list:(Some []) [] Spec.init
   in
   match result with
