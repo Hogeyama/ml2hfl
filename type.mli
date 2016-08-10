@@ -49,6 +49,7 @@ val app_typ : 'a t -> 'b list -> 'a t
 val to_id_string : 'a t -> string
 val order : 'a t -> int
 val arity : 'a t -> int
+val var_name_of : 'a t -> string
 
 (** {6 destructor} *)
 val tuple_num : 'a t -> int option

@@ -189,7 +189,7 @@ and generate typ_exn make_fail genv cenv typ =
         let typs1,typs2 = List.split_map (function Fun(y,typ1,typ2) -> typ1, subst_var y x typ2 | _ -> assert false) typs in
         if !!debug then Format.printf "GEN typs1: %a@." (List.print print) typs1;
         if !!debug then Format.printf "GEN typs2: %a@." (List.print print) typs2;
-        let xs = List.map (fun _ -> Id.new_var ~name:"b" T.TBool) typs in
+        let xs = List.map (fun _ -> Id.new_var T.TBool) typs in
         if !!debug then Format.printf "GEN xs: %a@." (List.print Id.print) xs;
         let genv',cenv',tbs =
           let aux typ1 (genv,cenv,tbs) =
@@ -259,7 +259,7 @@ and generate typ_exn make_fail genv cenv typ =
               let t = U.make_app (U.make_var f) [U.make_var l] in
               genv, cenv, t
             else
-              let n = Id.new_var ~name:"n" T.TInt in
+              let n = Id.new_var T.TInt in
               let f = Id.new_var ~name:("make_r_" ^ T.to_id_string styp) @@ T.TFun(n, to_abst_typ typ) in
               let t_nil = U.make_nil2 styp in
               let genv',cenv',t_typ' = generate typ_exn make_fail genv cenv typ' in

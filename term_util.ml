@@ -710,26 +710,19 @@ and is_simple_bexp t =
 
 
 let rec var_name_of_term t =
-  match t.desc, elim_tpred t.typ with
-  | Bottom, _ -> "bot"
-  | Var x, _ -> Id.name x
-  | Let(_,_,t), _ -> var_name_of_term t
-  | Tuple(ts), _ -> String.join "__" @@ List.map var_name_of_term ts
-  | Proj(i,t), _ ->
+  match t.desc with
+  | Bottom -> "bot"
+  | Var x -> Id.name x
+  | Let(_,_,t) -> var_name_of_term t
+  | Tuple(ts) -> String.join "__" @@ List.map var_name_of_term ts
+  | Proj(i,t) ->
       let n = tuple_num t.typ in
       let names = String.nsplit (var_name_of_term t) "__" in
       if n = Some (List.length names)
       then List.nth names i
       else var_name_of_term t ^ "_" ^ string_of_int i
-  | App({desc=Var f},_), _ -> "r" ^ "_" ^ Id.name f
-  | _, TUnit -> "u"
-  | _, TBool -> "b"
-  | _, TInt -> "n"
-  | _, TFun _ -> "f"
-  | _, TTuple _ -> "p"
-  | _, TApp(TList,_) -> "xs"
-  | Fun _, _ -> assert false
-  | _, _ -> "x"
+  | App({desc=Var f},_) -> "r" ^ "_" ^ Id.name f
+  | _ -> Type.var_name_of @@ elim_tpred t.typ
 
 let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 

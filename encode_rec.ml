@@ -147,7 +147,7 @@ let rec abst_recdata_pat p =
         PAlias(p', abst_recdata.tr_var x), cond, bind
     | PConst t -> PConst t, true_term, []
     | PConstruct(c,ps) ->
-        let f = Id.new_var ~name:"f" typ in
+        let f = Id.new_var typ in
         let ppcbs = List.map (Pair.add_right abst_recdata_pat) ps in
         let ground_types = get_ground_types p.pat_typ in
         let binds =

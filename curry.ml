@@ -145,7 +145,7 @@ let rec remove_pair_typ = function
         match typ with (* Function types cannot have predicates *)
         | TFun _ ->
             let x1 = Id.new_var ~name:(Id.name x) (elim_tpred @@ Id.typ x) in
-            let x2 = Id.new_var ~name:"f" typ in
+            let x2 = Id.new_var typ in
             let ps' = List.map (subst y @@ make_pair (make_var x1) (make_var x2)) ps in
             let x' = Id.set_typ x (TPred(x1,ps')) in
             remove_pair_typ @@ TTuple [x'; Id.new_var typ]

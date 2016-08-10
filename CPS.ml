@@ -607,7 +607,7 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let x2 = Id.new_var (trans_typ typ_excep t2.t_orig.typ t2.typ_cps) in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-        let h' = Id.new_var ~name:"h" (TFun(e,typ_result)) in
+        let h' = Id.new_var_id h in
         let e0 = get_tfun_effect t1.typ_cps in
         make_fun k
           (make_fun h
@@ -632,7 +632,7 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let r = Id.new_var ~name:"r" (trans_typ typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let k' = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var ~name:"b" (trans_typ typ_excep t1.t_orig.typ t1.typ_cps) in
+        let b = Id.new_var TBool in
         make_fun k
           (make_let [k', [], make_var k]
              (make_app_cont t1.effect t1'
@@ -647,10 +647,10 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let r = Id.new_var ~name:"r" (trans_typ typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let k' = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var ~name:"b" (trans_typ typ_excep t1.t_orig.typ t1.typ_cps) in
+        let b = Id.new_var TBool in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-        let h' = Id.new_var ~name:"h" (TFun(e,typ_result)) in
+        let h' = Id.new_var_id h in
         make_fun k
           (make_let [k', [], make_var k] (* to prevent the increase of code size in eta-reduction *)
              (make_fun h
@@ -742,7 +742,7 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let x2 = Id.new_var (trans_typ typ_excep t2.t_orig.typ t2.typ_cps) in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-        let h' = Id.new_var ~name:"h" (TFun(e,typ_result)) in
+        let h' = Id.new_var_id h in
         let t1' = transform typ_excep k_post t1 in
         let t2' = transform typ_excep k_post t2 in
           make_fun k
@@ -762,13 +762,13 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
     | NotCPS t1, ECont ->
         let r = Id.new_var ~name:"r" (trans_typ typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var ~name:"b" (trans_typ typ_excep t1.t_orig.typ t1.typ_cps) in
+        let b = Id.new_var TBool in
         let t1' = transform typ_excep k_post t1 in
           make_fun k (make_app_cont t1.effect t1' (make_fun b (make_app (make_var k) [make_not (make_var b)])))
     | NotCPS t1, EExcep ->
         let r = Id.new_var ~name:"r" (trans_typ typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var ~name:"b" (trans_typ typ_excep t1.t_orig.typ t1.typ_cps) in
+        let b = Id.new_var TBool in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let t1' = transform typ_excep k_post t1 in
@@ -813,7 +813,7 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let xs = List.map (fun t -> Id.new_var @@ trans_typ typ_excep t.t_orig.typ t.typ_cps) ts in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-        let h' = Id.new_var ~name:"h" (TFun(e,typ_result)) in
+        let h' = Id.new_var_id h in
         let t' = make_app (make_var k) [make_tuple @@ List.map make_var xs] in
         let aux t_acc x t = make_app_excep t.effect (transform typ_excep k_post t) (make_fun x t_acc) (make_var h') in
         make_fun k
@@ -825,7 +825,7 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let k = Id.new_var ~name:"k" (TFun(u,typ_result)) in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-        let h' = Id.new_var ~name:"h" (TFun(e,typ_result)) in
+        let h' = Id.new_var_id h in
         let t1' = transform typ_excep k_post t1 in
         make_fun k
           (make_fun h
