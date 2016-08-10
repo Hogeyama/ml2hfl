@@ -98,17 +98,27 @@ and pat_desc =
 
 type env = (id * typ) list
 
-
 module ID = struct
   type t = id
   let compare = Id.compare
   let print = Id.print
 end
 
-
 let typ t = t.typ
 let desc t = t.desc
 let attr t = t.attr
+
+
+module Id = struct
+  include Id
+  let new_var ?name typ =
+    let name =
+      match name with
+      | None -> Type.var_name_of typ
+      | Some name -> name
+    in
+    make (new_int()) name typ
+end
 
 
 let const_attr = [ANotFail; ATerminate; ADeterministic]

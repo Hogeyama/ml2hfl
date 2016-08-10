@@ -174,7 +174,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         r := Some TUnit;
         define_randvalue "" ed typ
     | TApp(TList, [typ']) ->
-        let u = Id.new_var ~name:"u" TUnit in
+        let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
         let (env'',defs'),t_typ' = define_randvalue "" (env', defs) typ' in
@@ -195,7 +195,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
     | TData s -> (env, defs), make_randvalue_unit typ
     | TVariant labels ->
-        let u = Id.new_var ~name:"u" TUnit in
+        let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (TData name,f)::(typ,f)::env in
         let n = List.length labels in
@@ -215,7 +215,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         let (env'',defs'),t = (env'', defs'), make_match randint_unit_term (List.map2 aux labels itss) in
         (env'', (f,[u],t)::defs'), make_app (make_var f) [unit_term]
     | TRecord fields ->
-        let u = Id.new_var ~name:"u" TUnit in
+        let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (TData name,f)::(typ,f)::env in
         let (env'',defs'),t =
@@ -1057,7 +1057,7 @@ let insert_param_funarg_typ typ =
       let xs' = List.map insert_param_funarg.tr_var xs in
       let xs'' =
         if should_insert (List.map Id.typ xs)
-        then (Id.new_var ~name:"u" TUnit) :: xs'
+        then (Id.new_var TUnit) :: xs'
         else xs'
       in
       List.fold_right (fun x typ -> TFun(x,typ)) xs'' (insert_param_funarg.tr_typ typ')
@@ -1072,7 +1072,7 @@ let insert_param_funarg_term t =
         let xs' = List.map insert_param_funarg.tr_var xs in
         let xs'' =
           if should_insert @@ List.map Id.typ xs
-          then (Id.new_var ~name:"u" TUnit) :: xs'
+          then (Id.new_var TUnit) :: xs'
           else xs'
         in
         (List.fold_right make_fun xs'' (insert_param_funarg.tr_term t')).desc
@@ -1089,7 +1089,7 @@ let insert_param_funarg_term t =
           let xs' = List.map insert_param_funarg.tr_var xs in
           let xs'' =
             if should_insert @@ List.map Id.typ xs
-            then Id.new_var ~name:"u" TUnit :: xs'
+            then Id.new_var TUnit :: xs'
             else xs'
           in
           insert_param_funarg.tr_var f, xs'', insert_param_funarg.tr_term t

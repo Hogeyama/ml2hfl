@@ -504,8 +504,8 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   | Texp_while(e1,e2) ->
       let t1 = from_expression e1 in
       let t2 = from_expression e2 in
-      let x = Id.new_var ~name:"u" TUnit in
-      let f = Id.new_var ~name:"while" (TFun(Id.new_var ~name:"u" TUnit, t2.typ)) in
+      let x = Id.new_var TUnit in
+      let f = Id.new_var ~name:"while" @@ make_tfun TUnit t2.typ in
       let t2' = make_if t1 (make_seq t2 @@ make_app (make_var f) [unit_term]) unit_term in
       make_letrec [f, [x], t2'] @@ make_app (make_var f) [unit_term]
   | Texp_for(x, _, e1, e2, dir, e3) ->
