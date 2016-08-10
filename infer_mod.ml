@@ -1030,9 +1030,7 @@ let add_context for_infer prog f typ =
     let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
     let make_fail typ =
       make_raise (make_construct af [] etyp) typ
-      |> Encode_rec.trans
-      |> Encode_list.trans
-      |> fst
+      |> Encode.all
     in
     let typ_exn = Encode_list.trans_typ @@ Encode_rec.trans_typ @@ etyp in
     Trans.ref_to_assert ~make_fail ~typ_exn (Ref_type.Env.of_list [f,typ]) unit_term

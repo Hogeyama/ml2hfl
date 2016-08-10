@@ -269,12 +269,10 @@ let add_context prog f typ =
   in
   let af = "Assert_failure" in
   let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
-  let typ_exn = Encode_list.trans_typ @@ Encode_rec.trans_typ @@ etyp in
+  let typ_exn = Encode.typ_of Encode.all etyp in
   let make_fail typ =
     make_raise (make_construct af [] etyp) typ
-    |> Encode_rec.trans
-    |> Encode_list.trans
-    |> fst
+    |> Encode.all
   in
   let t' =
     unit_term

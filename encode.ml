@@ -204,3 +204,21 @@ let variant = encode_variant.tr_term
 
 let recdata = Encode_rec.trans
 let list = Encode_list.trans
+
+
+
+let all =
+  mutable_record
+  |- record
+  |- variant
+  |- list |- fst
+  |- recdata
+  |- array
+  |- abst_ref
+
+
+let typ_of f typ =
+  Id.new_var typ
+  |> make_var
+  |> f
+  |> Syntax.typ

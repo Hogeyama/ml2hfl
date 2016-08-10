@@ -466,7 +466,7 @@ let rec trans_type typ =
   List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
 and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
-let of_term t = assert false (* @todo translate FPAT term to Syntax.term *)
+let of_desc t = assert false (* @todo translate FPAT term to Syntax.term *)
 
 let insert_extra_param t =
   let tmp = get_time() in
@@ -583,7 +583,7 @@ let insert_extra_param t =
                     else
                       None)
                    bvs exs
-                 |> List.map of_term
+                 |> List.map of_desc
               | _ -> [])
              ts'
          in
