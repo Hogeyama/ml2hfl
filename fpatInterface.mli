@@ -35,7 +35,6 @@ val infer_with_ext :
 
 val trans_type : 'a Type.t -> 'a Type.t
 val trans_id : 'a Type.t Id.t -> 'a Type.t Id.t
-val of_term : 'a -> 'b
 val insert_extra_param : Syntax.term -> Syntax.term
 val instantiate_param :
   CEGAR_syntax.prog ->

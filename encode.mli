@@ -20,3 +20,7 @@ val array : term -> term
 
 (** Abstract away content of reference *)
 val abst_ref : term -> term
+
+val all : term -> term
+
+val typ_of : (term -> term) -> typ -> typ

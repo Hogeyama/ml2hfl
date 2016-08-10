@@ -1091,7 +1091,7 @@ let trans t =
   initialize ();
   let t = Trans.short_circuit_eval t in
   let typ_excep = Option.default typ_unknown @@ find_exn_typ t in
-  if order typ_excep > 0 then unsupported "higher-order exceptions";
+  if typ_excep <> typ_unknown && order typ_excep > 0 then unsupported "higher-order exceptions";
   let typ_exn = infer_effect_typ typ_excep in
   let typed = infer_effect t in
   pr2 "infer_effect" print_term typed;
