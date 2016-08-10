@@ -131,18 +131,6 @@ and generate typ_exn make_fail genv cenv typ =
         let x' = Id.new_var typ' in
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
         genv', cenv', U.make_let [x',[],U.make_randvalue_unit typ'] @@ U.make_assume t_check @@ U.make_var x'
-    | Fun(x,typ1,Exn(typ2,typ3)) ->
-        let x' = Id.new_var @@ to_abst_typ typ1 in
-        let typ2' = subst_var x x' typ2 in
-        let typ3' = subst_var x x' typ3 in
-        let genv',cenv',t_typ1 = generate_check typ_exn make_fail genv cenv x' typ1 in
-        if !!debug then Format.printf "Ref_type.generate t_typ1: %a@." Print.term t_typ1;
-        let t1 = U.make_or U.randbool_unit_term t_typ1 in
-        let genv'',cenv'',t_typ2' = generate typ_exn make_fail genv' cenv' typ2' in
-        let genv''',cenv''',t_typ3' = generate typ_exn make_fail genv' cenv' typ3' in
-        let t2 = U.make_br t_typ2' @@ U.make_raise t_typ3' t_typ2'.S.typ in
-        let t3 = make_fail @@ to_simple typ2' in
-        genv''', cenv''', U.make_fun x' @@ U.make_if t1 t2 t3
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_abst_typ typ1 in
         let typ2' = subst_var x x' typ2 in
@@ -273,7 +261,10 @@ and generate typ_exn make_fail genv cenv typ =
               else genv', cenv', U.make_letrec [def] t
           in
           genv', cenv', U.make_let [l,[],U.randint_unit_term] @@ U.make_assume p_len' t
-    | _ -> unsupported "Ref_type_gen.generate"
+    | Exn(typ1,typ2) ->
+        let genv',cenv',t_typ1 = generate typ_exn make_fail genv cenv typ1 in
+        let genv'',cenv'',t_typ2 = generate typ_exn make_fail genv' cenv' typ2 in
+        genv'', cenv'', U.make_br t_typ1 @@ U.make_raise t_typ2 t_typ1.S.typ
   in
   if !!debug then Format.printf "Ref_type.generate': %a@." print typ;
   genv', cenv', {t with S.typ = to_abst_typ typ}

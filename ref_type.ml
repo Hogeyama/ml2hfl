@@ -122,7 +122,7 @@ let rec print fm = function
         else
           ""
       in
-      Format.fprintf fm "(@[<hov 2>%s%a ->^{%a}@ %a@])" arg print typ1 print typ3 print typ2
+      Format.fprintf fm "(@[<hov 2>%s%a ->^[%a]@ %a@])" arg print typ1 print typ3 print typ2
   | Fun _ as typ ->
       let rec aux fm (xtyps, typ) =
         match xtyps with
@@ -166,7 +166,7 @@ let rec print fm = function
         then Format.fprintf fm "|%a|" Id.print x;
       Format.fprintf fm " list@])"
   | Exn(typ1, typ2) ->
-      Format.fprintf fm "(@[<hov 2>%a@ |^{%a}@])" print typ1 print typ2
+      Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" print typ1 print typ2
 
 let rec decomp_funs n typ =
   match typ with
