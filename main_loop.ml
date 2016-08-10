@@ -31,6 +31,7 @@ type preprocess_label =
   | Decomp_pair_eq
   | Add_preds
   | Replace_fail_with_raise
+  | Encode_variant
   | Encode_recdata
   | Replace_base_with_int
   | Encode_list
@@ -68,6 +69,7 @@ let string_of_label = function
   | Decomp_pair_eq -> "Decomp_pair_eq"
   | Add_preds -> "Add_preds"
   | Replace_fail_with_raise -> "Replace_fali_with_raise"
+  | Encode_variant -> "Encode_variant"
   | Encode_recdata -> "Encode_recdata"
   | Replace_base_with_int -> "Replace_base_with_int"
   | Encode_list -> "Encode_list"
@@ -135,6 +137,9 @@ let preprocesses spec : preprocess list =
     Replace_fail_with_raise,
       (Fun.const !Flag.fail_as_exception,
        map_trans Trans.replace_fail_with_raise);
+    Encode_variant,
+      (Fun.const true,
+       map_trans Encode.variant);
     Encode_recdata,
       (Fun.const true,
        map_trans Encode.recdata);

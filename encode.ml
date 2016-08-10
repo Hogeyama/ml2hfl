@@ -161,6 +161,46 @@ let record = encode_record.tr_term
 
 
 
+let rec is_simple_variant typ =
+  match typ with
+  | TVariant labels -> List.for_all (snd |- (=) []) labels
+  | Type([s, typ], s') -> assert (s = s'); is_simple_variant typ
+  | _ -> false
+
+let rec position c typ =
+  match typ with
+  | TVariant labels -> List.find_pos (fun _ (c',_) -> c = c') labels
+  | Type([s, typ], s') -> assert (s = s'); position c typ
+  | _ -> invalid_arg "position"
+
+let encode_variant = make_trans ()
+let encode_variant_typ typ =
+  if is_simple_variant typ then
+    TInt
+  else
+    encode_variant.tr_typ_rec typ
+
+let encode_variant_pat p =
+  match p.pat_desc with
+  | PConstruct(c, ts) when is_simple_variant p.pat_typ ->
+      assert (ts = []);
+      make_pconst (make_int @@ position c p.pat_typ)
+  | _ -> encode_variant.tr_pat_rec p
+
+let encode_variant_term t =
+  match t.desc with
+  | Constr(c, ts) when is_simple_variant t.typ ->
+      assert (ts = []);
+      make_int @@ position c t.typ
+  | _ -> encode_variant.tr_term_rec t
+
+let () = encode_variant.tr_term <- encode_variant_term
+let () = encode_variant.tr_pat <- encode_variant_pat
+let () = encode_variant.tr_typ <- encode_variant_typ
+let variant = encode_variant.tr_term
+
+
+
 
 let recdata = Encode_rec.trans
 let list = Encode_list.trans

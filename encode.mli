@@ -6,6 +6,9 @@ val mutable_record : term -> term
 (** Encode record as tuple *)
 val record : term -> term
 
+(** Encode simple variant as integer *)
+val variant : term -> term
+
 (** Encode list as function *)
 val list : term -> term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
