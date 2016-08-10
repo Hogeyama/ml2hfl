@@ -860,9 +860,28 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
 
 
 
-
-
-
+let rec col_exn_typ {t_cps=t} =
+  match t with
+  | ConstCPS _ -> []
+  | BottomCPS -> []
+  | RandIntCPS _ -> []
+  | RandValueCPS _ -> []
+  | VarCPS _ -> []
+  | FunCPS(_, t1) -> col_exn_typ t1
+  | AppCPS(t1, t2) -> col_exn_typ t1 @ col_exn_typ t2
+  | IfCPS(t1, t2, t3) -> col_exn_typ t1 @ col_exn_typ t2 @ col_exn_typ t3
+  | LetCPS(_, bindings, t2) -> List.fold_left (fun acc (_,t) -> col_exn_typ t @ acc) (col_exn_typ t2) bindings
+  | BinOpCPS(_, t1, t2) -> col_exn_typ t1 @ col_exn_typ t2
+  | NotCPS t1 -> col_exn_typ t1
+  | EventCPS _ -> []
+  | ProjCPS(_, t1) -> col_exn_typ t1
+  | TupleCPS ts -> List.fold_left (fun acc t -> col_exn_typ t @ acc) [] ts
+  | RaiseCPS t -> t.typ_cps :: col_exn_typ t
+  | TryWithCPS(t1, t2) -> col_exn_typ t1 @ col_exn_typ t2
+let unify_exn_typ typ_exn typed =
+  let typs = col_exn_typ typed in
+  Format.printf "typs: %a@." (List.print print_typ_cps) typs;
+  List.iter (unify typ_exn) typs
 
 
 let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; effect=e} =
@@ -1065,31 +1084,28 @@ let has_typ_result =
 
 
 
-let trans_typ typ_excep typ = trans_typ typ_excep typ @@ force_cont @@ infer_effect_typ typ
-
 let pr2 s p t = if !!debug then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
 
 let trans t =
   pr "INPUT" t;
   initialize ();
-  let typ_excep = Option.default typ_unknown @@ find_exn_typ t in
-  let typ_excep' =
-    if !!debug then Format.printf "typ_excep: %a@." Print.typ typ_excep;
-    if not @@ has_typ_result typ_excep then
-      trans_typ typ_unknown typ_excep
-    else
-      typ_excep
-  in
-  let typ_exn = force_cont @@ infer_effect_typ typ_excep in
   let t = Trans.short_circuit_eval t in
+  let typ_excep = Option.default typ_unknown @@ find_exn_typ t in
+  if order typ_excep > 0 then unsupported "higher-order exceptions";
+  let typ_exn = infer_effect_typ typ_excep in
   let typed = infer_effect t in
   pr2 "infer_effect" print_typed_term typed;
+  unify_exn_typ typ_exn typed;
   sol := solve_constraints !constraints;
   if !!debug then check_solution ();
   pr2 "infer_effect" print_typed_term typed;
-  let t = transform typ_excep' "" typed in
   let t =
+    let typ_excep' =
+      if !!debug then Format.printf "typ_excep: %a@." Print.typ typ_excep;
+      trans_typ typ_unknown typ_excep typ_exn
+    in
+    let t = transform typ_excep' "" typed in
     let x = Id.new_var TUnit in
     let e = Id.new_var ~name:"e" typ_excep' in
     let k = make_fun x cps_result in
@@ -1118,6 +1134,9 @@ let trans t =
     |@> pr "elim_unused_let"
   in
   t', make_get_rtyp typ_exn typed
+
+
+let trans_typ typ_excep typ = trans_typ typ_excep typ @@ force_cont @@ infer_effect_typ typ
 
 
 let trans_as_direct t =
