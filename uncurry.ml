@@ -33,7 +33,10 @@ let rec from_type typ =
   | Type.TData _
   | Type.TVar _
   | Type.TPred _
-  | Type.TFuns _ -> unsupported "uncurry"
+  | Type.TFuns _
+  | Type.TVariant _
+  | Type.TRecord _
+  | Type.Type _ -> unsupported "uncurry"
 
 let rec decomp_tfun sol = function
   | TVar {contents = Some typ} -> decomp_tfun sol typ

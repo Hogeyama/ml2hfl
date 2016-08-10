@@ -517,7 +517,7 @@ and print_pattern' fm pat =
 and print_termlist' pri = print_list (print_term' pri) "@ "
 
 
-let print_defs fm (defs:(id * (id list * typed_term)) list) =
+let print_defs fm (defs:(id * (id list * term)) list) =
   let print_fundef (f, (xs, t)) =
     fprintf fm "%a %a-> %a.\n" print_id f (print_ids false) xs (print_term false) t
   in

@@ -60,7 +60,7 @@ let append_paths paths1 (vl, ce, paths2) =
   vl, ce, merge_paths paths1 paths2
 
 type answer =
-  | Closure of ((id * answer) list * typed_term)
+  | Closure of ((id * answer) list * term)
   | VTuple of answer list
   | Fail
 

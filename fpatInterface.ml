@@ -116,7 +116,7 @@ let rec of_typ typ =
       Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
 
-let rec of_typed_term t =
+let rec of_term t =
   match S.desc t with
   | S.Const S.Unit -> Fpat.Term.mk_const @@ Fpat.Const.Unit
   | S.Const S.True -> Fpat.Term.mk_const @@ Fpat.Const.True
@@ -124,7 +124,7 @@ let rec of_typed_term t =
   | S.Const (S.Int n) -> Fpat.Term.mk_const @@ Fpat.Const.Int n
   | S.Const (S.String s) -> Fpat.Term.mk_const @@ Fpat.Const.String s
   | S.Var x -> Fpat.Term.mk_var @@ Fpat.Idnt.make @@ Id.to_string x
-  | S.Not t1 -> Fpat.Term.mk_app (Fpat.Term.mk_const Fpat.Const.Not) [of_typed_term t1]
+  | S.Not t1 -> Fpat.Term.mk_app (Fpat.Term.mk_const Fpat.Const.Not) [of_term t1]
   | S.BinOp(op, t1, t2) ->
       let op' =
         match op with
@@ -137,7 +137,7 @@ let rec of_typed_term t =
               | typ when typ = Type.typ_unknown -> Fpat.Const.Eq Fpat.Type.mk_int
               | typ ->
                   Format.eprintf "t1.S.typ: %a@." Print.typ typ;
-                  unsupported "FpatInterface.of_typed_term"
+                  unsupported "FpatInterface.of_term"
             end
         | S.Lt -> Fpat.Const.Lt Fpat.Type.mk_int
         | S.Gt -> Fpat.Const.Gt Fpat.Type.mk_int
@@ -149,12 +149,12 @@ let rec of_typed_term t =
         | S.Sub -> Fpat.Const.Sub Fpat.Type.mk_int
         | S.Mult -> Fpat.Const.Mul Fpat.Type.mk_int
       in
-      Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_typed_term t1; of_typed_term t2]
+      Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_term t1; of_term t2]
   | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
       let ts' =
         ts
         |> List.map @@ Pair.add_right @@ of_typ -| S.typ
-        |> List.map @@ Pair.map_fst of_typed_term
+        |> List.map @@ Pair.map_fst of_term
       in
       Fpat.Pva.make (Fpat.Idnt.make @@ Id.to_string p) ts'
       |> Fpat.Pva.to_formula
@@ -166,13 +166,13 @@ let rec of_typed_term t =
             List.map (Id.typ |- of_typ) xs
         | _ -> assert false
       in
-      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_typed_term t]
+      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_term t]
   | S.Tuple ts ->
       let tys = List.map (S.typ |- of_typ) ts in
-      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Tuple tys) @@ List.map of_typed_term ts
+      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Tuple tys) @@ List.map of_term ts
   | desc ->
       Format.eprintf "desc: %a@." Print.desc desc;
-      unsupported "FpatInterface.of_typed_term"
+      unsupported "FpatInterface.of_term"
 
 let inv_const c =
   match c with
@@ -466,7 +466,7 @@ let rec trans_type typ =
   List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
 and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
-let of_term t = assert false (* @todo translate FPAT term to Syntax.typed_term *)
+let of_term t = assert false (* @todo translate FPAT term to Syntax.term *)
 
 let insert_extra_param t =
   let tmp = get_time() in
@@ -738,7 +738,7 @@ let simplify_term t =
  *)
   t
 
-let simplify_typed_term p =
+let simplify_term p =
   { p with Syntax.desc = simplify_term p.Syntax.desc }
 
 let compute_strongest_post prog ce ext_cex =

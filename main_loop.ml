@@ -46,7 +46,7 @@ type preprocess_label =
   | Insert_unit_param
   | Preprocessfortermination
 
-type tr_result = Syntax.typed_term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
+type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
 type results = (preprocess_label * tr_result) list
 

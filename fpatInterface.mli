@@ -3,7 +3,7 @@ val conv_const : CEGAR_syntax.const -> Fpat.Const.t
 val conv_var : string -> Fpat.Idnt.t
 val conv_term : CEGAR_syntax.env -> CEGAR_syntax.t -> Fpat.Term.t
 val conv_formula : CEGAR_syntax.t -> Fpat.Formula.t
-val of_typed_term : Syntax.typed_term -> Fpat.Term.t
+val of_term : Syntax.term -> Fpat.Term.t
 val inv_const : Fpat.Const.t -> CEGAR_syntax.const
 val inv_term : Fpat.Term.t -> CEGAR_syntax.t
 val inv_formula : Fpat.Formula.t -> CEGAR_syntax.t
@@ -36,7 +36,7 @@ val infer_with_ext :
 val trans_type : 'a Type.t -> 'a Type.t
 val trans_id : 'a Type.t Id.t -> 'a Type.t Id.t
 val of_term : 'a -> 'b
-val insert_extra_param : Syntax.typed_term -> Syntax.typed_term
+val insert_extra_param : Syntax.term -> Syntax.term
 val instantiate_param :
   CEGAR_syntax.prog ->
   CEGAR_syntax.env *
@@ -44,7 +44,7 @@ val instantiate_param :
    CEGAR_syntax.event list * CEGAR_syntax.t)
   list * CEGAR_syntax.var
 val simplify_term : 'a -> 'a
-val simplify_typed_term : Syntax.typed_term -> Syntax.typed_term
+val simplify_term : Syntax.term -> Syntax.term
 val compute_strongest_post :
   CEGAR_syntax.prog ->
   int list ->

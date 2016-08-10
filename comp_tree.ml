@@ -10,8 +10,8 @@ let debug () = List.mem "Comp_tree" !Flag.debug_module
 
 type label =
   | App of fun_id * (id * value) list
-  | Let of id * typed_term
-  | Assume of typed_term
+  | Let of id * term
+  | Assume of term
   | Spawn of id * id list option
   | Value of value
   | Fail
@@ -27,7 +27,7 @@ and node =
 and nid = int
 and var_env = (id * id list) list
 and val_env = (id * value) list
-and value = Closure of var_env * val_env * typed_term
+and value = Closure of var_env * val_env * term
 
 and fun_id = id * id_kind
 and id_kind =
@@ -294,13 +294,13 @@ let rec from_term
           (top_funs : id list)
           (top_fun_args : id list)
           (typ_env : Ref_type.Env.t)
-          (fun_env : (id * (id list * typed_term)) list)
+          (fun_env : (id * (id list * term)) list)
           (var_env : var_env)
           (val_env : val_env)
           (ce_set : ce_set)
           (extend : (id * int) list)
           (ce_env : (tid * (id * int * int list)) list)
-          (t : typed_term)
+          (t : term)
         : t list =
   let f g = if !!debug then print_begin_end g else !!g in
   f (fun () ->

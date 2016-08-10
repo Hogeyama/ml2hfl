@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_syntax
 
-type t = {head : typed_term; body : typed_term list}
+type t = {head : term; body : term list}
 type horn_clauses = t list
 
 type pred_var = int
