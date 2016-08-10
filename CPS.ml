@@ -10,7 +10,7 @@ let debug () = List.mem "CPS" !Flag.debug_module
 let counter = ref 0
 let new_evar () = incr counter; !counter
 
-type typed_term = {t_orig:Syntax.typed_term; t_cps:t_cps; typ_cps:typ_cps; effect:effect_var}
+type term = {t_orig:Syntax.term; t_cps:t_cps; typ_cps:typ_cps; effect:effect_var}
 and typed_ident = {id_cps:id; id_typ:typ_cps}
 and t_cps =
   | ConstCPS of const
@@ -18,17 +18,17 @@ and t_cps =
   | RandIntCPS of bool
   | RandValueCPS of typ
   | VarCPS of typed_ident
-  | FunCPS of typed_ident * typed_term
-  | AppCPS of typed_term * typed_term
-  | IfCPS of typed_term * typed_term * typed_term
-  | LetCPS of rec_flag * (typed_ident * typed_term) list * typed_term
-  | BinOpCPS of binop * typed_term * typed_term
-  | NotCPS of typed_term
+  | FunCPS of typed_ident * term
+  | AppCPS of term * term
+  | IfCPS of term * term * term
+  | LetCPS of rec_flag * (typed_ident * term) list * term
+  | BinOpCPS of binop * term * term
+  | NotCPS of term
   | EventCPS of string
-  | ProjCPS of int * typed_term
-  | TupleCPS of typed_term list
-  | RaiseCPS of typed_term
-  | TryWithCPS of typed_term * typed_term
+  | ProjCPS of int * term
+  | TupleCPS of term list
+  | RaiseCPS of term
+  | TryWithCPS of term * term
 and typ_cps =
   | TBaseCPS of Syntax.typ
   | TFunCPS of effect_var * typ_cps * typ_cps
@@ -87,9 +87,9 @@ let rec print_typ_cps fm typ =
       Format.fprintf fm "(%a)" (print_list print_typ_cps " *@ ") typs
 
 
-and print_typed_termlist fm = List.iter (fun bd -> Format.fprintf fm "@;%a" print_typed_term bd)
+and print_termlist fm = List.iter (fun bd -> Format.fprintf fm "@;%a" print_term bd)
 
-and print_typed_term fm {t_cps=t; typ_cps=typ; effect=e} =
+and print_term fm {t_cps=t; typ_cps=typ; effect=e} =
   match true, !sol e with
   | true, EUnknown -> Format.fprintf fm "(%a :%a: %a)" print_t_cps t print_evar e print_typ_cps typ
   | true, e -> Format.fprintf fm "(%a :%a: %a)" print_t_cps t (Color.green print_effect) e (Color.cyan print_typ_cps) typ
@@ -102,34 +102,34 @@ and print_t_cps fm = function
   | RandValueCPS typ -> Format.fprintf fm "rand_value(%a)" Print.typ typ
   | VarCPS x -> Print.id fm x.id_cps
   | FunCPS(x, t) ->
-      Format.fprintf fm "@[<hov 2>fun %a : %a ->@ %a@]" Print.id x.id_cps print_typ_cps x.id_typ print_typed_term t
+      Format.fprintf fm "@[<hov 2>fun %a : %a ->@ %a@]" Print.id x.id_cps print_typ_cps x.id_typ print_term t
   | AppCPS(t1, t2) ->
-      Format.fprintf fm "%a%a" print_typed_term t1 print_typed_term t2
+      Format.fprintf fm "%a%a" print_term t1 print_term t2
   | IfCPS(t1, t2, t3) ->
       Format.fprintf fm "@[@[if %a@]@;then @[%a@]@;else @[%a@]@]"
-                     print_typed_term t1 print_typed_term t2 print_typed_term t3
+                     print_term t1 print_term t2 print_term t3
   | LetCPS(flag, bindings, t) ->
       let is_rec = match flag with Nonrecursive -> false | Recursive -> true in
       let head = ref (if is_rec then "let rec" else "let") in
       let pr fm (f,t) =
         Format.fprintf fm "@[<hov 2>%s %a : %a =@ @[%a@]@]@;"
-                       !head Print.id f.id_cps print_typ_cps f.id_typ print_typed_term t;
+                       !head Print.id f.id_cps print_typ_cps f.id_typ print_term t;
         head := "and"
       in
-      Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "") bindings print_typed_term t
+      Format.fprintf fm "@[<v>%a@;in@;%a@]" (print_list pr "") bindings print_term t
   | BinOpCPS(op, t1, t2) ->
-      Format.fprintf fm "%a %s %a" print_typed_term t1 (Print.string_of_binop op) print_typed_term t2
+      Format.fprintf fm "%a %s %a" print_term t1 (Print.string_of_binop op) print_term t2
   | NotCPS t ->
-      Format.fprintf fm "not %a" print_typed_term t
+      Format.fprintf fm "not %a" print_term t
   | EventCPS s -> Format.fprintf fm "{%s}" s
   | ProjCPS(i,t) ->
-      Format.fprintf fm "#%d %a" i print_typed_term t
+      Format.fprintf fm "#%d %a" i print_term t
   | TupleCPS ts ->
-      Format.fprintf fm "(%a)" (print_list print_typed_term ",@ ") ts
+      Format.fprintf fm "(%a)" (print_list print_term ",@ ") ts
   | RaiseCPS t ->
-      Format.fprintf fm "@[raise %a@]" print_typed_term t
+      Format.fprintf fm "@[raise %a@]" print_term t
   | TryWithCPS(t1,t2) ->
-      Format.fprintf fm "@[<hov 2>@[<hov 2>try@ %a@]@ with@ %a@]" print_typed_term t1 print_typed_term t2
+      Format.fprintf fm "@[<hov 2>@[<hov 2>try@ %a@]@ with@ %a@]" print_term t1 print_term t2
 
 and print_effect fm = function
   | EUnknown -> Format.fprintf fm "EUnknown"
@@ -880,7 +880,6 @@ let rec col_exn_typ {t_cps=t} =
   | TryWithCPS(t1, t2) -> col_exn_typ t1 @ col_exn_typ t2
 let unify_exn_typ typ_exn typed =
   let typs = col_exn_typ typed in
-  Format.printf "typs: %a@." (List.print print_typ_cps) typs;
   List.iter (unify typ_exn) typs
 
 
@@ -1095,11 +1094,11 @@ let trans t =
   if order typ_excep > 0 then unsupported "higher-order exceptions";
   let typ_exn = infer_effect_typ typ_excep in
   let typed = infer_effect t in
-  pr2 "infer_effect" print_typed_term typed;
+  pr2 "infer_effect" print_term typed;
   unify_exn_typ typ_exn typed;
   sol := solve_constraints !constraints;
   if !!debug then check_solution ();
-  pr2 "infer_effect" print_typed_term typed;
+  pr2 "infer_effect" print_term typed;
   let t =
     let typ_excep' =
       if !!debug then Format.printf "typ_excep: %a@." Print.typ typ_excep;

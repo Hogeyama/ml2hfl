@@ -145,7 +145,7 @@ let rec compose fg fts =
 
 
 
-let new_funs = ref ([] : (id list * (id * id list * typed_term)) list)
+let new_funs = ref ([] : (id list * (id * id list * term)) list)
 
 let assoc_env f env =
   if debug() then Color.printf Color.Reverse "%a@." Id.print f;

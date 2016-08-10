@@ -11,7 +11,7 @@ open Type
 let debug () = List.mem "Parser_wrapper" !Flag.debug_module
 
 type declaration =
-  | Decl_let of rec_flag * (id * typed_term) list
+  | Decl_let of rec_flag * (id * term) list
   | Decl_type of (string * (typ list * type_kind)) list
   | Decl_exc of string * typ list
 

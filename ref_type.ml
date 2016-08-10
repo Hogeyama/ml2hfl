@@ -13,13 +13,13 @@ type base =
   | Abst of string
 
 type t =
-  | Base of base * S.id * S.typed_term
+  | Base of base * S.id * S.term
   | Fun of S.id * t * t
   | Tuple of (S.id * t) list
   | Inter of S.typ * t list
   | Union of S.typ * t list
   | ExtArg of S.id * t * t
-  | List of S.id * S.typed_term * S.id * S.typed_term * t
+  | List of S.id * S.term * S.id * S.term * t
   | Exn of t * t
 
 let typ_result = Base(Abst "X", U.dummy_var, U.true_term)
@@ -94,10 +94,11 @@ let rec occur x = function
       aux p_len || aux p_i || occur x typ
   | Exn(typ1, typ2) -> occur x typ1 || occur x typ2
 
-let rec decomp_fun_full typ =
+let rec decomp_funs typ =
   match typ with
+  | Fun(_,_,Exn _) -> [], typ
   | Fun(x,typ1,typ2) ->
-      Pair.map_fst (List.cons (x,typ1)) @@ decomp_fun_full typ2
+      Pair.map_fst (List.cons (x,typ1)) @@ decomp_funs typ2
   | _ -> [], typ
 
 let rec print fm = function
@@ -114,6 +115,14 @@ let rec print fm = function
       Format.fprintf fm "_|_"
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
+  | Fun(x, typ1, Exn(typ2, typ3)) ->
+      let arg =
+        if occur x typ2 || occur x typ3 then
+          Format.asprintf "%a:" Id.print x
+        else
+          ""
+      in
+      Format.fprintf fm "(@[<hov 2>%s%a ->^{%a}@ %a@])" arg print typ1 print typ3 print typ2
   | Fun _ as typ ->
       let rec aux fm (xtyps, typ) =
         match xtyps with
@@ -123,15 +132,7 @@ let rec print fm = function
             then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print typ1 aux (xtyps', typ)
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print typ1 aux (xtyps', typ)
       in
-      Format.fprintf fm "(%a)" aux @@ decomp_fun_full typ
-  | Fun(x, typ1, Exn(typ2, typ3)) ->
-      let arg =
-        if occur x typ2 || occur x typ3 then
-          Format.asprintf "%a:" Id.print x
-        else
-          ""
-      in
-      Format.fprintf fm "(@[<hov 2>%s%a ->^{%a}@ %a@])" arg print typ1 print typ3 print typ2
+      Format.fprintf fm "(%a)" aux @@ decomp_funs typ
   | Tuple xtyps ->
       let n = List.length xtyps in
       let pr fm (i,(x,typ)) =
@@ -193,6 +194,7 @@ let rec arg_num = function
   | Fun(_,_,typ2) -> 1 + arg_num typ2
   | ExtArg(_,_,typ2) -> arg_num typ2
   | List _ -> 0
+  | Exn(typ, _) -> arg_num typ
 
 let rec map_pred f typ =
   match typ with
@@ -246,6 +248,7 @@ let rec rename var = function
       let typ' = subst_var x x' typ in
       let typ'' = subst_var y y' typ' in
       List(x', p_len', y', p_i', rename None typ'')
+  | Exn(typ1, typ2) -> Exn(rename var typ1, rename var typ2)
 let rename typ =
   Id.save_counter ();
   Id.clear_counter ();
@@ -339,6 +342,7 @@ let rec copy_fun_arg_to_base = function
   | Union(typ, typs) -> Union(typ, List.map copy_fun_arg_to_base typs)
   | ExtArg(x,typ1,typ2) -> ExtArg(x, copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, copy_fun_arg_to_base typ)
+  | Exn(typ1,typ2) -> Exn(copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
 
 
 let rec same typ1 typ2 =
@@ -367,9 +371,10 @@ let rec has_no_predicate typ =
   | Union(_, typs) -> List.for_all has_no_predicate typs
   | ExtArg _ -> unsupported "has_no_predicate"
   | List(x,p_len,y,p_i,typ1) -> p_len = U.true_term && p_i = U.true_term && has_no_predicate typ1
+  | Exn(typ1,typ2) -> has_no_predicate typ1 && has_no_predicate typ2
 
 
-let conv = Fpat.Formula.of_term -| FpatInterface.of_typed_term
+let conv = Fpat.Formula.of_term -| FpatInterface.of_term
 let is_sat = FpatInterface.is_sat -| conv
 let is_valid = FpatInterface.is_valid -| conv
 let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
@@ -405,7 +410,7 @@ let rec simplify_pred t =
         | _ -> t
     with Unsupported _ -> t
   else
-    FpatInterface.simplify_typed_term t
+    FpatInterface.simplify_term t
 
 let rec flatten typ =
   match typ with

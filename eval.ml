@@ -2,7 +2,7 @@ open Util
 open Syntax
 open Term_util
 
-exception RaiseExcep of int list * typed_term
+exception RaiseExcep of int list * term
 exception EventFail
 
 let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=[]}

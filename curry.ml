@@ -55,8 +55,9 @@ let rec correct_arg_refer rtyp =
       RT.Tuple (List.fold_right aux xrtyps [])
   | RT.Inter(typ, rtyps) -> RT.Inter(typ, List.map correct_arg_refer rtyps)
   | RT.Union(typ, rtyps) -> RT.Union(typ, List.map correct_arg_refer rtyps)
-  | RT.ExtArg(x,rtyp1,rtyp2) -> assert false
-  | RT.List _ -> assert false
+  | RT.ExtArg(x,rtyp1,rtyp2) -> unsupported "correct_arg_refer"
+  | RT.List _ -> unsupported "correct_arg_refer"
+  | RT.Exn _ -> unsupported "correct_arg_refer"
 
 let rec uncurry_typ rtyp typ =
   if !!debug then

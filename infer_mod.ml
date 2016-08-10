@@ -14,18 +14,18 @@ let infer_stronger = ref false
 
 
 type constr =
-  | Exp of typed_term
+  | Exp of term
   | And of constr * constr
   | Imply of constr * constr
   | Sub of type_template * type_template
-  | Pred of id * typed_term list
+  | Pred of id * term list
 and type_template =
   | Var of id
-  | Arg of type_template * typed_term list
-  | PApp of type_template * typed_term list
-  | Singleton of typed_term
+  | Arg of type_template * term list
+  | PApp of type_template * term list
+  | Singleton of term
   | Base of (Ref_type.base * HC.pred_var) option (** None represents the result type X *)
-  | Const of id * typed_term
+  | Const of id * term
   | Fun of id * type_template * type_template
   | Inter of typ * type_template list
 
@@ -846,7 +846,7 @@ let solve hcs =
   let sol =
     let tr t =
       t
-      |> FpatInterface.of_typed_term
+      |> FpatInterface.of_term
       |> Fpat.Formula.of_term
     in
     hcs

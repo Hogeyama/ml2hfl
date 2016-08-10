@@ -6,15 +6,15 @@ val add_neg_preds_renv : env -> env
 
 val trans_var : 'a Id.t -> string
 val trans_inv_var : string -> 'a Type.t Id.t
-val trans_inv_term : t -> Syntax.typed_term
+val trans_inv_term : t -> Syntax.term
 val trans_typ : Syntax.typ -> typ
 val trans_binop : Syntax.binop -> t
 val trans_const :
   Syntax.const -> Syntax.typ -> const
-val formula_of : Syntax.typed_term -> t
+val formula_of : Syntax.term -> t
 val trans_def :
   Syntax.typ Id.t *
-  (Syntax.typ Id.t list * Syntax.typed_term) ->
+  (Syntax.typ Id.t list * Syntax.term) ->
   (string * typ * var list * t * 'a list * t) list
 
 val get_var_arity : 'a -> ('a * typ) list -> int
@@ -35,11 +35,11 @@ val id_prog : prog -> prog * (var * var) list * (var * 'a Type.t Id.t) list
 
 val trans_ref_type : CEGAR_ref_type.t -> Ref_type.t
 
-val trans_term : Syntax.typed_term -> (string * typ * var list * t * 'a list * t) list * t
+val trans_term : Syntax.term -> (string * typ * var list * t * 'a list * t) list * t
 
 val trans_prog :
   ?spec:(Syntax.id * Syntax.typ) list ->
-  Syntax.typed_term ->
+  Syntax.term ->
   prog * (var * var) list *
   (var * Syntax.id) list *
   ((var -> CEGAR_ref_type.t) -> Syntax.id -> Ref_type.t)

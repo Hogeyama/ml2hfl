@@ -18,7 +18,7 @@ let flip f x y = f y x
 let lrf = ref []
 let max_threshold = 15
 
-let preprocessForTerminationVerification = ref (fun (x : Syntax.typed_term) -> x)
+let preprocessForTerminationVerification = ref (fun (x : Syntax.term) -> x)
 
 exception FailedToFindLLRF
 exception InferenceFailure
