@@ -62,7 +62,7 @@ let conv_const c =
      Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
   | Int(n) -> Fpat.Const.Int(n)
   | Rand(TInt, _) -> Fpat.Const.RandInt
-  | Rand(_, _) -> assert false
+  | Rand(typ, _) -> assert false
   | Add -> Fpat.Const.Add Fpat.Type.mk_int
   | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
