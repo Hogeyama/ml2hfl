@@ -24,56 +24,62 @@ let output_csv result =
   Format.fprintf ocf "@]@?";
   close_out oc
 
+let print_info_default () =
+  if !Flag.exp2 then output_csv !Flag.result;
+  if !Flag.add_closure_exparam && !Flag.result = "terminating" then
+    Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
+  if !Flag.mode = Flag.Termination && !Flag.result = "terminating" then
+    begin
+      List.iter
+        (fun (f_name, (cycles, pred)) ->
+         Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
+         if !Flag.add_closure_exparam then
+           let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
+           if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
+        !Termination_loop.lrf
+    end;
+  if !Flag.mode = Flag.FairTermination
+  then Format.printf "cycles: %d@." !Flag.fair_term_loop_count;
+  Format.printf "CEGAR-cycles: %d@." !Flag.cegar_loop;
+  Format.printf "total: %.3f sec@." !!get_time;
+  Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
+  Format.printf "  mc: %.3f sec@." !Flag.time_mc;
+  Format.printf "  refine: %.3f sec@." !Flag.time_cegar;
+  if !Flag.relative_complete then
+    Format.printf "    exparam: %.3f sec@." !Flag.time_parameter_inference;
+  Format.pp_print_flush Format.std_formatter ()
+
+let print_info_exp () =
+  Format.printf "{";
+  Format.printf "\"filename\": %S, " !Flag.filename;
+  Format.printf "\"result\": %S, " !Flag.result;
+  Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
+  if !Flag.mode = Flag.Termination then
+    begin
+      Format.printf "\"ranking\": {";
+      List.iter
+        (fun (f_name, (cycles, pred)) ->
+         Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
+        !Termination_loop.lrf;
+      Format.printf " \"_\":{} }, "
+    end;
+  Format.printf "\"total\": \"%.3f\", " !!get_time;
+  Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
+  Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
+  Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
+  Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
+  Format.printf "}@."
+
+let print_info_modular () =
+  Format.printf "total: %.3f sec@." !!get_time
+
 let print_info () =
-  if !Flag.exp
-  then
-    begin
-      Format.printf "{";
-      Format.printf "\"filename\": %S, " !Flag.filename;
-      Format.printf "\"result\": %S, " !Flag.result;
-      Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
-      if !Flag.mode = Flag.Termination then
-        begin
-          Format.printf "\"ranking\": {";
-          List.iter
-            (fun (f_name, (cycles, pred)) ->
-             Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
-            !Termination_loop.lrf;
-          Format.printf " \"_\":{} }, "
-        end;
-      Format.printf "\"total\": \"%.3f\", " !!get_time;
-      Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
-      Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
-      Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
-      Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
-      Format.printf "}@."
-    end
+  if !Flag.exp then
+    print_info_exp ()
+  else if !Flag.modular then
+    print_info_modular ()
   else
-    begin
-      if !Flag.exp2 then output_csv !Flag.result;
-      if !Flag.add_closure_exparam && !Flag.result = "terminating" then
-        Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
-      if !Flag.mode = Flag.Termination && !Flag.result = "terminating" then
-        begin
-          List.iter
-            (fun (f_name, (cycles, pred)) ->
-             Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
-             if !Flag.add_closure_exparam then
-               let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
-               if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
-            !Termination_loop.lrf
-        end;
-      if !Flag.mode = Flag.FairTermination
-      then Format.printf "cycles: %d@." !Flag.fair_term_loop_count;
-      Format.printf "CEGAR-cycles: %d@." !Flag.cegar_loop;
-      Format.printf "total: %.3f sec@." !!get_time;
-      Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
-      Format.printf "  mc: %.3f sec@." !Flag.time_mc;
-      Format.printf "  refine: %.3f sec@." !Flag.time_cegar;
-      if !Flag.relative_complete then
-        Format.printf "    exparam: %.3f sec@." !Flag.time_parameter_inference;
-      Format.pp_print_flush Format.std_formatter ()
-    end
+    print_info_default ()
 
 
 let get_commit_hash () =
