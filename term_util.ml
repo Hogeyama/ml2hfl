@@ -24,9 +24,6 @@ let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
 let abst_var_int = Id.set_typ abst_var TInt
 let abst_var_bool = Id.set_typ abst_var TBool
-let length_var =
-  let x = Id.make (-1) "l" (TApp(TList, [typ_unknown])) in
-  Id.make (-1) "length" (TFun(x, TInt))
 
 let make_attr ?(attrs=const_attr) ts =
   let check a = List.for_all (fun {attr} -> List.mem a attr) ts in
@@ -291,8 +288,12 @@ let make_eq_dec t1 t2 =
   let t2',k2 = aux t2 in
   k1 @@ k2 @@ make t1' t2'
 
+let make_length_var typ =
+  let x = Id.make (-1) "l" typ in
+  Id.make (-1) "length" (TFun(x, TInt))
+
 let make_length t =
-  {(make_app (make_var length_var) [t]) with attr=[ANotFail;ATerminate]}
+  {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
 
 let rec make_term typ =
   match elim_tpred typ with

@@ -131,7 +131,7 @@ exp:
 | id id /* for length */
   {
     if (Id.name $1 <> "length") then raise Parse_error;
-    make_app (make_var length_var) [make_var $2]
+    make_length @@ make_var $2
   }
 
 

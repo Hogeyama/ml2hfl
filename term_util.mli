@@ -4,7 +4,6 @@ val dummy_var : id
 val abst_var : id
 val abst_var_int : id
 val abst_var_bool : id
-val length_var : id
 
 val typ_result : typ
 val typ_event : typ
@@ -107,6 +106,7 @@ val make_field : term -> string -> term
 val make_raise : term -> typ -> term
 val make_trywith : term -> id -> (pattern * term * term) list -> term
 val make_trywith_simple : term -> term -> term
+val make_length_var : typ -> id
 val make_length : term -> term
 val new_var_of_term : term -> id
 

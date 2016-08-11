@@ -88,7 +88,7 @@ let rec generate_check typ_exn make_fail genv cenv x typ =
             let def = f, [zs], U.add_comment (Format.asprintf "CHECK: %a" print typ) t_body in
             if debug() then Format.printf "CHECK: %a: %a@." print typ (Triple.print Print.id (List.print Print.id) Print.term) def;
             let t = U.make_app (U.make_var f) [U.make_var x] in
-            if List.Set.supset ~eq:Id.eq [zs;U.length_var;f] @@ U.get_fv t_body
+            if List.Set.supset ~eq:Id.eq [zs;U.make_length_var T.typ_unknown;f] @@ U.get_fv t_body
             then genv'@[typ,def], cenv', t
             else genv', cenv', U.make_letrec [def] t
       in

@@ -93,7 +93,7 @@ let rec get_rtyp_list rtyp typ =
       let rtyp2' = get_rtyp_list rtyp2 typ2 in
       let rtyp2'' =
         match rtyp1' with
-        | RT.List _ -> RT.replace_term (make_fst @@ make_var x) (make_app (make_var length_var) [make_var x]) rtyp2'
+        | RT.List _ -> RT.replace_term (make_fst @@ make_var x) (make_length @@ make_var x) rtyp2'
         | _ -> rtyp2'
       in
       RT.Fun(x, rtyp1', rtyp2'')
@@ -204,7 +204,7 @@ let abst_list_term post t =
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
       make_app (make_snd t1') [t2']
-  | App({desc=Var x}, [t]) when x = length_var -> make_fst @@ abst_list.tr2_term post t
+  | App({desc=Var x}, [t]) when Id.same x (make_length_var typ_unknown) -> make_fst @@ abst_list.tr2_term post t
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
         let post' = "_" ^ Id.name f in
