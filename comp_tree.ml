@@ -13,9 +13,8 @@ type label =
   | Let of id * term
   | Assume of term
   | Spawn of id * id list option
-  | Value of value
   | Fail
-  | Bottom (* Need? *)
+  | End
 and t = node RT.t
 and node =
   {nid : nid; (* ID of node *)
@@ -77,9 +76,8 @@ and print_label fm label =
       Format.fprintf fm "@[Let %a =@ %a@]" Id.print f Print.term t
   | Assume t -> Format.fprintf fm "@[Assume %a@]" Print.term t
   | Spawn(f,gs) -> Format.fprintf fm "@[Spawn %a, %a@]" Id.print f (Option.print @@ List.print Id.print) gs
-  | Value t -> Format.fprintf fm "@[Value %a@]" print_value t
   | Fail -> Format.fprintf fm "Fail"
-  | Bottom -> Format.fprintf fm "Bottom"
+  | End -> Format.fprintf fm "End"
 and print_value fm (Closure(var_env,val_env,t)) =
   Format.fprintf fm "Value %a" Print.term t
 and print_node fm {nid;var_env;val_env;label;ref_typ} =
@@ -194,10 +192,10 @@ let assoc_fun is_arg f var_env val_env =
     let t'' = List.fold_right2 subst_var ys ys' t' in
     var_env_f, val_env_f, (ys', t'')
 
-let ends_with_fail = RT.exists (fun {label} ->  label = Fail)
+let ends = RT.exists (fun {label} -> label = Fail || label = End)
 
 let spawn is_top nid env var_env val_env ce_env f children =
-  let children' = List.filter ends_with_fail children in
+  let children' = List.filter ends children in
   let label,ref_typ =
     if is_top then
       let aux (Rose_tree.Node({label},_)) =
@@ -311,7 +309,13 @@ let rec from_term
   if !!debug then Format.printf "Dom(val_env): %a@\n" (List.print Id.print) @@ List.map fst val_env;
   assert (List.Set.eq ~eq:Id.eq (List.map fst var_env) (List.map fst val_env));
   match t.desc with
-  | Const Unit -> []
+  | Const Unit ->
+      let node =
+        let label = End in
+        let ref_typ = None in
+        {nid; var_env; val_env; label; ref_typ; ce_env}
+      in
+      [RT.Node(node, [])]
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
       let t2' = subst_var x (Id.new_var_id x) t2 in
       from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env t2'
@@ -427,7 +431,7 @@ let rec from_term
                   [aux extend br ce_env'']
             end
       in
-      List.filter ends_with_fail rs
+      List.filter ends rs
   | App({desc=Fun _; typ} as t1, ts) ->
       let f = Id.new_var typ in
       make_app (make_var f) ts
@@ -456,7 +460,7 @@ let rec from_term
       [RT.Node(node, [])]
   | _ when t.desc = Bottom ->
       let node =
-        let label = Bottom in
+        let label = End in
         let ref_typ = None in
         {nid; var_env; val_env; label; ref_typ; ce_env}
       in
