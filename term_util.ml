@@ -2,7 +2,7 @@ open Util
 open Syntax
 open Type
 
-let debug () = List.mem "Trans" !Flag.debug_module
+let debug () = List.mem "Term_util" !Flag.debug_module
 
 let occur = Syntax.occur
 let get_vars_pat = Syntax.get_vars_pat

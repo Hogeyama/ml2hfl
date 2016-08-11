@@ -1028,11 +1028,11 @@ let add_context for_infer prog f typ =
   let t' =
     let af = "Assert_failure" in
     let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
+    let typ_exn = Encode.typ_of Encode.all etyp in
     let make_fail typ =
       make_raise (make_construct af [] etyp) typ
       |> Encode.all
     in
-    let typ_exn = Encode_list.trans_typ @@ Encode_rec.trans_typ @@ etyp in
     Trans.ref_to_assert ~make_fail ~typ_exn (Ref_type.Env.of_list [f,typ]) unit_term
   in
   if dbg then Format.printf "ADD_CONTEXT t': %a@." Print.term_typ t';
