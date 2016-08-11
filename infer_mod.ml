@@ -1315,7 +1315,7 @@ let infer prog f typ (ce_set:ce_set) extend =
     |> HC.of_pair_list
     |@!!debug&> Format.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!debug&> check_arity
-    |*> HC.inline need
+    |> HC.inline need
     |*> List.rev
     |@!!debug&> Format.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
