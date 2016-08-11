@@ -507,9 +507,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
       constrs1 @*) constr templates assumption
   | Assume t ->
       constr templates @@ t::assumption
-  | Value _ ->
-      assert false
-  | Bottom -> [Exp true_term]
+  | End -> [Exp true_term]
   | Fail ->
       assert (children = []);
       let asm1 = filter_assumption val_env assumption in
@@ -694,8 +692,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       let typ = _Inter (Id.typ f) @@ List.flatten_map (fun g -> List.map snd @@ List.filter (fst |- fst |- Id.eq g) templates) gs in
       ((f,Some nid), typ)::templates
   | Assume _ -> templates
-  | Value _ -> assert false
-  | Bottom -> []
+  | End -> []
   | Fail -> []
   in
   pr "  %a@." Comp_tree.print_label label;
@@ -751,11 +748,9 @@ let rec make_var_env (Rose_tree.Node({CT.val_env; CT.label}, children)) =
       List.map (Pair.add_right @@ Fun.const []) gs @ var_env*)
   | Assume t ->
       var_env
-  | Value _ ->
-      assert false
   | Fail ->
       var_env
-  | Bottom ->
+  | End ->
       var_env
 
 
