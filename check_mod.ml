@@ -165,9 +165,13 @@ and eval top_funs val_env ce label_env t =
   | App(t, []) -> eval top_funs val_env ce label_env t
   | App(t1, ts) ->
       let ts',t2 = List.decomp_snoc ts in
-      let ans1, ce, paths1 = eval top_funs val_env ce label_env @@ make_app t1 ts' in
-      let ans2, ce, paths2 = eval top_funs val_env ce label_env t2 in
-      eval_app top_funs val_env ce label_env ans1 paths1 ans2 paths2
+      let ans1, ce1, paths1 = eval top_funs val_env ce label_env @@ make_app t1 ts' in
+      begin
+        try
+          let ans2, ce2, paths2 = eval top_funs val_env ce1 label_env t2 in
+          eval_app top_funs val_env ce2 label_env ans1 paths1 ans2 paths2
+        with Exception(ans2, ce2, paths2) -> raise (Exception(ans2, ce2, merge_paths paths1 paths2))
+      end
   | If(_, t2, t3) ->
       let label = get_label t in
       begin
@@ -182,8 +186,10 @@ and eval top_funs val_env ce label_env t =
               | None -> []
               | Some label -> [List.assoc label label_env, [br]]
             in
-            eval top_funs val_env ce' label_env t23
-            |> append_paths paths'
+            try
+              eval top_funs val_env ce' label_env t23
+              |> append_paths paths'
+            with Exception(ans, ce, paths) -> raise (Exception(ans, ce, merge_paths paths' paths))
       end
   | Let(Nonrecursive, [f,xs,t1], t2) ->
       let ans, ce, paths = eval top_funs val_env ce label_env @@ make_funs xs t1 in
@@ -223,6 +229,7 @@ and eval top_funs val_env ce label_env t =
         else
           VTuple anss
       in
+      if ce' <> ce then unsupported "Check_mod.eval tuple";
       ans, ce', paths'
   | Proj(i, t) ->
       let ans, ce, paths = eval top_funs val_env ce label_env t in

@@ -1179,7 +1179,25 @@ let rec trans_ref_typ is_CPS typ =
         | typ'::_ -> RT.to_simple typ'
       in
       Union(styp', typs')
-  | _ -> assert false
+  | Exn(typ1, typ2) ->
+      let typ1' = trans_ref_typ is_CPS typ1 in
+      let typ2' = trans_ref_typ is_CPS typ2 in
+      let r1 = Id.new_var @@ to_simple typ1' in
+      let r2 = Id.new_var @@ to_simple typ2' in
+      let ret_typ =
+        if is_CPS then
+          typ_result
+        else
+          Base(Unit, dummy_var, true_term)
+      in
+      let typ_k = Fun(r1, typ1', ret_typ) in
+      let typ_h = Fun(r2, typ2', ret_typ) in
+      let k = Id.new_var @@ to_simple typ_k in
+      let h = Id.new_var @@ to_simple typ_h in
+      Fun(k, typ_k, Fun(h, typ_h, ret_typ))
+  | _ ->
+      Format.printf "%a@." Ref_type.print typ;
+      assert false
 
 let trans_ref_typ typ = trans_ref_typ true typ
 and trans_ref_typ_as_direct typ = trans_ref_typ false typ

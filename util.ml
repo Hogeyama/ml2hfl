@@ -419,6 +419,8 @@ module List = struct
     in
     fold_right aux xs (env,[])
 
+  let for_alli f xs = List.for_all (Fun.uncurry f) @@ List.mapi Pair.pair xs
+
   let eq ?(eq=(=)) xs ys = length xs = length ys && for_all2 eq xs ys
 
   module Set = struct

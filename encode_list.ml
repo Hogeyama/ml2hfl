@@ -283,12 +283,36 @@ let trans t =
 
 
 
+let make_list_eq typ =
+  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TBool)) in
+  let xs = Id.new_var ~name:"xs'" @@ make_tlist typ in
+  let ys = Id.new_var ~name:"ys'" @@ make_tlist typ in
+  let t_eq =
+    let pat_nil =
+      let p1 = make_ppair (make_pnil typ) (make_pnil typ) in
+      let t1 = true_term in
+      p1, true_term, t1
+    in
+    let pat_cons =
+      let x = Id.new_var ~name:"x" typ in
+      let xs' = Id.new_var ~name:"xs'" @@ make_tlist typ in
+      let y = Id.new_var ~name:"y" typ in
+      let ys' = Id.new_var ~name:"ys'" @@ make_tlist typ in
+      let p2 = make_ppair (make_pcons (make_pvar x) (make_pvar xs')) (make_pcons (make_pvar y) (make_pvar ys')) in
+      let t2 = make_and (make_eq (make_var x) (make_var y)) (make_app (make_var f) [make_var xs'; make_var ys']) in
+      p2, true_term, t2
+    in
+    let pat_any =
+      let p3 = make_ppair (make_pany (make_tlist typ)) (make_pany (make_tlist typ)) in
+      let t3 = false_term in
+      p3, true_term, t3
+    in
+    make_match (make_pair (make_var xs) (make_var ys)) [pat_nil; pat_cons; pat_any]
+  in
+  f, [xs;ys], t_eq
 
-
-let inst_list_eq_flag = ref false
-
+(* TODO: support other types *)
 let inst_list_eq = make_trans2 ()
-
 let inst_list_eq_term f t =
   match t.desc with
   | BinOp(Eq, t1, t2) ->
@@ -296,33 +320,22 @@ let inst_list_eq_term f t =
       let t2' = inst_list_eq.tr2_term f t2 in
       begin
         match t1.typ with
-        | TApp(TList, [TInt]) -> inst_list_eq_flag := true; make_app (make_var f) [t1'; t2']
+        | TApp(TList, [TInt]) -> make_app (make_var f) [t1'; t2']
         | TApp(TList, _) ->
             Format.printf "%a@." Print.typ t1.typ;
             unsupported "inst_list_eq"
         | _ -> inst_list_eq.tr2_term_rec f t
       end
   | _ -> inst_list_eq.tr2_term_rec f t
-
 let () = inst_list_eq.tr2_term <- inst_list_eq_term
 let inst_list_eq t =
-  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ make_tlist TInt, TFun(Id.new_var ~name:"xs" @@ make_tlist TInt, TBool)) in
-  let xs = Id.new_var ~name:"xs'" @@ make_tlist TInt in
-  let ys = Id.new_var ~name:"ys'" @@ make_tlist TInt in
-  let p1 = make_ppair (make_pnil TInt) (make_pnil TInt) in
-  let t1 = true_term in
-  let x = Id.new_var ~name:"x" TInt in
-  let xs' = Id.new_var ~name:"xs'" @@ make_tlist TInt in
-  let y = Id.new_var ~name:"y" TInt in
-  let ys' = Id.new_var ~name:"ys'" @@ make_tlist TInt in
-  let p2 = make_ppair (make_pcons (make_pvar x) (make_pvar xs')) (make_pcons (make_pvar y) (make_pvar ys')) in
-  let t2 = make_and (make_eq (make_var x) (make_var y)) (make_app (make_var f) [make_var xs'; make_var ys']) in
-  let p3 = make_ppair (make_pany (make_tlist TInt)) (make_pany (make_tlist TInt)) in
-  let t3 = false_term in
-  let t_eq = make_match (make_pair (make_var xs) (make_var ys)) [p1,true_term,t1; p2,true_term,t2; p3,true_term,t3] in
-  inst_list_eq_flag := false;
-  let r = make_letrec [f,[xs;ys],t_eq] @@ inst_list_eq.tr2_term f t in
-  if !inst_list_eq_flag then r else t
+  let (f,_,_ as def) = make_list_eq TInt in
+  let t' = inst_list_eq.tr2_term f t in
+  if Id.mem f @@ get_fv t' then
+    make_letrec [def] t'
+  else
+    t'
+
 
 
 
@@ -457,6 +470,12 @@ let trans_opt t =
 let pr s t = if debug () then Format.printf "##[encode_list] %s:@.%a@.@." s Print.term t
 
 let trans t =
+  let tr =
+    if !Flag.encode_list_opt then
+      trans_opt
+    else
+      trans
+  in
   t
   |> inst_list_eq
   |@> pr "inst_list_eq"
@@ -466,9 +485,12 @@ let trans t =
   |> Trans.remove_top_por
   |@> pr "remove_top_por"
   |@> Type_check.check -$- t.typ
-  |> if !Flag.encode_list_opt
-     then trans_opt
-     else trans
+  |> tr
+  |@> Type_check.check -$- t.typ -| fst
+  |@> pr "trans" -| fst
+  |> Pair.map_fst Trans.eta_tuple
+  |@> pr "eta_tuple" -| fst
+  |@> Type_check.check -$- t.typ -| fst
 
 let trans_typ typ =
   if !Flag.encode_list_opt then

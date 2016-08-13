@@ -58,10 +58,12 @@ let is_list = Option.is_some -| decomp_list
 let is_bottom typ =
   match typ with
   | Union(_, []) -> true
+  | Base(_, _, {S.desc=S.Const S.False}) -> true
   | _ -> false
 let is_top typ =
   match typ with
   | Inter(_, []) -> true
+  | Base(_, _, {S.desc=S.Const S.True}) -> true
   | _ -> false
 let rec is_bottom' typ =
   match typ with
@@ -112,7 +114,7 @@ let rec print fm = function
   | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
       Format.fprintf fm "{%d}" n
   | Base(base,x,p) when p.S.desc = S.Const S.False ->
-      Format.fprintf fm "_|_"
+      Format.fprintf fm "Bot"
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
   | Fun(x, typ1, Exn(typ2, typ3)) ->
@@ -145,8 +147,8 @@ let rec print fm = function
   | Inter(_, []) -> Format.fprintf fm "Top"
   | Inter(_, [typ]) -> print fm typ
   | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
-  | Union(styp, []) when !!debug -> Format.fprintf fm "Bottom(%a)" Print.typ styp
-  | Union(_, []) -> Format.fprintf fm "Bottom"
+  | Union(styp, []) when !!debug -> Format.fprintf fm "Bot(%a)" Print.typ styp
+  | Union(_, []) -> Format.fprintf fm "Bot"
   | Union(_, [typ]) -> print fm typ
   | Union(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ ") typs
   | ExtArg(x,typ1,typ2) ->
@@ -431,11 +433,7 @@ let make_env x typ =
   | Base(_,y,t) -> U.subst_var y x t
   | _ -> U.true_term
 let rec subtype env typ1 typ2 =
-  if 0=0 && !!debug then
-    begin
-      Format.printf "typ1: %a@." print typ1;
-      Format.printf "typ2: %a@." print typ2
-    end;
+  let r =
   match typ1, typ2 with
   | Base(base1, x, t1), Base(base2, y, t2) ->
       base1 = base2 && implies (t1::env) (U.subst_var y x t2)
@@ -444,12 +442,12 @@ let rec subtype env typ1 typ2 =
       subtype env typ21 typ11 && subtype env' typ12 (subst_var y x typ22)
   | _, Inter(_, typs) ->
       List.for_all (subtype env typ1) typs
-  | Inter(_, typs), _ ->
-      List.exists (subtype env -$- typ2) typs
   | Union(_, typs), _ ->
       List.for_all (subtype env -$- typ2) typs
+  | Inter(_, typs), _ ->
+      List.exists (subtype env -$- typ2) typs || is_top' typ2
   | _, Union(_, typs) ->
-      List.exists (subtype env -$- typ2) typs
+      List.exists (subtype env -$- typ2) typs || is_bottom' typ1
   | Tuple xtyps1, Tuple xtyps2 ->
       let aux (env,acc) (x1,typ1) (x2,typ2) =
         make_env x1 typ1 :: env,
@@ -459,14 +457,24 @@ let rec subtype env typ1 typ2 =
         snd @@ List.fold_left2 aux (env,true) xtyps1 xtyps2
   | Exn(typ11,typ12), Exn(typ21,typ22) ->
       subtype env typ11 typ21 && subtype env typ12 typ22
-  | _, Exn(typ21,typ22) ->
-      subtype env typ1 typ21
+  | Exn(typ11,typ12), _ when is_bottom typ12 -> subtype env typ11 typ2
+  | _, Exn(typ21,typ22) -> subtype env typ1 typ21
   | Exn _, _ -> false
   | _ ->
       Format.printf "typ1: %a@." print typ1;
       Format.printf "typ2: %a@." print typ2;
       unsupported "Ref_type.subtype"
+  in
+  if 0=0 && !!debug then
+    begin
+      Format.printf "typ1: %a@." print typ1;
+      Format.printf "typ2: %a@." print typ2;
+      Format.printf "r: %b@." r
+    end;
+  r
+
 let subtype typ1 typ2 = subtype [] typ1 typ2
+let suptype typ1 typ2 = subtype typ2 typ1
 
 let equiv typ1 typ2 = subtype typ1 typ2 && subtype typ2 typ1
 
@@ -485,10 +493,10 @@ let rec remove_if f typs =
   in
   aux [] typs
 
-let rec remove_subtype typs = remove_if subtype typs
+let rec remove_subtype ?(sub=subtype) typs = remove_if sub typs
 let rec remove_equiv typs = remove_if equiv typs
 
-let rec simplify_typs constr styp is_zero make_zero and_or typs =
+let rec simplify_typs constr sub styp is_zero make_zero and_or typs =
   let decomp typ =
     match typ with
     | Inter(_, typs) -> typs
@@ -499,7 +507,7 @@ let rec simplify_typs constr styp is_zero make_zero and_or typs =
   let typs' =
     typs
     |> List.map simplify
-    |> remove_subtype
+    |> remove_subtype ~sub
     |*> List.unique ~cmp:same
     |> constr styp
     |> flatten
@@ -526,7 +534,7 @@ let rec simplify_typs constr styp is_zero make_zero and_or typs =
             let x = List.hd xs in
             let typs2' = List.map2 (subst_var -$- x) xs typs2 in
             let styp' = to_simple @@ List.hd typs2 in
-            Fun(x, List.hd typs1, simplify_typs constr styp' is_zero make_zero and_or typs2')
+            Fun(x, List.hd typs1, simplify_typs constr sub styp' is_zero make_zero and_or typs2')
           else
             flatten @@ constr styp typs'
 (*
@@ -556,9 +564,9 @@ and simplify typ =
       else
         Tuple xtyps'
   | Inter(styp, []) -> Inter(styp, [])
-  | Inter(styp, typs) -> simplify_typs _Inter styp is_bottom (_Union -$- []) U.make_ands typs
+  | Inter(styp, typs) -> simplify_typs _Inter subtype styp is_bottom (_Union -$- []) U.make_ands typs
   | Union(styp, []) -> Union(styp, [])
-  | Union(styp, typs) -> simplify_typs _Union styp is_top (_Inter -$- []) U.make_ors typs
+  | Union(styp, typs) -> simplify_typs _Union suptype styp is_top (_Inter -$- []) U.make_ors typs
   | ExtArg(x,typ1,typ2) -> ExtArg(x, simplify typ1, simplify typ2)
   | List(x,p_len,y,p_i,typ) ->
       let p_len' = simplify_pred p_len in
@@ -680,6 +688,16 @@ module Value = struct
 end
 module Env = Ext.Env.Make(Syntax.ID)(Value)
 type env = Env.t
+
+module NegValue = struct
+  type t' = t
+  type t = t'
+  let print = print
+  let merge typ1 typ2 = [union (to_simple typ1) [typ1; typ2]]
+  let eq = equiv
+end
+module NegEnv = Ext.Env.Make(Syntax.ID)(NegValue)
+type neg_env = NegEnv.t
 
 
 let rec contract typ =

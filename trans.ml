@@ -2622,3 +2622,14 @@ let bool_eta_reduce_term t =
   | _ -> t'
 let () = bool_eta_reduce.tr_term <- bool_eta_reduce_term
 let bool_eta_reduce = bool_eta_reduce.tr_term
+
+
+
+let eta_tuple = make_trans ()
+let eta_tuple_desc desc =
+  match eta_tuple.tr_desc_rec desc with
+  | Proj(i, {desc=Tuple ts}) when List.for_alli (fun j t -> i = j || has_no_effect t) ts ->
+      (List.nth ts i).desc
+  | desc' -> desc'
+let () = eta_tuple.tr_desc <- eta_tuple_desc
+let eta_tuple = eta_tuple.tr_term
