@@ -11,6 +11,8 @@ type t =
   | Exn of t * t
 module Env : Ext.Env.ENV with type key := Syntax.id with type value := t
 type env = Env.t
+module NegEnv : Ext.Env.ENV with type key := Syntax.id with type value := t
+type neg_env = NegEnv.t
 
 
 (** {6 Constructor} *)
@@ -42,7 +44,7 @@ val is_bottom' : t -> bool
 
 (** {6 Transformation} *)
 val simplify : t -> t
-val remove_subtype : t list -> t list
+val remove_subtype : ?sub:(t -> t -> bool) -> t list -> t list
 val remove_equiv : t list -> t list
 val contract : t -> t
 
@@ -77,4 +79,5 @@ val copy_fun_arg_to_base : t -> t
 val same : t -> t -> bool
 val has_no_predicate : t -> bool
 val subtype : t -> t -> bool
+val suptype : t -> t -> bool
 val equiv : t -> t -> bool

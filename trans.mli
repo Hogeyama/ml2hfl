@@ -94,3 +94,4 @@ val reduce_bottom : term -> term
 val reduce_fail_unit : term -> term
 val remove_no_effect_trywith : term -> term
 val bool_eta_reduce : term -> term
+val eta_tuple : term -> term

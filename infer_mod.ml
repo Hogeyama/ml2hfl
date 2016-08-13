@@ -9,8 +9,8 @@ let debug () = List.mem "Infer_mod" !Flag.debug_module
 module CT = Comp_tree
 module HC = Horn_clause
 
-
-let infer_stronger = ref false
+(* How to instansiate predicates which do not occur in constraints *)
+type mode = ToTrue | ToFalse | ToStronger
 
 
 type constr =
@@ -527,7 +527,7 @@ let generate_constraints templates ct = generate_constraints templates [] ct
 
 
 let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.label; CT.ref_typ}, children)) =
-  let dbg = 0=0 && !!debug in
+  let dbg = 0=1 && !!debug in
   let pr f = if dbg then Format.printf @@ "MT " ^^ f else Format.ifprintf Format.std_formatter f in
   let r=
   let templates = merge_template @@ List.map (make_template cnt env args) children in
@@ -883,7 +883,7 @@ let solve_option hcs =
 
 
 
-let rec apply_sol sol x vars pos tmp =
+let rec apply_sol mode sol x vars pos tmp =
   let dbg = 0=0 && !!debug in
   let r =
   match tmp with
@@ -912,15 +912,15 @@ let rec apply_sol sol x vars pos tmp =
             if dbg then Format.printf "  ts': %a@." (List.print Print.term) ts';
             List.fold_right2 subst xs ts' t
           with Not_found ->
-               if pos && !infer_stronger then
-                 false_term
-               else
-                 true_term
+            match mode with
+            | ToTrue -> true_term
+            | ToFalse -> false_term
+            | ToStronger -> make_bool @@ not pos
         in
         Ref_type.Base(base, x', p)
   | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
   | Fun(y,typ1,typ2) ->
-      Ref_type.Fun(y, apply_sol sol (Some y) vars (not pos) typ1, apply_sol sol None (y::vars) pos typ2)
+      Ref_type.Fun(y, apply_sol mode sol (Some y) vars (not pos) typ1, apply_sol mode sol None (y::vars) pos typ2)
   | Inter(styp, []) ->
       let r =
       if pos then
@@ -929,8 +929,12 @@ let rec apply_sol sol x vars pos tmp =
         Ref_type.make_weakest styp
       in
       if dbg then Format.printf "  AS TOP: %a ==> %a@." Print.typ styp Ref_type.print r;
-      if !infer_stronger then r else Ref_type.of_simple styp
-  | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol sol x vars pos) tmps)
+      begin
+        match mode with
+        | ToTrue -> Ref_type.of_simple styp
+        | _ -> r
+      end
+  | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol mode sol x vars pos) tmps)
   | _ ->
       Format.eprintf "%a@." print_template tmp;
       assert false
@@ -938,7 +942,7 @@ let rec apply_sol sol x vars pos tmp =
   if dbg then Format.printf "AS tmp: %a@." print_template tmp;
   if dbg then Format.printf "AS r: %a@." Ref_type.print r;
   r
-let apply_sol sol pos tmp = apply_sol sol None [] pos tmp
+let apply_sol mode sol pos tmp = apply_sol mode sol None [] pos tmp
 
 
 
@@ -1272,7 +1276,7 @@ let get_merge_candidates templates =
   |> List.map (List.flatten_map (snd |- decomp_inter))
   |> List.flatten_map aux
 
-let infer prog f typ (ce_set:ce_set) extend =
+let infer mode prog f typ (ce_set:ce_set) extend =
   let ce_set =
     if 0=1 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x print_ce ce; read_int() <> 0) ce_set
@@ -1325,7 +1329,7 @@ let infer prog f typ (ce_set:ce_set) extend =
       let env' =
         let aux ((g,_),tmp) =
           if Id.mem g top_funs then
-            Some (g, apply_sol sol true tmp)
+            Some (g, apply_sol mode sol true tmp)
           else
             None
         in
@@ -1357,10 +1361,10 @@ let infer prog f typ (ce_set:ce_set) extend =
         let aux f =
           if Id.mem_assoc f env' then
             None
-          else if !infer_stronger then
-            Some (f, Ref_type.make_strongest @@ Id.typ f)
           else
-            Some (f, Ref_type.of_simple @@ Id.typ f)
+            match mode with
+            | ToTrue -> Some (f, Ref_type.of_simple @@ Id.typ f)
+            | _ -> Some (f, Ref_type.make_strongest @@ Id.typ f)
         in
         Ref_type.Env.of_list @@ List.filter_map aux top_funs
       in
@@ -1369,3 +1373,13 @@ let infer prog f typ (ce_set:ce_set) extend =
       let env''' = Ref_type.Env.merge env_unused env'' in
       if !!debug then Format.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env''';
       Some env'''
+
+let next_mode mode =
+  match mode with
+  | ToTrue -> ToFalse
+  | ToFalse -> ToStronger
+  | ToStronger -> invalid_arg "incr_mode"
+
+let init_mode = ToTrue
+
+let is_last_mode mode = mode = ToStronger
