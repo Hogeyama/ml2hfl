@@ -1311,7 +1311,7 @@ let infer prog f typ (ce_set:ce_set) extend =
     |@!!debug&> Format.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!debug&> check_arity
     |> HC.inline need
-    |*> List.rev
+    |*> List.rev (* for debug *)
     |@!!debug&> Format.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates = get_merge_candidates templates in

@@ -89,4 +89,16 @@ let inline need hcs =
       List.map2 make_eq ts ts' @ body
     with _ -> [t]
   in
-  List.map (flatten_map @@ replace env) hcs'
+  let env' =
+    let rec aux env_acc env_rest =
+      match env_rest with
+      | [] -> env_acc
+      | (p,(ts,body))::env_rest' when List.exists (Id.mem_assoc -$- env) @@ List.flatten_map get_fv body ->
+          let body' = List.flatten_map (replace (env_rest@@@env_acc)) body in
+          aux env_acc ((p,(ts,body'))::env_rest')
+      | x::env_rest' ->
+          aux (x::env_acc) env_rest'
+    in
+    aux [] env
+  in
+  List.map (flatten_map @@ replace env') hcs'
