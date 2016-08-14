@@ -119,7 +119,6 @@ let rec main_loop history c prog cmp f typ ce_set extend =
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         `Typable, merge_tenv env' env, neg_env, ce_set
     | Check_mod.Untypable ce_set1 when is_closed f fun_def_env ->
-        assert (not @@ Ref_type.suptype (Ref_type.NegEnv.assoc f neg_env) typ);
         pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
         `Untypable, env, neg_env', merge_ce_set ce_set ce_set1
