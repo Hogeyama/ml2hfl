@@ -150,7 +150,7 @@ let rec main_loop history c prog cmp f typ ce_set extend =
               else if not @@ List.Set.eq ce_set3 ce_set2 then
                 (refine_loop Infer_mod.init_mode neg_env' ce_set3 extend')
               else if not @@ Infer_mod.is_last_mode infer_mode then
-                (if !!debug then Format.printf "incr_mode@.";
+                (if !!debug then Format.printf "change infer_mode@.";
                  refine_loop (Infer_mod.next_mode infer_mode) neg_env' ce_set3 extend')
               else if true then
                 (if !!debug then Format.printf "extend counterexample@.";
