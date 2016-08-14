@@ -15,6 +15,7 @@ type label =
   | Spawn of id * id list option
   | Fail
   | End
+  | Empty_branch of id
 and t = node RT.t
 and node =
   {nid : nid; (* ID of node *)
@@ -78,6 +79,7 @@ and print_label fm label =
   | Spawn(f,gs) -> Format.fprintf fm "@[Spawn %a, %a@]" Id.print f (Option.print @@ List.print Id.print) gs
   | Fail -> Format.fprintf fm "Fail"
   | End -> Format.fprintf fm "End"
+  | Empty_branch f -> Format.fprintf fm "Empty_branch %a" Id.print f
 and print_value fm (Closure(var_env,val_env,t)) =
   Format.fprintf fm "Value %a" Print.term t
 and print_node fm {nid;var_env;val_env;label;ref_typ} =
@@ -195,7 +197,6 @@ let assoc_fun is_arg f var_env val_env =
 let ends = RT.exists (fun {label} -> label = Fail || label = End)
 
 let spawn is_top nid env var_env val_env ce_env f children =
-  let children' = List.filter ends children in
   let label,ref_typ =
     if is_top then
       let aux (Rose_tree.Node({label},_)) =
@@ -206,11 +207,11 @@ let spawn is_top nid env var_env val_env ce_env f children =
 *)
         | _ -> assert false
       in
-      Spawn(f, Some (List.map aux children')), None
+      Spawn(f, Some (List.map aux children)), None
     else
       Spawn(f, None), Some (Ref_type.Env.assoc f env)
   in
-  RT.Node({nid; var_env; val_env; label; ref_typ; ce_env}, children')
+  RT.Node({nid; var_env; val_env; label; ref_typ; ce_env}, children)
 
 let value_of var_env val_env t = Closure(var_env, val_env, t)
 (*
@@ -283,6 +284,10 @@ let () = eta_and_lift.tr2_term <- eta_and_lift_term
 let eta_and_lift t = eta_and_lift.tr_term2 [] t
  *)
 
+
+let filter_extend extend = List.filter_out (fun (_,n) -> n <= 0) extend
+
+
 (* typ_env is unused? *)
 (* 't' must be a CPS term *)
 let rec from_term
@@ -298,8 +303,14 @@ let rec from_term
           (ce_set : ce_set)
           (extend : (id * int) list)
           (ce_env : (tid * (id * int * int list)) list)
+          (num_beta : int)
           (t : term)
         : t list =
+(*
+  if num_beta > 30 then
+    (Format.printf "WARNING: reach limit of expansion @@ Comp_tree@.";[])
+  else
+ *)
   let f g = if !!debug then print_begin_end g else !!g in
   f (fun () ->
   let nid = Counter.gen cnt in
@@ -318,13 +329,13 @@ let rec from_term
       [RT.Node(node, [])]
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
       let t2' = subst_var x (Id.new_var_id x) t2 in
-      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env t2'
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env (num_beta+1) t2'
   | App({desc=Fun(x, t)}, [t2]) when is_base_typ t2.typ ->
       let x' = Id.new_var_id x in
       let t' = subst_var x x' t in
       let val_env' = (x', Closure(var_env, val_env, t2))::val_env in
       let var_env' = (x', List.map fst val_env)::var_env in
-      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env t'
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env (num_beta+1) t'
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       if !!debug then Format.printf "  APP2,%a@\n" Id.print f;
       let ys,t_f = Id.assoc f fun_env in
@@ -353,7 +364,7 @@ let rec from_term
           in
           let ce_env' = List.map (fun (f,tid,path) -> tid, (f, i, path)) new_ce_env @ ce_env in
           let t' = make_app (add_id tid @@ make_var f') ts in
-          from_term cnt ext_funs args (f'::top_funs) top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env' t'
+          from_term cnt ext_funs args (f'::top_funs) top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env' num_beta t'
         in
         let paths = List.assoc_all ~eq:Id.eq f ce_set in
         List.flatten_mapi aux paths
@@ -392,7 +403,7 @@ let rec from_term
       in
       assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
       let top_fun_args' = if Id.mem f top_funs then ys @ top_fun_args else top_fun_args in
-      [RT.Node(node, from_term cnt ext_funs args' top_funs top_fun_args' typ_env fun_env var_env' val_env' ce_set extend ce_env t_f)]
+      [RT.Node(node, from_term cnt ext_funs args' top_funs top_fun_args' typ_env fun_env var_env' val_env' ce_set extend ce_env (num_beta+1) t_f)]
   | If(t1, t2, t3) ->
       if !!debug then Format.printf "  IF t1: %a@\n" Print.term t1;
       let tid = get_id_option t in
@@ -405,9 +416,9 @@ let rec from_term
           let ref_typ = None in
           {nid; var_env; val_env; label; ref_typ; ce_env}
         in
-        RT.Node(node, from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend' ce_env' t23)
+        RT.Node(node, from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend' ce_env' num_beta t23)
       in
-      let rs =
+      begin
         match tid with
         | None ->
             [aux extend 0 ce_env; aux extend 1 ce_env]
@@ -421,24 +432,29 @@ let rec from_term
                   let extend' =
                     List.assoc_map ~eq:Id.eq f pred extend
                     |> snd
-                    |> List.filter_out (fun (_,n) -> n = 0)
+                    |> filter_extend
                   in
                   [aux extend' 0 ce_env; aux extend' 1 ce_env]
-              | [] -> []
+              | [] ->
+                  let node =
+                    let label = Empty_branch f in
+                    let ref_typ = None in
+                    {nid; var_env; val_env; label; ref_typ; ce_env}
+                  in
+                  [RT.Node(node, [])]
               | br::ce' ->
                   if !!debug then Format.printf "    CE[%d]: %a@\n" tid (List.print Format.pp_print_int) ce;
                   let ce_env'' = (tid,(f,i,ce'))::ce_env' in
                   [aux extend br ce_env'']
             end
-      in
-      List.filter ends rs
+      end
   | App({desc=Fun _; typ} as t1, ts) ->
       let f = Id.new_var typ in
       make_app (make_var f) ts
       |> make_let [f, [], t1]
-      |> from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env
+      |> from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env num_beta
   | Let(flag, [f,[],({desc=Bottom} as t1)], _) ->
-      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env t1
+      from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env val_env ce_set extend ce_env num_beta t1
   | Let(flag, [f,xs,t1], t2) ->
       if !!debug then Format.printf "  LET@\n";
       if !!debug then Format.printf "    t: %a@\n" Print.term t;
@@ -450,7 +466,7 @@ let rec from_term
         let ref_typ = None in
         {nid; var_env; val_env; label; ref_typ; ce_env}
       in
-      [RT.Node(node, from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env t2)]
+      [RT.Node(node, from_term cnt ext_funs args top_funs top_fun_args typ_env fun_env var_env' val_env' ce_set extend ce_env num_beta t2)]
   | _ when is_fail t ->
       let node =
         let label = Fail in
@@ -480,6 +496,16 @@ let from_term typ_env fun_env ce_set extend t =
   from_term (Counter.create()) ext_funs [] [] [] typ_env fun_env [] [] ce_set extend [] t
 
 
+let rec filter_ends (RT.Node(node,ts)) =
+  let check (RT.Node({label},ts)) =
+    ts <> [] || label = Fail || label = End
+  in
+  let ts' =
+    ts
+    |> List.map filter_ends
+    |> List.filter check
+  in
+  RT.Node(node, ts')
 
 (* Dom(env) and Dom(fun_env) must be disjoint *)
 let from_program env fun_env (ce_set:ce_set) extend t =
@@ -487,8 +513,16 @@ let from_program env fun_env (ce_set:ce_set) extend t =
   if !!debug then Format.printf "ENV: %a@." Ref_type.Env.print env;
   if !!debug then Format.printf "FUN_ENV: %a@." (List.print @@ Pair.print Id.print Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) fun_env;
   if !!debug then Format.printf "from_program: %a@." Print.term t;
-  t
-  |*@> Format.printf "normalized: %a@.@." Print.term
-  |> from_term env fun_env ce_set extend
-  |> List.get
-  |@!!debug&> Format.printf "comp_tree:@.%a@.@." print
+  let extend' = filter_extend extend in
+  let comp_tree =
+    t
+    |> from_term env fun_env ce_set extend' 0
+    |> List.get
+    |@!!debug&> Format.printf "comp_tree:@.%a@.@." print
+  in
+  let reached_empty_branch = RT.filter_map_label (function {label = Empty_branch f} -> Some f | _ -> None) comp_tree in
+  let comp_tree' =
+    filter_ends comp_tree
+    |@!!debug&> Format.printf "comp_tree':@.%a@.@." print
+  in
+  reached_empty_branch, comp_tree'
