@@ -422,25 +422,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
   let templates' = List.filter (fst |- snd |- Option.for_all (in_comp_tree ct)) templates in
   match label with
   | CT.App((f, _), map) ->
-      if dbg then Format.printf "  map: %a@." (List.print @@ Pair.print Id.print CT.print_value) map;(*
-      let arg_templates =
-        let cmp (x1,id1) (x2,id2) = Id.eq x1 x2 && id1 = id2 in
-        let typ = List.assoc ~cmp (f,Some nid) templates' in
-        let typs,_ = decomp_tfun typ in
-        if dbg then Format.printf "  typ: %a@." print_template typ;
-        let aux (x,vl) (_,typ) =
-          let aux' y (_,typ') =
-            Format.printf "  MAT: %a : %a@." Id.print y print_template typ';
-            (y,None), typ'
-          in
-          let ys,_ = decomp_funs @@ term_of_value vl in
-          let typs,_ = decomp_tfun typ in
-          List.map2 aux' ys typs
-        in
-        let typs,_ = decomp_tfun typ in
-        List.flatten @@ List.map2 aux map typs
-        |> List.filter (fst |- fst |- is_base_var)
-      in*)
+      if dbg then Format.printf "  map: %a@." (List.print @@ Pair.print Id.print CT.print_value) map;
       let asm =
         let var_env', val_env' =
           try
@@ -492,18 +474,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
   | CT.Let(f, t) ->
       constr templates assumption
   | CT.Spawn(f, None) -> constr templates assumption
-  | CT.Spawn(f, Some tids) ->
-(*      let constrs1 =
-        if true
-        then []
-        else
-          let asm1 = filter_assumption vars assumption in
-          let asm2 = make_assumption templates vars var_env in
-          let asm = asm1 @ asm2 in
-          let app typ = PApp(typ, List.map make_var vars) in
-          List.map (fun (g,tid) -> _Imply asm @@ make_sub ct templates (app @@ Var f) (app @@ Var g)) tids
-      in
-      constrs1 @*) constr templates assumption
+  | CT.Spawn(f, Some tids) -> constr templates assumption
   | CT.Assume t ->
       constr templates @@ t::assumption
   | CT.End -> [Exp true_term]
@@ -515,6 +486,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
       if dbg then Format.printf "  FAIL: asm1: %a@." (List.print print_constr) asm1;
       if dbg then Format.printf "  FAIL: asm2: %a@." (List.print print_constr) asm2;
       [_Imply asm @@ Exp false_term]
+  | CT.Empty_branch _ -> assert false
   in
   if dbg then Format.printf "  label: %a@." CT.print_label label;
   if dbg then Format.printf "  assumption: %a@." (List.print Print.term) assumption;
@@ -692,6 +664,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
   | CT.Assume _ -> templates
   | CT.End -> []
   | CT.Fail -> []
+  | CT.Empty_branch _ -> []
   in
   pr "  %a@." CT.print_label label;
   pr "  LEN: %d@." (List.length r);
@@ -749,7 +722,8 @@ let rec make_var_env (Rose_tree.Node({CT.val_env; CT.label}, children)) =
       var_env
   | CT.End ->
       var_env
-
+  | CT.Empty_branch _ ->
+      var_env
 
 (*
 let rec make_fun_env (Rose_tree.Node({CT.nid; CT.label}, children)) =
@@ -1284,7 +1258,7 @@ let infer mode prog f typ (ce_set:ce_set) extend =
   if !!debug then Format.printf "INFER prog: %a@." print_prog prog;
   let fun_env',t,make_get_rtyp = add_context true prog f typ in
   if !!debug then Format.printf "t: %a@.@." Print.term t;
-  let comp_tree =
+  let reached_empty_branch,comp_tree =
     let env' =
       env
       |> Ref_type.Env.filter_key_out (Id.same f)
@@ -1296,6 +1270,7 @@ let infer mode prog f typ (ce_set:ce_set) extend =
     if !!debug then Format.printf "env': %a@.@." Ref_type.Env.print env';
     CT.from_program env' fun_env' ce_set extend t
   in
+  Format.printf "reached_empty_branch: %a@." (List.print Id.print) reached_empty_branch;
   let fun_env = [](*make_fun_env comp_tree*) in
   if !!debug then Format.printf "fun_env: %a@.@." (List.print @@ Pair.print Id.print @@ Pair.print Id.print @@ Option.print Format.pp_print_int) fun_env;
   let templates = make_template env comp_tree in
@@ -1373,10 +1348,10 @@ let infer mode prog f typ (ce_set:ce_set) extend =
 
 let next_mode mode =
   match mode with
-  | ToTrue -> ToFalse
-  | ToFalse -> ToStronger
-  | ToStronger -> invalid_arg "incr_mode"
+  | ToTrue -> ToStronger
+  | ToFalse -> invalid_arg "incr_mode"
+  | ToStronger -> ToFalse
 
 let init_mode = ToTrue
 
-let is_last_mode mode = mode = ToStronger
+let is_last_mode mode = mode = ToFalse

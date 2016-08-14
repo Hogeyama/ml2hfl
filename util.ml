@@ -161,9 +161,9 @@ module Option = struct
   let iter = may
   let apply = map
 
-  let make check f x =
+  let make check x =
     if check x
-    then Some (f x)
+    then Some x
     else None
 
   let some_if b x =

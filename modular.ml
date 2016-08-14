@@ -102,9 +102,9 @@ let incr_extend f ce_set extend =
 let rec main_loop history c prog cmp f typ ce_set extend =
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
   if Ref_type.subtype (Ref_type.Env.assoc f env) typ then
-    `Typable, prog.fun_typ_env, prog.fun_typ_neg_env, ce_set
-  else if Ref_type.suptype (Ref_type.NegEnv.assoc f neg_env) typ then
-    `Untypable, prog.fun_typ_env, prog.fun_typ_neg_env, ce_set
+    `Typable, env, neg_env, ce_set
+  else if false && Ref_type.suptype (Ref_type.NegEnv.assoc f neg_env) typ then
+    `Untypable, env, neg_env, ce_set
   else
     let space = String.make (8*List.length history) ' ' in
     let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
