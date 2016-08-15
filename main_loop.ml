@@ -257,9 +257,9 @@ let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
       else
         None
     in
-    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
+    {prog.CEGAR_syntax.info with CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
   in
-  prog, make_get_rtyp, info
+  {prog with CEGAR_syntax.info}, make_get_rtyp
 
 
 
@@ -330,7 +330,7 @@ let report_unsafe main ce set_target =
 
 let rec run_cegar prog =
   try
-    match CEGAR.run prog CEGAR_syntax.empty_cegar_info with
+    match CEGAR.run prog with
     | CEGAR.Safe env ->
         Flag.result := "Safe";
         Color.printf Color.Bright "Safe!@.@.";
@@ -393,7 +393,7 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
       set_target
   in
   (**)
-  let prog, make_get_rtyp, info = preprocess ~make_pps ~fun_list set_target' spec in
+  let prog, make_get_rtyp = preprocess ~make_pps ~fun_list set_target' spec in
   let prog' =
     if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
     then
@@ -408,7 +408,7 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
   in
   if !Flag.trans_to_CPS then FpatInterface.init prog';
   try
-    let result = CEGAR.run prog' info in
+    let result = CEGAR.run prog' in
     result, make_get_rtyp, set_target'
   with e ->
     improve_precision e;
