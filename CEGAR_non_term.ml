@@ -109,7 +109,7 @@ let cegar prog0 labeled is_cp ce_tree prog =
         let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
         if debug then List.iter (fun (rand_var, preds_sequence) -> Format.printf "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
         if !Flag.randint_refinement_log then List.iter (fun (rand_var, preds_sequence) -> Format.fprintf log_fm "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
-        let inlined_functions = inlined_functions prog0.info.orig_fun_list prog0.info.inlined prog0 in
+        let inlined_functions = inlined_functions prog0 in
         let map,_ = Refine.refine_with_ext inlined_functions is_cp [] [ce] [ext_preds] prog0 in
         let map = CEGAR_trans.add_neg_preds_renv map in
         if debug then Format.printf "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
@@ -125,7 +125,7 @@ let cegar prog0 labeled is_cp ce_tree prog =
         let ext_preds = ext_path |> List.map (FpatInterface.trans_ext renv map_randint_to_preds) in
         if debug then List.iter (fun (rand_var, preds_sequence) -> Format.printf "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
         if !Flag.randint_refinement_log then List.iter (fun (rand_var, preds_sequence) -> Format.fprintf log_fm "%a: %a@." Fpat.Idnt.pr rand_var (print_list print_pred " , ") preds_sequence) ext_preds;
-        let inlined_functions = inlined_functions prog0.info.orig_fun_list prog0.info.inlined prog0 in
+        let inlined_functions = inlined_functions prog0 in
         let map, p = Refine.refine inlined_functions is_cp prefix [ce] [ext_preds] prog0 in
         if debug then Format.printf "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;
         if !Flag.randint_refinement_log then Format.fprintf log_fm "REFINEMENT MAP:@.%a@." CEGAR_print.env_diff map;

@@ -63,7 +63,7 @@ let rec loop prog0 is_cp ces =
   in
   let pr =
     if !Flag.expand_nonrec
-    then CEGAR_util.print_prog_typ' prog.info.orig_fun_list prog.info.inlined
+    then CEGAR_util.print_prog_typ' prog.info.inlined
     else CEGAR_print.prog_typ
   in
   if !Flag.print_progress
@@ -151,7 +151,7 @@ let rec loop prog0 is_cp ces =
               assert false
           | Feasibility.Infeasible prefix, _ ->
               let ces' = ce::ces in
-              let inlined_functions = inlined_functions prog.info.orig_fun_list prog.info.inlined prog0 in
+              let inlined_functions = inlined_functions prog0 in
               let aux ce =
                 match ce with
                 | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce'
@@ -178,9 +178,15 @@ let run prog =
     | _ -> prog
   in
   make_ID_map prog;
+  let info =
+    if !Flag.expand_nonrec then
+      {prog.info with nonrec = get_nonrec @@ snd @@ CEGAR_abst_util.add_label prog}
+    else
+      prog.info
+  in
   try
     let is_cp = FpatInterface.is_cp prog in
-    snd @@ loop prog is_cp []
+    snd @@ loop {prog with info} is_cp []
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress
