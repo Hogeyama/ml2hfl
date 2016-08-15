@@ -151,6 +151,7 @@ let rec get_match_bind_cond t p =
       let bind,cond = get_match_bind_cond t p in
       (abst_list.tr2_var "" x, t)::bind, cond
   | PConst {desc=Const Unit} -> [], true_term
+  | PConst t' when t'.desc = randint_unit_term.desc -> [], randbool_unit_term (* just for -base-to-int *)
   | PConst t' -> [], make_eq t t'
   | PNil -> [], make_eq (make_fst t) (make_int 0)
   | PCons _ ->
