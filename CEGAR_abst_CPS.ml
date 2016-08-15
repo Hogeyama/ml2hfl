@@ -44,8 +44,8 @@ let rec beta_reduce_term = function
 let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
-let rec expand_nonrec orig_fun_list force {env;defs;main;info} =
-  let non_rec = get_nonrec defs main orig_fun_list force in
+let rec expand_nonrec {env;defs;main;info} =
+  let non_rec = info.nonrec in
   let cnt = ref 0 in
   let rec loop defs =
     if false then Format.printf "%d, %d@." (incr cnt; !cnt) @@ List.fold_left (fun acc (_,_,_,_,t) -> acc + size t) 0 defs;
@@ -479,10 +479,10 @@ let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
   |@> pr "INPUT"
-  |&!Flag.expand_nonrec&> expand_nonrec orig_fun_list force
-  |@!Flag.expand_nonrec&> pr "EXPAND_NONREC"
+  |> expand_nonrec
+  |@> pr "EXPAND_NONREC"
   |> CEGAR_trans.simplify_if
-  |@!Flag.expand_nonrec&> pr "SIMPLIFY_IF"
+  |@> pr "SIMPLIFY_IF"
   |> eta_expand
   |@> pr "ETA_EXPAND"
   |> abstract_prog
