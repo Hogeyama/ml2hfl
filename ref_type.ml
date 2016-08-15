@@ -130,7 +130,7 @@ let rec print fm = function
         match xtyps with
         | [] -> print fm typ
         | (x,typ1)::xtyps' ->
-            if List.exists (snd |- occur x) xtyps
+            if List.exists (occur x) @@ typ :: List.map snd xtyps'
             then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print typ1 aux (xtyps', typ)
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print typ1 aux (xtyps', typ)
       in
