@@ -834,3 +834,38 @@ let add_fail_to_end prog =
     else (f, args, cond, e, t)
   in
   map_def_prog aux prog
+
+
+let rec beta_subst_aux x (y,t1) t2 =
+  match t2 with
+  | Const c -> Const c
+  | Var y when x = y -> t1
+  | Var y -> Var y
+  | App(t21,t22) ->
+      let t21' = beta_subst_aux x (y,t1) t21 in
+      let t22' = beta_subst_aux x (y,t1) t22 in
+      begin
+        match t21' with
+        | Fun(y',_,t211) -> beta_subst y' t22' t211
+        | _ -> App(t21', t22')
+      end
+  | Let(y,t21,t22) ->
+      let t22' =
+        if x = y then
+          t22
+        else
+          beta_subst_aux x (y,t1) t22
+      in
+      Let(y, beta_subst_aux x (y,t1) t21, t22')
+  | Fun(y,typ,t21) ->
+      let t21' =
+        if x = y then
+          t1
+        else
+          beta_subst_aux x (y,t1) t21
+      in
+      Fun(y, typ, t21')
+and beta_subst x t1 t2 =
+  match t1 with
+  | Fun(y,_,t11) -> beta_subst_aux x (y,t11) t2
+  | _ -> subst x t1 t2

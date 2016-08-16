@@ -180,7 +180,7 @@ let run prog =
   make_ID_map prog;
   let info =
     if !Flag.expand_nonrec then
-      {prog.info with nonrec = get_nonrec @@ snd @@ CEGAR_abst_util.add_label prog}
+      {prog.info with nonrec = get_nonrec CEGAR_abst_CPS.beta_reduce_term @@ snd @@ CEGAR_abst_util.add_label prog}
     else
       prog.info
   in
