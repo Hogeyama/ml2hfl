@@ -26,7 +26,7 @@ val get_typ : env -> t -> typ
 val get_arg_num : typ -> int
 val has_bottom : t -> bool
 val normalize_bool_term : ?imply:(t list -> t -> bool) -> t -> t
-val get_nonrec : prog -> (var * t) list
+val get_nonrec : (t -> t) -> prog -> (var * t) list
 val print_prog_typ' : var list -> Format.formatter -> prog -> unit
 val eval_step_by_step : prog -> 'a
 val initialize_env : prog -> prog

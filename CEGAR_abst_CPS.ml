@@ -31,13 +31,14 @@ let make_pts x typ =
 let rec beta_reduce_term = function
   | Const c -> Const c
   | Var x -> Var x
+  | App(App(App(Const If, Const True), t2), _) -> beta_reduce_term t2
+  | App(App(App(Const If, Const False), _), t3) -> beta_reduce_term t3
   | App(t1, t2) ->
       let t1' = beta_reduce_term t1 in
-      let t2' = beta_reduce_term t2 in
       begin
         match t1' with
-        | Fun(x,_,t1') -> beta_reduce_term (subst x t2' t1')
-        | _ -> App(t1', t2')
+        | Fun(x,_,t1') -> beta_reduce_term @@ subst x t2 t1'
+        | _ -> App(t1', beta_reduce_term t2)
       end
   | Fun(x, typ, t) -> Fun(x, typ, beta_reduce_term t)
   | Let _ -> assert false
@@ -46,19 +47,14 @@ let beta_reduce_def (f,xs,t1,e,t2) =
 
 let rec expand_nonrec {env;defs;main;info} =
   let non_rec = info.nonrec in
-  let cnt = ref 0 in
-  let rec loop defs =
-    if false then Format.printf "%d, %d@." (incr cnt; !cnt) @@ List.fold_left (fun acc (_,_,_,_,t) -> acc + size t) 0 defs;
-    let aux (f,xs,t1,e,t2) = f, xs, subst_map non_rec t1, e, subst_map non_rec t2 in
-    let defs' = List.map aux defs in
-    if defs = defs'
-    then defs
-    else loop defs'
+  let aux (f,xs,t1,e,t2) = f, xs, subst_map non_rec t1, e, subst_map non_rec t2 in
+  let defs' =
+    defs
+    |> List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f non_rec)
+    |> List.map aux
+    |> List.map beta_reduce_def
   in
-  let defs' = List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f non_rec) defs in
-  let defs'' = loop defs' in
-  let defs''' = List.map beta_reduce_def defs'' in
-  {env; defs=defs'''; main; info}
+  {env; defs=defs'; main; info}
 
 
 
