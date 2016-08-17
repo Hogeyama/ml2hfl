@@ -63,6 +63,12 @@ let print fm x =
       to_string x
   in
   assert (s <> "");
-  Format.fprintf fm "@[%s@]" s
+  let s' =
+    if !Flag.print_as_ocaml then
+      String.sign_to_letters @@ String.uncapitalize s
+    else
+      s
+  in
+  Format.fprintf fm "@[%s@]" s'
 
 let map_typ f x = {x with typ = f x.typ}
