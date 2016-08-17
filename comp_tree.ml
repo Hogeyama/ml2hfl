@@ -520,7 +520,11 @@ let from_program env fun_env (ce_set:ce_set) extend t =
     |> List.get
     |@> Debug.printf "comp_tree:@.%a@.@." print
   in
-  let reached_empty_branch = RT.filter_map_label (function {label = Empty_branch f} -> Some f | _ -> None) comp_tree in
+  let reached_empty_branch =
+    comp_tree
+    |> RT.filter_map_label (function {label = Empty_branch f} -> Some f | _ -> None)
+    |> List.unique ~cmp:Id.eq
+  in
   let comp_tree' =
     filter_ends comp_tree
     |@> Debug.printf "comp_tree':@.%a@.@." print

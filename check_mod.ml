@@ -247,7 +247,7 @@ and eval top_funs val_env ce label_env t =
       unsupported "Check_mod.eval"
   in
   if dbg then
-    Format.printf"@]@\nRETURN: %a@\n@]" Print.term (value_of @@ Triple.fst r);
+    Debug.printf"@]@\nRETURN: %a@\n@]" Print.term (value_of @@ Triple.fst r);
   r
 
 type result =
@@ -270,9 +270,9 @@ let add_context prog f typ =
   let label_env =
     Id.assoc f fun_env
     |> snd
-    |@dbg&> Format.printf "AC body: %a@." Print.term
+    |@dbg&> Debug.printf "AC body: %a@." Print.term
     |> make_label_env f
-    |@dbg&> Format.printf "AC Dom(label_env): %a@." (List.print Id.print) -| List.map fst
+    |@dbg&> Debug.printf "AC Dom(label_env): %a@." (List.print Id.print) -| List.map fst
   in
   let af = "Assert_failure" in
   let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
@@ -284,22 +284,22 @@ let add_context prog f typ =
   let t' =
     unit_term
     |> Trans.ref_to_assert ~typ_exn ~make_fail @@ Ref_type.Env.of_list [f,typ]
-    |@dbg&> Format.printf "ADD_CONTEXT t: %a@." Print.term
+    |@dbg&> Debug.printf "ADD_CONTEXT t: %a@." Print.term
     |> normalize
-    |@dbg&> Format.printf "ADD_CONTEXT t': %a@." Print.term
+    |@dbg&> Debug.printf "ADD_CONTEXT t': %a@." Print.term
   in
   let fun_env' =
     env
     |> Ref_type.Env.filter_key (Id.mem -$- fs)
     |> Ref_type.Env.to_list
     |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate (Some typ_exn) ~make_fail [] [])
-    |@dbg&> Format.printf "ADD_CONTEXT fun_env': %a@." Modular_syntax.print_def_env
+    |@dbg&> Debug.printf "ADD_CONTEXT fun_env': %a@." Modular_syntax.print_def_env
   in
   let fun_env'' =
     List.map (Pair.map_snd @@ Pair.map_snd normalize) fun_env' @
     [f, Pair.map_snd (add_label (List.assoc f label_env) label_env -| normalize) @@ Id.assoc f fun_env]
   in
-  if dbg then Format.printf "ADD_CONTEXT fun_env'': %a@." Modular_syntax.print_def_env fun_env'';
+  if dbg then Debug.printf "ADD_CONTEXT fun_env'': %a@." Modular_syntax.print_def_env fun_env'';
   t', fun_env'', List.map Pair.swap label_env
 
 let complete_ce_set f t ce =
