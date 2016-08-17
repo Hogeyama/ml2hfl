@@ -4,8 +4,7 @@ open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 
-
-let debug () = List.mem "CEGAR_abst_util" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "CEGAR_abst_util" end)
 
 let hd = function
   | [] -> assert false
@@ -60,9 +59,9 @@ let filter_pbs env cond pbs =
   |> List.filter_out (check_aux env cond -| make_not -| fst)
 
 let filter env cond pbs must t =
-  if debug() then Format.printf "filter@.";
+  Debug.printf "filter@.";
   let pbs' = if !Flag.remove_false then filter_pbs env cond pbs else pbs in
-  if debug() then Format.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  Debug.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
 (*
   if debug() then Format.printf "  orig pbs: @[<hv>%a@." print_pbs pbs;
   let pbss =
@@ -81,27 +80,27 @@ let filter env cond pbs must t =
 *)
   let pbss = [pbs'] in
   let aux pbs =
-    if debug() then Format.printf "  pbs: @[<hv>%a@." print_pbs pbs;
+    Debug.printf "  pbs: @[<hv>%a@." print_pbs pbs;
     min_unsat_cores env cond pbs
   in
   let unsats1 = List.map aux pbss in
   let unsats2 = List.filter_map (fun (p,b) -> if check env cond [p,b] @@ Const False then Some b else None) pbs' in
   let unsat = List.fold_left make_or (Const False) (unsats2 @ unsats1) in
-  if debug() then Format.printf "  unsat:%a@.@." CEGAR_print.term unsat;
+  Debug.printf "  unsat:%a@.@." CEGAR_print.term unsat;
   make_if unsat (Const Bottom) t
 
 
 
 let abst env cond pbs p =
-  if debug() then Format.printf "abst@.";
-  if debug() then Format.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
+  Debug.printf "abst@.";
+  Debug.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
   let pbs' = filter_pbs env cond pbs in
-  if debug() then Format.printf "  pbs: @[<hv>%a@]@.  p:%a@." print_pbs pbs' CEGAR_print.term p;
+  Debug.printf "  pbs: @[<hv>%a@]@.  p:%a@." print_pbs pbs' CEGAR_print.term p;
   if has_bottom p
   then Const Bottom
   else
     let tt, ff = weakest env cond pbs' p in
-    if debug() then Format.printf "  tt:%a@.  ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
+    Debug.printf "  tt:%a@.  ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
     if make_not tt = ff || tt = make_not ff
     then tt
     else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
@@ -261,49 +260,49 @@ let add_ext_funs prog =
 
 
 let check_exist env cond x p =
-  if debug() then Format.printf "check_exists:@.";
-  if debug() then Format.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
-  if debug() then Format.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
+  Debug.printf "check_exists:@.";
+  Debug.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
+  Debug.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
   let xs = List.filter_out ((=) x) @@ (get_fv_list (p::cond)) in
   if !Flag.use_omega_first then
     try
       OmegaInterface.is_valid_forall_exists xs [x] cond p
-      |@ !!debug &> Format.printf "check_exists: %b@."
+      |@!!Debug.check&> Format.printf "check_exists: %b@."
     with OmegaInterface.Unknown ->
-      if debug() then Format.printf "check_exists: OmegaInterface.Unknown@.";
-      if debug() then Format.printf "Try checking by z3...@.";
+      Debug.printf "check_exists: OmegaInterface.Unknown@.";
+      Debug.printf "Try checking by z3...@.";
       try
         let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
-        if debug() then Format.printf "check_exists: %b@." b;
+        Debug.printf "check_exists: %b@." b;
         ignore @@ read_line();
         b
       with Fpat.SMTProver.Unknown ->
-        if debug() then Format.printf "check_exists: FpatInterface.Unknown@.";
+        Debug.printf "check_exists: FpatInterface.Unknown@.";
         if Flag.exists_unknown_false
         then false
         else raise Fpat.SMTProver.Unknown
   else
     try
       FpatInterface.is_valid_forall_exists xs [x] cond p
-      |@ !!debug &> Format.printf "check_exists: %b@."
+      |@!!Debug.check&> Format.printf "check_exists: %b@."
     with
     | Fpat.SMTProver.Unknown when !Flag.use_omega ->
-        if debug() then Format.printf "check_exists: Fpat.SMTProver.Unknown@.";
-        if debug() then Format.printf "Try checking by omega...@.";
+        Debug.printf "check_exists: Fpat.SMTProver.Unknown@.";
+        Debug.printf "Try checking by omega...@.";
         begin
           try
             let b = OmegaInterface.is_valid_forall_exists xs [x] cond p in
-            if debug() then Format.printf "check_exists: %b@." b;
-            if debug() then (let _ = read_line() in ());
+            Debug.printf "check_exists: %b@." b;
+            Debug.exec (fun _ -> ignore @@ read_line());
             b
           with OmegaInterface.Unknown ->
-               if debug() then Format.printf "check_exists: OmegaInterface.Unknown@.";
+               Debug.printf "check_exists: OmegaInterface.Unknown@.";
                if Flag.exists_unknown_false
                then false
                else raise Fpat.SMTProver.Unknown
         end
     | Fpat.SMTProver.Unknown when !Flag.use_omega ->
-        if debug() then Format.printf "check_exists: Fpat.SMTProver.Unknown@.";
+        Debug.printf "check_exists: Fpat.SMTProver.Unknown@.";
         if Flag.exists_unknown_false
         then false
         else raise Fpat.SMTProver.Unknown

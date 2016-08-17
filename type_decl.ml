@@ -8,7 +8,7 @@ type kind =
   | Primitive
   | Abstract
 
-let debug () = List.mem "Type_decl" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Type_decl" end)
 
 let primitives = ["char";"string";"float";"int32";"int64";"nativeint";"format4";"format6"]
 

@@ -7,7 +7,7 @@ open Type
 module RT = Ref_type
 
 
-let debug () = List.mem "Encode_list" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Encode_list" end)
 
 
 
@@ -252,7 +252,7 @@ let abst_list_term post t =
       let aux (p,cond,t2) t3 =
         let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
         let bind,cond' = get_match_bind_cond (make_var x) p in
-        if debug() then Format.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
+        Debug.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
         let t_cond,bind' =
           if cond = true_term
           then cond, bind
@@ -260,7 +260,7 @@ let abst_list_term post t =
             let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
             cond', bind
         in
-        if debug() then Format.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
+        Debug.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
         let t2' = abst_list.tr2_term post t2 in
         make_if (make_and cond' t_cond) (add_bind bind' t2') t3
       in
@@ -273,9 +273,9 @@ let () = abst_list.tr2_typ <- abst_list_typ
 
 let trans t =
   let t' = abst_list.tr2_term "" t in
-  if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
+  Debug.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   let t' = Trans.inline_var_const t' in
-  if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
+  Debug.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   let typ = abst_list.tr2_typ "" t.typ in
   Type_check.check t' typ;
   t', make_get_rtyp_list_of t
@@ -468,7 +468,7 @@ let trans_opt t =
 
 
 
-let pr s t = if debug () then Format.printf "##[encode_list] %s:@.%a@.@." s Print.term t
+let pr s t = Debug.printf "##[encode_list] %s:@.%a@.@." s Print.term t
 
 let trans t =
   let tr =

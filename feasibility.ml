@@ -10,7 +10,7 @@ type result =
   | FeasibleNonTerm of bool * (string * CEGAR_syntax.typ) list * int list
   | Infeasible of CEGAR_syntax.ce
 
-let debug () = List.mem "Feasibility" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Feasibility" end)
 
 let checksat env t =
   Fpat.SMTProver.is_sat_dyn (FpatInterface.conv_formula t)
@@ -59,7 +59,7 @@ let add_randint_precondition r n =
 
 (* sat=true denotes constr is satisfiable *)
 let rec check_aux pr ce sat n constr env defs t k =
-  if debug() then Format.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
+  Debug.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
   | Const (Rand(TInt,_)) -> assert false
   | Const c -> k ce sat n constr env (Const c)
@@ -196,7 +196,7 @@ let assoc_def defs n t ce_br =
   ce_br', List.nth defs' n
 
 let rec trans_ce ce ce_br env defs t k =
-  if debug() then Format.printf "trans_ce[%d]: %a@." (List.length ce) CEGAR_print.term t;
+  Debug.printf "trans_ce[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
   | Const (Rand(TInt,_)) -> assert false
   | Const c -> k ce ce_br env (Const c)
@@ -236,7 +236,7 @@ let rec trans_ce ce ce_br env defs t k =
   | Fun _ -> assert false
 
 let trans_ce ce {defs=defs;main=main} =
-  if debug() then Format.printf "ce:        %a@." CEGAR_print.ce ce;
+  Debug.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
   trans_ce ce' [] [] defs t init_cont

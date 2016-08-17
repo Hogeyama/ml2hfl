@@ -8,7 +8,7 @@ open Term_util
 open Type
 
 
-let debug () = List.mem "Parser_wrapper" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Parser_wrapper" end)
 
 type declaration =
   | Decl_let of rec_flag * (id * term) list
@@ -455,8 +455,8 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
         | "Format",_ -> Const (String "%some format%")
         | name,es ->
             add_exc_env desc env;
-            if !!debug then Format.printf "CONSTR: %s@." name;
-            if !!debug then Format.printf "   typ: %a@." Printtyp.type_expr typ;
+            Debug.printf "CONSTR: %s@." name;
+            Debug.printf "   typ: %a@." Printtyp.type_expr typ;
             Constr(name, List.map from_expression es)
       in
       {desc=desc; typ=typ'; attr=[]}

@@ -11,7 +11,7 @@ module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
 
-let debug () = List.mem "FpatInterface" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "FpatInterface" end)
 
 let rec conv_typ ty =
   match ty with
@@ -79,7 +79,7 @@ let conv_const c =
   | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
   | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
   | _ ->
-      if !!debug then Format.printf "%a@." CEGAR_print.const c;
+      Debug.printf "%a@." CEGAR_print.const c;
       assert false
 
 let conv_var x =

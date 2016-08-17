@@ -5,7 +5,7 @@ open Type
 
 module RT = Ref_type
 
-let debug () = List.mem "Encode_rec" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Encode_rec" end)
 
 let rec extract_decls_typ ?prev_type env typ =
   match typ with
@@ -43,13 +43,13 @@ let extract_decls_typ typ = extract_decls_typ [] typ
 
 
 let flatten_recdata_typ typ =
-  if !!debug then Format.printf "flatten_recdata_typ IN: %a@." Print.typ typ;
+  Debug.printf "flatten_recdata_typ IN: %a@." Print.typ typ;
   let typ' = fold_data_type typ in
   match typ' with
   | Type(_,s) ->
       let decls',_ = extract_decls_typ typ' in
       Type(decls', s)
-      |@!!debug&> Format.printf "flatten_recdata_typ OUT: %a@." Print.typ
+      |@> Debug.printf "flatten_recdata_typ OUT: %a@." Print.typ
   | _ -> invalid_arg "flatten_recdata_typ"
 
 
@@ -63,7 +63,7 @@ let rec collect_leaf_aux typ =
   | _ when get_free_data_name typ = [] -> [typ]
   | _ -> unsupported "non-regular data types"
 let collect_leaf_aux typ =
-  if !!debug then Format.printf "CLA: %a@." Print.typ typ;
+  Debug.printf "CLA: %a@." Print.typ typ;
   List.unique @@ collect_leaf_aux typ
 let collect_leaf typ =
   match typ with
@@ -74,7 +74,7 @@ let collect_leaf typ =
       leaves
   | TVariant _ -> collect_leaf_aux typ
   | _ ->
-      if !!debug then Format.printf "%a@." Print.typ typ;
+      Debug.printf "%a@." Print.typ typ;
       invalid_arg "collect_leaf"
 
 
@@ -296,7 +296,7 @@ let () = abst_recdata.tr_typ <- abst_recdata_typ
 
 
 
-let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
+let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
 let trans_typ = abst_recdata.tr_typ
 let trans t =

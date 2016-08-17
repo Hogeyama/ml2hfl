@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_syntax
 
-let debug () = List.mem "Modular" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Modular" end)
 
 exception NoProgress
 
@@ -70,11 +70,11 @@ let extend_ce f ce_set = assert false(*
 *)
 
 let incr_extend f ce_set extend =
-  let dbg = 0=1 && !!debug in
+  let dbg = 0=1 in
   assert (ce_set <> []);
-  if dbg then Format.printf "IE f: %a@." Id.print f;
-  if dbg then Format.printf "IE CE_SET: %a@." print_ce_set ce_set;
-  if dbg then Format.printf "IE EXTEND: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
+  if dbg then Debug.printf "IE f: %a@." Id.print f;
+  if dbg then Debug.printf "IE CE_SET: %a@." print_ce_set ce_set;
+  if dbg then Debug.printf "IE EXTEND: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
   let extend' =
     let aux g extend' =
       try
@@ -83,7 +83,7 @@ let incr_extend f ce_set extend =
     in
     List.fold_left (fun extend' (g,_) -> aux g extend') extend @@ Id.assoc f ce_set
   in
-  if dbg then Format.printf "IE EXTEND': %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
+  if dbg then Debug.printf "IE EXTEND': %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
   let new_ce_set =
     let aux ce =
       let rev xs =
@@ -107,7 +107,7 @@ let rec main_loop history c prog cmp f typ ce_set extend =
     `Untypable, env, neg_env, ce_set
   else
     let space = String.make (8*List.length history) ' ' in
-    let pr f = if !!debug then Format.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset else Format.ifprintf Format.std_formatter f in
+    let pr f = Debug.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
     pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print env;
     pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
@@ -149,10 +149,10 @@ let rec main_loop history c prog cmp f typ ce_set extend =
               else if not @@ List.Set.eq ce_set3 ce_set2 then
                 (refine_loop Infer_mod.init_mode neg_env' ce_set3 extend')
               else if not @@ Infer_mod.is_last_mode infer_mode then
-                (if !!debug then Format.printf "change infer_mode@.";
+                (Debug.printf "change infer_mode@.";
                  refine_loop (Infer_mod.next_mode infer_mode) neg_env' ce_set3 extend')
               else if true then
-                (if !!debug then Format.printf "extend counterexample@.";
+                (Debug.printf "extend counterexample@.";
                  let ce_set4,extend'' = List.fold_left (fun (cs,ex) g -> incr_extend g cs ex) (ce_set3,extend') (f :: (List.unique ~cmp:Id.eq @@ Ref_type.Env.dom candidate)) in
                  refine_loop Infer_mod.init_mode neg_env' ce_set4 extend'')
               else
@@ -171,16 +171,16 @@ let main _ spec parsed =
       |> preprocess_filter_out [(*Encode_mutable_record; Encode_recdata; Encode_list;*) Beta_reduce_trivial]
     in
     parsed
-    |@!!debug&> Format.printf "PARSED: %a@.@." Print.term_typ
+    |@> Debug.printf "PARSED: %a@.@." Print.term_typ
     |> Main_loop.run_preprocess pps
     |> Main_loop.last_t
-    |@!!debug&> Format.printf "INITIALIZED: %a@.@." Print.term_typ
+    |@> Debug.printf "INITIALIZED: %a@.@." Print.term_typ
     |> normalize
-    |@!!debug&> Format.printf "NORMALIZED: %a@.@." Print.term
+    |@> Debug.printf "NORMALIZED: %a@.@." Print.term
     |> decomp_prog
   in
   assert (body.desc = Const Unit);
-  if !!debug then Format.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;
+  Debug.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;
   if List.exists (snd |- List.exists (Triple.fst |- is_fun_var |- not)) fbindings then
     unsupported "top-level let-bindings of non-functions";
   List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
@@ -192,7 +192,7 @@ let main _ spec parsed =
       List.flatten_map (snd |- List.map Triple.fst) fbindings
       |> Ref_type.Env.create (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ)
     in
-    if !!debug then Format.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
+    Debug.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
     let fun_typ_neg_env =
       List.flatten_map (snd |- List.map Triple.fst) fbindings
       |> Ref_type.NegEnv.create (Ref_type.union -$- [] -| Id.typ)

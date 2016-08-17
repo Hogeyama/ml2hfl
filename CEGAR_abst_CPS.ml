@@ -5,10 +5,10 @@ open CEGAR_type
 open CEGAR_util
 open CEGAR_abst_util
 
-let debug () = List.mem "CEGAR_abst_CPS" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "CEGAR_abst_CPS" end)
 
 let abst_arg x typ =
-  if debug() then Format.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
+  Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
   match typ with
   | TBase(_,ps) ->
       begin
@@ -145,7 +145,7 @@ let trans_eager prog =
 
 
 let rec eta_expand_term_aux env t typ =
-  if false && debug() then Format.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if false then Debug.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match typ with
   | TBase _ -> t
   | TFun(typ1,typ2) ->
@@ -162,7 +162,7 @@ let rec eta_expand_term_aux env t typ =
   | _ -> assert false
 
 let rec eta_expand_term env t typ =
-  if debug() then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  Debug.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
   | Const (Rand(TInt,_))
@@ -364,7 +364,7 @@ and abstract_term must env cond pts t typ =
   | Const _ -> assert false
   | Let _ -> assert false
   in
-  let dbg = false && !!debug in
+  let dbg = false && !!Debug.check in
   if dbg then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   if dbg then Format.printf "abstract_term r: %a@." (List.print CEGAR_print.term) r;
   r
@@ -394,13 +394,13 @@ let abstract_def env (f,xs,t1,e,t2) =
         typ', (x,typ1)::env'
   in
   let typ,env' = decomp_typ (try List.assoc f env with Not_found -> assert false) xs in
-  if debug() then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
+  Debug.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@@ env in
   let pts = List.flatten_map (Fun.uncurry make_pts) env' in
   let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
-  if debug() then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
-  if debug() then Flag.print_fun_arg_typ := true;
-  if debug() then Format.printf "%s:: %a@." f CEGAR_print.term t2;
+  Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
+  if Debug.check() then Flag.print_fun_arg_typ := true;
+  Debug.printf "%s:: %a@." f CEGAR_print.term t2;
   let t2' = hd (abstract_term None env'' [t1] pts t2 typ) in
   let t2'' = eta_reduce_term t2' in
   if e <> [] && t1 <> Const True then
@@ -469,7 +469,7 @@ let abstract_prog prog =
   let attr = List.remove_all prog.info.attr ACPS in
   {env; defs; main=prog.main; info={prog.info with attr}}
 
-let pr s prog = if !!debug then Format.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
+let pr s prog = Debug.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
 
 let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
