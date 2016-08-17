@@ -3,7 +3,7 @@ open Type
 open Syntax
 open Term_util
 
-let debug () = List.mem "Ret_fun" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "Ret_fun" !Flag.debug_module end)
 
 let normalize = make_trans ()
 
@@ -235,37 +235,37 @@ let () = trans.tr2_term <- trans_term
 let () = trans.tr2_typ <- trans_typ
 
 let trans t = t
-  |@debug()&> Format.printf "INPUT:@.%a@.@." Print.term
+  |@> Debug.printf "INPUT:@.%a@.@." Print.term
   |> normalize
-  |@debug()&> Format.printf "normalize:@.%a@.@." Print.term
+  |@> Debug.printf "normalize:@.%a@.@." Print.term
   |> Trans.inline_var_const
-  |@debug()&> Format.printf "inline_var_const:@.%a@.@." Print.term
+  |@> Debug.printf "inline_var_const:@.%a@.@." Print.term
   |> Trans.flatten_let
-  |@debug()&> Format.printf "flatten_let:@.%a@.@." Print.term
+  |@> Debug.printf "flatten_let:@.%a@.@." Print.term
   |@> Type_check.check -$- TUnit
   |> add_proj_info
-  |@debug()&> Format.printf "add_proj_info:@.%a@.@." Print.term
+  |@> Debug.printf "add_proj_info:@.%a@.@." Print.term
   |> trans.tr2_term []
-  |@debug()&> Format.printf "ret_fun:@.%a@.@." Print.term_typ
+  |@> Debug.printf "ret_fun:@.%a@.@." Print.term_typ
   |> subst_label
-  |@debug()&> Format.printf "subst_label:@.%a@.@." Print.term_typ
+  |@> Debug.printf "subst_label:@.%a@.@." Print.term_typ
   |> Trans.remove_label ~label:"ret_fun"
-  |@debug()&> Format.printf "remove_label:@.%a@.@." Print.term_typ
+  |@> Debug.printf "remove_label:@.%a@.@." Print.term_typ
   |> Trans.flatten_tuple
-  |@debug()&> Format.printf "flatten_tuple:@.%a@.@." Print.term_typ
+  |@> Debug.printf "flatten_tuple:@.%a@.@." Print.term_typ
   |@> Type_check.check -$- TUnit
   |*> Trans.inline_no_effect
   |> Trans.inline_var_const
-  |@debug()&> Format.printf "inline_var_const:@.%a@.@." Print.term_typ
+  |@> Debug.printf "inline_var_const:@.%a@.@." Print.term_typ
   |> pair_eta_reduce
   |> Trans.flatten_let
-  |@debug()&> Format.printf "flatten_let:@.%a@.@." Print.term
+  |@> Debug.printf "flatten_let:@.%a@.@." Print.term
   |> Trans.beta_no_effect_tuple
   |> Trans.inline_var
   |> Trans.elim_unused_let
-  |@debug()&> Format.printf "beta_var_tuple:@.%a@.@." Print.term
+  |@> Debug.printf "beta_var_tuple:@.%a@.@." Print.term
   |> Trans.reduce_bottom
-  |@debug()&> Format.printf "%a:@.%a@.@." Color.s_red "reduce_bottom" Print.term
+  |@> Debug.printf "%a:@.%a@.@." Color.s_red "reduce_bottom" Print.term
   |@> Type_check.check -$- TUnit
 
 let trans t =

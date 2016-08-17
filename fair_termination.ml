@@ -7,7 +7,7 @@ open Fair_termination_util
 
 exception FailedToFindRF
 
-let debug () = List.mem "Fair_termination" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "Fair_termination" !Flag.debug_module end)
 
 
 type trans_env =
@@ -219,7 +219,7 @@ let trans_term env t =
       let vs2,t2' = trans.tr_col2_term env t2 in
       List.fold_left join vs2 vss, make_let_f flag bindings' t2'
   | _ ->
-      if !!debug then Format.printf "%a@." Print.term t;
+      Debug.printf "%a@." Print.term t;
       unsupported @@ Format.asprintf "Fair termination [%a]" Print.constr t
 
 let () = trans.tr_col2_typ <- trans_typ
@@ -301,7 +301,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
       let exparam_sol'' = List.map (fun (x,n) -> x, List.assoc_default n x exparam_sol') exparam_sol in
       if false && !Flag.add_closure_exparam
       then Format.printf "SOLUTION: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol'';
-      if !!debug then List.iter (Format.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
+      List.iter (Debug.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in
       if !Flag.print_progress then Format.printf "DONE!@.@.";
@@ -312,7 +312,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
 
 
 let pr ?(check_typ=Some TUnit) s t =
-  if !!debug then
+  if !!Debug.check then
     begin
       Format.printf "##[%aFair_termination%t] %a:@.%a@.@." Color.set Color.Yellow Color.reset Color.s_red s Print.term_typ t;
       Option.iter (Type_check.check t) check_typ
@@ -364,7 +364,7 @@ let rec run spec t =
     assert (List.for_all is_extra_coeff fv);
     let init_sol = List.map (fun x -> x, 1) fv in
     let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] [] [] t''' in
-    if !!debug then
+    if !!Debug.check then
       if result
       then Format.printf "%a is fair terminating.@.@." Id.print f
       else Format.printf "%a is possibly non fair terminating.@.@." Id.print f;

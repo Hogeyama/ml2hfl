@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug () = List.mem "CFA" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "CFA" !Flag.debug_module end)
 
 let normalize = make_trans ()
 let normalize_term t =
@@ -75,32 +75,31 @@ let rec update map flow t =
   | Tuple ts -> assert false
   | Proj(i, t) -> assert false
   | _ ->
-      if !!debug then Format.printf "CFA: %a@." Print.term t;
+      Debug.printf "CFA: %a@." Print.term t;
       unsupported "CFA"
 
 let cfa t =
   let t' = normalize t in
-  if !!debug then Format.printf "NORMALIZE: %a@." Print.term t';
+  Debug.printf "NORMALIZE: %a@." Print.term t';
   let n,t'' = Trans.add_id t' in
-  if !!debug then Format.printf "ADD_ID: %a@." Print.term t'';
+  Debug.printf "ADD_ID: %a@." Print.term t'';
   let map = get_id_map t'' in
   let flow = Hashtbl.create (n+1) in
-  if !!debug then Format.printf "n: %d@." n;
+  Debug.printf "n: %d@." n;
   ignore @@ List.init (n+1) (fun i -> Hashtbl.add flow i @@ IntSet.singleton i);
-  if false && !!debug then Hashtbl.iter (fun n m -> Format.printf "MAP: %d ===> %a@." n Print.term m) map;
+  if false then Hashtbl.iter (fun n m -> Debug.printf "MAP: %d ===> %a@." n Print.term m) map;
   let rec loop () = if update map flow t'' then loop () in
   loop ();
-  if !!debug
-  then Hashtbl.iter (fun n m -> if n<>0
-                                then
-                                  let t = Hashtbl.find map n in
-                                  match t.desc with
-                                  | Var _ ->
-                                  Format.printf "%d:%a ===> %a@.@."
-                                                   n
-                                                   Print.term t
-                                                   (List.print Print.term) (List.map (Trans.remove_id -| Hashtbl.find map) @@ IntSet.elements m)
-                                  | _ -> ()) flow;
+  Hashtbl.iter (fun n m -> if n<>0
+                           then
+                             let t = Hashtbl.find map n in
+                             match t.desc with
+                             | Var _ ->
+                                 Debug.printf "%d:%a ===> %a@.@."
+                                               n
+                                               Print.term t
+                                               (List.print Print.term) (List.map (Trans.remove_id -| Hashtbl.find map) @@ IntSet.elements m)
+                             | _ -> ()) flow;
   t'', flow, map
 
 

@@ -2,16 +2,15 @@ open Util
 
 type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
-let debug () = List.mem "Main_loop" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "Main_loop" !Flag.debug_module end)
 
 let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
-  let b = !!debug in
-  if b then Format.printf "START: %s@." desc;
+  Debug.printf "START: %s@." desc;
   let r = f t in
-  if b then Format.printf "END: %s@." desc;
+  Debug.printf "END: %s@." desc;
   let t' = proj_out r in
-  if !Flag.debug_level > 0 && proj_in t <> t' && opt
-  then Format.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
+  if proj_in t <> t' && opt
+  then NORDebug.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
 
@@ -30,7 +29,8 @@ type preprocess_label =
   | Recover_const_attr
   | Decomp_pair_eq
   | Add_preds
-  | Replace_fali_with_raise
+  | Replace_fail_with_raise
+  | Encode_variant
   | Encode_recdata
   | Replace_base_with_int
   | Encode_list
@@ -46,7 +46,7 @@ type preprocess_label =
   | Insert_unit_param
   | Preprocessfortermination
 
-type tr_result = Syntax.typed_term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
+type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
 type results = (preprocess_label * tr_result) list
 
@@ -67,7 +67,8 @@ let string_of_label = function
   | Recover_const_attr -> "Recover_const_attr"
   | Decomp_pair_eq -> "Decomp_pair_eq"
   | Add_preds -> "Add_preds"
-  | Replace_fali_with_raise -> "Replace_fali_with_raise"
+  | Replace_fail_with_raise -> "Replace_fali_with_raise"
+  | Encode_variant -> "Encode_variant"
   | Encode_recdata -> "Encode_recdata"
   | Replace_base_with_int -> "Replace_base_with_int"
   | Encode_list -> "Encode_list"
@@ -132,9 +133,12 @@ let preprocesses spec : preprocess list =
     Add_preds,
       (Fun.const (spec.Spec.abst_env <> []),
        fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
-    Replace_fali_with_raise,
+    Replace_fail_with_raise,
       (Fun.const !Flag.fail_as_exception,
        map_trans Trans.replace_fail_with_raise);
+    Encode_variant,
+      (Fun.const true,
+       map_trans Encode.variant);
     Encode_recdata,
       (Fun.const true,
        map_trans Encode.recdata);
@@ -228,7 +232,7 @@ let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
   in
   let prog = CEGAR_trans.add_env abst_cegar_env prog in
   let make_get_rtyp =
-    if !!debug then
+    if !!Debug.check then
       let aux f (label,(_,g)) map x =
         Format.printf "BEGIN %s@." @@ string_of_label label;
         let r = try g (f map) x with _ -> Format.printf "GET_RTYP ERROR: %s@." @@ string_of_label label; assert false in
@@ -252,9 +256,9 @@ let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
       else
         None
     in
-    {CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
+    {prog.CEGAR_syntax.info with CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
   in
-  prog, make_get_rtyp, info
+  {prog with CEGAR_syntax.info}, make_get_rtyp
 
 
 
@@ -288,7 +292,7 @@ let report_safe env orig t0 =
       Ref.tmp_set Flag.web true (fun () -> Format.printf "  @[<v>%a@]@.@." Print.term t)
     end;
 
-  let only_result_termination = !Flag.debug_level <= 0 && !Flag.mode = Flag.Termination in
+  let only_result_termination = not !!NORDebug.check && !Flag.mode = Flag.Termination in
   if env <> [] && not only_result_termination then
     begin
       Format.printf "Refinement Types:@.";
@@ -325,7 +329,7 @@ let report_unsafe main ce set_target =
 
 let rec run_cegar prog =
   try
-    match CEGAR.run prog CEGAR_syntax.empty_cegar_info with
+    match CEGAR.run prog with
     | CEGAR.Safe env ->
         Flag.result := "Safe";
         Color.printf Color.Bright "Safe!@.@.";
@@ -357,8 +361,8 @@ let insert_extra_param t =
     |> Trans.lift_fst_snd
     |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
   in
-  if true && !Flag.debug_level > 0 then
-    Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+  if true then
+    NORDebug.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
                   (List.length !Fpat.RefTypInfer.params) Print.term t' Print.term' t';
   t'
 
@@ -388,7 +392,7 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
       set_target
   in
   (**)
-  let prog, make_get_rtyp, info = preprocess ~make_pps ~fun_list set_target' spec in
+  let prog, make_get_rtyp = preprocess ~make_pps ~fun_list set_target' spec in
   let prog' =
     if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
     then
@@ -403,7 +407,7 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
   in
   if !Flag.trans_to_CPS then FpatInterface.init prog';
   try
-    let result = CEGAR.run prog' info in
+    let result = CEGAR.run prog' in
     result, make_get_rtyp, set_target'
   with e ->
     improve_precision e;
@@ -436,7 +440,7 @@ let run ?(make_pps=None) ?(fun_list=None) orig exparam_sol ?(spec=Spec.init) par
   | CEGAR.Safe env ->
       Flag.result := "Safe";
       let env' = trans_env (Term_util.get_top_funs parsed) make_get_rtyp env in
-      if not !Flag.exp && !Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0) then
+      if not !Flag.exp && !Flag.mode = Flag.FairTermination => !!NORDebug.check then
         report_safe env' orig set_target';
       true
   | CEGAR.Unsafe(sol,_) ->

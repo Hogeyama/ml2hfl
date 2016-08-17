@@ -1,6 +1,8 @@
 exception Fatal of string
 exception Unsupported of string
 
+module NORDebug = Debug.Make(struct let check () = not @@ !Flag.only_result end)
+
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
 
@@ -161,9 +163,9 @@ module Option = struct
   let iter = may
   let apply = map
 
-  let make check f x =
+  let make check x =
     if check x
-    then Some (f x)
+    then Some x
     else None
 
   let some_if b x =
@@ -419,6 +421,8 @@ module List = struct
     in
     fold_right aux xs (env,[])
 
+  let for_alli f xs = List.for_all (Fun.uncurry f) @@ List.mapi Pair.pair xs
+
   let eq ?(eq=(=)) xs ys = length xs = length ys && for_all2 eq xs ys
 
   module Set = struct
@@ -473,6 +477,31 @@ module String = struct
 
   let remove_char c s =
     replace_chars (fun c' -> if c = c' then "" else of_char c') s
+
+  let sign_to_letters s =
+    let map = function
+      | '!' -> "_bang_"
+      | '$' -> "_dollar_"
+      | '%' -> "_percent_"
+      | '&' -> "_ampersand_"
+      | '*' -> "_asterisk_"
+      | '+' -> "_plus_"
+      | '-' -> "_minus_"
+      | '.' -> "_dot_"
+      | '/' -> "_slash_"
+      | ':' -> "_colon_"
+      | '<' -> "_lessthan_"
+      | '=' -> "_equal_"
+      | '>' -> "_greaterthan_"
+      | '?' -> "_question_"
+      | '@' -> "_at_"
+      | '^' -> "_caret_"
+      | '|' -> "_bar_"
+      | '~' -> "_tilde_"
+      | c -> String.make 1 c
+    in
+    replace_chars map s
+
 end
 
 module Math = struct

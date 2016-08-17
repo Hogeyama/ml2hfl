@@ -5,8 +5,7 @@ open Type
 open Modular_syntax
 
 
-let debug () = List.mem "Check_mod" !Flag.debug_module
-
+module Debug = Debug.Make(struct let check () = List.mem "Check_mod" !Flag.debug_module end)
 
 
 (*
@@ -61,17 +60,17 @@ let append_paths paths1 (vl, ce, paths2) =
   vl, ce, merge_paths paths1 paths2
 
 type answer =
-  | Closure of ((id * answer) list * typed_term)
+  | Closure of ((id * answer) list * term)
   | VTuple of answer list
   | Fail
-  | Excep of answer
+
+exception Exception of answer * int list * (id * int list) list
 
 let rec value_of ans =
   match ans with
   | Closure(_, v) -> v
   | VTuple anss -> make_tuple (List.map value_of anss)
   | Fail -> fail_unit_term
-  | Excep ans -> make_raise (value_of ans) typ_unknown
 
 let rec print_val_env n fm env =
   if n <= 0 then
@@ -132,16 +131,30 @@ let add_label l env = add_label.tr2_term (l, env)
 
 let get_label = get_id_option
 
+let rec eval_app top_funs val_env ce label_env ans1 paths1 ans2 paths2 =
+  match ans1 with
+  | Closure(_, {desc=Const (RandValue _)}) ->
+      Closure(val_env, make_int 0), ce, merge_paths paths1 paths2
+  | Closure(_, {desc=Event("fail",_)}) -> Fail, ce, paths1
+  | Fail -> Fail, ce, paths1
+  | Closure(val_env1, {desc=Fun(x, t')}) ->
+      let val_env' = (x,ans2)::val_env1 in
+      eval top_funs val_env' ce label_env t'
+      |> append_paths paths2
+      |> append_paths paths1
+  | _ ->
+      assert false
+
 (* ASSUME: Input must be normal form *) (* TODO: remove this assumption *)
-let rec eval top_funs val_env ce label_env t =
-  let dbg = 0=0 && !!debug && (match t.desc with Const _ | BinOp _ | Not _ | Fun _ | Event _  | Var _  | App(_, []) -> false | _ -> true) in
-  if dbg then Format.printf "@[ORIG: %a@\n  @[" Print.term t;
+and eval top_funs val_env ce label_env t =
+  let dbg = 0=0 && (match t.desc with Const _ | BinOp _ | Not _ | Fun _ | Event _  | Var _  | App(_, []) -> false | _ -> true) in
+  Debug.printf "@[ORIG: %a@\n  @[" Print.term t;
   let r =
   if dbg then
     if true then
-      Format.printf "Dom(VAL_ENV): %a@\n" (List.print Id.print) @@ List.map fst val_env
-    else Format.printf "VAL_ENV: %a@\n" print_val_env val_env;
-  if dbg then Format.printf "CE: %a@\n" (List.print Format.pp_print_int) ce;
+      Debug.printf "Dom(VAL_ENV): %a@\n" (List.print Id.print) @@ List.map fst val_env
+    else Debug.printf "VAL_ENV: %a@\n" print_val_env val_env;
+  if dbg then Debug.printf "CE: %a@\n" (List.print Format.pp_print_int) ce;
   match t.desc with
   | Const _
   | BinOp _
@@ -152,22 +165,12 @@ let rec eval top_funs val_env ce label_env t =
   | App(t, []) -> eval top_funs val_env ce label_env t
   | App(t1, ts) ->
       let ts',t2 = List.decomp_snoc ts in
-      let ans1, ce, paths1 = eval top_funs val_env ce label_env @@ make_app t1 ts' in
-      let ans2, ce, paths2 = eval top_funs val_env ce label_env t2 in
+      let ans1, ce1, paths1 = eval top_funs val_env ce label_env @@ make_app t1 ts' in
       begin
-        match ans1 with
-        | Closure(_, {desc=Const (RandValue _)}) ->
-            Closure(val_env, make_int 0), ce, merge_paths paths1 paths2
-        | Closure(_, {desc=Event("fail",_)}) -> Fail, ce, paths1
-        | Fail -> Fail, ce, paths1
-        | Closure(val_env1, {desc=Fun(x, t')}) ->
-            let val_env' = (x,ans2)::val_env1 in
-            eval top_funs val_env' ce label_env t'
-            |> append_paths paths2
-            |> append_paths paths1
-        | _ ->
-            Format.printf "t: %a@." Print.term t;
-            assert false
+        try
+          let ans2, ce2, paths2 = eval top_funs val_env ce1 label_env t2 in
+          eval_app top_funs val_env ce2 label_env ans1 paths1 ans2 paths2
+        with Exception(ans2, ce2, paths2) -> raise (Exception(ans2, ce2, merge_paths paths1 paths2))
       end
   | If(_, t2, t3) ->
       let label = get_label t in
@@ -183,8 +186,10 @@ let rec eval top_funs val_env ce label_env t =
               | None -> []
               | Some label -> [List.assoc label label_env, [br]]
             in
-            eval top_funs val_env ce' label_env t23
-            |> append_paths paths'
+            try
+              eval top_funs val_env ce' label_env t23
+              |> append_paths paths'
+            with Exception(ans, ce, paths) -> raise (Exception(ans, ce, merge_paths paths' paths))
       end
   | Let(Nonrecursive, [f,xs,t1], t2) ->
       let ans, ce, paths = eval top_funs val_env ce label_env @@ make_funs xs t1 in
@@ -199,15 +204,15 @@ let rec eval top_funs val_env ce label_env t =
       let rec val_env' = (f, Closure(val_env', make_funs xs t1))::val_env in
       eval top_funs val_env' ce label_env t2
   | Raise t ->
-      assert false; (* TODO *)
       let ans, ce', paths' = eval top_funs val_env ce label_env t in
-      Excep ans, ce', paths' (* wrong *)
+      raise (Exception(ans, ce', paths'))
   | TryWith(t1, t2) ->
-      let ans, ce', paths' = eval top_funs val_env ce label_env t1 in
       begin
-        match ans with
-        | Excep _ -> assert false (* TODO *)
-        | _ -> ans, ce', paths'
+        try
+          eval top_funs val_env ce label_env t1
+        with Exception(ans1, ce, paths1) ->
+             let ans2, ce, paths2 = eval top_funs val_env ce label_env t2 in
+             eval_app top_funs val_env ce label_env ans2 paths2 ans1 paths1
       end
   | Tuple ts ->
       let rec aux t (anss,ce,paths) =
@@ -224,6 +229,7 @@ let rec eval top_funs val_env ce label_env t =
         else
           VTuple anss
       in
+      if ce' <> ce then unsupported "Check_mod.eval tuple";
       ans, ce', paths'
   | Proj(i, t) ->
       let ans, ce, paths = eval top_funs val_env ce label_env t in
@@ -250,9 +256,9 @@ type result =
 
 let add_context prog f typ =
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
-  let dbg = 0=0 && !!debug in
-  if dbg then Format.printf "ADD_CONTEXT prog: %a@." print_prog prog;
-  if dbg then Format.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
+  let dbg = 0=0 in
+  if dbg then Debug.printf "ADD_CONTEXT prog: %a@." print_prog prog;
+  if dbg then Debug.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let fs =
     let xs,t = Id.assoc f fun_env in
     List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)
@@ -268,9 +274,16 @@ let add_context prog f typ =
     |> make_label_env f
     |@dbg&> Format.printf "AC Dom(label_env): %a@." (List.print Id.print) -| List.map fst
   in
+  let af = "Assert_failure" in
+  let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
+  let typ_exn = Encode.typ_of Encode.all etyp in
+  let make_fail typ =
+    make_raise (make_construct af [] etyp) typ
+    |> Encode.all
+  in
   let t' =
     unit_term
-    |> Trans.ref_to_assert @@ Ref_type.Env.of_list [f,typ]
+    |> Trans.ref_to_assert ~typ_exn ~make_fail @@ Ref_type.Env.of_list [f,typ]
     |@dbg&> Format.printf "ADD_CONTEXT t: %a@." Print.term
     |> normalize
     |@dbg&> Format.printf "ADD_CONTEXT t': %a@." Print.term
@@ -278,10 +291,8 @@ let add_context prog f typ =
   let fun_env' =
     env
     |> Ref_type.Env.filter_key (Id.mem -$- fs)
-    |@dbg&> (fun x -> Format.printf "AAA@.")
     |> Ref_type.Env.to_list
-    |@dbg&> (fun x -> Format.printf "AAA@.")
-    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type.generate [] [])
+    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate (Some typ_exn) ~make_fail [] [])
     |@dbg&> Format.printf "ADD_CONTEXT fun_env': %a@." Modular_syntax.print_def_env
   in
   let fun_env'' =
@@ -315,12 +326,12 @@ let make_init_ce_set f t =
 
 
 let check prog f typ =
-  if !!debug then Format.printf "MAIN_LOOP prog: %a@." print_prog prog;
+  Debug.printf "MAIN_LOOP prog: %a@." print_prog prog;
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
   let t,fun_env',label_env = add_context prog f typ in
   let top_funs = List.map fst fun_env' in
-  if !!debug then Format.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
-  if !!debug then Format.printf "  t: %a@." Print.term_typ t;
+  Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
+  Debug.printf "  t: %a@." Print.term_typ t;
   let make_pps spec =
     let open Main_loop in
     preprocesses spec
@@ -329,34 +340,34 @@ let check prog f typ =
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_letrecs (List.map Triple.of_pair_r fun_env')
-    |@!!debug&> Format.printf "  t with def: %a@.@." Print.term
+    |@> Debug.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check -$- TUnit
-    |> Trans.map_main (make_seq -$- unit_term)
-    |@!!debug&> Format.printf "  Check: %a@." Print.term_typ
-    |@> Type_check.check -$- TUnit
+    |> Trans.map_main (make_seq -$- unit_term) (* ??? *)
     |> Main_loop.verify ~make_pps:(Some(make_pps)) ~fun_list:(Some []) [] Spec.init
   in
   match result with
   | CEGAR.Safe env ->
-      if !!debug then Format.printf "  Typable@.";
-      if !!debug then Format.printf "  env: %a@." (List.print @@ Pair.print Format.pp_print_string CEGAR_ref_type.print) env;
+      Debug.printf "  Typable@.";
+      Debug.printf "  env: %a@." (List.print @@ Pair.print Format.pp_print_string CEGAR_ref_type.print) env;
       let env' = (f,typ) :: Main_loop.trans_env (List.map fst fun_env) make_get_rtyp env in
-      if !!debug then Format.printf "  env': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
+      Debug.printf "  env': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
       Typable (Ref_type.Env.normalize @@ Ref_type.Env.of_list env')
   | CEGAR.Unsafe(sol, ModelCheck.CESafety ce_single) ->
-      if !!debug then Main_loop.report_unsafe main sol set_target;
-      if !!debug then Format.printf "  Untypable@.@.";
-      if !!debug then Format.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_int) ce_single;
-      if !!debug then Format.printf "    LABEL_ENV: %a@\n" (List.print @@ Pair.print Format.pp_print_int Id.print) label_env;
-      if !!debug then Format.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
+      if !!Debug.check then Main_loop.report_unsafe main sol set_target;
+      Debug.printf "  Untypable@.@.";
+      Debug.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_int) ce_single;
+      Debug.printf "    LABEL_ENV: %a@\n" (List.print @@ Pair.print Format.pp_print_int Id.print) label_env;
+      Debug.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
       let ans,ce_single',ce =
         let val_env = List.fold_left (fun val_env (f,(xs,t)) -> let rec val_env' = (f, Closure(val_env', make_funs xs t))::val_env in val_env') [] fun_env' in
-        eval top_funs val_env ce_single label_env t
+        try
+          eval top_funs val_env ce_single label_env t
+        with Exception(ans, ce, paths) -> Fail, ce, paths
       in
-      if !!debug then Format.printf "  CE: %a@\n" print_ce ce;
+      Debug.printf "  CE: %a@\n" print_ce ce;
       assert (ans = Fail);
       assert (ce_single' = []);
       let ce_set = (f, complete_ce_set f (snd @@ Id.assoc f fun_env) ce) :: List.map (fun (f,(xs,t)) -> make_init_ce_set f t) fun_env in
-      if !!debug then Format.printf "  PATHS': %a@\n" print_ce_set ce_set;
+      Debug.printf "  PATHS': %a@\n" print_ce_set ce_set;
       Untypable ce_set
   | CEGAR.Unsafe _ -> assert false

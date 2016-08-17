@@ -5,6 +5,8 @@ open CEGAR_util
 
 exception UnknownOutput
 
+module Debug = Debug.Make(struct let check () = List.mem "HorSatInterface" !Flag.debug_module end)
+
 type apt_transition =
   | APT_True | APT_False
   | APT_State of (int (* branch *) * int (* state ID *))
@@ -61,6 +63,8 @@ let rec trans_id x =
     | '\'' -> "_prime_"
     | '.' -> "_dot_"
     | '&' -> "_et_"
+    | '/' -> "_slash_"
+    | '^' -> "_caret_"
     | c -> String.make 1 c
   in
   String.fold_left (fun s c -> s ^ map c) "" x
@@ -200,7 +204,7 @@ let check_apt target =
   let target' = trans_apt target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
-    if !Flag.debug_level > 1 then Format.printf "%s@." @@ string_of_parseresult_apt target';
+    Debug.printf "%s@." @@ string_of_parseresult_apt target';
     write_log string_of_parseresult_apt input target';
     verifyFile HorSat_parser.output_apt input
   with Failure("lex error") -> raise UnknownOutput
@@ -209,7 +213,7 @@ let check target =
   let target' = trans target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
-    if !Flag.debug_level > 1 then Format.printf "%s@." @@ string_of_parseresult target';
+    Debug.printf "%s@." @@ string_of_parseresult target';
     write_log string_of_parseresult input target';
     verifyFile HorSat_parser.output input
   with Failure("lex error") -> raise UnknownOutput

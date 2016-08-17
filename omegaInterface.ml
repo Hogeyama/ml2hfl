@@ -18,7 +18,7 @@ open CEGAR_syntax
 
 exception Unknown
 
-let debug () = List.mem "OmegaInterface" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "OmegaInterface" !Flag.debug_module end)
 
 let rec print_conj print fm xs =
   match xs with
@@ -61,12 +61,12 @@ let is_valid_forall_exists xs ys cond p =
   let input_fm = Format.formatter_of_out_channel cout in
   (if xs = [] then
       begin
-      if debug() then Format.printf "{[]:exists(%a: not (%a) || (%a) )};@." vars ys (print_conj CEGAR_print.term) cond CEGAR_print.term p;
+      Debug.printf "{[]:exists(%a: not (%a) || (%a) )};@." vars ys (print_conj CEGAR_print.term) cond CEGAR_print.term p;
       Format.fprintf input_fm "{[]:exists(%a: not (%a) || (%a) )};@." vars ys (print_conj CEGAR_print.term) cond CEGAR_print.term p
     end
    else
     begin
-      if debug() then Format.printf "{[]:forall(%a: exists(%a: not (%a) || (%a) ))};@." vars xs vars ys (print_conj CEGAR_print.term) cond CEGAR_print.term p;
+      Debug.printf "{[]:forall(%a: exists(%a: not (%a) || (%a) ))};@." vars xs vars ys (print_conj CEGAR_print.term) cond CEGAR_print.term p;
       Format.fprintf input_fm "{[]:forall(%a: exists(%a: not (%a) || (%a) ))};@." vars xs vars ys (print_conj CEGAR_print.term) cond CEGAR_print.term p
     end);
   close_out cout;

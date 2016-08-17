@@ -52,7 +52,7 @@ let improve_precision () =
   | _ ->
       raise NoProgress
 
-let rec loop prog0 is_cp ces info =
+let rec loop prog0 is_cp ces =
   pre ();
   let prog =
     if !Flag.relative_complete
@@ -63,17 +63,17 @@ let rec loop prog0 is_cp ces info =
   in
   let pr =
     if !Flag.expand_nonrec
-    then CEGAR_util.print_prog_typ' info.orig_fun_list info.inlined
+    then CEGAR_util.print_prog_typ' prog.info.inlined
     else CEGAR_print.prog_typ
   in
   if !Flag.print_progress
   then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
   if !Flag.print_abst_typ
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
-  let labeled,abst = CEGAR_abst.abstract info.orig_fun_list info.inlined prog in
+  let labeled,abst = CEGAR_abst.abstract prog.info.orig_fun_list prog.info.inlined prog in
   print_non_CPS_abst abst prog;
   let spec =
-    match info.CEGAR_syntax.fairness with
+    match prog.info.CEGAR_syntax.fairness with
     | Some x -> MC.Fairness x
     | None -> MC.Other in
   let result = MC.check abst prog spec in
@@ -102,15 +102,15 @@ let rec loop prog0 is_cp ces info =
       post ();
       prog, Safe env'
   | MC.Unsafe (MC.CENonTerm ce_tree), Flag.NonTermination ->
-      let prog' = CEGAR_non_term.cegar prog0 labeled info is_cp ce_tree prog in
+      let prog' = CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog in
       post ();
-      loop prog' is_cp ((MC.CENonTerm ce_tree)::ces) info
+      loop prog' is_cp ((MC.CENonTerm ce_tree)::ces)
   | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.FairNonTermination ->
      begin
-       let prog' = CEGAR_fair_non_term.cegar prog0 labeled info is_cp ce_rules prog in
+       let prog' = CEGAR_fair_non_term.cegar prog0 labeled is_cp ce_rules prog in
        post ();
        Fpat.PredAbst.use_neg_pred := true;
-       loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces) info
+       loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces)
      end
   | MC.Unsafe ce, _ ->
       let ce_orig =
@@ -129,7 +129,7 @@ let rec loop prog0 is_cp ces info =
       if same_counterexample then
         try
           improve_precision ();
-          loop prog is_cp ces info
+          loop prog is_cp ces
         with NoProgress ->
           post ();
           if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
@@ -151,7 +151,7 @@ let rec loop prog0 is_cp ces info =
               assert false
           | Feasibility.Infeasible prefix, _ ->
               let ces' = ce::ces in
-              let inlined_functions = inlined_functions info.orig_fun_list info.inlined prog0 in
+              let inlined_functions = inlined_functions prog0 in
               let aux ce =
                 match ce with
                 | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce'
@@ -162,14 +162,13 @@ let rec loop prog0 is_cp ces info =
                 let ext_ces = List.map (Fun.const []) ces'' in
                 snd @@ Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
               in
-              if !Flag.debug_level > 0 then
-                Format.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
+              NORDebug.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
               post ();
-              loop prog' is_cp ces' info
+              loop prog' is_cp ces'
         end
 
 
-let run prog info =
+let run prog =
   if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
   let prog =
     match !Flag.mode with
@@ -178,9 +177,15 @@ let run prog info =
     | _ -> prog
   in
   make_ID_map prog;
+  let info =
+    if !Flag.expand_nonrec then
+      {prog.info with nonrec = get_nonrec CEGAR_abst_CPS.beta_reduce_term @@ snd @@ CEGAR_abst_util.add_label prog}
+    else
+      prog.info
+  in
   try
     let is_cp = FpatInterface.is_cp prog in
-    snd @@ loop prog is_cp [] info
+    snd @@ loop {prog with info} is_cp []
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress

@@ -1,4 +1,3 @@
-
 open Util
 open CEGAR_syntax
 open CEGAR_type
@@ -6,9 +5,9 @@ open CEGAR_print
 open CEGAR_util
 open CEGAR_abst_util
 
-exception NotRefined
+module Debug = Debug.Make(struct let check () = List.mem "CEGAR_abst" !Flag.debug_module end)
 
-let debug () = List.mem "CEGAR_abst" !Flag.debug_module
+exception NotRefined
 
 let incr_wp_max = ref false
 let prev_abst_defs : fun_def list ref = ref []
@@ -121,11 +120,11 @@ let abstract orig_fun_list prog =
   Format.printf "WARNING: Abstraction for non-CPS programs is unmaintained.@.";
   let prog = make_arg_let prog in
   let labeled,prog = add_label prog in
-  let () = if debug() then Format.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog in
+  Debug.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog;
   ignore @@ Typing.infer prog;
   let defs = List.rev_flatten_map (abstract_def prog.env) prog.defs in
   let prog = {prog with env=[]; defs} in
-  if debug() then Format.printf "ABST:\n%a@." CEGAR_print.prog prog;
+  Debug.printf "ABST:\n%a@." CEGAR_print.prog prog;
   labeled, Typing.infer prog
 
 
@@ -143,7 +142,7 @@ let abstract orig_fun_list force ?(top_funs=[]) prog =
            then CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
            else abstract orig_fun_list prog
          in
-         if debug() then Format.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
+         Debug.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
          if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
          labeled, abst)
   in

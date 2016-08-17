@@ -30,7 +30,11 @@ and print_ids typ fm xs =
  *)
 and print_id = Id.print
 
-and print_id_typ fm x = fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
+and print_id_typ fm x =
+  if !Flag.print_as_ocaml then
+    print_id fm x
+  else
+    fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
 
 (* priority (low -> high)
    10 : Let, Letrec, If, Match, TryWith
@@ -90,6 +94,7 @@ and print_const fm = function
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result -> fprintf fm "{end}"
+  | RandValue(TInt,false) when !Flag.print_as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
   | RandValue(TInt,false) -> fprintf fm "rand_int"
   | RandValue(TInt,true) -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
@@ -106,7 +111,7 @@ and print_attr fm = function
   | AMark -> fprintf fm "AMark"
   | ADoNotInline -> fprintf fm "ADoNotInline"
 
-and ignore_attr_list = if true then const_attr else []
+and ignore_attr_list = if true then ADoNotInline::const_attr else []
 
 and print_attr_list fm attrs =
   List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
@@ -117,18 +122,18 @@ and print_term pri typ fm t =
     | AComment s -> Some s
     | _ -> None
   in
-  let pr fm desc =
+  let pr attr fm desc =
     let comments = List.filter_map decomp_comment t.attr in
     if comments = []
-    then fprintf fm "@[%a@]" (print_desc pri typ) desc
-    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc pri typ) desc
+    then fprintf fm "@[%a@]" (print_desc attr pri typ) desc
+    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc attr pri typ) desc
   in
   let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
-  if List.Set.subset attr ignore_attr_list
-  then pr fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" pr t.desc print_attr_list t.attr
+  if List.Set.subset attr ignore_attr_list || !Flag.print_as_ocaml
+  then pr t.attr fm t.desc
+  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list t.attr
 
-and print_desc pri typ fm desc =
+and print_desc attr pri typ fm desc =
   match desc with
   | Const c -> print_const fm c
   | Var x -> print_id fm x
@@ -145,6 +150,10 @@ and print_desc pri typ fm desc =
       let p = 15 in
       let s1,s2 = paren pri (p+1) in
       fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids typ) xs (print_term 0 typ) t s2
+  | App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}]) when !Flag.print_as_ocaml ->
+      let p = 80 in
+      let s1,s2 = paren pri p in
+      fprintf fm "@[<hov 2>%sRandom.int 0%s@]" s1 s2
   | App(t, ts) ->
       let p = 80 in
       let s1,s2 = paren pri p in
@@ -181,7 +190,12 @@ and print_desc pri typ fm desc =
       let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
       let b = ref true in
       let print_binding fm (f,xs,t1) =
-        let pre = if !b then "let" ^ s_rec else "and" in
+        let pre =
+          if !b then
+            "let" ^ (if List.mem ADoNotInline attr then "!" else "") ^ s_rec
+          else
+            "and"
+        in
         fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
         b := false
       in
@@ -275,10 +289,16 @@ and print_desc pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[snd@ %a@]%s" s1 (print_term p typ) t s2
+  | Proj(i,t) when !Flag.print_as_ocaml ->
+      let p = 80 in
+      let s1,s2 = paren pri p in
+      let s = "fun (" ^ String.join "," (List.init (Option.get @@ tuple_num t.typ ) (fun j -> if i = j then "x" else "_") ) ^ ") -> x" in
+      fprintf fm "%s@[(%s)@ %a@]%s" s1 s (print_term p typ) t s2
   | Proj(i,t) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[#%d@ %a@]%s" s1 i (print_term p typ) t s2
+  | Bottom when !Flag.print_as_ocaml -> fprintf fm "let rec bot() = bot() in bot()"
   | Bottom -> fprintf fm "_|_"
   | Label(info, t) ->
       fprintf fm "(@[label[@[%a@]]@ %a@])" print_info info (print_term 80 typ) t
@@ -512,7 +532,7 @@ and print_pattern' fm pat =
 and print_termlist' pri = print_list (print_term' pri) "@ "
 
 
-let print_defs fm (defs:(id * (id list * typed_term)) list) =
+let print_defs fm (defs:(id * (id list * term)) list) =
   let print_fundef (f, (xs, t)) =
     fprintf fm "%a %a-> %a.\n" print_id f (print_ids false) xs (print_term false) t
   in
@@ -558,7 +578,7 @@ let id = print_id
 let id_typ = print_id_typ
 let pattern = print_pattern
 let const = print_const
-let desc = print_desc 0 false
+let desc = print_desc [] 0 false
 let term = print_term false
 let term' = print_term' 0
 let term_typ = print_term true

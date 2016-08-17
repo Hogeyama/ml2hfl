@@ -3,8 +3,7 @@ open Type
 open Syntax
 open Term_util
 
-
-let debug () = List.mem "Ref_trans" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "Ref_trans" !Flag.debug_module end)
 
 let trans = make_trans2 ()
 
@@ -57,7 +56,7 @@ let decomp_tfun_ttuple typ =
   with Option.No_value -> None
 
 let rec make_tree x bb =
-  if debug() then Color.printf Color.Red "make_tree: %a@." Print.id_typ x;
+  if Debug.check() then Color.printf Color.Red "make_tree: %a@." Print.id_typ x;
   let children = List.mapi (fun i _ -> find_proj i x bb) @@ Option.get @@ decomp_tfun_ttuple @@ Id.typ x in
   if List.for_all Option.is_some children
   then
@@ -123,28 +122,28 @@ let inst_var_fun x tt bb t =
   match Id.typ x with
   | TFun(y,_) ->
       let y' = Id.new_var_id y in
-      if debug() then Format.printf "x: %a, y': %a@." Id.print x Id.print y';
+      Debug.printf "x: %a, y': %a@." Id.print x Id.print y';
       let r,path = root x bb in
       if Id.same x r
       then
-        let () = if debug() then Format.printf "THIS IS ROOT@." in
+        let () = Debug.printf "THIS IS ROOT@." in
         make_app (make_var x) [t]
       else
-        let () = if debug() then Format.printf "THIS IS NOT ROOT@." in
+        let () = Debug.printf "THIS IS NOT ROOT@." in
         let tree = make_tree r bb in
         let tree' = Rose_tree.update path (Rose_tree.leaf(Some (Id.typ y'), [make_var y'])) tree in
         let r' = trans.tr2_var (tt,bb) r in
         let pr _ (_,ts) =
           Format.printf "[%a]" (print_list Print.term' "; ") ts
         in
-        if debug() then Format.printf "y': %a@." Id.print y';
-        if debug() then Format.printf "path: [%a]@." (print_list Format.pp_print_int ";") path;
-        if debug() then Format.printf "TREE: %a@." (Rose_tree.print pr) tree;
-        if debug() then Format.printf "TREE': %a@." (Rose_tree.print pr) tree';
-        if debug() then Format.printf "r': %a:%a@." Id.print r' Print.typ (Id.typ r');
+        Debug.printf "y': %a@." Id.print y';
+        Debug.printf "path: [%a]@." (print_list Format.pp_print_int ";") path;
+        Debug.printf "TREE: %a@." (Rose_tree.print pr) tree;
+        Debug.printf "TREE': %a@." (Rose_tree.print pr) tree';
+        Debug.printf "r': %a:%a@." Id.print r' Print.typ (Id.typ r');
         let trees = make_trees tree' in
-        if debug() then Format.printf "|trees|': %d@." (List.length trees);
-        if debug() then List.iter (Format.printf "  tree: %a@." (Rose_tree.print Print.term)) trees;
+        Debug.printf "|trees|': %d@." (List.length trees);
+        List.iter (Debug.printf "  tree: %a@." (Rose_tree.print Print.term)) trees;
         let argss = List.map Rose_tree.flatten trees in
         let args = List.map (List.singleton -| make_tuple) argss in
         let apps = List.map (make_app @@ make_var r') args in
@@ -497,10 +496,10 @@ let replace_head fs fs' t =
   let ts' = aux fs ts in
   let xs = List.map (fun t -> Id.new_var t.typ) ts' in
   let t' = List.fold_right2 subst_rev ts' xs t in
-  if debug() then Format.printf "t':@.%a@.@." Print.term t';
+  Debug.printf "t':@.%a@.@." Print.term t';
   let ts'' = List.map3 subst_var fs fs' ts' in
   let t'' = List.fold_right2 subst xs ts'' t' in
-  if debug() then Format.printf "t'':@.%a@.@." Print.term t'';
+  Debug.printf "t'':@.%a@.@." Print.term t'';
   t''
 
 
@@ -533,54 +532,54 @@ let add_fun_tuple rel_funs t = add_fun_tuple.tr2_term (rel_funs,[]) t
 
 let make_fun_tuple t =
   let asserts = col_assert t in
-  if debug() then List.iter (Format.printf "ASSERT: %a@." Print.term) asserts;
+  List.iter (Debug.printf "ASSERT: %a@." Print.term) asserts;
   let rand_funs = col_rand_funs t in
-  if debug() then List.iter (Format.printf "RAND: %a@." Id.print) rand_funs;
+  List.iter (Debug.printf "RAND: %a@." Id.print) rand_funs;
   let aux assrt =
     let funs = col_app_head assrt in
-    if debug() then List.iter (Format.printf "FUN: %a@." Id.print) funs;
+    List.iter (Debug.printf "FUN: %a@." Id.print) funs;
     let funs' = List.Set.diff ~eq:Id.eq funs rand_funs in
-    if debug() then List.iter (Format.printf "FUN': %a@." Id.print) funs';
+    List.iter (Debug.printf "FUN': %a@." Id.print) funs';
     let rec get_pairs acc fs =
       match fs with
       | [] -> acc
       | f::fs' -> get_pairs (List.map (fun g -> (f,g)) fs' @ acc) fs'
     in
     let all_fun_pairs = get_pairs [] funs' in
-    if debug() then List.iter (fun (f,g) -> Format.printf "ALL_FUN_ARG: %a, %a@." Id.print f Id.print g) all_fun_pairs;
+    List.iter (fun (f,g) -> Debug.printf "ALL_FUN_ARG: %a, %a@." Id.print f Id.print g) all_fun_pairs;
     let fun_args = col_fun_arg assrt in
-    if debug() then List.iter (fun (f,g) -> Format.printf "FUN_ARG: %a, %a@." Id.print f Id.print g) fun_args;
+    List.iter (fun (f,g) -> Debug.printf "FUN_ARG: %a, %a@." Id.print f Id.print g) fun_args;
     let rel_funs = List.Set.diff ~eq:eq_pair all_fun_pairs fun_args in
-    if debug() then List.iter (fun (f,g) -> Format.printf "FUN_ARG': %a, %a@." Id.print f Id.print g) rel_funs;
+    List.iter (fun (f,g) -> Debug.printf "FUN_ARG': %a, %a@." Id.print f Id.print g) rel_funs;
     List.map (fun (f,g) -> [f;g]) rel_funs
   in
   let rel_funs = List.flatten_map aux asserts in
   let t' = add_fun_tuple rel_funs t in
-  if debug() then Format.printf "@.@.%a@." Print.term t';
+  Debug.printf "@.@.%a@." Print.term t';
   t'
 
 
 
 let trans t = t
-  |@debug()&> Format.printf "INPUT: %a@." Print.term
+  |@> Debug.printf "INPUT: %a@." Print.term
   |> Trans.remove_label ~label:"add_fun_tuple"
-  |@debug()&> Format.printf "remove_label: %a@." Print.term_typ
+  |@> Debug.printf "remove_label: %a@." Print.term_typ
   |> move_proj.tr_term
-  |@debug()&> Format.printf "move_proj: %a@." Print.term_typ
+  |@> Debug.printf "move_proj: %a@." Print.term_typ
   |@> Trans.inline_no_effect
-  |@debug()&> Format.printf "inline_no_effect: %a@." Print.term_typ
+  |@> Debug.printf "inline_no_effect: %a@." Print.term_typ
   |> Trans.normalize_let
   |> Trans.inline_simple_exp
-  |@debug()&> Format.printf "normalize_let: %a@." Print.term_typ
+  |@> Debug.printf "normalize_let: %a@." Print.term_typ
   |> Trans.flatten_let
   |> Trans.inline_var_const
-  |@debug()&> Format.printf "flatten_let: %a@." Print.term_typ
+  |@> Debug.printf "flatten_let: %a@." Print.term_typ
   |> sort_let_pair.tr_term
-  |@debug()&> Format.printf "sort_let_pair: %a@." Print.term_typ
+  |@> Debug.printf "sort_let_pair: %a@." Print.term_typ
   |@> Type_check.check -$- TUnit
   |> trans.tr2_term (assert_false,[])
   |> Trans.inline_no_effect
-  |@debug()&> Format.printf "ref_trans: %a@." Print.term
+  |@> Debug.printf "ref_trans: %a@." Print.term
   |@> Type_check.check -$- Type.TUnit
 
 let trans t =

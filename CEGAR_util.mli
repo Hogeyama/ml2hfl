@@ -26,8 +26,8 @@ val get_typ : env -> t -> typ
 val get_arg_num : typ -> int
 val has_bottom : t -> bool
 val normalize_bool_term : ?imply:(t list -> t -> bool) -> t -> t
-val get_nonrec : fun_def list -> var -> var list -> var list -> (var * t) list
-val print_prog_typ' : var list -> var list -> Format.formatter -> prog -> unit
+val get_nonrec : (t -> t) -> prog -> (var * t) list
+val print_prog_typ' : var list -> Format.formatter -> prog -> unit
 val eval_step_by_step : prog -> 'a
 val initialize_env : prog -> prog
 val has_no_effect : t -> bool
@@ -41,4 +41,4 @@ val arrange_ext_preds_sequence : ('a * 'b) list -> ('a * 'b list) list
 val conv_path : ('a * bool list list) list -> ('a * ext_path_part list list) list
 val merge_similar_paths : ('a * 'b * 'c * ('d * ext_path_part list list) list) list -> ('a * 'b * 'c * ('d * ext_path_part list list) list) list
 val group_by_same_branching : ('a * 'b * 'c * 'd) list -> ('a * 'b * 'c * 'd) list list
-val inlined_functions : var list -> var list -> prog -> var list
+val inlined_functions : prog -> var list

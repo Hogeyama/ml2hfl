@@ -7,7 +7,7 @@ open Type
 module RT = Ref_type
 
 
-let debug () = List.mem "Encode_list" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "Encode_list" !Flag.debug_module end)
 
 
 
@@ -93,7 +93,7 @@ let rec get_rtyp_list rtyp typ =
       let rtyp2' = get_rtyp_list rtyp2 typ2 in
       let rtyp2'' =
         match rtyp1' with
-        | RT.List _ -> RT.replace_term (make_fst @@ make_var x) (make_app (make_var length_var) [make_var x]) rtyp2'
+        | RT.List _ -> RT.replace_term (make_fst @@ make_var x) (make_length @@ make_var x) rtyp2'
         | _ -> rtyp2'
       in
       RT.Fun(x, rtyp1', rtyp2'')
@@ -151,6 +151,7 @@ let rec get_match_bind_cond t p =
       let bind,cond = get_match_bind_cond t p in
       (abst_list.tr2_var "" x, t)::bind, cond
   | PConst {desc=Const Unit} -> [], true_term
+  | PConst t' when t'.desc = randint_unit_term.desc -> [], randbool_unit_term (* just for -base-to-int *)
   | PConst t' -> [], make_eq t t'
   | PNil -> [], make_eq (make_fst t) (make_int 0)
   | PCons _ ->
@@ -204,7 +205,7 @@ let abst_list_term post t =
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
       make_app (make_snd t1') [t2']
-  | App({desc=Var x}, [t]) when x = length_var -> make_fst @@ abst_list.tr2_term post t
+  | App({desc=Var x}, [t]) when Id.same x (make_length_var typ_unknown) -> make_fst @@ abst_list.tr2_term post t
   | Let(flag, bindings, t2) ->
       let aux (f,xs,t) =
         let post' = "_" ^ Id.name f in
@@ -251,7 +252,7 @@ let abst_list_term post t =
       let aux (p,cond,t2) t3 =
         let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
         let bind,cond' = get_match_bind_cond (make_var x) p in
-        if debug() then Format.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
+        Debug.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
         let t_cond,bind' =
           if cond = true_term
           then cond, bind
@@ -259,7 +260,7 @@ let abst_list_term post t =
             let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
             cond', bind
         in
-        if debug() then Format.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
+        Debug.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
         let t2' = abst_list.tr2_term post t2 in
         make_if (make_and cond' t_cond) (add_bind bind' t2') t3
       in
@@ -271,24 +272,48 @@ let () = abst_list.tr2_term <- abst_list_term
 let () = abst_list.tr2_typ <- abst_list_typ
 
 let trans t =
-  Type_check.check t Type.TUnit;
   let t' = abst_list.tr2_term "" t in
-  if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
+  Debug.printf "abst_list::@. @[%a@.@." Print.term_typ t';
   let t' = Trans.inline_var_const t' in
-  if debug() then Format.printf "abst_list::@. @[%a@.@." Print.term_typ t';
-  Type_check.check t' Type.TUnit;
+  Debug.printf "abst_list::@. @[%a@.@." Print.term_typ t';
+  let typ = abst_list.tr2_typ "" t.typ in
+  Type_check.check t' typ;
   t', make_get_rtyp_list_of t
 
 
 
 
 
+let make_list_eq typ =
+  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TBool)) in
+  let xs = Id.new_var ~name:"xs'" @@ make_tlist typ in
+  let ys = Id.new_var ~name:"ys'" @@ make_tlist typ in
+  let t_eq =
+    let pat_nil =
+      let p1 = make_ppair (make_pnil typ) (make_pnil typ) in
+      let t1 = true_term in
+      p1, true_term, t1
+    in
+    let pat_cons =
+      let x = Id.new_var ~name:"x" typ in
+      let xs' = Id.new_var ~name:"xs'" @@ make_tlist typ in
+      let y = Id.new_var ~name:"y" typ in
+      let ys' = Id.new_var ~name:"ys'" @@ make_tlist typ in
+      let p2 = make_ppair (make_pcons (make_pvar x) (make_pvar xs')) (make_pcons (make_pvar y) (make_pvar ys')) in
+      let t2 = make_and (make_eq (make_var x) (make_var y)) (make_app (make_var f) [make_var xs'; make_var ys']) in
+      p2, true_term, t2
+    in
+    let pat_any =
+      let p3 = make_ppair (make_pany (make_tlist typ)) (make_pany (make_tlist typ)) in
+      let t3 = false_term in
+      p3, true_term, t3
+    in
+    make_match (make_pair (make_var xs) (make_var ys)) [pat_nil; pat_cons; pat_any]
+  in
+  f, [xs;ys], t_eq
 
-
-let inst_list_eq_flag = ref false
-
+(* TODO: support other types *)
 let inst_list_eq = make_trans2 ()
-
 let inst_list_eq_term f t =
   match t.desc with
   | BinOp(Eq, t1, t2) ->
@@ -296,33 +321,22 @@ let inst_list_eq_term f t =
       let t2' = inst_list_eq.tr2_term f t2 in
       begin
         match t1.typ with
-        | TApp(TList, [TInt]) -> inst_list_eq_flag := true; make_app (make_var f) [t1'; t2']
+        | TApp(TList, [TInt]) -> make_app (make_var f) [t1'; t2']
         | TApp(TList, _) ->
             Format.printf "%a@." Print.typ t1.typ;
             unsupported "inst_list_eq"
         | _ -> inst_list_eq.tr2_term_rec f t
       end
   | _ -> inst_list_eq.tr2_term_rec f t
-
 let () = inst_list_eq.tr2_term <- inst_list_eq_term
 let inst_list_eq t =
-  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ make_tlist TInt, TFun(Id.new_var ~name:"xs" @@ make_tlist TInt, TBool)) in
-  let xs = Id.new_var ~name:"xs'" @@ make_tlist TInt in
-  let ys = Id.new_var ~name:"ys'" @@ make_tlist TInt in
-  let p1 = make_ppair (make_pnil TInt) (make_pnil TInt) in
-  let t1 = true_term in
-  let x = Id.new_var ~name:"x" TInt in
-  let xs' = Id.new_var ~name:"xs'" @@ make_tlist TInt in
-  let y = Id.new_var ~name:"y" TInt in
-  let ys' = Id.new_var ~name:"ys'" @@ make_tlist TInt in
-  let p2 = make_ppair (make_pcons (make_pvar x) (make_pvar xs')) (make_pcons (make_pvar y) (make_pvar ys')) in
-  let t2 = make_and (make_eq (make_var x) (make_var y)) (make_app (make_var f) [make_var xs'; make_var ys']) in
-  let p3 = make_ppair (make_pany (make_tlist TInt)) (make_pany (make_tlist TInt)) in
-  let t3 = false_term in
-  let t_eq = make_match (make_pair (make_var xs) (make_var ys)) [p1,true_term,t1; p2,true_term,t2; p3,true_term,t3] in
-  inst_list_eq_flag := false;
-  let r = make_letrec [f,[xs;ys],t_eq] @@ inst_list_eq.tr2_term f t in
-  if !inst_list_eq_flag then r else t
+  let (f,_,_ as def) = make_list_eq TInt in
+  let t' = inst_list_eq.tr2_term f t in
+  if Id.mem f @@ get_fv t' then
+    make_letrec [def] t'
+  else
+    t'
+
 
 
 
@@ -454,18 +468,33 @@ let trans_opt t =
 
 
 
-let pr s t = if debug () then Format.printf "##[encode_list] %s:@.%a@.@." s Print.term t
+let pr s t = Debug.printf "##[encode_list] %s:@.%a@.@." s Print.term t
 
 let trans t =
+  let tr =
+    if !Flag.encode_list_opt then
+      trans_opt
+    else
+      trans
+  in
   t
   |> inst_list_eq
   |@> pr "inst_list_eq"
   |> subst_matched_var
   |@> pr "subst_matched_var"
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- t.typ
   |> Trans.remove_top_por
   |@> pr "remove_top_por"
-  |@> Type_check.check -$- TUnit
-  |> if !Flag.encode_list_opt
-     then trans_opt
-     else trans
+  |@> Type_check.check -$- t.typ
+  |> tr
+  |@> Type_check.check -$- t.typ -| fst
+  |@> pr "trans" -| fst
+  |> Pair.map_fst Trans.eta_tuple
+  |@> pr "eta_tuple" -| fst
+  |@> Type_check.check -$- t.typ -| fst
+
+let trans_typ typ =
+  if !Flag.encode_list_opt then
+    abst_list_opt.tr_typ typ
+  else
+    abst_list.tr2_typ "" typ

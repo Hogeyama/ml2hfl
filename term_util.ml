@@ -2,7 +2,7 @@ open Util
 open Syntax
 open Type
 
-let debug () = List.mem "Trans" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "Term_util" !Flag.debug_module end)
 
 let occur = Syntax.occur
 let get_vars_pat = Syntax.get_vars_pat
@@ -24,9 +24,6 @@ let dummy_var = Id.make (-1) "" TInt
 let abst_var = Id.make (-1) "v" typ_unknown
 let abst_var_int = Id.set_typ abst_var TInt
 let abst_var_bool = Id.set_typ abst_var TBool
-let length_var =
-  let x = Id.make (-1) "l" (TApp(TList, [typ_unknown])) in
-  Id.make (-1) "length" (TFun(x, TInt))
 
 let make_attr ?(attrs=const_attr) ts =
   let check a = List.for_all (fun {attr} -> List.mem a attr) ts in
@@ -87,12 +84,12 @@ let rec make_app t ts =
   | App(t1,ts1), TFun(x,typ), t2::ts2 ->
       check (Id.typ x) t2.typ;
       make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
-  | App(t1,ts1), typ, t2::ts2 when typ = typ_unknown ->
+  | App(t1,ts1), typ, t2::ts2 when typ = typ_unknown || typ = TVar {contents=None} ->
       make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
   | _, TFun(x,typ), t2::ts ->
       check (Id.typ x) t2.typ;
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
-  | _, typ, t2::ts when typ = typ_unknown ->
+  | _, typ, t2::ts when typ = typ_unknown || typ = TVar {contents=None} ->
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
   | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
   | _ ->
@@ -263,6 +260,7 @@ let make_raise t typ = {desc=Raise t; typ; attr=[]}
 let make_trywith t x pats =
   let handler = make_fun x @@ make_match (make_var x) pats in
   {desc=TryWith(t, handler); typ=t.typ; attr=[]}
+let make_trywith_simple t handler = {desc=TryWith(t, handler); typ=t.typ; attr=[]}
 
 let make_imply t1 t2 = make_or (make_not t1) t2
 
@@ -290,8 +288,12 @@ let make_eq_dec t1 t2 =
   let t2',k2 = aux t2 in
   k1 @@ k2 @@ make t1' t2'
 
+let make_length_var typ =
+  let x = Id.make (-1) "l" typ in
+  Id.make (-1) "length" (TFun(x, TInt))
+
 let make_length t =
-  {(make_app (make_var length_var) [t]) with attr=[ANotFail;ATerminate]}
+  {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
 
 let rec make_term typ =
   match elim_tpred typ with
@@ -348,6 +350,7 @@ let decomp_var t =
   match t.desc with
   | Var x -> Some x
   | _ -> None
+let is_var t = Option.is_some @@ decomp_var t
 
 let rec decomp_funs = function
   | {desc=Fun(x,t)} ->
@@ -547,7 +550,9 @@ and same_desc t1 t2 =
   | Nil, Nil -> true
   | Cons _, Cons _ -> unsupported "same_term 5"
   | Constr(c1, ts1), Constr(c2, ts2) -> c1 = c2 && List.for_all2 same_term ts1 ts2
-  | Match _, Match _ -> unsupported "same_term 7"
+  | Match(t1,pats1), Match(t2,pats2) ->
+      let eq (pat1,cond1,t1) (pat2,cond2,t2) = pat1 = pat2 && same_term cond1 cond2 && same_term t1 t2 in
+      same_term t1 t2 && List.eq ~eq pats1 pats2
   | Raise t1, Raise t2 -> same_term t1 t2
   | TryWith(t11,t12), TryWith(t21,t22) -> same_term t11 t21 && same_term t12 t22
   | Tuple ts1, Tuple ts2 -> List.length ts1 = List.length ts2 && List.for_all2 same_term ts1 ts2
@@ -706,26 +711,19 @@ and is_simple_bexp t =
 
 
 let rec var_name_of_term t =
-  match t.desc, elim_tpred t.typ with
-  | Bottom, _ -> "bot"
-  | Var x, _ -> Id.name x
-  | Let(_,_,t), _ -> var_name_of_term t
-  | Tuple(ts), _ -> String.join "__" @@ List.map var_name_of_term ts
-  | Proj(i,t), _ ->
+  match t.desc with
+  | Bottom -> "bot"
+  | Var x -> Id.name x
+  | Let(_,_,t) -> var_name_of_term t
+  | Tuple(ts) -> String.join "__" @@ List.map var_name_of_term ts
+  | Proj(i,t) ->
       let n = tuple_num t.typ in
       let names = String.nsplit (var_name_of_term t) "__" in
       if n = Some (List.length names)
       then List.nth names i
       else var_name_of_term t ^ "_" ^ string_of_int i
-  | App({desc=Var f},_), _ -> "r" ^ "_" ^ Id.name f
-  | _, TUnit -> "u"
-  | _, TBool -> "b"
-  | _, TInt -> "n"
-  | _, TFun _ -> "f"
-  | _, TTuple _ -> "p"
-  | _, TApp(TList,_) -> "xs"
-  | Fun _, _ -> assert false
-  | _, _ -> "x"
+  | App({desc=Var f},_) -> "r" ^ "_" ^ Id.name f
+  | _ -> Type.var_name_of @@ elim_tpred t.typ
 
 let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
@@ -1005,3 +1003,34 @@ let () = get_ground_types.tr2_typ <- get_ground_types_typ
 let get_ground_types_term s typ t = get_ground_types.tr2_term (s,typ) t
 let get_ground_types s typ1 typ2 = get_ground_types.tr2_typ (s,typ1) typ2
  *)
+
+
+
+let find_exn_typ = make_col [] (@)
+let find_exn_typ_term t =
+  match t.desc with
+  | Raise t' ->
+      Debug.printf "FOUND1: %a@." Print.typ t'.typ;
+      [t'.typ]
+  | TryWith(t', {typ=TFun(x, _)}) ->
+      Debug.printf "FOUND2: %a@." Print.typ @@ Id.typ x;
+      [Id.typ x]
+  | _ -> find_exn_typ.col_term_rec t
+let find_exn_typ_typ typ = []
+let () = find_exn_typ.col_term <- find_exn_typ_term
+let () = find_exn_typ.col_typ <- find_exn_typ_typ
+let find_exn_typ t =
+  match find_exn_typ.col_term t with
+  | [] -> None
+  | typ::_ -> Some typ
+
+
+
+let col_typ_var = make_col [] (@)
+let col_typ_var_typ typ =
+  match typ with
+  | TVar({contents=None} as r) -> [r]
+  | _ -> col_typ_var.col_typ_rec typ
+let () = col_typ_var.col_typ <- col_typ_var_typ
+let col_typ_var t =
+  List.unique ~cmp:(==) @@ col_typ_var.col_term t

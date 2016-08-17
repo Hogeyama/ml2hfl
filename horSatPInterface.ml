@@ -7,6 +7,8 @@ exception UnknownOutput
 
 exception HorSatPVersionError
 
+module Debug = Debug.Make(struct let check () = List.mem "HorSatInterface" !Flag.debug_module end)
+
 let version () =
   let cin,cout = Unix.open_process (Format.sprintf "%s --version" !Flag.horsatp) in
   let v =
@@ -178,7 +180,7 @@ let check target =
   let target' = trans target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
-    if !Flag.debug_level > 1 then Format.printf "%s." target';
+    Debug.printf "%s." target';
     write_log input target';
     verifyFile input
   with Failure("lex error") -> raise UnknownOutput
