@@ -9,8 +9,8 @@ let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ)
   let r = f t in
   Debug.printf "END: %s@." desc;
   let t' = proj_out r in
-  if !Flag.debug_level > 0 && proj_in t <> t' && opt
-  then Format.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
+  if proj_in t <> t' && opt
+  then NORDebug.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
 
@@ -292,7 +292,7 @@ let report_safe env orig t0 =
       Ref.tmp_set Flag.web true (fun () -> Format.printf "  @[<v>%a@]@.@." Print.term t)
     end;
 
-  let only_result_termination = !Flag.debug_level <= 0 && !Flag.mode = Flag.Termination in
+  let only_result_termination = not !!NORDebug.check && !Flag.mode = Flag.Termination in
   if env <> [] && not only_result_termination then
     begin
       Format.printf "Refinement Types:@.";
@@ -361,8 +361,8 @@ let insert_extra_param t =
     |> Trans.lift_fst_snd
     |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
   in
-  if true && !Flag.debug_level > 0 then
-    Format.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+  if true then
+    NORDebug.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
                   (List.length !Fpat.RefTypInfer.params) Print.term t' Print.term' t';
   t'
 
@@ -440,7 +440,7 @@ let run ?(make_pps=None) ?(fun_list=None) orig exparam_sol ?(spec=Spec.init) par
   | CEGAR.Safe env ->
       Flag.result := "Safe";
       let env' = trans_env (Term_util.get_top_funs parsed) make_get_rtyp env in
-      if not !Flag.exp && !Flag.mode = Flag.FairTermination => (!Flag.debug_level > 0) then
+      if not !Flag.exp && !Flag.mode = Flag.FairTermination => !!NORDebug.check then
         report_safe env' orig set_target';
       true
   | CEGAR.Unsafe(sol,_) ->

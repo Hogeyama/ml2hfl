@@ -239,7 +239,7 @@ let rec abstract_rand_int n must env cond pts xs t =
   let t' = hd @@ abstract_term must env cond pts t typ' in
   let x = new_id "r" in
   let preds' = preds (Var x) in
-  if !Flag.debug_level > 0 then Format.printf "preds': %a@." (List.print CEGAR_print.term) preds';
+  NORDebug.printf "preds': %a@." (List.print CEGAR_print.term) preds';
   let rec make_combs n =
     if n <= 0
     then [[]]

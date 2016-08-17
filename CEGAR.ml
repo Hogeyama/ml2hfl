@@ -162,8 +162,7 @@ let rec loop prog0 is_cp ces =
                 let ext_ces = List.map (Fun.const []) ces'' in
                 snd @@ Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
               in
-              if !Flag.debug_level > 0 then
-                Format.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
+              NORDebug.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
               post ();
               loop prog' is_cp ces'
         end

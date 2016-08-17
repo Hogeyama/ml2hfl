@@ -129,13 +129,13 @@ let main_termination orig parsed =
   let open BRA_util in
   (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
   let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-  let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
+  let _ = NORDebug.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
   let parsed = BRA_transform.regularization parsed in
-  let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Print.term parsed in
+  let _ = NORDebug.printf "regularized::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-  let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_depth then NORDebug.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-  let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_exparam then NORDebug.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
   let holed_list = BRA_transform.to_holed_programs parsed in
   let result =
     try
@@ -203,8 +203,7 @@ let main in_channel =
     let orig = Parse.use_file lb in
     Id.set_counter (Ident.current_time () + 1000);
     let parsed = Parser_wrapper.from_use_file orig in
-    if !Flag.debug_level > 0
-    then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
+    NORDebug.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
     if !Flag.randint_refinement_log
     then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print Format.std_formatter in
@@ -244,11 +243,9 @@ let rec arg_spec () =
      "-only-result",
        Arg.Unit (fun () ->
                  Flag.only_result := true;
-                 Flag.debug_level := 0;
                  Flag.print_progress := false),
        " Show only result";
-     "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
-     "-debug-module",
+     "-debug",
      Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module),
      "<modules>  Set debug flag of modules (comma-separated)";
      "-debug-abst", Arg.Set Flag.debug_abst, " Debugging abstraction";
@@ -258,13 +255,11 @@ let rec arg_spec () =
      "-exp",
        Arg.Unit (fun () ->
                  Flag.only_result := true;
-                 Flag.debug_level := 0;
-                 Flag.print_progress := false;
                  Flag.exp := true),
        " For experiments";
      "-exp2",
        Arg.Unit (fun () ->
-                 Flag.debug_level := 0;
+                 Flag.only_result := true;
                  Flag.exp2 := true),
        " Experiment mode (output mochi_exp.csv)";
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";

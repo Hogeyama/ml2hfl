@@ -385,7 +385,6 @@ let infer_with_ext
     Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
   in
   Format.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
-  let debug = !Flag.debug_level > 0 in
   let fs = List.map fst prog.env in
   let defs' =
     if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
@@ -413,7 +412,7 @@ let infer_with_ext
       List.map (flip (@) [2]) cexs
     else
       cexs in
-  if debug then Format.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
+  NORDebug.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
   let old_split_eq = !Fpat.AbsType.split_equalities in
   let old_eap = !Fpat.AbsType.extract_atomic_predicates in
   let old_hccs_solver = Fpat.HCCSSolver.get_dyn () in
@@ -426,7 +425,7 @@ let infer_with_ext
   Fpat.AbsType.split_equalities := old_split_eq;
   Fpat.AbsType.extract_atomic_predicates := old_eap;
   Fpat.HCCSSolver.link_dyn old_hccs_solver;
-  if debug then Format.printf "END refinement@,@]";
+  NORDebug.printf "END refinement@,@]";
 
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
@@ -470,7 +469,6 @@ let of_desc t = assert false (* @todo translate FPAT term to Syntax.term *)
 
 let insert_extra_param t =
   let tmp = get_time() in
-  let debug = !Flag.debug_level > 0 in
   Fpat.RefTypInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
@@ -528,8 +526,7 @@ let insert_extra_param t =
                       (fun (f', _, recursive) -> recursive && Id.same f' f)
                       rfs
                   in
-                  (if debug then
-                     Format.printf "rec: %a@." Print.term t1');
+                  (NORDebug.printf "rec: %a@." Print.term t1');
                   let xxss =
                     List.take (List.length ts) xxss
                   in
@@ -541,27 +538,18 @@ let insert_extra_param t =
                      | Type.TTuple _(* ToDo: fix it *) ->
                         (match t.Syntax.desc with
                          | Syntax.Var(y) when Id.same x y ->
-                            let _ =
-                              if debug then
-                                Format.printf
-                                  "arg %a of %a not changed@,"
-                                  Print.id x Print.id f in xs
+                             Debug.printf "arg %a of %a not changed@," Print.id x Print.id f;
+                             xs
                          | _ -> [])
                      | _ -> [])
                     ts xxss
                 with Not_found ->
                   (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
-                  let _ =
-                    if debug then
-                      Format.printf "nonrec: %a@." Print.term t1'
-                  in
+                  Debug.printf "nonrec: %a@." Print.term t1';
                   false, [])
            | _ ->
-              let _ =
-                if debug then
-                  Format.printf "nonrec: %a@." Print.term t1'
-              in
-              false, []
+               Debug.printf "nonrec: %a@." Print.term t1';
+               false, []
          in
          let ts' = List.map (aux rfs bvs exs) ts in
          let tss =
