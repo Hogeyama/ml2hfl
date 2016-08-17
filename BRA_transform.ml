@@ -129,8 +129,8 @@ let retyping t type_of_state  =
   let parsed = Parser_wrapper.from_use_file orig in
   let parsed = restore_ids parsed in
   let _ =
-    if true && !Flag.debug_level > 0
-    then Format.printf "transformed::@. @[%a@.@." Print.term parsed
+    if true
+    then Util.NORDebug.printf "transformed::@. @[%a@.@." Print.term parsed
   in
   (orig, parsed)
 
@@ -395,7 +395,6 @@ let to_holed_programs (target_program : term) =
   in state_inserted_programs
 
 let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver = f_no_} as holed) =
-  let debug = !Flag.debug_level > 0 in
   let f_no = match f_no_ with Some {id = x} -> x | None -> assert false in
   let counter = ref 0 in
   let replace_index = ref (-1) in
@@ -415,10 +414,10 @@ let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver 
 	counter := 0;
 	replace_index := !replace_index + 1;
 	let holed' = {holed with program = everywhere_expr aux_subst_each t} in
-	if debug then Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Print.term holed'.program;
-	if debug then Format.printf "is_update: %s@." (string_of_bool !is_update);
-	if debug then Format.printf "counter: %s@." (string_of_int !counter);
-	if debug then Format.printf "replace_index: %s@." (string_of_int !replace_index);
+	Util.NORDebug.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Print.term holed'.program;
+	Util.NORDebug.printf "is_update: %s@." (string_of_bool !is_update);
+	Util.NORDebug.printf "counter: %s@." (string_of_int !counter);
+	Util.NORDebug.printf "replace_index: %s@." (string_of_int !replace_index);
 	if !is_update then
 	  holed' :: subst_each t
 	else

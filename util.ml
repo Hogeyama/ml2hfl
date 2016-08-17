@@ -1,6 +1,8 @@
 exception Fatal of string
 exception Unsupported of string
 
+module NORDebug = Debug.Make(struct let cond = Debug.NotOnlyResult end)
+
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
 

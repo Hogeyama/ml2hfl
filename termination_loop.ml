@@ -32,7 +32,7 @@ let incr_cycle () = cycle_counter := !cycle_counter + 1
 let reset_cycle () = cycle_counter := 0
 
 let verify_with holed pred =
-  let debug = !Flag.debug_level > 0 in
+  let debug = Util.NORDebug.check() in
   (* combine holed program and predicate *)
   let transformed = pluging holed pred in
   if debug then Format.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
@@ -42,7 +42,7 @@ let verify_with holed pred =
 let inferCoeffs argumentVariables linear_templates constraints =
   (* reduce to linear constraint solving *)
   let generate = Fpat.PolyConstrSolver.gen_coeff_constr ~pos:false ~linear:true in
-  let debug = !Flag.debug_level > 0 in
+  let debug = Util.NORDebug.check() in
   (** solve constraint and obtain coefficients **)
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
@@ -68,7 +68,7 @@ let inferCoeffs argumentVariables linear_templates constraints =
   end
 
 let inferCoeffsAndExparams argumentVariables linear_templates constraints =
-  let debug = !Flag.debug_level > 0 in
+  let debug = Util.NORDebug.check() in
   let generate = Fpat.PolyConstrSolver.gen_coeff_constr ~pos:false ~linear:false in
   (** solve constraint and obtain coefficients **)
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
@@ -119,7 +119,7 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
                /\ R3(x_prev) > R3(x) /\ R3(x) >= 0]
       ...
   **)
-  let _debug = !Flag.debug_level > 0 in
+  let _debug = Util.NORDebug.check() in
   let lenSpcSequence = List.length failedSpc in
   let subst_ith i =
     Fpat.Formula.subst
@@ -147,7 +147,7 @@ let rec enqueueNextPredicateInfo que =
     try Some (nextGen ()) with _ -> enqueueNextPredicateInfo que
 
 let rec run predicate_que holed =
-  let debug = !Flag.debug_level > 0 in
+  let debug = Util.NORDebug.check() in
   let _ =
     begin
       incr_cycle ();

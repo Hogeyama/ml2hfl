@@ -55,7 +55,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	CEGAR_abst_util.mli
 CMI = $(MLI:.mli=.cmi)
 
-CMO = environment.cmo flag.cmo util.cmo debug.cmo ext.cmo color.cmo	\
+CMO = environment.cmo flag.cmo debug.cmo util.cmo ext.cmo color.cmo	\
 	tree.cmo rose_tree.cmo id.cmo type.cmo syntax.cmo print.cmo	\
 	term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo	\
 	typing.cmo type_check.cmo CEGAR_ref_type.cmo CEGAR_util.cmo	\
