@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_syntax
 
-module Debug = Debug.Make(struct let check () = List.mem "Infer_mod" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check () = List.mem "Modular_infer" !Flag.debug_module end)
 
 module CT = Comp_tree
 module HC = Horn_clause
@@ -1343,7 +1343,7 @@ let infer mode prog f typ (ce_set:ce_set) extend =
       Debug.printf "env_unused: %a@.@." Ref_type.Env.print env_unused;
       Debug.printf "env'': %a@.@." Ref_type.Env.print env'';
       let env''' = Ref_type.Env.merge env_unused env'' in
-      Debug.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env''';
+      Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env''';
       Some env'''
 
 let next_mode mode =

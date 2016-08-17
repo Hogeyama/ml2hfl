@@ -5,7 +5,7 @@ open Type
 open Modular_syntax
 
 
-module Debug = Debug.Make(struct let check () = List.mem "Check_mod" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check () = List.mem "Modular_check" !Flag.debug_module end)
 
 
 (*
@@ -229,7 +229,7 @@ and eval top_funs val_env ce label_env t =
         else
           VTuple anss
       in
-      if ce' <> ce then unsupported "Check_mod.eval tuple";
+      if ce' <> ce then unsupported "Modular_check.eval tuple";
       ans, ce', paths'
   | Proj(i, t) ->
       let ans, ce, paths = eval top_funs val_env ce label_env t in
@@ -244,7 +244,7 @@ and eval top_funs val_env ce label_env t =
         ans, ce, paths
   | _ ->
       Format.printf "@.%a@." Print.term t;
-      unsupported "Check_mod.eval"
+      unsupported "Modular_check.eval"
   in
   if dbg then
     Debug.printf"@]@\nRETURN: %a@\n@]" Print.term (value_of @@ Triple.fst r);

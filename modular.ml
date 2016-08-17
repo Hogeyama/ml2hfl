@@ -114,20 +114,20 @@ let rec main_loop history c prog cmp f typ ce_set extend =
     pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t extend:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
-    match Check_mod.check prog f typ with
-    | Check_mod.Typable env' ->
+    match Modular_check.check prog f typ with
+    | Modular_check.Typable env' ->
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         `Typable, merge_tenv env' env, neg_env, ce_set
-    | Check_mod.Untypable ce_set1 when is_closed f fun_def_env ->
+    | Modular_check.Untypable ce_set1 when is_closed f fun_def_env ->
         pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
         `Untypable, env, neg_env', merge_ce_set ce_set ce_set1
-    | Check_mod.Untypable ce_set1 ->
+    | Modular_check.Untypable ce_set1 ->
         pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let rec refine_loop infer_mode neg_env ce_set2 extend' =
           pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set2;
           pr "%a{%a,%d}%t extend':@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
-          match Infer_mod.infer infer_mode prog f typ ce_set2 extend' with
+          match Modular_infer.infer infer_mode prog f typ ce_set2 extend' with
           | None ->
               pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
               let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
@@ -147,18 +147,18 @@ let rec main_loop history c prog cmp f typ ce_set extend =
               if not @@ Ref_type.Env.eq env' env then
                 (main_loop history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp f typ ce_set3 extend')
               else if not @@ List.Set.eq ce_set3 ce_set2 then
-                (refine_loop Infer_mod.init_mode neg_env' ce_set3 extend')
-              else if not @@ Infer_mod.is_last_mode infer_mode then
+                (refine_loop Modular_infer.init_mode neg_env' ce_set3 extend')
+              else if not @@ Modular_infer.is_last_mode infer_mode then
                 (Debug.printf "change infer_mode@.";
-                 refine_loop (Infer_mod.next_mode infer_mode) neg_env' ce_set3 extend')
+                 refine_loop (Modular_infer.next_mode infer_mode) neg_env' ce_set3 extend')
               else if true then
                 (Debug.printf "extend counterexample@.";
                  let ce_set4,extend'' = List.fold_left (fun (cs,ex) g -> incr_extend g cs ex) (ce_set3,extend') (f :: (List.unique ~cmp:Id.eq @@ Ref_type.Env.dom candidate)) in
-                 refine_loop Infer_mod.init_mode neg_env' ce_set4 extend'')
+                 refine_loop Modular_infer.init_mode neg_env' ce_set4 extend'')
               else
                 raise NoProgress
         in
-        refine_loop Infer_mod.init_mode neg_env (merge_ce_set ce_set1 ce_set) extend
+        refine_loop Modular_infer.init_mode neg_env (merge_ce_set ce_set1 ce_set) extend
 let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ [] []
 
 let main _ spec parsed =
