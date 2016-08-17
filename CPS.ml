@@ -5,7 +5,7 @@ open Util
 
 module RT = Ref_type
 
-let debug () = List.mem "CPS" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "CPS" end)
 
 let counter = ref 0
 let new_evar () = incr counter; !counter
@@ -343,11 +343,11 @@ let rec infer_effect env t =
 exception Loop of effect_var list
 
 let solve_constraints constrs =
-  if 0=1 && debug() then
+  if 0=1 then
     begin
-      Format.printf "@.CONSTRAINTS:@.";
-      List.iter (Format.printf " %a@." print_econstr) constrs;
-      Format.printf "@."
+      Debug.printf "@.CONSTRAINTS:@.";
+      List.iter (Debug.printf " %a@." print_econstr) constrs;
+      Debug.printf "@."
     end;
   let num = !counter + 1 in
   let tbl = Array.make num [] in
@@ -925,16 +925,16 @@ let assoc_typ_cps f typed =
   | [] -> raise Not_found
   | [typ] -> typ
   | typs ->
-      if !!debug then Format.printf "%a: %d@." Id.print f (List.length typs);
+      Debug.printf "%a: %d@." Id.print f (List.length typs);
       assert false
 
 
 let rec uncps_ref_type typ_exn rtyp e etyp =
-  let dbg = 0=0 && !!debug in
-  if !!debug then Format.printf "rtyp:%a@." RT.print rtyp;
-  if !!debug then Format.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
-  if !!debug then Format.printf "e:%a@." print_effect e;
-  if !!debug then Format.printf "etyp:%a@.@." print_typ_cps etyp;
+  let dbg = 0=0 && !!Debug.check in
+  Debug.printf "rtyp:%a@." RT.print rtyp;
+  Debug.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
+  Debug.printf "e:%a@." print_effect e;
+  Debug.printf "etyp:%a@.@." print_typ_cps etyp;
   match rtyp, e, etyp with
   | RT.Inter(styp, rtyps), e, _ ->
       if dbg then Format.printf "%s@.@." __LOC__;
@@ -1010,8 +1010,7 @@ let infer_effect t =
 let make_get_rtyp typ_exn typed get_rtyp f =
   let etyp = assoc_typ_cps f typed in
   let rtyp = get_rtyp f in
-  if !!debug then
-    Format.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
+  Debug.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
   let rtyp' = uncps_ref_type typ_exn rtyp ENone etyp in
   if !!Flag.print_ref_typ_debug then
     Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
@@ -1087,7 +1086,7 @@ let has_typ_result =
 
 
 
-let pr2 s p t = if !!debug then Format.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
+let pr2 s p t = Debug.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
 
 let trans t =
@@ -1101,11 +1100,11 @@ let trans t =
   pr2 "infer_effect" print_term typed;
   unify_exn_typ typ_exn typed;
   sol := solve_constraints !constraints;
-  if !!debug then check_solution ();
+  if !!Debug.check then check_solution ();
   pr2 "infer_effect" print_term typed;
   let t =
     let typ_excep' =
-      if !!debug then Format.printf "typ_excep: %a@." Print.typ typ_excep;
+      if !!Debug.check then Format.printf "typ_excep: %a@." Print.typ typ_excep;
       trans_typ typ_unknown typ_excep typ_exn
     in
     let t = transform typ_excep' "" typed in

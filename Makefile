@@ -51,11 +51,12 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	trans.mli tree.mli rose_tree.mli type.mli color.mli		\
 	CEGAR_trans.mli CEGAR_util.mli fair_termination_type.mli	\
 	HORS_parser.mli fpatInterface.mli ref_type.mli encode.mli	\
-	ref_type_gen.mli
+	ref_type_gen.mli modular_syntax.mli CEGAR_abst_CPS.mli		\
+	CEGAR_abst_util.mli
 CMI = $(MLI:.mli=.cmi)
 
-CMO = environment.cmo flag.cmo util.cmo ext.cmo color.cmo tree.cmo	\
-	rose_tree.cmo id.cmo type.cmo syntax.cmo print.cmo		\
+CMO = environment.cmo flag.cmo util.cmo debug.cmo ext.cmo color.cmo	\
+	tree.cmo rose_tree.cmo id.cmo type.cmo syntax.cmo print.cmo	\
 	term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo	\
 	typing.cmo type_check.cmo CEGAR_ref_type.cmo CEGAR_util.cmo	\
 	fpatInterface.cmo ref_type.cmo ref_type_gen.cmo trans.cmo	\

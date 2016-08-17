@@ -2,13 +2,12 @@ open Util
 
 type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
-let debug () = List.mem "Main_loop" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Main_loop" end)
 
 let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
-  let b = !!debug in
-  if b then Format.printf "START: %s@." desc;
+  Debug.printf "START: %s@." desc;
   let r = f t in
-  if b then Format.printf "END: %s@." desc;
+  Debug.printf "END: %s@." desc;
   let t' = proj_out r in
   if !Flag.debug_level > 0 && proj_in t <> t' && opt
   then Format.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
@@ -233,7 +232,7 @@ let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
   in
   let prog = CEGAR_trans.add_env abst_cegar_env prog in
   let make_get_rtyp =
-    if !!debug then
+    if !!Debug.check then
       let aux f (label,(_,g)) map x =
         Format.printf "BEGIN %s@." @@ string_of_label label;
         let r = try g (f map) x with _ -> Format.printf "GET_RTYP ERROR: %s@." @@ string_of_label label; assert false in

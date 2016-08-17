@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug () = List.mem "Trans" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Trans" end)
 
 
 let flatten_tvar = (make_trans ()).tr_term
@@ -2108,12 +2108,9 @@ let copy_poly_funs_desc map desc =
       let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
       let t2'' = inst_tvar_tunit t2' in
       let map_rename,t2''' = rename_poly_funs f t2'' in
-      if !!debug then
-        begin
-          Format.printf "COPY: @[";
-          List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map_rename;
-          Format.printf "@.";
-        end;
+      Debug.printf "COPY: @[";
+      List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
+      Debug.printf "@.";
       if map_rename = [] then
         let map1,t1' = copy_poly_funs.fold_tr_term map2 t1 in
         (f,f)::map1, (inst_tvar_tunit @@ make_let_f flag [f, xs, t1'] t2').desc

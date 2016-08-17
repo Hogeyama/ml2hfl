@@ -4,7 +4,7 @@ module S = Syntax
 module U = Term_util
 module T = Type
 
-let debug () = List.mem "Ref_type" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Ref_type" end)
 
 type base =
   | Unit
@@ -143,11 +143,11 @@ let rec print fm = function
         print fm typ
       in
       Format.fprintf fm "(@[%a@])" (print_list pr " *@ ") @@ List.mapi Pair.pair xtyps
-  | Inter(styp, []) when !!debug -> Format.fprintf fm "Top(%a)" Print.typ styp
+  | Inter(styp, []) when !!Debug.check -> Format.fprintf fm "Top(%a)" Print.typ styp
   | Inter(_, []) -> Format.fprintf fm "Top"
   | Inter(_, [typ]) -> print fm typ
   | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
-  | Union(styp, []) when !!debug -> Format.fprintf fm "Bot(%a)" Print.typ styp
+  | Union(styp, []) when !!Debug.check -> Format.fprintf fm "Bot(%a)" Print.typ styp
   | Union(_, []) -> Format.fprintf fm "Bot"
   | Union(_, [typ]) -> print fm typ
   | Union(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ ") typs
@@ -182,7 +182,7 @@ let rec decomp_funs n typ =
       (x,typ1)::exts, typs, typ'
   | _ when n = 0 -> [], [], typ
   | _ ->
-      if !!debug then Format.printf "%a@." print typ;
+      Debug.printf "%a@." print typ;
       assert false
 
 
@@ -268,7 +268,7 @@ let rec of_simple typ =
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
   | _ ->
-      if !!debug then Format.printf "%a@." Print.typ typ;
+      Debug.printf "%a@." Print.typ typ;
       unsupported "Ref_type.of_simple"
 
 
@@ -327,8 +327,8 @@ let rec to_abst_typ typ =
         else T.TPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])
   | Exn(typ1, _) -> to_abst_typ typ1
   in
-  if !!debug then Format.printf "Ref_type.to_abst_typ IN: %a@." print typ;
-  if !!debug then Format.printf "Ref_type.to_abst_typ OUT: %a@." Print.typ r;
+  Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;
+  Debug.printf "Ref_type.to_abst_typ OUT: %a@." Print.typ r;
   r
 
 let rec set_base_var x = function
@@ -465,11 +465,11 @@ let rec subtype env typ1 typ2 =
       Format.printf "typ2: %a@." print typ2;
       unsupported "Ref_type.subtype"
   in
-  if 0=0 && !!debug then
+  if 0=0 then
     begin
-      Format.printf "typ1: %a@." print typ1;
-      Format.printf "typ2: %a@." print typ2;
-      Format.printf "r: %b@." r
+      Debug.printf "typ1: %a@." print typ1;
+      Debug.printf "typ2: %a@." print typ2;
+      Debug.printf "r: %b@." r
     end;
   r
 
@@ -503,7 +503,7 @@ let rec simplify_typs constr sub styp is_zero make_zero and_or typs =
     | Union(_, typs) -> typs
     | typ -> [typ]
   in
-  if !!debug then Format.printf "ST@.";
+  Debug.printf "ST@.";
   let typs' =
     typs
     |> List.map simplify
@@ -513,7 +513,7 @@ let rec simplify_typs constr sub styp is_zero make_zero and_or typs =
     |> flatten
     |> decomp
   in
-  if !!debug then Format.printf "ST: @[%a ==>@ %a@." (List.print print) typs (List.print print) typs';
+  Debug.printf "ST: @[%a ==>@ %a@." (List.print print) typs (List.print print) typs';
   if List.exists is_zero typs' then
     make_zero styp
   else

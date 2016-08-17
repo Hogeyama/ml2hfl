@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug () = List.mem "Modular_syntax" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Modular_syntax" end)
 
 
 type program =
@@ -38,19 +38,19 @@ let rec is_atom t =
   | _ -> false
 
 let normalize t =
-  let dbg = 0=0 && !!debug in
+  let dbg = 0=0 in
   t
-  |@dbg&> Format.printf "NORMALIZE0: %a@.@." Print.term
+  |@dbg&> Debug.printf "NORMALIZE0: %a@.@." Print.term
   |> Trans.replace_bottom_def
-  |@dbg&> Format.printf "NORMALIZE1: %a@.@." Print.term
+  |@dbg&> Debug.printf "NORMALIZE1: %a@.@." Print.term
   |> Trans.short_circuit_eval
-  |@dbg&> Format.printf "NORMALIZE2: %a@.@." Print.term
+  |@dbg&> Debug.printf "NORMALIZE2: %a@.@." Print.term
   |> Trans.normalize_let ~is_atom:is_atom
-  |@dbg&> Format.printf "NORMALIZE3: %a@.@." Print.term
+  |@dbg&> Debug.printf "NORMALIZE3: %a@.@." Print.term
   |> Trans.flatten_let
-  |@dbg&> Format.printf "NORMALIZE4: %a@.@." Print.term
+  |@dbg&> Debug.printf "NORMALIZE4: %a@.@." Print.term
   |> Trans.remove_no_effect_trywith
-  |@dbg&> Format.printf "NORMALIZE5: %a@.@." Print.term
+  |@dbg&> Debug.printf "NORMALIZE5: %a@.@." Print.term
   |> fixed_point ~eq:same_term
        (Trans.inline_var
         |- Trans.inline_simple_exp

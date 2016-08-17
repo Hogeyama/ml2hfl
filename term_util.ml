@@ -2,7 +2,7 @@ open Util
 open Syntax
 open Type
 
-let debug () = List.mem "Term_util" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Term_util" end)
 
 let occur = Syntax.occur
 let get_vars_pat = Syntax.get_vars_pat
@@ -1010,10 +1010,10 @@ let find_exn_typ = make_col [] (@)
 let find_exn_typ_term t =
   match t.desc with
   | Raise t' ->
-      if !!debug then Format.printf "FOUND1: %a@." Print.typ t'.typ;
+      Debug.printf "FOUND1: %a@." Print.typ t'.typ;
       [t'.typ]
   | TryWith(t', {typ=TFun(x, _)}) ->
-      if !!debug then Format.printf "FOUND2: %a@." Print.typ @@ Id.typ x;
+      Debug.printf "FOUND2: %a@." Print.typ @@ Id.typ x;
       [Id.typ x]
   | _ -> find_exn_typ.col_term_rec t
 let find_exn_typ_typ typ = []

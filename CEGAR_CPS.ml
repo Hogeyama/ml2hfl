@@ -1,11 +1,10 @@
-
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 open Util
 
-let debug () = List.mem "CEGAR_CPS" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "CEGAR_CPS" end)
 
 let is_head_tuple t =
   match decomp_app t with
@@ -111,9 +110,9 @@ let rec trans_simpl c = function
 let trans_simpl_def (f,xs,t1,e,t2) =
   assert (xs = []);
   let t2 = trans_simpl (fun x -> x) t2 in
-  if debug() then Format.printf "TRANS1: %a@." CEGAR_print.term t2;
+  Debug.printf "TRANS1: %a@." CEGAR_print.term t2;
   let t2 = trans_const t2 in
-  if debug() then Format.printf "TRANS2: %a@." CEGAR_print.term t2;
+  Debug.printf "TRANS2: %a@." CEGAR_print.term t2;
   (f, [], t1, e, t2)
 
 
