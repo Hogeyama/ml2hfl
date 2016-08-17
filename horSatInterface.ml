@@ -61,6 +61,8 @@ let rec trans_id x =
     | '\'' -> "_prime_"
     | '.' -> "_dot_"
     | '&' -> "_et_"
+    | '/' -> "_slash_"
+    | '^' -> "_caret_"
     | c -> String.make 1 c
   in
   String.fold_left (fun s c -> s ^ map c) "" x
