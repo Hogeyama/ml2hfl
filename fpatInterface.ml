@@ -11,7 +11,7 @@ module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
 
-let debug () = List.mem "FpatInterface" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "FpatInterface" end)
 
 let rec conv_typ ty =
   match ty with
@@ -62,7 +62,7 @@ let conv_const c =
      Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
   | Int(n) -> Fpat.Const.Int(n)
   | Rand(TInt, _) -> Fpat.Const.RandInt
-  | Rand(_, _) -> assert false
+  | Rand(typ, _) -> assert false
   | Add -> Fpat.Const.Add Fpat.Type.mk_int
   | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
@@ -79,7 +79,7 @@ let conv_const c =
   | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
   | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
   | _ ->
-      if !!debug then Format.printf "%a@." CEGAR_print.const c;
+      Debug.printf "%a@." CEGAR_print.const c;
       assert false
 
 let conv_var x =
@@ -116,7 +116,7 @@ let rec of_typ typ =
       Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
 
-let rec of_typed_term t =
+let rec of_term t =
   match S.desc t with
   | S.Const S.Unit -> Fpat.Term.mk_const @@ Fpat.Const.Unit
   | S.Const S.True -> Fpat.Term.mk_const @@ Fpat.Const.True
@@ -124,19 +124,20 @@ let rec of_typed_term t =
   | S.Const (S.Int n) -> Fpat.Term.mk_const @@ Fpat.Const.Int n
   | S.Const (S.String s) -> Fpat.Term.mk_const @@ Fpat.Const.String s
   | S.Var x -> Fpat.Term.mk_var @@ Fpat.Idnt.make @@ Id.to_string x
-  | S.Not t1 -> Fpat.Term.mk_app (Fpat.Term.mk_const Fpat.Const.Not) [of_typed_term t1]
+  | S.Not t1 -> Fpat.Term.mk_app (Fpat.Term.mk_const Fpat.Const.Not) [of_term t1]
   | S.BinOp(op, t1, t2) ->
       let op' =
         match op with
         | S.Eq ->
             begin
               match Type.elim_tpred @@ S.typ t1 with
+              | Type.TUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
               | Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
               | Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
               | typ when typ = Type.typ_unknown -> Fpat.Const.Eq Fpat.Type.mk_int
               | typ ->
                   Format.eprintf "t1.S.typ: %a@." Print.typ typ;
-                  unsupported "FpatInterface.of_typed_term"
+                  unsupported "FpatInterface.of_term"
             end
         | S.Lt -> Fpat.Const.Lt Fpat.Type.mk_int
         | S.Gt -> Fpat.Const.Gt Fpat.Type.mk_int
@@ -148,12 +149,12 @@ let rec of_typed_term t =
         | S.Sub -> Fpat.Const.Sub Fpat.Type.mk_int
         | S.Mult -> Fpat.Const.Mul Fpat.Type.mk_int
       in
-      Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_typed_term t1; of_typed_term t2]
+      Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_term t1; of_term t2]
   | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
       let ts' =
         ts
         |> List.map @@ Pair.add_right @@ of_typ -| S.typ
-        |> List.map @@ Pair.map_fst of_typed_term
+        |> List.map @@ Pair.map_fst of_term
       in
       Fpat.Pva.make (Fpat.Idnt.make @@ Id.to_string p) ts'
       |> Fpat.Pva.to_formula
@@ -165,13 +166,13 @@ let rec of_typed_term t =
             List.map (Id.typ |- of_typ) xs
         | _ -> assert false
       in
-      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_typed_term t]
+      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_term t]
   | S.Tuple ts ->
       let tys = List.map (S.typ |- of_typ) ts in
-      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Tuple tys) @@ List.map of_typed_term ts
+      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Tuple tys) @@ List.map of_term ts
   | desc ->
       Format.eprintf "desc: %a@." Print.desc desc;
-      unsupported "FpatInterface.of_typed_term"
+      unsupported "FpatInterface.of_term"
 
 let inv_const c =
   match c with
@@ -384,7 +385,6 @@ let infer_with_ext
     Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
   in
   Format.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
-  let debug = !Flag.debug_level > 0 in
   let fs = List.map fst prog.env in
   let defs' =
     if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
@@ -412,7 +412,7 @@ let infer_with_ext
       List.map (flip (@) [2]) cexs
     else
       cexs in
-  if debug then Format.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
+  NORDebug.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
   let old_split_eq = !Fpat.AbsType.split_equalities in
   let old_eap = !Fpat.AbsType.extract_atomic_predicates in
   let old_hccs_solver = Fpat.HCCSSolver.get_dyn () in
@@ -425,7 +425,7 @@ let infer_with_ext
   Fpat.AbsType.split_equalities := old_split_eq;
   Fpat.AbsType.extract_atomic_predicates := old_eap;
   Fpat.HCCSSolver.link_dyn old_hccs_solver;
-  if debug then Format.printf "END refinement@,@]";
+  NORDebug.printf "END refinement@,@]";
 
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
@@ -465,11 +465,10 @@ let rec trans_type typ =
   List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
 and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
 
-let of_term t = assert false (* @todo translate FPAT term to Syntax.typed_term *)
+let of_desc t = assert false (* @todo translate FPAT term to Syntax.term *)
 
 let insert_extra_param t =
   let tmp = get_time() in
-  let debug = !Flag.debug_level > 0 in
   Fpat.RefTypInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
@@ -527,8 +526,7 @@ let insert_extra_param t =
                       (fun (f', _, recursive) -> recursive && Id.same f' f)
                       rfs
                   in
-                  (if debug then
-                     Format.printf "rec: %a@." Print.term t1');
+                  (NORDebug.printf "rec: %a@." Print.term t1');
                   let xxss =
                     List.take (List.length ts) xxss
                   in
@@ -540,27 +538,18 @@ let insert_extra_param t =
                      | Type.TTuple _(* ToDo: fix it *) ->
                         (match t.Syntax.desc with
                          | Syntax.Var(y) when Id.same x y ->
-                            let _ =
-                              if debug then
-                                Format.printf
-                                  "arg %a of %a not changed@,"
-                                  Print.id x Print.id f in xs
+                             Debug.printf "arg %a of %a not changed@," Print.id x Print.id f;
+                             xs
                          | _ -> [])
                      | _ -> [])
                     ts xxss
                 with Not_found ->
                   (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
-                  let _ =
-                    if debug then
-                      Format.printf "nonrec: %a@." Print.term t1'
-                  in
+                  Debug.printf "nonrec: %a@." Print.term t1';
                   false, [])
            | _ ->
-              let _ =
-                if debug then
-                  Format.printf "nonrec: %a@." Print.term t1'
-              in
-              false, []
+               Debug.printf "nonrec: %a@." Print.term t1';
+               false, []
          in
          let ts' = List.map (aux rfs bvs exs) ts in
          let tss =
@@ -582,7 +571,7 @@ let insert_extra_param t =
                     else
                       None)
                    bvs exs
-                 |> List.map of_term
+                 |> List.map of_desc
               | _ -> [])
              ts'
          in
@@ -737,7 +726,7 @@ let simplify_term t =
  *)
   t
 
-let simplify_typed_term p =
+let simplify_term p =
   { p with Syntax.desc = simplify_term p.Syntax.desc }
 
 let compute_strongest_post prog ce ext_cex =

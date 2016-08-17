@@ -5,7 +5,7 @@ open Type
 
 module RT = Ref_type
 
-let debug () = List.mem "Encode_rec" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Encode_rec" end)
 
 let rec extract_decls_typ ?prev_type env typ =
   match typ with
@@ -43,13 +43,13 @@ let extract_decls_typ typ = extract_decls_typ [] typ
 
 
 let flatten_recdata_typ typ =
-  if !!debug then Format.printf "flatten_recdata_typ IN: %a@." Print.typ typ;
+  Debug.printf "flatten_recdata_typ IN: %a@." Print.typ typ;
   let typ' = fold_data_type typ in
   match typ' with
   | Type(_,s) ->
       let decls',_ = extract_decls_typ typ' in
       Type(decls', s)
-      |@!!debug&> Format.printf "flatten_recdata_typ OUT: %a@." Print.typ
+      |@> Debug.printf "flatten_recdata_typ OUT: %a@." Print.typ
   | _ -> invalid_arg "flatten_recdata_typ"
 
 
@@ -58,12 +58,12 @@ let rec collect_leaf_aux typ =
   | Type _ -> invalid_arg "collect_leaf_aux"
   | TData _ -> []
   | TTuple [x] -> collect_leaf_aux @@ Id.typ x
-  | _ when get_free_data_name typ = [] -> [typ]
   | TVariant labels -> List.flatten_map (snd |- List.flatten_map collect_leaf_aux) labels
   | TRecord fields -> List.flatten_map (snd |- snd |- collect_leaf_aux) fields
+  | _ when get_free_data_name typ = [] -> [typ]
   | _ -> unsupported "non-regular data types"
 let collect_leaf_aux typ =
-  if !!debug then Format.printf "CLA: %a@." Print.typ typ;
+  Debug.printf "CLA: %a@." Print.typ typ;
   List.unique @@ collect_leaf_aux typ
 let collect_leaf typ =
   match typ with
@@ -74,7 +74,7 @@ let collect_leaf typ =
       leaves
   | TVariant _ -> collect_leaf_aux typ
   | _ ->
-      if !!debug then Format.printf "%a@." Print.typ typ;
+      Debug.printf "%a@." Print.typ typ;
       invalid_arg "collect_leaf"
 
 
@@ -147,40 +147,48 @@ let rec abst_recdata_pat p =
         PAlias(p', abst_recdata.tr_var x), cond, bind
     | PConst t -> PConst t, true_term, []
     | PConstruct(c,ps) ->
-        let f = Id.new_var ~name:"f" typ in
+        let f = Id.new_var typ in
         let ppcbs = List.map (Pair.add_right abst_recdata_pat) ps in
         let ground_types = get_ground_types p.pat_typ in
-        let make_bind i (p,(p',_,_)) =
-          let t =
-            if List.mem p.pat_typ ground_types
-            then
-              let rec find c = function
-                | [] -> assert false
-                | typ::typs -> if typ = p.pat_typ then c else find (c+1) typs
-              in
-              let j = find 0 ground_types in
-              let t = make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_nil TInt)] in
-              make_proj j @@ make_snd t
-            else
-              let path = Id.new_var ~name:"path" (make_tlist TInt) in
-              make_pair unit_term @@ (* extra-param *)
-                make_fun path @@ make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_var path)]
+        let binds =
+          let make_bind i (p,(p',_,_)) =
+            let t =
+              if List.mem ~eq:Type.same_shape p.pat_typ ground_types then
+                let rec find c = function
+                  | [] -> assert false
+                  | typ::typs -> if Type.same_shape typ p.pat_typ then c else find (c+1) typs
+                in
+                let j = find 0 ground_types in
+                let t = make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_nil TInt)] in
+                make_proj j @@ make_snd t
+              else
+                let path = Id.new_var ~name:"path" (make_tlist TInt) in
+                make_pair unit_term @@ (* extra-param *)
+                  make_fun path @@
+                    make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_var path)]
+            in
+            t, p'
           in
-          t, p'
+          List.mapi make_bind ppcbs
         in
-        let binds = List.mapi make_bind ppcbs in
-        let make_cond (t,pt) (_,(p,cond,_)) =
-          match p.pat_desc with
-          | PAny
-          | PVar _ -> true_term
-          | _ -> make_match t [pt,true_term,true_term; make_pany p.pat_typ,true_term,false_term]
+        let cond =
+          let conds' =
+            let make_cond (t,pt) (_,(p,cond,_)) =
+              match p.pat_desc with
+              | PAny
+              | PVar _ -> true_term
+              | _ -> make_match t [pt,true_term,true_term; make_pany p.pat_typ,true_term,false_term]
+            in
+            List.map2 make_cond binds ppcbs
+          in
+          let cond0 =
+            let t = make_app (make_snd @@ make_var f) [make_nil TInt] in
+            Format.printf "ground_types: %a@." (List.print Print.typ) ground_types;
+            let t' = if ground_types = [] then t else make_proj 0 t in
+            make_eq t' (abst_label p.pat_typ c)
+          in
+          List.fold_left make_and true_term (cond0 :: conds')
         in
-        let conds' = List.map2 make_cond binds ppcbs in
-        let cond0 =
-          let t = make_app (make_snd @@ make_var f) [make_nil TInt] in
-          let t' = if ground_types = [] then t else make_proj 0 t in
-          make_eq t' (abst_label p.pat_typ c) in
-        let cond = List.fold_left make_and true_term (cond0 :: conds') in
         let bind = binds @ List.flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
         PVar f, cond, bind
     | PNil -> PNil, true_term, []
@@ -288,16 +296,18 @@ let () = abst_recdata.tr_typ <- abst_recdata_typ
 
 
 
-let pr s t = if debug () then Format.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
+let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
+let trans_typ = abst_recdata.tr_typ
 let trans t =
+  let typ = trans_typ t.typ in
   t
   |@> pr "input"
   |> Trans.remove_top_por
   |@> pr "remove_top_por"
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- t.typ
   |> abst_recdata.tr_term
   |@> pr "abst_rec"
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- typ
   |> Trans.simplify_match
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check -$- typ

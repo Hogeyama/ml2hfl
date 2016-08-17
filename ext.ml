@@ -21,7 +21,7 @@ module Env = struct
     type value
     val empty : t
     val add : key -> value -> t -> t
-    val create : key list -> (key -> value) -> t
+    val create : (key -> value) -> key list -> t
 
     val of_list : (key * value) list -> t
     val to_list : t -> (key * value) list
@@ -62,7 +62,7 @@ module Env = struct
 
     let empty = []
     let add k x env = (k,x)::env
-    let create keys f = List.fold_right (fun x env -> add x (f x) env) keys empty
+    let create f keys = List.fold_right (fun x env -> add x (f x) env) keys empty
 
     let of_list env = env
     let to_list env = env

@@ -14,7 +14,7 @@ COLS="$(tput cols)"
 cat COMMIT
 echo Timeout $LIMIT
 
-OPTION=" -only-result -ignore-conf -modular -horsat2"
+OPTION=" -only-result -ignore-conf -modular -horsat2 -base-to-int"
 for i in $TEST
 do
     echo
@@ -23,5 +23,5 @@ do
     echo
     echo $i
     echo
-    timeout $LIMIT ./mochi.opt $OPTION $i || echo 'TIMEOUT OR ERROR'
+    timeout $LIMIT ./mochi.opt $OPTION -fpat '-wp-max 2' $i || echo 'TIMEOUT OR ERROR'
 done

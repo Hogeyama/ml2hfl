@@ -3,7 +3,7 @@
 
 type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
-type typ = typed_term Type.t
+type typ = term Type.t
 and id = typ Id.t
 and attr =
   | ACPS
@@ -15,7 +15,7 @@ and attr =
   | AId of int
   | AMark
   | ADoNotInline
-and typed_term = {desc:term; typ:typ; attr:attr list}
+and term = {desc:desc; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | Unit
   | True
@@ -29,65 +29,65 @@ and const = (* only base type constants *)
   | Nativeint of nativeint
   | CPS_result
   | RandValue of typ * bool (** true denotes CPS-term *)
-and term =
+and desc =
   | Const of const
   | Var of id
-  | Fun of id * typed_term
-  | App of typed_term * typed_term list
-  | If of typed_term * typed_term * typed_term
-  | Let of rec_flag * (id * id list * typed_term) list * typed_term
-  | BinOp of binop * typed_term * typed_term
-  | Not of typed_term
+  | Fun of id * term
+  | App of term * term list
+  | If of term * term * term
+  | Let of rec_flag * (id * id list * term) list * term
+  | BinOp of binop * term * term
+  | Not of term
   | Event of string * bool (** true denotes CPS-term *)
-  | Record of (string * typed_term) list
-  | Field of typed_term * string
-  | SetField of typed_term * string * typed_term
+  | Record of (string * term) list
+  | Field of term * string
+  | SetField of term * string * term
   | Nil
-  | Cons of typed_term * typed_term
-  | Constr of string * typed_term list
-  | Match of typed_term * (typed_pattern * typed_term * typed_term) list
-  | Raise of typed_term
-  | TryWith of typed_term * typed_term
-  | Tuple of typed_term list
-  | Proj of int * typed_term
+  | Cons of term * term
+  | Constr of string * term list
+  | Match of term * (pattern * term * term) list
+  | Raise of term
+  | TryWith of term * term
+  | Tuple of term list
+  | Proj of int * term
   | Bottom
-  | Label of info * typed_term
-  | Ref of typed_term
-  | Deref of typed_term
-  | SetRef of typed_term * typed_term
+  | Label of info * term
+  | Ref of term
+  | Deref of term
+  | SetRef of term * term
   | TNone
-  | TSome of typed_term
+  | TSome of term
 
 and info =
-    InfoInt of int
+  | InfoInt of int
   | InfoString of string
   | InfoId of id
-  | InfoTerm of typed_term
-  | InfoIdTerm of id * typed_term
+  | InfoTerm of term
+  | InfoIdTerm of id * term
 
 and rec_flag = Nonrecursive | Recursive
 
 
 and type_kind =
-    KAbstract
+  | KAbstract
   | KVariant of (string * typ list) list
   | KRecord of (string * (Type.mutable_flag * typ)) list
   | KOpen
-and pred = term
-and typed_pattern = {pat_desc:pattern; pat_typ:typ}
-and pattern =
-    PAny
+and pred = desc
+and pattern = {pat_desc:pat_desc; pat_typ:typ}
+and pat_desc =
+  | PAny
   | PVar of id
-  | PAlias of typed_pattern * id
-  | PConst of typed_term
-  | PConstruct of string * typed_pattern list
+  | PAlias of pattern * id
+  | PConst of term
+  | PConstruct of string * pattern list
   | PNil
-  | PCons of typed_pattern * typed_pattern
-  | PTuple of typed_pattern list
-  | PRecord of (string * typed_pattern) list
+  | PCons of pattern * pattern
+  | PTuple of pattern list
+  | PRecord of (string * pattern) list
   | PNone
-  | PSome of typed_pattern
-  | POr of typed_pattern * typed_pattern
+  | PSome of pattern
+  | POr of pattern * pattern
 
 type env = (id * typ) list
 
@@ -100,50 +100,50 @@ end
 val const_attr : attr list
 
 type trans =
-  {mutable tr_term:      typed_term    -> typed_term;
-   mutable tr_term_rec:  typed_term    -> typed_term;
-   mutable tr_desc:      term          -> term;
-   mutable tr_desc_rec:  term          -> term;
-   mutable tr_typ:       typ           -> typ;
-   mutable tr_typ_rec:   typ           -> typ;
-   mutable tr_var:       id            -> id;
-   mutable tr_var_rec:   id            -> id;
-   mutable tr_pat:       typed_pattern -> typed_pattern;
-   mutable tr_pat_rec:   typed_pattern -> typed_pattern;
-   mutable tr_info:      info          -> info;
-   mutable tr_info_rec:  info          -> info;
-   mutable tr_const:     const         -> const;
-   mutable tr_const_rec: const         -> const;
-   mutable tr_attr:      attr list     -> attr list}
+  {mutable tr_term:      term      -> term;
+   mutable tr_term_rec:  term      -> term;
+   mutable tr_desc:      desc      -> desc;
+   mutable tr_desc_rec:  desc      -> desc;
+   mutable tr_typ:       typ       -> typ;
+   mutable tr_typ_rec:   typ       -> typ;
+   mutable tr_var:       id        -> id;
+   mutable tr_var_rec:   id        -> id;
+   mutable tr_pat:       pattern   -> pattern;
+   mutable tr_pat_rec:   pattern   -> pattern;
+   mutable tr_info:      info      -> info;
+   mutable tr_info_rec:  info      -> info;
+   mutable tr_const:     const     -> const;
+   mutable tr_const_rec: const     -> const;
+   mutable tr_attr:      attr list -> attr list}
 
 type 'a trans2 =
-  {mutable tr2_term:      'a -> typed_term    -> typed_term;
-   mutable tr2_term_rec:  'a -> typed_term    -> typed_term;
-   mutable tr2_desc:      'a -> term          -> term;
-   mutable tr2_desc_rec:  'a -> term          -> term;
-   mutable tr2_typ:       'a -> typ           -> typ;
-   mutable tr2_typ_rec:   'a -> typ           -> typ;
-   mutable tr2_var:       'a -> id            -> id;
-   mutable tr2_var_rec:   'a -> id            -> id;
-   mutable tr2_pat:       'a -> typed_pattern -> typed_pattern;
-   mutable tr2_pat_rec:   'a -> typed_pattern -> typed_pattern;
-   mutable tr2_info:      'a -> info          -> info;
-   mutable tr2_info_rec:  'a -> info          -> info;
-   mutable tr2_const:     'a -> const         -> const;
-   mutable tr2_const_rec: 'a -> const         -> const;
-   mutable tr2_attr:      'a -> attr list     -> attr list}
+  {mutable tr2_term:      'a -> term      -> term;
+   mutable tr2_term_rec:  'a -> term      -> term;
+   mutable tr2_desc:      'a -> desc      -> desc;
+   mutable tr2_desc_rec:  'a -> desc      -> desc;
+   mutable tr2_typ:       'a -> typ       -> typ;
+   mutable tr2_typ_rec:   'a -> typ       -> typ;
+   mutable tr2_var:       'a -> id        -> id;
+   mutable tr2_var_rec:   'a -> id        -> id;
+   mutable tr2_pat:       'a -> pattern   -> pattern;
+   mutable tr2_pat_rec:   'a -> pattern   -> pattern;
+   mutable tr2_info:      'a -> info      -> info;
+   mutable tr2_info_rec:  'a -> info      -> info;
+   mutable tr2_const:     'a -> const     -> const;
+   mutable tr2_const_rec: 'a -> const     -> const;
+   mutable tr2_attr:      'a -> attr list -> attr list}
 
 type 'a col =
-  {mutable col_term:      typed_term    -> 'a;
-   mutable col_term_rec:  typed_term    -> 'a;
-   mutable col_desc:      term          -> 'a;
-   mutable col_desc_rec:  term          -> 'a;
+  {mutable col_term:      term    -> 'a;
+   mutable col_term_rec:  term    -> 'a;
+   mutable col_desc:      desc          -> 'a;
+   mutable col_desc_rec:  desc          -> 'a;
    mutable col_typ:       typ           -> 'a;
    mutable col_typ_rec:   typ           -> 'a;
    mutable col_var:       id            -> 'a;
    mutable col_var_rec:   id            -> 'a;
-   mutable col_pat:       typed_pattern -> 'a;
-   mutable col_pat_rec:   typed_pattern -> 'a;
+   mutable col_pat:       pattern -> 'a;
+   mutable col_pat_rec:   pattern -> 'a;
    mutable col_info:      info          -> 'a;
    mutable col_info_rec:  info          -> 'a;
    mutable col_const:     const         -> 'a;
@@ -153,64 +153,64 @@ type 'a col =
    mutable col_empty:     'a}
 
 type ('a,'b) col2 =
-  {mutable col2_term:      'b -> typed_term    -> 'a;
-   mutable col2_term_rec:  'b -> typed_term    -> 'a;
-   mutable col2_desc:      'b -> term          -> 'a;
-   mutable col2_desc_rec:  'b -> term          -> 'a;
-   mutable col2_typ:       'b -> typ           -> 'a;
-   mutable col2_typ_rec:   'b -> typ           -> 'a;
-   mutable col2_var:       'b -> id            -> 'a;
-   mutable col2_var_rec:   'b -> id            -> 'a;
-   mutable col2_pat:       'b -> typed_pattern -> 'a;
-   mutable col2_pat_rec:   'b -> typed_pattern -> 'a;
-   mutable col2_info:      'b -> info          -> 'a;
-   mutable col2_info_rec:  'b -> info          -> 'a;
-   mutable col2_const:     'b -> const         -> 'a;
-   mutable col2_const_rec: 'b -> const         -> 'a;
-   mutable col2_attr:      'b -> attr list     -> 'a;
+  {mutable col2_term:      'b -> term         -> 'a;
+   mutable col2_term_rec:  'b -> term         -> 'a;
+   mutable col2_desc:      'b -> desc         -> 'a;
+   mutable col2_desc_rec:  'b -> desc         -> 'a;
+   mutable col2_typ:       'b -> typ          -> 'a;
+   mutable col2_typ_rec:   'b -> typ          -> 'a;
+   mutable col2_var:       'b -> id           -> 'a;
+   mutable col2_var_rec:   'b -> id           -> 'a;
+   mutable col2_pat:       'b -> pattern      -> 'a;
+   mutable col2_pat_rec:   'b -> pattern      -> 'a;
+   mutable col2_info:      'b -> info         -> 'a;
+   mutable col2_info_rec:  'b -> info         -> 'a;
+   mutable col2_const:     'b -> const        -> 'a;
+   mutable col2_const_rec: 'b -> const        -> 'a;
+   mutable col2_attr:      'b -> attr list    -> 'a;
    mutable col2_app:       'a -> 'a -> 'a;
    mutable col2_empty:     'a}
 
 type ('a,'b) tr_col2 =
-  {mutable tr_col2_term:      'b -> typed_term    -> 'a * typed_term;
-   mutable tr_col2_term_rec:  'b -> typed_term    -> 'a * typed_term;
-   mutable tr_col2_desc:      'b -> term          -> 'a * term;
-   mutable tr_col2_desc_rec:  'b -> term          -> 'a * term;
-   mutable tr_col2_typ:       'b -> typ           -> 'a * typ;
-   mutable tr_col2_typ_rec:   'b -> typ           -> 'a * typ;
-   mutable tr_col2_var:       'b -> id            -> 'a * id;
-   mutable tr_col2_var_rec:   'b -> id            -> 'a * id;
-   mutable tr_col2_pat:       'b -> typed_pattern -> 'a * typed_pattern;
-   mutable tr_col2_pat_rec:   'b -> typed_pattern -> 'a * typed_pattern;
-   mutable tr_col2_info:      'b -> info          -> 'a * info;
-   mutable tr_col2_info_rec:  'b -> info          -> 'a * info;
-   mutable tr_col2_const:     'b -> const         -> 'a * const;
-   mutable tr_col2_const_rec: 'b -> const         -> 'a * const;
-   mutable tr_col2_attr:      'b -> attr list     -> 'a * attr list;
+  {mutable tr_col2_term:      'b -> term      -> 'a * term;
+   mutable tr_col2_term_rec:  'b -> term      -> 'a * term;
+   mutable tr_col2_desc:      'b -> desc      -> 'a * desc;
+   mutable tr_col2_desc_rec:  'b -> desc      -> 'a * desc;
+   mutable tr_col2_typ:       'b -> typ       -> 'a * typ;
+   mutable tr_col2_typ_rec:   'b -> typ       -> 'a * typ;
+   mutable tr_col2_var:       'b -> id        -> 'a * id;
+   mutable tr_col2_var_rec:   'b -> id        -> 'a * id;
+   mutable tr_col2_pat:       'b -> pattern   -> 'a * pattern;
+   mutable tr_col2_pat_rec:   'b -> pattern   -> 'a * pattern;
+   mutable tr_col2_info:      'b -> info      -> 'a * info;
+   mutable tr_col2_info_rec:  'b -> info      -> 'a * info;
+   mutable tr_col2_const:     'b -> const     -> 'a * const;
+   mutable tr_col2_const_rec: 'b -> const     -> 'a * const;
+   mutable tr_col2_attr:      'b -> attr list -> 'a * attr list;
    mutable tr_col2_app:       'a -> 'a -> 'a;
    mutable tr_col2_empty:     'a}
 
 type 'a fold_tr =
-  {mutable fold_tr_term:      'a -> typed_term    -> 'a * typed_term;
-   mutable fold_tr_term_rec:  'a -> typed_term    -> 'a * typed_term;
-   mutable fold_tr_desc:      'a -> term          -> 'a * term;
-   mutable fold_tr_desc_rec:  'a -> term          -> 'a * term;
-   mutable fold_tr_typ:       'a -> typ           -> 'a * typ;
-   mutable fold_tr_typ_rec:   'a -> typ           -> 'a * typ;
-   mutable fold_tr_var:       'a -> id            -> 'a * id;
-   mutable fold_tr_var_rec:   'a -> id            -> 'a * id;
-   mutable fold_tr_pat:       'a -> typed_pattern -> 'a * typed_pattern;
-   mutable fold_tr_pat_rec:   'a -> typed_pattern -> 'a * typed_pattern;
-   mutable fold_tr_info:      'a -> info          -> 'a * info;
-   mutable fold_tr_info_rec:  'a -> info          -> 'a * info;
-   mutable fold_tr_const:     'a -> const         -> 'a * const;
-   mutable fold_tr_const_rec: 'a -> const         -> 'a * const;
-   mutable fold_tr_attr:      'a -> attr list     -> 'a * attr list}
+  {mutable fold_tr_term:      'a -> term      -> 'a * term;
+   mutable fold_tr_term_rec:  'a -> term      -> 'a * term;
+   mutable fold_tr_desc:      'a -> desc      -> 'a * desc;
+   mutable fold_tr_desc_rec:  'a -> desc      -> 'a * desc;
+   mutable fold_tr_typ:       'a -> typ       -> 'a * typ;
+   mutable fold_tr_typ_rec:   'a -> typ       -> 'a * typ;
+   mutable fold_tr_var:       'a -> id        -> 'a * id;
+   mutable fold_tr_var_rec:   'a -> id        -> 'a * id;
+   mutable fold_tr_pat:       'a -> pattern   -> 'a * pattern;
+   mutable fold_tr_pat_rec:   'a -> pattern   -> 'a * pattern;
+   mutable fold_tr_info:      'a -> info      -> 'a * info;
+   mutable fold_tr_info_rec:  'a -> info      -> 'a * info;
+   mutable fold_tr_const:     'a -> const     -> 'a * const;
+   mutable fold_tr_const_rec: 'a -> const     -> 'a * const;
+   mutable fold_tr_attr:      'a -> attr list -> 'a * attr list}
 
 
-val typ : typed_term -> typ
-val desc : typed_term -> term
-val attr : typed_term -> attr list
+val typ : term -> typ
+val desc : term -> desc
+val attr : term -> attr list
 
 val make_trans : unit -> trans
 val make_trans2 : unit -> 'a trans2
@@ -220,8 +220,8 @@ val make_tr_col2 : 'a -> ('a -> 'a -> 'a) -> ('a,'b) tr_col2
 val make_fold_tr : unit -> 'a fold_tr
 
 val occur : id -> typ -> bool
-val get_vars_pat : typed_pattern -> id list
-val get_fv : ?cmp:(id -> id -> bool) -> typed_term -> id list
+val get_vars_pat : pattern -> id list
+val get_fv : ?cmp:(id -> id -> bool) -> term -> id list
 
 val make_extra_coeff : ?name:string -> ?typ:typ -> unit -> id
 val is_extra_coeff_name : string -> bool

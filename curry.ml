@@ -11,7 +11,7 @@ let root x = Option.get @@ root x
 let flatten x = List.filter_map Fun.id @@ flatten x
 let map f x = map (fun path label -> Option.map (f path) label) x
 
-let debug () = List.mem "Curry" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Curry" end)
 
 let rec element_num typ =
   match elim_tpred typ with
@@ -55,12 +55,12 @@ let rec correct_arg_refer rtyp =
       RT.Tuple (List.fold_right aux xrtyps [])
   | RT.Inter(typ, rtyps) -> RT.Inter(typ, List.map correct_arg_refer rtyps)
   | RT.Union(typ, rtyps) -> RT.Union(typ, List.map correct_arg_refer rtyps)
-  | RT.ExtArg(x,rtyp1,rtyp2) -> assert false
-  | RT.List _ -> assert false
+  | RT.ExtArg(x,rtyp1,rtyp2) -> unsupported "correct_arg_refer"
+  | RT.List _ -> unsupported "correct_arg_refer"
+  | RT.Exn _ -> unsupported "correct_arg_refer"
 
 let rec uncurry_typ rtyp typ =
-  if !!debug then
-    Format.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
+  Debug.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
   match rtyp,typ with
   | RT.Inter(styp, rtyps), _ ->
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
@@ -69,7 +69,7 @@ let rec uncurry_typ rtyp typ =
         | [] -> RT.to_simple @@ uncurry_typ (RT.of_simple styp) typ
         | rtyp'::_ -> RT.to_simple rtyp'
       in
-      if rtyps'=[] && !!debug then Format.printf "UNCURRY_TYP TOP: %a ===> %a@." Print.typ typ Print.typ typ';
+      if rtyps'=[] then Debug.printf "UNCURRY_TYP TOP: %a ===> %a@." Print.typ typ Print.typ typ';
       RT.Inter(typ', rtyps')
   | RT.Union(typ, rtyps), _ ->
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
@@ -95,8 +95,7 @@ let rec uncurry_typ rtyp typ =
   | _ -> rtyp
 
 and uncurry_typ_arg rtyps typ =
-  if debug()
-  then Format.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps Print.typ typ;
+  Debug.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps Print.typ typ;
   match rtyps, elim_tpred typ with
   | _, TTuple xs ->
       let aux (rtyps,xrtyps) {Id.typ} =
@@ -119,8 +118,7 @@ let uncurry_rtyp t get_rtyp f =
   let typ =try Trans.assoc_typ f t  with Not_found ->assert false in
   let rtyp = get_rtyp f in
   let rtyp' = correct_arg_refer @@ uncurry_typ (RT.copy_fun_arg_to_base rtyp) typ in
-  if debug()
-  then Format.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp Print.typ typ RT.print rtyp';
+  Debug.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp Print.typ typ RT.print rtyp';
   if !!Flag.print_ref_typ_debug
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
@@ -144,7 +142,7 @@ let rec remove_pair_typ = function
         match typ with (* Function types cannot have predicates *)
         | TFun _ ->
             let x1 = Id.new_var ~name:(Id.name x) (elim_tpred @@ Id.typ x) in
-            let x2 = Id.new_var ~name:"f" typ in
+            let x2 = Id.new_var typ in
             let ps' = List.map (subst y @@ make_pair (make_var x1) (make_var x2)) ps in
             let x' = Id.set_typ x (TPred(x1,ps')) in
             remove_pair_typ @@ TTuple [x'; Id.new_var typ]
@@ -249,14 +247,14 @@ let remove_pair ?(check=true) t =
   assert (check => List.mem ACPS t.attr);
   let t' =
     t
-    |@!!debug&> Format.printf "remove_pair INPUT: %a@." Print.term
+    |@> Debug.printf "remove_pair INPUT: %a@." Print.term
     |> remove_pair
-    |@!!debug&> Format.printf "remove_pair remove_pair: %a@." Print.term
+    |@> Debug.printf "remove_pair remove_pair: %a@." Print.term
     |@check&> Type_check.check -$- typ_result
     |> Trans.beta_affine_fun
-    |@!!debug&> Format.printf "remove_pair beta_affine_fun: %a@." Print.term
+    |@> Debug.printf "remove_pair beta_affine_fun: %a@." Print.term
     |> Trans.beta_size1
-    |@!!debug&> Format.printf "remove_pair beta_size1: %a@." Print.term
+    |@> Debug.printf "remove_pair beta_size1: %a@." Print.term
   in
   t', uncurry_rtyp t
 

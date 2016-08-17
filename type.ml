@@ -1,7 +1,7 @@
 
 open Util
 
-let debug () = List.mem "Type" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Type" end)
 
 type 'a t =
   | TUnit
@@ -31,12 +31,24 @@ let _TFun x typ = TFun(x, typ)
 let typ_unknown = TData "???"
 
 
+let var_name_of typ =
+  match typ with
+  | TUnit -> "u"
+  | TBool -> "b"
+  | TInt -> "n"
+  | TFun _ -> "f"
+  | TTuple _ -> "p"
+  | TApp(TList,_) -> "xs"
+  | _ -> "x"
+
+let new_var typ = Id.new_var ~name:(var_name_of typ) typ
+
 let make_tfun typ1 typ2 =
-  TFun(Id.new_var typ1, typ2)
+  TFun(new_var typ1, typ2)
 
 
 let make_ttuple typs =
-  TTuple (List.map Id.new_var typs)
+  TTuple (List.map new_var typs)
 
 let make_ttuple' typs =
   match typs with

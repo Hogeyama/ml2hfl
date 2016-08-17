@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug () = List.mem "Trans" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Trans" end)
 
 
 let flatten_tvar = (make_trans ()).tr_term
@@ -174,7 +174,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         r := Some TUnit;
         define_randvalue "" ed typ
     | TApp(TList, [typ']) ->
-        let u = Id.new_var ~name:"u" TUnit in
+        let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
         let (env'',defs'),t_typ' = define_randvalue "" (env', defs) typ' in
@@ -195,7 +195,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
     | TData s -> (env, defs), make_randvalue_unit typ
     | TVariant labels ->
-        let u = Id.new_var ~name:"u" TUnit in
+        let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (TData name,f)::(typ,f)::env in
         let n = List.length labels in
@@ -215,7 +215,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         let (env'',defs'),t = (env'', defs'), make_match randint_unit_term (List.map2 aux labels itss) in
         (env'', (f,[u],t)::defs'), make_app (make_var f) [unit_term]
     | TRecord fields ->
-        let u = Id.new_var ~name:"u" TUnit in
+        let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (TData name,f)::(typ,f)::env in
         let (env'',defs'),t =
@@ -1057,7 +1057,7 @@ let insert_param_funarg_typ typ =
       let xs' = List.map insert_param_funarg.tr_var xs in
       let xs'' =
         if should_insert (List.map Id.typ xs)
-        then (Id.new_var ~name:"u" TUnit) :: xs'
+        then (Id.new_var TUnit) :: xs'
         else xs'
       in
       List.fold_right (fun x typ -> TFun(x,typ)) xs'' (insert_param_funarg.tr_typ typ')
@@ -1072,7 +1072,7 @@ let insert_param_funarg_term t =
         let xs' = List.map insert_param_funarg.tr_var xs in
         let xs'' =
           if should_insert @@ List.map Id.typ xs
-          then (Id.new_var ~name:"u" TUnit) :: xs'
+          then (Id.new_var TUnit) :: xs'
           else xs'
         in
         (List.fold_right make_fun xs'' (insert_param_funarg.tr_term t')).desc
@@ -1089,7 +1089,7 @@ let insert_param_funarg_term t =
           let xs' = List.map insert_param_funarg.tr_var xs in
           let xs'' =
             if should_insert @@ List.map Id.typ xs
-            then Id.new_var ~name:"u" TUnit :: xs'
+            then Id.new_var TUnit :: xs'
             else xs'
           in
           insert_param_funarg.tr_var f, xs'', insert_param_funarg.tr_term t
@@ -1284,6 +1284,7 @@ let make_ext_fun_def f =
 
 let make_ext_funs ?(fvs=[]) env t =
   let dbg = 0=1 in
+  let typ_exn = find_exn_typ t in
   let t' = remove_defs (Ref_type.Env.dom env) t in
   if dbg then Format.printf "MEF t': %a@." Print.term t';
   if dbg then Format.printf "MEF env: %a@." Ref_type.Env.print env;
@@ -1304,7 +1305,7 @@ let make_ext_funs ?(fvs=[]) env t =
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
-      let genv',cenv',t = Ref_type.generate genv cenv typ in
+      let genv',cenv',t = Ref_type_gen.generate typ_exn genv cenv typ in
       let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
       genv', cenv', (f',[],t)::defs
     in
@@ -2107,12 +2108,9 @@ let copy_poly_funs_desc map desc =
       let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
       let t2'' = inst_tvar_tunit t2' in
       let map_rename,t2''' = rename_poly_funs f t2'' in
-      if !!debug then
-        begin
-          Format.printf "COPY: @[";
-          List.iter (fun (_,x) -> Format.printf "%a;@ " Print.id_typ x) map_rename;
-          Format.printf "@.";
-        end;
+      Debug.printf "COPY: @[";
+      List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
+      Debug.printf "@.";
       if map_rename = [] then
         let map1,t1' = copy_poly_funs.fold_tr_term map2 t1 in
         (f,f)::map1, (inst_tvar_tunit @@ make_let_f flag [f, xs, t1'] t2').desc
@@ -2212,11 +2210,15 @@ let set_main t =
     in
     let t'' = inst_randval t' in
     Some (Id.name f, List.length xs), t''
-let set_main = set_main |- Pair.map_snd (flatten_tvar |- inline_var_const)
 
 
 
-let ref_to_assert ref_env t =
+let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
+  let typ_exn =
+    match typ_exn with
+    | None -> find_exn_typ t
+    | Some typ -> Some typ
+  in
   let ref_env = Ref_type.Env.to_list ref_env in
   let main =
     let aux (f, typ) =
@@ -2227,7 +2229,7 @@ let ref_to_assert ref_env t =
           Format.printf "  Spec: %a@." Ref_type.print typ;
           fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
         end;
-      let genv',cenv',t_typ = Ref_type.generate_check [] [] f typ in
+      let genv',cenv',t_typ = Ref_type_gen.generate_check typ_exn ~make_fail [] [] f typ in
       let defs = List.map snd (genv' @ cenv') in
       make_letrecs defs @@ make_assert t_typ
     in
@@ -2617,3 +2619,14 @@ let bool_eta_reduce_term t =
   | _ -> t'
 let () = bool_eta_reduce.tr_term <- bool_eta_reduce_term
 let bool_eta_reduce = bool_eta_reduce.tr_term
+
+
+
+let eta_tuple = make_trans ()
+let eta_tuple_desc desc =
+  match eta_tuple.tr_desc_rec desc with
+  | Proj(i, {desc=Tuple ts}) when List.for_alli (fun j t -> i = j || has_no_effect t) ts ->
+      (List.nth ts i).desc
+  | desc' -> desc'
+let () = eta_tuple.tr_desc <- eta_tuple_desc
+let eta_tuple = eta_tuple.tr_term

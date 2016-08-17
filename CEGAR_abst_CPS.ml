@@ -5,10 +5,10 @@ open CEGAR_type
 open CEGAR_util
 open CEGAR_abst_util
 
-let debug () = List.mem "CEGAR_abst_CPS" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "CEGAR_abst_CPS" end)
 
 let abst_arg x typ =
-  if debug() then Format.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
+  Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
   match typ with
   | TBase(_,ps) ->
       begin
@@ -31,34 +31,30 @@ let make_pts x typ =
 let rec beta_reduce_term = function
   | Const c -> Const c
   | Var x -> Var x
+  | App(App(App(Const If, Const True), t2), _) -> beta_reduce_term t2
+  | App(App(App(Const If, Const False), _), t3) -> beta_reduce_term t3
   | App(t1, t2) ->
       let t1' = beta_reduce_term t1 in
-      let t2' = beta_reduce_term t2 in
       begin
         match t1' with
-        | Fun(x,_,t1') -> beta_reduce_term (subst x t2' t1')
-        | _ -> App(t1', t2')
+        | Fun(x,_,t1') -> beta_reduce_term @@ subst x t2 t1'
+        | _ -> App(t1', beta_reduce_term t2)
       end
   | Fun(x, typ, t) -> Fun(x, typ, beta_reduce_term t)
   | Let _ -> assert false
 let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
-let rec expand_nonrec orig_fun_list force {env;defs;main;info} =
-  let non_rec = get_nonrec defs main orig_fun_list force in
-  let cnt = ref 0 in
-  let rec loop defs =
-    if false then Format.printf "%d, %d@." (incr cnt; !cnt) @@ List.fold_left (fun acc (_,_,_,_,t) -> acc + size t) 0 defs;
-    let aux (f,xs,t1,e,t2) = f, xs, subst_map non_rec t1, e, subst_map non_rec t2 in
-    let defs' = List.map aux defs in
-    if defs = defs'
-    then defs
-    else loop defs'
+let rec expand_nonrec {env;defs;main;info} =
+  let non_rec = info.nonrec in
+  let aux (f,xs,t1,e,t2) = f, xs, subst_map non_rec t1, e, subst_map non_rec t2 in
+  let defs' =
+    defs
+    |> List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f non_rec)
+    |> List.map aux
+    |> List.map beta_reduce_def
   in
-  let defs' = List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f non_rec) defs in
-  let defs'' = loop defs' in
-  let defs''' = List.map beta_reduce_def defs'' in
-  {env; defs=defs'''; main; info}
+  {env; defs=defs'; main; info}
 
 
 
@@ -149,7 +145,7 @@ let trans_eager prog =
 
 
 let rec eta_expand_term_aux env t typ =
-  if false && debug() then Format.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if false then Debug.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match typ with
   | TBase _ -> t
   | TFun(typ1,typ2) ->
@@ -166,7 +162,7 @@ let rec eta_expand_term_aux env t typ =
   | _ -> assert false
 
 let rec eta_expand_term env t typ =
-  if debug() then Format.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  Debug.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
   | Const (Rand(TInt,_))
@@ -243,7 +239,7 @@ let rec abstract_rand_int n must env cond pts xs t =
   let t' = hd @@ abstract_term must env cond pts t typ' in
   let x = new_id "r" in
   let preds' = preds (Var x) in
-  if !Flag.debug_level > 0 then Format.printf "preds': %a@." (List.print CEGAR_print.term) preds';
+  NORDebug.printf "preds': %a@." (List.print CEGAR_print.term) preds';
   let rec make_combs n =
     if n <= 0
     then [[]]
@@ -368,7 +364,7 @@ and abstract_term must env cond pts t typ =
   | Const _ -> assert false
   | Let _ -> assert false
   in
-  let dbg = false && !!debug in
+  let dbg = false && !!Debug.check in
   if dbg then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   if dbg then Format.printf "abstract_term r: %a@." (List.print CEGAR_print.term) r;
   r
@@ -398,13 +394,13 @@ let abstract_def env (f,xs,t1,e,t2) =
         typ', (x,typ1)::env'
   in
   let typ,env' = decomp_typ (try List.assoc f env with Not_found -> assert false) xs in
-  if debug() then Format.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
+  Debug.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@@ env in
   let pts = List.flatten_map (Fun.uncurry make_pts) env' in
   let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
-  if debug() then Format.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
-  if debug() then Flag.print_fun_arg_typ := true;
-  if debug() then Format.printf "%s:: %a@." f CEGAR_print.term t2;
+  Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
+  if Debug.check() then Flag.print_fun_arg_typ := true;
+  Debug.printf "%s:: %a@." f CEGAR_print.term t2;
   let t2' = hd (abstract_term None env'' [t1] pts t2 typ) in
   let t2'' = eta_reduce_term t2' in
   if e <> [] && t1 <> Const True then
@@ -473,16 +469,16 @@ let abstract_prog prog =
   let attr = List.remove_all prog.info.attr ACPS in
   {env; defs; main=prog.main; info={prog.info with attr}}
 
-let pr s prog = if !!debug then Format.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
+let pr s prog = Debug.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
 
 let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
   |@> pr "INPUT"
-  |&!Flag.expand_nonrec&> expand_nonrec orig_fun_list force
-  |@!Flag.expand_nonrec&> pr "EXPAND_NONREC"
+  |> expand_nonrec
+  |@> pr "EXPAND_NONREC"
   |> CEGAR_trans.simplify_if
-  |@!Flag.expand_nonrec&> pr "SIMPLIFY_IF"
+  |@> pr "SIMPLIFY_IF"
   |> eta_expand
   |@> pr "ETA_EXPAND"
   |> abstract_prog

@@ -75,7 +75,7 @@ let rec value2tree v =
      Rose_tree.Node (s, List.map value2tree children)
   | _ -> assert false
 
-let cegar prog0 labeled info is_cp ce_rules prog =
+let cegar prog0 labeled is_cp ce_rules prog =
   Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules;
   let start_symbol = fst @@ List.hd ce_rules in
   let ce_value = expand_tree ce_rules !Flag.expand_ce_count (Var start_symbol) in
@@ -83,4 +83,4 @@ let cegar prog0 labeled info is_cp ce_rules prog =
   Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
 
   (*feasiblity checking and refinement is common with that of non-termination*)
-  CEGAR_non_term.cegar prog0 labeled info is_cp ce_tree prog
+  CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog

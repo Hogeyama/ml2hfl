@@ -12,7 +12,7 @@ exception EvalTerminate
 
 module S = Syntax
 
-let debug () = List.mem "CEGAR_trans" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "CEGAR_trans" end)
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 
@@ -475,12 +475,8 @@ let rename_prog prog =
       f, f'
   in
   let map = List.rev_map make_map_fun prog.env in
-  let () =
-    if debug()
-    then
-      (List.iter (fun (f,f') -> Format.printf "rename: %s ==> %s@." f f') map;
-       Format.printf "@.")
-  in
+  List.iter (fun (f,f') -> Debug.printf "rename: %s ==> %s@." f f') map;
+  Debug.printf "@.";
   let var_names' = List.map snd map in
   let rename_var map x = List.assoc x map in
   let rename_def (f,xs,t1,e,t2) =
@@ -540,7 +536,7 @@ let rec trans_ref_type = function
 let trans_term = trans_term "" [] []
 
 let trans_prog ?(spec=[]) t =
-  let pr p s t = if debug () then Format.printf "##[trans_prog] %s:@.%a@.@." s p t in
+  let pr p s t = Debug.printf "##[trans_prog] %s:@.%a@.@." s p t in
   let pr1 = pr Print.term' in
   let pr2 = pr CEGAR_print.prog_typ in
   let _ext_env = List.map (Pair.map trans_var trans_typ) @@ Trans.make_ext_env t in
@@ -728,7 +724,7 @@ let assoc_def labeled defs ce acc t =
 let init_cont _ acc _ = List.rev acc
 
 let rec trans_ce_aux labeled ce acc defs t k =
-  if debug () then Format.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
+  Debug.printf "trans_ce_aux[%d,%d]: %a@." (List.length ce) (List.length acc) CEGAR_print.term t;
   match t with
   | Const (Rand(TInt,_)) -> assert false
   | Const c -> k ce acc (Const c)
@@ -834,3 +830,38 @@ let add_fail_to_end prog =
     else (f, args, cond, e, t)
   in
   map_def_prog aux prog
+
+
+let rec beta_subst_aux x (y,t1) t2 =
+  match t2 with
+  | Const c -> Const c
+  | Var y when x = y -> t1
+  | Var y -> Var y
+  | App(t21,t22) ->
+      let t21' = beta_subst_aux x (y,t1) t21 in
+      let t22' = beta_subst_aux x (y,t1) t22 in
+      begin
+        match t21' with
+        | Fun(y',_,t211) -> beta_subst y' t22' t211
+        | _ -> App(t21', t22')
+      end
+  | Let(y,t21,t22) ->
+      let t22' =
+        if x = y then
+          t22
+        else
+          beta_subst_aux x (y,t1) t22
+      in
+      Let(y, beta_subst_aux x (y,t1) t21, t22')
+  | Fun(y,typ,t21) ->
+      let t21' =
+        if x = y then
+          t1
+        else
+          beta_subst_aux x (y,t1) t21
+      in
+      Fun(y, typ, t21')
+and beta_subst x t1 t2 =
+  match t1 with
+  | Fun(y,_,t11) -> beta_subst_aux x (y,t11) t2
+  | _ -> subst x t1 t2

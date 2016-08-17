@@ -56,33 +56,33 @@ let place_signature = function
 
 let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
 let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string v ^ place_signature (show_typ (Id.typ v)))
-let rec show_typed_term t = show_term t.desc
-and show_term = function
+let rec show_term t = show_desc t.desc
+and show_desc = function
   | Const Unit -> "()"
   | Const True -> "true"
   | Const False -> "false"
   | Const (Int n) -> parens (string_of_int n)
   | App ({desc=Const(RandValue(TInt,_))}, _) -> "Random.int 0"
-  | App ({desc=Var {Id.name = div}}, [n; m]) when div = "Pervasives./" -> parens (show_typed_term n ^ " / " ^ show_typed_term m)
+  | App ({desc=Var {Id.name = div}}, [n; m]) when div = "Pervasives./" -> parens (show_term n ^ " / " ^ show_term m)
   | Var v -> modify_id_typ v
-  | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_typed_term body
+  | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_term body
   | App ({desc=Event("fail", _)}, _) -> "assert false"
-  | App (f, args) -> show_typed_term f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_typed_term a)) "" args
-  | If (t1, t2, t3) -> "if " ^ show_typed_term t1 ^ " then " ^ show_typed_term t2 ^ " else " ^ show_typed_term t3
+  | App (f, args) -> show_term f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_term a)) "" args
+  | If (t1, t2, t3) -> "if " ^ show_term t1 ^ " then " ^ show_term t2 ^ " else " ^ show_term t3
   | Let (_, [], _) -> assert false
   | Let (rec_flag, b::bs, t) ->
     let show_bind (x, args, body) =
       modify_id x
       ^ (List.fold_left (fun acc a -> acc ^ " " ^ modify_id_typ a) "" args)
       ^ "="
-      ^ show_typed_term body in
+      ^ show_term body in
     (if rec_flag = Nonrecursive then "let " else "let rec ")
     ^ show_bind b
     ^ List.fold_left (fun acc x -> acc ^ " and " ^ show_bind x) "" bs
     ^ " in "
-    ^ show_typed_term t
-  | BinOp (binop, t1, t2) -> parens (show_typed_term t1) ^ show_binop binop ^ parens (show_typed_term t2)
-  | Not t -> "not " ^ parens (show_typed_term t)
+    ^ show_term t
+  | BinOp (binop, t1, t2) -> parens (show_term t1) ^ show_binop binop ^ parens (show_term t2)
+  | Not t -> "not " ^ parens (show_term t)
   | t -> raise (Invalid_argument "show_term")
 and show_binop = function
   | Eq -> "="
@@ -115,8 +115,8 @@ let restore_ids =
 
 let retyping t type_of_state  =
   stateType := List.map show_typ type_of_state;
-  (* Format.eprintf "@.%s@." (show_typed_term t); *)
-  let lb = t |> show_typed_term
+  (* Format.eprintf "@.%s@." (show_term t); *)
+  let lb = t |> show_term
              |> Lexing.from_string
   in
   let () = lb.Lexing.lex_curr_p <-
@@ -129,12 +129,12 @@ let retyping t type_of_state  =
   let parsed = Parser_wrapper.from_use_file orig in
   let parsed = restore_ids parsed in
   let _ =
-    if true && !Flag.debug_level > 0
-    then Format.printf "transformed::@. @[%a@.@." Print.term parsed
+    if true
+    then Util.NORDebug.printf "transformed::@. @[%a@.@." Print.term parsed
   in
   (orig, parsed)
 
-let extract_functions (target_program : typed_term) =
+let extract_functions (target_program : term) =
   let ext acc (id, args, body) = if args = [] then acc else {id=id; args=args}::acc in
   let rec iter t =
     match t.desc with
@@ -273,7 +273,7 @@ let restore_type state = function
     in restore_type' e 0 t
   | _ -> raise (Invalid_argument "restore_type")
 
-let to_holed_programs (target_program : typed_term) =
+let to_holed_programs (target_program : term) =
   let defined_functions = extract_functions target_program in
   let state_template = build_state defined_functions in
   let no_checking_function = ref None in (** split-callsite **)
@@ -395,7 +395,6 @@ let to_holed_programs (target_program : typed_term) =
   in state_inserted_programs
 
 let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver = f_no_} as holed) =
-  let debug = !Flag.debug_level > 0 in
   let f_no = match f_no_ with Some {id = x} -> x | None -> assert false in
   let counter = ref 0 in
   let replace_index = ref (-1) in
@@ -415,10 +414,10 @@ let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver 
 	counter := 0;
 	replace_index := !replace_index + 1;
 	let holed' = {holed with program = everywhere_expr aux_subst_each t} in
-	if debug then Format.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Print.term holed'.program;
-	if debug then Format.printf "is_update: %s@." (string_of_bool !is_update);
-	if debug then Format.printf "counter: %s@." (string_of_int !counter);
-	if debug then Format.printf "replace_index: %s@." (string_of_int !replace_index);
+	Util.NORDebug.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Print.term holed'.program;
+	Util.NORDebug.printf "is_update: %s@." (string_of_bool !is_update);
+	Util.NORDebug.printf "counter: %s@." (string_of_int !counter);
+	Util.NORDebug.printf "replace_index: %s@." (string_of_int !replace_index);
 	if !is_update then
 	  holed' :: subst_each t
 	else
@@ -469,7 +468,7 @@ let rec separate_to_CNF = function
   | t -> [t]
 
 (* plug holed program with predicate *)
-let pluging (holed_program : holed_program) (predicate : typed_term) =
+let pluging (holed_program : holed_program) (predicate : term) =
   let hole2pred = function
     | {desc = Var {Id.name = "__HOLE__"}} -> predicate
     | t -> t

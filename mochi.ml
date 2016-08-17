@@ -24,56 +24,62 @@ let output_csv result =
   Format.fprintf ocf "@]@?";
   close_out oc
 
+let print_info_default () =
+  if !Flag.exp2 then output_csv !Flag.result;
+  if !Flag.add_closure_exparam && !Flag.result = "terminating" then
+    Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
+  if !Flag.mode = Flag.Termination && !Flag.result = "terminating" then
+    begin
+      List.iter
+        (fun (f_name, (cycles, pred)) ->
+         Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
+         if !Flag.add_closure_exparam then
+           let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
+           if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
+        !Termination_loop.lrf
+    end;
+  if !Flag.mode = Flag.FairTermination
+  then Format.printf "cycles: %d@." !Flag.fair_term_loop_count;
+  Format.printf "CEGAR-cycles: %d@." !Flag.cegar_loop;
+  Format.printf "total: %.3f sec@." !!get_time;
+  Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
+  Format.printf "  mc: %.3f sec@." !Flag.time_mc;
+  Format.printf "  refine: %.3f sec@." !Flag.time_cegar;
+  if !Flag.relative_complete then
+    Format.printf "    exparam: %.3f sec@." !Flag.time_parameter_inference;
+  Format.pp_print_flush Format.std_formatter ()
+
+let print_info_exp () =
+  Format.printf "{";
+  Format.printf "\"filename\": %S, " !Flag.filename;
+  Format.printf "\"result\": %S, " !Flag.result;
+  Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
+  if !Flag.mode = Flag.Termination then
+    begin
+      Format.printf "\"ranking\": {";
+      List.iter
+        (fun (f_name, (cycles, pred)) ->
+         Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
+        !Termination_loop.lrf;
+      Format.printf " \"_\":{} }, "
+    end;
+  Format.printf "\"total\": \"%.3f\", " !!get_time;
+  Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
+  Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
+  Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
+  Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
+  Format.printf "}@."
+
+let print_info_modular () =
+  Format.printf "total: %.3f sec@." !!get_time
+
 let print_info () =
-  if !Flag.exp
-  then
-    begin
-      Format.printf "{";
-      Format.printf "\"filename\": %S, " !Flag.filename;
-      Format.printf "\"result\": %S, " !Flag.result;
-      Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
-      if !Flag.mode = Flag.Termination then
-        begin
-          Format.printf "\"ranking\": {";
-          List.iter
-            (fun (f_name, (cycles, pred)) ->
-             Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
-            !Termination_loop.lrf;
-          Format.printf " \"_\":{} }, "
-        end;
-      Format.printf "\"total\": \"%.3f\", " !!get_time;
-      Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
-      Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
-      Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
-      Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
-      Format.printf "}@."
-    end
+  if !Flag.exp then
+    print_info_exp ()
+  else if !Flag.modular then
+    print_info_modular ()
   else
-    begin
-      if !Flag.exp2 then output_csv !Flag.result;
-      if !Flag.add_closure_exparam && !Flag.result = "terminating" then
-        Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
-      if !Flag.mode = Flag.Termination && !Flag.result = "terminating" then
-        begin
-          List.iter
-            (fun (f_name, (cycles, pred)) ->
-             Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
-             if !Flag.add_closure_exparam then
-               let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
-               if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
-            !Termination_loop.lrf
-        end;
-      if !Flag.mode = Flag.FairTermination
-      then Format.printf "cycles: %d@." !Flag.fair_term_loop_count;
-      Format.printf "CEGAR-cycles: %d@." !Flag.cegar_loop;
-      Format.printf "total: %.3f sec@." !!get_time;
-      Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
-      Format.printf "  mc: %.3f sec@." !Flag.time_mc;
-      Format.printf "  refine: %.3f sec@." !Flag.time_cegar;
-      if !Flag.relative_complete then
-        Format.printf "    exparam: %.3f sec@." !Flag.time_parameter_inference;
-      Format.pp_print_flush Format.std_formatter ()
-    end
+    print_info_default ()
 
 
 let get_commit_hash () =
@@ -123,13 +129,13 @@ let main_termination orig parsed =
   let open BRA_util in
   (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
   let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-  let _ = if !Flag.debug_level > 0 then Format.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
+  let _ = NORDebug.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
   let parsed = BRA_transform.regularization parsed in
-  let _ = if !Flag.debug_level > 0 then Format.printf "regularized::@. @[%a@.@." Print.term parsed in
+  let _ = NORDebug.printf "regularized::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-  let _ = if !Flag.debug_level > 0 && !Flag.add_closure_depth then Format.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_depth then NORDebug.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-  let _ = if !Flag.debug_level > 0 && !Flag.add_closure_exparam then Format.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_exparam then NORDebug.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
   let holed_list = BRA_transform.to_holed_programs parsed in
   let result =
     try
@@ -197,8 +203,7 @@ let main in_channel =
     let orig = Parse.use_file lb in
     Id.set_counter (Ident.current_time () + 1000);
     let parsed = Parser_wrapper.from_use_file orig in
-    if !Flag.debug_level > 0
-    then Format.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
+    NORDebug.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
     if !Flag.randint_refinement_log
     then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print Format.std_formatter in
@@ -238,11 +243,9 @@ let rec arg_spec () =
      "-only-result",
        Arg.Unit (fun () ->
                  Flag.only_result := true;
-                 Flag.debug_level := 0;
                  Flag.print_progress := false),
        " Show only result";
-     "-debug", Arg.Set_int Flag.debug_level, "<n>  Set debug level";
-     "-debug-module",
+     "-debug",
      Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module),
      "<modules>  Set debug flag of modules (comma-separated)";
      "-debug-abst", Arg.Set Flag.debug_abst, " Debugging abstraction";
@@ -252,13 +255,11 @@ let rec arg_spec () =
      "-exp",
        Arg.Unit (fun () ->
                  Flag.only_result := true;
-                 Flag.debug_level := 0;
-                 Flag.print_progress := false;
                  Flag.exp := true),
        " For experiments";
      "-exp2",
        Arg.Unit (fun () ->
-                 Flag.debug_level := 0;
+                 Flag.only_result := true;
                  Flag.exp2 := true),
        " Experiment mode (output mochi_exp.csv)";
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
@@ -267,6 +268,7 @@ let rec arg_spec () =
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options (for completion)";
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
+     "-print-as-ocaml", Arg.Set Flag.print_as_ocaml, " Print terms in OCaml syntax";
      (* preprocessing *)
      "-fail-as-excep", Arg.Set Flag.fail_as_exception, " Treat fail as an exception";
      "-replace-const", Arg.Set Flag.replace_const, " Replace unchanging variables with constants";

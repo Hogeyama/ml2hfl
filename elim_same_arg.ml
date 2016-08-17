@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-let debug () = List.mem "Elim_same_arg" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "Elim_same_arg" end)
 
 
 (*let tbl = Hashtbl.create 0
@@ -185,7 +185,7 @@ let trans_desc env desc =
           in
           aux same_args
       in
-      if debug() then
+      if Debug.check() then
         begin
           Color.printf Color.Reverse "%a: [" Id.print f;
           List.iter (fun (x,y) -> Color.printf Color.Reverse "%d,%d; " x y) same_args';

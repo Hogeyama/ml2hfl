@@ -55,7 +55,7 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
   | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
   | Var {Id.name="Random.int"}, [t] ->
-      let x = Id.new_var ~name:"n" TInt in
+      let x = Id.new_var TInt in
       make_let [x, [], randint_unit_term] @@
         make_assume
           (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
@@ -348,7 +348,7 @@ let rec from_expression {exp_desc=exp_desc; exp_loc=_; exp_type=typ; exp_env=env
         let e' = from_expression e in
         match p'.pat_desc with
         | PVar x -> x, [], e'
-        | PConst t when t = unit_term -> Id.new_var ~name:"u" TUnit, [], e'
+        | PConst t when t = unit_term -> Id.new_var TUnit, [], e'
         | _ ->
             if flag = Recursive
             then raise (Fatal "Only variables are supported as left-hand side of 'let rec'")

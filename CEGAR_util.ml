@@ -525,7 +525,11 @@ let assoc_fun_def defs f =
       make_fun xs1 (make_if t21 t22 t12)
   | _ -> Format.eprintf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
 
-let get_nonrec defs main orig_fun_list force =
+let get_nonrec red_CPS prog =
+  let defs = prog.defs in
+  let main = prog.main in
+  let orig_fun_list = prog.info.orig_fun_list in
+  let force = prog.info.inlined in
   let check (f,xs,t1,e,t2) =
     let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
     let used = List.count (fun (_,_,_,_,t2) -> List.mem f @@ get_fv t2) defs in
@@ -537,16 +541,45 @@ let get_nonrec defs main orig_fun_list force =
   in
   let defs' = List.filter check defs in
   let non_rec = List.rev_map (fun (f,_,_,_,_) -> f, assoc_fun_def defs f) defs' in
-  if !Flag.expand_nonrec_init
-  then non_rec
-  else
-    let orig_fun_list' = List.Set.diff orig_fun_list force in
-    List.filter_out (fun (f,_) -> List.mem f orig_fun_list') non_rec
+  let non_rec' =
+    if !Flag.expand_nonrec_init then
+      non_rec
+    else
+      let orig_fun_list' = List.Set.diff orig_fun_list force in
+      List.filter_out (fun (f,_) -> List.mem f orig_fun_list') non_rec
+  in
+  let non_rec'' =
+    let rec fixed_point non_rec =
+      let updated,non_rec' =
+        let rec aux (updated,acc) non_rec =
+          match non_rec with
+          | [] -> updated, acc
+          | (f,t)::non_rec' ->
+              let sbst t = red_CPS @@ subst_map (acc@@@non_rec') t in
+              let t' = sbst t in
+              let updated' = updated || t' <> t in
+              aux (updated',(f,t')::acc) non_rec'
+        in
+        aux (false,[]) non_rec
+      in
+      if updated then
+        fixed_point non_rec'
+      else
+        non_rec
+    in
+    fixed_point non_rec'
+  in
+  let non_rec''' =
+    if false && List.mem ACPS prog.info.attr then
+      List.map (Pair.map_snd red_CPS) non_rec''
+    else
+      non_rec''
+  in
+  non_rec'''
 
 
-let print_prog_typ' orig_fun_list force fm {env;defs;main;info} =
-  let non_rec = get_nonrec defs main orig_fun_list force in
-  let env' = List.filter_out (fun (f,_) -> List.mem_assoc f non_rec) env in
+let print_prog_typ' force fm {env;defs;main;info} =
+  let env' = List.filter_out (fun (f,_) -> List.mem_assoc f info.nonrec) env in
   CEGAR_print.prog_typ fm {env=env';defs;main;info}
 
 
@@ -734,5 +767,5 @@ let rec merge_similar_paths l =
   let l' = merge_similar_paths_aux l in
   if List.length l = List.length l' then l else merge_similar_paths l'
 
-let inlined_functions orig_fun_list force {defs;main} =
-  List.unique @@ List.map fst @@ get_nonrec defs main orig_fun_list force
+let inlined_functions {info} =
+  List.unique @@ List.map fst @@ info.nonrec

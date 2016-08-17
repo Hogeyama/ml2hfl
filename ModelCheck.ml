@@ -4,7 +4,7 @@ open CEGAR_type
 open CEGAR_util
 open ModelCheck_util
 
-let debug () = List.mem "ModelCheck" !Flag.debug_module
+module Debug = Debug.Make(struct let cond = Debug.Module "ModelCheck" end)
 
 type filename = string
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
@@ -265,8 +265,7 @@ let rec beta_reduce prog =
     else beta_reduce prog'
 
 let pr s t =
-  if debug ()
-  then Format.printf "##[ModelCheck] %s:@.%a@.@." s CEGAR_print.prog_typ t;
+  Debug.printf "##[ModelCheck] %s:@.%a@.@." s CEGAR_print.prog_typ t;
   ignore @@ Typing.infer t
 
 let preprocess prog =

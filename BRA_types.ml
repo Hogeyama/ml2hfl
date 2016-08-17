@@ -6,15 +6,15 @@ module InnerState = Map.Make(
     let compare = Id.compare
   end)
 
-type variables_info = { update_flag : Syntax.typed_term
-		      ; set_flag : Syntax.typed_term
-		      ; prev_set_flag : Syntax.typed_term
-                      ; prev_statevars : Syntax.typed_term list
-                      ; statevars : Syntax.typed_term list
-                      ; argvars : Syntax.typed_term list
+type variables_info = { update_flag : Syntax.term
+		      ; set_flag : Syntax.term
+		      ; prev_set_flag : Syntax.term
+                      ; prev_statevars : Syntax.term list
+                      ; statevars : Syntax.term list
+                      ; argvars : Syntax.term list
 	              }
 
-type state = { initial_state : Syntax.typed_term list
+type state = { initial_state : Syntax.term list
              ; statetable : variables_info InnerState.t }
 
 type function_info = { id : Syntax.id
@@ -26,7 +26,7 @@ type coefficient_info = { coeffs : int list
 			}
 
 type predicate_info = { variables : Syntax.id list
-		      ; substToCoeffs : Syntax.typed_term -> Syntax.typed_term
+		      ; substToCoeffs : Syntax.term -> Syntax.term
 		      ; prev_variables : Syntax.id list
 		      ; errorPaths : Fpat.Formula.t list
 		      ; errorPathsWithExparam : Fpat.Formula.t list
@@ -51,9 +51,9 @@ let pr_ranking_function fm { variables = vs; coefficients = coefficients} =
     | [] -> Format.fprintf fm "0"
     | c::cs -> Format.fprintf fm "%s" (List.fold_left (fun acc c' -> acc ^ ", " ^ show_ranking_function c') (show_ranking_function c) cs)
 
-let preprocessForTerminationVerification = ref (fun (x : Syntax.typed_term) -> x)
+let preprocessForTerminationVerification = ref (fun (x : Syntax.term) -> x)
 
-type holed_program = { program : Syntax.typed_term
+type holed_program = { program : Syntax.term
 		     ; verified : function_info
 		     ; verified_no_checking_ver : function_info option
 		     ; state : state
