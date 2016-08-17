@@ -507,7 +507,11 @@ let get_tfun_effect = function
 let make_app' t1 ts =
   match t1.desc, ts with
   | Fun(x,t1'), [t2] -> subst x t2 t1'
-  | Fun(x1,{desc=Fun(x2,t1')}), [t2;t3] -> subst x1 t2 @@ subst x2 t3 t1'
+  | Fun(x1,{desc=Fun(x2,t1')}), [t2;t3] ->
+      if count_occurrence x2 t1' >= 2 then (* t3 must be a hanadler *)
+        subst x1 t2 @@ make_let [x2,[],t3] t1'
+      else
+        subst x1 t2 @@ subst x2 t3 t1'
   | _ -> make_app t1 ts
 
 let make_app_cont e t k =

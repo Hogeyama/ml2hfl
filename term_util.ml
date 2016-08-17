@@ -84,12 +84,12 @@ let rec make_app t ts =
   | App(t1,ts1), TFun(x,typ), t2::ts2 ->
       check (Id.typ x) t2.typ;
       make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
-  | App(t1,ts1), typ, t2::ts2 when typ = typ_unknown ->
+  | App(t1,ts1), typ, t2::ts2 when typ = typ_unknown || typ = TVar {contents=None} ->
       make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
   | _, TFun(x,typ), t2::ts ->
       check (Id.typ x) t2.typ;
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
-  | _, typ, t2::ts when typ = typ_unknown ->
+  | _, typ, t2::ts when typ = typ_unknown || typ = TVar {contents=None} ->
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
   | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
   | _ ->
