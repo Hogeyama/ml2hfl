@@ -3,6 +3,7 @@ open Util
 open CEGAR_util
 
 let expansion_iter_count_ref = ref 0
+let debug () = List.mem "CEGAR_trans" !Flag.debug_module
 
 (**
    [x -> ex1] ex2
@@ -81,21 +82,21 @@ let rec value2tree v =
 let rec expansion_loop prog0 labeled is_cp ce_rules prog start_symbol =
   let count = !expansion_iter_count_ref in
   try
-    Format.printf "Expand counterexample: Size %d@." count;
+    if debug () then Format.printf "Expand counterexample: Size %d@." count;
     Flag.break_expansion_ref := false;
     let ce_value = expand_tree ce_rules count (Var start_symbol) in
     let ce_tree = value2tree ce_value in
-    Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
+    if debug () then Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
     (*feasiblity check and refinement is common with that of non-termination*)
     CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog
   with
   | CEGAR_syntax.NoProgress ->
-     (Format.printf "Increase iteration of counterexample expansion@.";
+     (if debug () then Format.printf "Increase iteration of counterexample expansion@.";
       expansion_iter_count_ref := count + 5;
       expansion_loop prog0 labeled is_cp ce_rules prog start_symbol)
 
 let cegar prog0 labeled is_cp ce_rules prog =
   expansion_iter_count_ref := max !Flag.expand_ce_iter_init !expansion_iter_count_ref;
-  Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules;
+  (* Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules; *)
   let start_symbol = fst @@ List.hd ce_rules in
   expansion_loop prog0 labeled is_cp ce_rules prog start_symbol
