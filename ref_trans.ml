@@ -16,7 +16,7 @@ let rec root x bb path_rev =
   try
     let y,dir = Option.get @@ List.find ((<>) None) @@ List.map aux bb in
     begin
-      match elim_tpred @@ fst_typ @@ Id.typ y with
+      match elim_tattr @@ fst_typ @@ Id.typ y with
       | TFun _ -> root y bb (dir::path_rev)
       | _ -> raise Not_found
     end

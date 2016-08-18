@@ -75,7 +75,7 @@ val direct_from_CPS : term -> term
 (** {6 Simplification, Inlining, Reduction} *)
 val simplify_match : term -> term
 val simplify_if_cond : term -> term
-val elim_unused_let : ?cbv:bool -> term -> term
+val elim_unused_let : ?leave_last:bool -> ?cbv:bool -> term -> term
 val elim_unused_branch : term -> term
 val inline_no_effect : term -> term
 val inline_var : term -> term

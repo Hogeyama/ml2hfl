@@ -186,7 +186,7 @@ let rec infer_effect_typ typ =
       (match typ2 with TFun _ -> () | _ -> constraints := CGeq(e, ECont) :: !constraints);
       TFunCPS(e, infer_effect_typ typ1, infer_effect_typ typ2)
   | TTuple xs -> TTupleCPS (List.map (infer_effect_typ -| Id.typ) xs)
-  | TPred(x,ps) -> infer_effect_typ (Id.typ x)
+  | TAttr(_,typ) -> infer_effect_typ typ
   | _ -> Format.printf "%a@." Print.typ typ; assert false
 
 let new_var x = {id_cps=x; id_typ=infer_effect_typ (Id.typ x)}
@@ -488,7 +488,14 @@ let rec trans_typ typ_excep typ_orig typ =
       TFun(x, typ2')
   | TTuple xs, TTupleCPS typs ->
       TTuple (List.map2 (fun x typ -> Id.map_typ (trans_typ typ_excep -$- typ) x) xs typs)
-  | TPred(x,ps), typ -> TPred(Id.map_typ (trans_typ typ_excep -$- typ) x, ps)
+  | TAttr(attr,typ_orig'), _ ->
+      let aux a =
+        match a with
+        | TAPred _ -> [a]
+        | TAPureFun -> []
+      in
+      let attr' = List.flatten_map aux attr in
+      _TAttr attr' @@ trans_typ typ_excep typ_orig' typ
   | _ ->
       Format.printf "%a,%a@." Print.typ typ_orig print_typ_cps typ;
       raise (Fatal "bug? (CPS.trans_typ)")

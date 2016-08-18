@@ -9,24 +9,35 @@ type 'a t =
   | TInt
   | TVar of 'a t option ref
   | TFun of 'a t Id.t * 'a t
-  | TFuns of 'a t Id.t list * 'a t
+  | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)
   | TTuple of 'a t Id.t list
   | TData of string
-  | TPred of 'a t Id.t * 'a list
   | TVariant of (string * 'a t list) list
   | TRecord of (string * (mutable_flag * 'a t)) list
   | Type of (string * 'a t) list * string
   | TApp of constr * 'a t list
+  | TAttr of 'a attr list * 'a t
 and mutable_flag = Immutable | Mutable
 and constr =
   | TList
   | TRef
   | TOption
   | TArray
+and 'a attr =
+  | TAPred of 'a t Id.t * 'a list
+  | TAPureFun
 
 exception CannotUnify
 
 let _TFun x typ = TFun(x, typ)
+let _TAttr attr typ =
+  if attr = [] then
+    typ
+  else
+    match typ with
+    | TAttr(attr', typ') -> TAttr(attr@attr', typ')
+    | _ -> TAttr(attr, typ)
+let pureTFun(x,typ) = TAttr([TAPureFun], TFun(x,typ))
 
 let typ_unknown = TData "???"
 
@@ -74,32 +85,32 @@ let rec is_base_typ = function
   | TBool
   | TInt
   | TData "string" -> true
-  | TPred(x,_) -> is_base_typ @@ Id.typ x
+  | TAttr(_,typ) -> is_base_typ typ
   | _ -> false
 
-let elim_tpred = function
-  | TPred(x,_) -> Id.typ x
+let elim_tattr = function
+  | TAttr(_,typ) -> typ
   | typ -> typ
 
 let tfuns_to_tfun = function
   | TFuns(xs,typ) -> List.fold_right _TFun xs typ
   | typ -> typ
 
-let rec elim_tpred_all = function
+let rec elim_tattr_all = function
   | TUnit -> TUnit
   | TBool -> TBool
   | TInt -> TInt
-  | TVar{contents=Some typ} -> elim_tpred_all typ
+  | TVar{contents=Some typ} -> elim_tattr_all typ
   | TVar r -> TVar r
-  | TFun(x, typ) -> TFun(Id.map_typ elim_tpred_all x, elim_tpred_all typ)
-  | TApp(c, typs) -> TApp(c, List.map elim_tpred_all typs)
-  | TTuple xs -> TTuple (List.map (Id.map_typ elim_tpred_all) xs)
+  | TFun(x, typ) -> TFun(Id.map_typ elim_tattr_all x, elim_tattr_all typ)
+  | TApp(c, typs) -> TApp(c, List.map elim_tattr_all typs)
+  | TTuple xs -> TTuple (List.map (Id.map_typ elim_tattr_all) xs)
   | TData s -> TData s
-  | TPred(x,_) -> elim_tpred_all @@ Id.typ x
-  | TFuns _ -> unsupported "elim_tpred_all"
-  | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ elim_tpred_all) labels)
-  | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ elim_tpred_all) fields)
-  | Type(decls, s) -> Type(List.map (Pair.map_snd @@ elim_tpred_all) decls, s)
+  | TAttr(_,typ) -> elim_tattr_all typ
+  | TFuns _ -> unsupported "elim_tattr_all"
+  | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ elim_tattr_all) labels)
+  | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ elim_tattr_all) fields)
+  | Type(decls, s) -> Type(List.map (Pair.map_snd @@ elim_tattr_all) decls, s)
 
 let rec decomp_tfun = function
   | TFun(x,typ) ->
@@ -149,7 +160,12 @@ let rec print occur print_pred fm typ =
       in
       Format.fprintf fm "(@[<hov 2>%a@])" (print_list pr "@ *@ ") xs
   | TData s -> Format.pp_print_string fm s
-  | TPred(x,ps) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (Id.typ x) Id.print x print_preds ps
+  | TAttr([TAPred(x,ps)], typ) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' typ Id.print x print_preds ps
+  | TAttr([TAPureFun], TFun(x,typ)) ->
+      if occur x typ
+      then Format.fprintf fm "@[<hov 2>%a:%a -+>@ %a@]" Id.print x print' (Id.typ x) print' typ
+      else Format.fprintf fm "@[<hov 2>%a -+>@ %a@]" print' (Id.typ x) print' typ
+  | TAttr _ -> unsupported "Type.print TAttr"
   | TVariant labels ->
       let pr fm (s, typs) =
         if typs = [] then
@@ -180,11 +196,9 @@ let print ?(occur=fun _ _ -> false) print_pred fm typ =
 let print_typ_init typ = print (fun _ -> assert false) typ
 
 let rec can_unify typ1 typ2 =
-  match typ1,typ2 with
+  match elim_tattr typ1, elim_tattr typ2 with
   | TVar{contents=Some typ1}, typ2
   | typ1, TVar{contents=Some typ2} -> can_unify typ1 typ2
-  | TPred(x,_), typ
-  | typ, TPred(x,_) -> can_unify (Id.typ x) typ
   | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
   | TUnit,TUnit -> true
   | TBool,TBool -> true
@@ -232,7 +246,7 @@ let rec occurs r typ =
   | TApp(_, typs) -> List.exists (occurs r) typs
   | TTuple xs -> List.exists (occurs r -| Id.typ) xs
   | TData _ -> false
-  | TPred(x,_) -> occurs r (Id.typ x)
+  | TAttr(_,typ) -> occurs r typ
   | TFuns _ -> unsupported ""
   | TVariant labels -> List.exists (snd |- List.exists @@ occurs r) labels
   | TRecord fields -> List.exists (snd |- snd |- occurs r) fields
@@ -248,7 +262,7 @@ let rec data_occurs s typ =
   | TApp(_, typs) -> List.exists (data_occurs s) typs
   | TTuple xs -> List.exists (data_occurs s -| Id.typ) xs
   | TData s' -> s = s'
-  | TPred(x,_) -> data_occurs s (Id.typ x)
+  | TAttr(_,typ) -> data_occurs s typ
   | TFuns _ -> unsupported ""
   | TVariant labels -> List.exists (snd |- List.exists @@ data_occurs s) labels
   | TRecord fields -> List.exists (snd |- snd |- data_occurs s) fields
@@ -256,7 +270,7 @@ let rec data_occurs s typ =
 
 
 let rec unify typ1 typ2 =
-  match flatten typ1, flatten typ2 with
+  match flatten @@ elim_tattr typ1, flatten @@ elim_tattr typ2 with
   | TUnit, TUnit
   | TBool, TBool
   | TInt, TInt -> ()
@@ -274,8 +288,6 @@ let rec unify typ1 typ2 =
          raise CannotUnify)
       else
         r := Some typ
-  | TPred(x,_), typ
-  | typ, TPred(x,_) -> unify (Id.typ x) typ
   | TData s1, TData s2 -> assert (s1 = s2)
   | Type(_,s1), Type(_,s2) -> assert (s1 = s2)
   | TVariant labels1, TVariant labels2 -> List.iter2 (fun (s1,typs1) (s2,typs2) -> assert (s1 = s2); List.iter2 unify typs1 typs2) labels1 labels2
@@ -286,7 +298,7 @@ let rec unify typ1 typ2 =
 
 
 let rec same_shape typ1 typ2 =
-  match elim_tpred typ1, elim_tpred typ2 with
+  match elim_tattr typ1, elim_tattr typ2 with
   | TUnit,TUnit -> true
   | TBool,TBool -> true
   | TInt,TInt -> true
@@ -322,12 +334,12 @@ let rec app_typ typ typs =
     | _ -> assert false
 
 let tuple_num typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TTuple xs -> Some (List.length xs)
   | _ -> None
 
 let proj_typ i typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TTuple xs -> Id.typ @@ List.nth xs i
   | typ when typ = typ_unknown -> typ_unknown
   | typ' -> invalid_arg @@ Format.asprintf "proj_typ %d (%a)" i print_typ_init typ'
@@ -336,25 +348,25 @@ let fst_typ typ = proj_typ 0 typ
 let snd_typ typ = proj_typ 1 typ
 
 let ref_typ typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TApp(TRef, [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "ref_typ"
 
 let list_typ typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TApp(TList, [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "list_typ"
 
 let option_typ typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TApp(TOption, [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "option_typ"
 
 let array_typ typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TApp(TArray, [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "array_typ"
@@ -369,7 +381,8 @@ let rec has_pred = function
   | TApp(_,typs) -> List.exists has_pred typs
   | TTuple xs -> List.exists (has_pred -| Id.typ) xs
   | TData _ -> false
-  | TPred(x,ps) -> has_pred (Id.typ x) || ps <> []
+  | TAttr(attr,typ) ->
+      has_pred typ || List.exists (function TAPred(_, _::_) -> true | _ -> false) attr
   | TFuns _ -> unsupported ""
   | TVariant labels -> List.exists (snd |- List.exists has_pred) labels
   | TRecord fields -> List.exists (snd |- snd |- has_pred) fields
@@ -388,7 +401,7 @@ let rec to_id_string = function
       let aux x s = to_id_string (Id.typ x) ^ "_x_" ^ s in
       List.fold_right aux xs' @@ to_id_string @@ Id.typ x
   | TData s -> s
-  | TPred(x,_) -> to_id_string (Id.typ x)
+  | TAttr(_,typ) -> to_id_string typ
   | TApp(TRef, [typ]) -> to_id_string typ ^ "_ref"
   | TApp(TOption, [typ]) -> to_id_string typ ^ "_option"
   | TApp(TArray, [typ]) -> to_id_string typ ^ "_array"
@@ -409,7 +422,7 @@ let rec order typ =
   | TVar{contents=Some typ} -> order typ
   | TFun(x,typ) -> max (order (Id.typ x) + 1) (order typ)
   | TTuple xs -> List.fold_left (fun m x -> max m (order @@ Id.typ x)) 0 xs
-  | TPred(x,_) -> order @@ Id.typ x
+  | TAttr(_,typ) -> order typ
   | _ -> assert false
 
 let arg_var typ =
@@ -446,8 +459,8 @@ let rec get_free_data_name typ =
   | TApp(_, typs) -> List.flatten_map get_free_data_name typs
   | TTuple xs -> List.flatten_map (Id.typ |- get_free_data_name) xs
   | TData s -> [s]
-  | TPred(x,_) -> get_free_data_name @@ Id.typ x
-  | TFuns _ -> unsupported "elim_tpred_all"
+  | TAttr(_,typ) -> get_free_data_name typ
+  | TFuns _ -> unsupported "elim_tattr_all"
   | TVariant labels -> List.flatten_map (snd |- List.flatten_map get_free_data_name) labels
   | TRecord fields -> List.flatten_map (snd |- snd |- get_free_data_name) fields
   | Type(decls, s) -> List.filter_out ((=) s) @@ List.flatten_map (snd |- get_free_data_name) decls

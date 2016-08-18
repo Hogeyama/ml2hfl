@@ -55,7 +55,8 @@ let normalize t =
        (Trans.inline_var
         |- Trans.inline_simple_exp
         |- Trans.bool_eta_reduce
-        |- Trans.reconstruct)
+        |- Trans.reconstruct
+        |- Trans.elim_unused_let ~leave_last:true)
 
 (* `used_by f prog` returns top-level functions used (directly/indirectly) by f *)
 let used_by f prog =

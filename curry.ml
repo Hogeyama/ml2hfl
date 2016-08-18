@@ -14,7 +14,7 @@ let map f x = map (fun path label -> Option.map (f path) label) x
 module Debug = Debug.Make(struct let check () = List.mem "Curry" !Flag.debug_module end)
 
 let rec element_num typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TTuple xs -> List.fold_right ((+) -| element_num -| Id.typ) xs 0
   | _ -> 1
 
@@ -96,7 +96,7 @@ let rec uncurry_typ rtyp typ =
 
 and uncurry_typ_arg rtyps typ =
   Debug.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps Print.typ typ;
-  match rtyps, elim_tpred typ with
+  match rtyps, elim_tattr typ with
   | _, TTuple xs ->
       let aux (rtyps,xrtyps) {Id.typ} =
         let rtyps1,rtyps2 = List.split_nth (element_num typ) rtyps in
@@ -137,11 +137,13 @@ let rec remove_pair_typ = function
   | TApp(TList, typs) -> leaf (TList (root (remove_pair_typ typ)))
  *)
   | TData s -> leaf (TData s)
+  | TAttr(attr, typ) -> unsupported "Curry.remove_pair_typ TAttr"
+(*
   | TPred({Id.typ=TTuple[x; {Id.typ=typ}]} as y, ps) ->
       begin
         match typ with (* Function types cannot have predicates *)
         | TFun _ ->
-            let x1 = Id.new_var ~name:(Id.name x) (elim_tpred @@ Id.typ x) in
+            let x1 = Id.new_var ~name:(Id.name x) (elim_tattr @@ Id.typ x) in
             let x2 = Id.new_var typ in
             let ps' = List.map (subst y @@ make_pair (make_var x1) (make_var x2)) ps in
             let x' = Id.set_typ x (TPred(x1,ps')) in
@@ -162,6 +164,7 @@ let rec remove_pair_typ = function
         | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
       in
       leaf (TPred(Id.set_typ x typ', ps'))
+ *)
   | typ -> Format.printf "remove_pair_typ: %a@." Print.typ typ; assert false
 
 and remove_pair_var x =
@@ -205,7 +208,7 @@ and remove_pair_aux t typ_opt =
       leaf (make_let_f flag bindings' t')
   | BinOp(op, t1, t2) ->
       begin
-        match op, elim_tpred t1.typ with
+        match op, elim_tattr t1.typ with
         | (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TData _) -> ()
         | (Eq | Lt | Gt | Leq | Geq), _ ->
             Format.printf "%a@." Print.typ t1.typ;

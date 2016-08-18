@@ -15,7 +15,7 @@ let rec check t typ =
   if not (Type.can_unify t.typ typ) then
     (Format.printf "check: %a, %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
      assert false);
-  match t.desc, elim_tpred t.typ with
+  match t.desc, elim_tattr t.typ with
   | _, TFuns _ -> ()
   | Label(_, t), _ -> check t typ
   | Const Unit, TUnit -> ()
@@ -42,7 +42,8 @@ let rec check t typ =
       check_var x (Id.typ y);
       check t typ'
   | App(t,ts), typ' ->
-      let rec aux = function
+      let rec aux (ts,typ) =
+        match ts, elim_tattr typ with
         | [], _ -> ()
         | t::ts, TFun(x,typ) ->
             check t (Id.typ x);

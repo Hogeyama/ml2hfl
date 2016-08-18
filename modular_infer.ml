@@ -338,7 +338,7 @@ let rec decomp_fun typ =
   | _ -> [], typ
 
 let base_of_typ typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TUnit -> Ref_type.Unit
   | TInt -> Ref_type.Int
   | TBool -> Ref_type.Bool

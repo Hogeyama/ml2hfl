@@ -106,7 +106,7 @@ let rec conv_term env t =
 let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
 
 let rec of_typ typ =
-  match Type.elim_tpred typ with
+  match Type.elim_tattr typ with
   | Type.TUnit -> Fpat.Type.mk_unit
   | Type.TInt -> Fpat.Type.mk_int
   | Type.TBool -> Fpat.Type.mk_bool
@@ -130,7 +130,7 @@ let rec of_term t =
         match op with
         | S.Eq ->
             begin
-              match Type.elim_tpred @@ S.typ t1 with
+              match Type.elim_tattr @@ S.typ t1 with
               | Type.TUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
               | Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
               | Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
