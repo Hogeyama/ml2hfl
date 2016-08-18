@@ -1296,8 +1296,8 @@ let infer mode prog f typ (ce_set:ce_set) extend =
   | Some sol ->
       Debug.printf "TEMPLATES of TOP_FUNS: @[%a@.@." print_tmp_env @@ List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env') templates;
       Debug.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
-      let top_funs = used_by f prog in
-      Debug.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
+      let top_funs = List.Set.inter ~eq:Id.eq (get_fv @@ snd @@ Id.assoc f prog.fun_def_env) (List.map fst prog.fun_def_env) in
+      Debug.printf "TOP_FUNS[%a]: %a@.@." Id.print f (List.print Id.print) top_funs;
       let env' =
         let aux ((g,_),tmp) =
           if Id.mem g top_funs then

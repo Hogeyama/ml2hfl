@@ -481,6 +481,7 @@ let rec from_term
         {nid; var_env; val_env; label; ref_typ; ce_env}
       in
       [RT.Node(node, [])]
+  | Let(Nonrecursive, _, _) -> assert false
   | _ ->
       Format.printf "@.t: @[%a@." Print.term t;
       Format.printf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;

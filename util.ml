@@ -498,6 +498,7 @@ module String = struct
       | '^' -> "_caret_"
       | '|' -> "_bar_"
       | '~' -> "_tilde_"
+      | '\'' -> "_prime_"
       | c -> String.make 1 c
     in
     replace_chars map s
