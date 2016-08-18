@@ -1270,7 +1270,7 @@ let infer mode prog f typ (ce_set:ce_set) extend =
     Debug.printf "env': %a@.@." Ref_type.Env.print env';
     CT.from_program env' fun_env' ce_set extend t
   in
-  Format.printf "reached_empty_branch: %a@." (List.print Id.print) reached_empty_branch;
+  Debug.printf "reached_empty_branch: %a@." (List.print Id.print) reached_empty_branch;
   let fun_env = [](*make_fun_env comp_tree*) in
   Debug.printf "fun_env: %a@.@." (List.print @@ Pair.print Id.print @@ Pair.print Id.print @@ Option.print Format.pp_print_int) fun_env;
   let templates = make_template env comp_tree in

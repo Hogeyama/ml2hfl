@@ -58,16 +58,7 @@ let trans_const = function
   | c -> Format.printf "trans_const: %a@." CEGAR_print.term (Const c); assert false
 
 
-let rec trans_id x =
-  let map = function
-    | '\'' -> "_prime_"
-    | '.' -> "_dot_"
-    | '&' -> "_et_"
-    | '/' -> "_slash_"
-    | '^' -> "_caret_"
-    | c -> String.make 1 c
-  in
-  String.fold_left (fun s c -> s ^ map c) "" x
+let rec trans_id x = String.sign_to_letters x
 
 let rec trans_term br = function
   | Const c -> trans_const c
