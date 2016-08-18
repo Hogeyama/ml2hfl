@@ -7,7 +7,7 @@ val beta_reduce_term : CEGAR_syntax.t -> CEGAR_syntax.t
 val beta_reduce_def :
   'a * 'b * CEGAR_syntax.t * 'c * CEGAR_syntax.t ->
   'a * 'b * CEGAR_syntax.t * 'c * CEGAR_syntax.t
-val expand_nonrec : CEGAR_syntax.prog -> CEGAR_syntax.prog
+val expand_non_rec : CEGAR_syntax.prog -> CEGAR_syntax.prog
 val trans_eager_bool : CEGAR_syntax.var -> CEGAR_syntax.t -> CEGAR_syntax.t
 val is_bool : CEGAR_syntax.env -> CEGAR_syntax.t -> bool
 val trans_eager_term :

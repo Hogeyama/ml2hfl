@@ -116,8 +116,8 @@ let wp_max_max = 8
 let remove_false = ref false (* remove false from pbs/pts in CEGAR_abst_util *)
 let assume = ref false (* use strongest post condition in if-term *)
 let assume_if = ref false (* whether replace if-term to branch or not (this flag is used only when !assume = true) *)
-let expand_nonrec = ref true
-let expand_nonrec_init = ref true
+let expand_non_rec = ref true
+let expand_non_rec_init = ref true
 let decomp_pred = ref false
 
 (* pretty printer option *)

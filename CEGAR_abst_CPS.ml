@@ -44,8 +44,8 @@ let rec beta_reduce_term = function
 let beta_reduce_def (f,xs,t1,e,t2) =
   f, xs, beta_reduce_term t1, e, beta_reduce_term t2
 
-let rec expand_nonrec {env;defs;main;info} =
-  let non_rec = info.nonrec in
+let rec expand_non_rec {env;defs;main;info} =
+  let non_rec = info.non_rec in
   let aux (f,xs,t1,e,t2) = f, xs, subst_map non_rec t1, e, subst_map non_rec t2 in
   let defs' =
     defs
@@ -474,7 +474,7 @@ let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
   |@> pr "INPUT"
-  |> expand_nonrec
+  |> expand_non_rec
   |@> pr "EXPAND_NONREC"
   |> CEGAR_trans.simplify_if
   |@> pr "SIMPLIFY_IF"

@@ -3,7 +3,7 @@ open Util
 open CEGAR_util
 
 let expansion_iter_count_ref = ref 0
-let debug () = List.mem "CEGAR_trans" !Flag.debug_module
+module Debug = Debug.Make(struct let check () = List.mem "CEGAR_fair_non_term" !Flag.debug_module end)
 
 (**
    [x -> ex1] ex2
@@ -82,16 +82,16 @@ let rec value2tree v =
 let rec expansion_loop prog0 labeled is_cp ce_rules prog start_symbol =
   let count = !expansion_iter_count_ref in
   try
-    if debug () then Format.printf "Expand counterexample: Size %d@." count;
+    Debug.printf "Expand counterexample: Size %d@." count;
     Flag.break_expansion_ref := false;
     let ce_value = expand_tree ce_rules count (Var start_symbol) in
     let ce_tree = value2tree ce_value in
-    if debug () then Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
+    Debug.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
     (*feasiblity check and refinement is common with that of non-termination*)
     CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog
   with
   | CEGAR_syntax.NoProgress ->
-     (if debug () then Format.printf "Increase iteration of counterexample expansion@.";
+     (Debug.printf "Increase iteration of counterexample expansion@.";
       expansion_iter_count_ref := count + 5;
       expansion_loop prog0 labeled is_cp ce_rules prog start_symbol)
 

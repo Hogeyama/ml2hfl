@@ -296,8 +296,8 @@ let rec arg_spec () =
      "-relative-complete", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
      (* predicate abstraction *)
      "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
-     "-no-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := false; Flag.expand_nonrec_init := false), " Do not expand non-recursive functions";
-     "-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
+     "-no-enr", Arg.Unit (fun _ -> Flag.expand_non_rec := false; Flag.expand_non_rec_init := false), " Do not expand non-recursive functions";
+     "-enr", Arg.Unit (fun _ -> Flag.expand_non_rec := true; Flag.expand_non_rec_init := false),
              " Expand non-recursive functions except those in the original program";
      "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
      "-neg-pred-off", Arg.Set Flag.never_use_neg_pred,

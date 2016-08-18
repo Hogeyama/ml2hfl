@@ -79,12 +79,12 @@ and prog = {env:env; defs:fun_def list; main:var; info:info}
 and info =
   {attr : attr list;
    exparam_orig : prog option;
-   nonrec : (var * t) list;
+   non_rec : (var * t) list;
    orig_fun_list : var list;
    inlined : var list;
    fairness : Fair_termination_type.fairness option}
 
-let init_info = {attr=[]; exparam_orig=None; nonrec=[]; orig_fun_list=[]; inlined=[]; fairness=None}
+let init_info = {attr=[]; exparam_orig=None; non_rec=[]; orig_fun_list=[]; inlined=[]; fairness=None}
 
 let prefix_randint = "#randint"
 let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n

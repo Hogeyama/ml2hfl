@@ -525,7 +525,7 @@ let assoc_fun_def defs f =
       make_fun xs1 (make_if t21 t22 t12)
   | _ -> Format.eprintf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
 
-let get_nonrec red_CPS prog =
+let get_non_rec red_CPS prog =
   let defs = prog.defs in
   let main = prog.main in
   let orig_fun_list = prog.info.orig_fun_list in
@@ -542,7 +542,7 @@ let get_nonrec red_CPS prog =
   let defs' = List.filter check defs in
   let non_rec = List.rev_map (fun (f,_,_,_,_) -> f, assoc_fun_def defs f) defs' in
   let non_rec' =
-    if !Flag.expand_nonrec_init then
+    if !Flag.expand_non_rec_init then
       non_rec
     else
       let orig_fun_list' = List.Set.diff orig_fun_list force in
@@ -579,7 +579,7 @@ let get_nonrec red_CPS prog =
 
 
 let print_prog_typ' force fm {env;defs;main;info} =
-  let env' = List.filter_out (fun (f,_) -> List.mem_assoc f info.nonrec) env in
+  let env' = List.filter_out (fun (f,_) -> List.mem_assoc f info.non_rec) env in
   CEGAR_print.prog_typ fm {env=env';defs;main;info}
 
 
@@ -768,4 +768,4 @@ let rec merge_similar_paths l =
   if List.length l = List.length l' then l else merge_similar_paths l'
 
 let inlined_functions {info} =
-  List.unique @@ List.map fst @@ info.nonrec
+  List.unique @@ List.map fst @@ info.non_rec

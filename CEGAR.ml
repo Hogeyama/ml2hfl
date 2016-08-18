@@ -62,7 +62,7 @@ let rec loop prog0 is_cp ces =
     else prog0
   in
   let pr =
-    if !Flag.expand_nonrec
+    if !Flag.expand_non_rec
     then CEGAR_util.print_prog_typ' prog.info.inlined
     else CEGAR_print.prog_typ
   in
@@ -192,8 +192,8 @@ let run prog =
   in
   make_ID_map prog;
   let info =
-    if !Flag.expand_nonrec then
-      {prog.info with nonrec = get_nonrec CEGAR_abst_CPS.beta_reduce_term @@ snd @@ CEGAR_abst_util.add_label prog}
+    if !Flag.expand_non_rec then
+      {prog.info with non_rec = get_non_rec CEGAR_abst_CPS.beta_reduce_term @@ snd @@ CEGAR_abst_util.add_label prog}
     else
       prog.info
   in
