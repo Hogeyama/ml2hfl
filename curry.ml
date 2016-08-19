@@ -115,7 +115,7 @@ and uncurry_typ_arg rtyps typ =
   | _ -> assert false
 
 let uncurry_rtyp t get_rtyp f =
-  let typ =try Trans.assoc_typ f t  with Not_found ->assert false in
+  let typ = Trans.assoc_typ f t in
   let rtyp = get_rtyp f in
   let rtyp' = correct_arg_refer @@ uncurry_typ (RT.copy_fun_arg_to_base rtyp) typ in
   Debug.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp Print.typ typ RT.print rtyp';

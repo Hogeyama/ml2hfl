@@ -727,3 +727,14 @@ let rec contract typ =
   | ExtArg(x,typ1,typ2) -> ExtArg(x, contract typ1, contract typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, contract typ)
   | Exn(typ1,typ2) -> Exn(contract typ1, contract typ2)
+
+let map_pred f typ =
+  match flatten typ with
+  | Base(base, x, p) -> Base(base, x, f p)
+  | Fun(x,typ1,typ2) -> Fun(x, map_pred f typ1, map_pred f typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ map_pred f) xtyps)
+  | Inter(styp, typs) -> Inter(styp, List.map (map_pred f) typs)
+  | Union(styp, typs) -> Union(styp, List.map (map_pred f) typs)
+  | ExtArg(x,typ1,typ2) -> ExtArg(x, map_pred f typ1, map_pred f typ2)
+  | List(x,p_len,y,p_i,typ) -> List(x, f p_len, y, f p_i, map_pred f typ)
+  | Exn(typ1,typ2) -> Exn(map_pred f typ1, map_pred f typ2)

@@ -937,14 +937,14 @@ let assoc_typ_cps f typed =
 
 
 let rec uncps_ref_type typ_exn rtyp e etyp =
-  let dbg = 0=0 && !!Debug.check in
+  let dbg = 0=0 in
   Debug.printf "rtyp:%a@." RT.print rtyp;
   Debug.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
   Debug.printf "e:%a@." print_effect e;
   Debug.printf "etyp:%a@.@." print_typ_cps etyp;
   match rtyp, e, etyp with
   | RT.Inter(styp, rtyps), e, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       let typs = List.map (fun rtyp1 -> uncps_ref_type typ_exn rtyp1 e etyp) rtyps in
       let styp' =
         match typs with
@@ -953,46 +953,62 @@ let rec uncps_ref_type typ_exn rtyp e etyp =
       in
       RT.Inter(styp', typs)
   | RT.Base(b,x,ps), ENone, TBaseCPS _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       RT.Base(b,x,ps)
   | RT.Fun(x,rtyp1,rtyp2), ENone, TFunCPS(e,etyp1,etyp2) when !sol e <> EExcep ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp1 in
-      let rtyp2' = uncps_ref_type typ_exn rtyp2 (!sol e) etyp2 in
-      RT.Fun(x, rtyp1', rtyp2')
+      let x' = Id.set_typ x @@ RT.to_simple rtyp1' in
+      let rtyp2' = RT.subst_var x x' @@ uncps_ref_type typ_exn rtyp2 (!sol e) etyp2 in
+      RT.Fun(x', rtyp1', rtyp2')
   | RT.Fun(x,rtyp1,rtyp2), ENone, TFunCPS(e,etyp1,etyp2) ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       assert (!sol e = EExcep);
       let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp1 in
-      let rtyp2' = uncps_ref_type typ_exn rtyp2 EExcep etyp2 in
-      RT.Fun(x, rtyp1', rtyp2')
+      let x' = Id.set_typ x @@ RT.to_simple rtyp1' in
+      let rtyp2' = RT.subst_var x x' @@ uncps_ref_type typ_exn rtyp2 EExcep etyp2 in
+      RT.Fun(x', rtyp1', rtyp2')
   | RT.Fun(_, RT.Fun(_,rtyp,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_)),
     ECont, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       uncps_ref_type typ_exn rtyp ENone etyp
   | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(RT.Unit,_,_)), RT.Fun(_,RT.Fun(_,rtyp2,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_))),
     EExcep, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp in
       let rtyp2' = uncps_ref_type typ_exn rtyp2 ENone typ_exn in
       RT.Exn(rtyp1', rtyp2')
-  | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(RT.Unit,_,_)), ECont, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+  | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(RT.Unit,_,_)), RT.Fun(_,RT.Inter(_,rtyps), RT.Base(RT.Unit,_,_))),
+    EExcep, _ ->
+      if dbg then Debug.printf "%s@.@." __LOC__;
+      let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp in
       let aux = function
-        | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type typ_exn rtyp1 ENone etyp
+        | RT.Fun(_,rtyp2,RT.Base(RT.Unit,_,_)) -> uncps_ref_type typ_exn rtyp2 ENone typ_exn
         | _ -> assert false
       in
-      let typ' =
+      let styp' =
         match List.map aux rtyps with
         | [] -> typ_of_etyp etyp
         | rtyp'::_ -> RT.to_simple rtyp'
       in
-      RT.union typ' @@ List.map aux rtyps
+      RT.Exn(rtyp1', RT.union styp' @@ List.map aux rtyps)
+  | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(RT.Unit,_,_)), ECont, _ ->
+      if dbg then Debug.printf "%s@.@." __LOC__;
+      let aux = function
+        | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type typ_exn rtyp1 ENone etyp
+        | _ -> assert false
+      in
+      let styp' =
+        match List.map aux rtyps with
+        | [] -> typ_of_etyp etyp
+        | rtyp'::_ -> RT.to_simple rtyp'
+      in
+      RT.union styp' @@ List.map aux rtyps
   | RT.Tuple xrtyps, _, TTupleCPS etyps ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       RT.Tuple (List.map2 (fun (x,rtyp) etyp -> x, uncps_ref_type typ_exn rtyp e etyp) xrtyps etyps)
   | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       RT.ExtArg(x, rtyp1, uncps_ref_type typ_exn rtyp2 e etyp)
   | _, _, TBaseCPS styp when RT.is_top' rtyp ->
       RT.top styp
@@ -1018,9 +1034,9 @@ let make_get_rtyp typ_exn typed get_rtyp f =
   let etyp = assoc_typ_cps f typed in
   let rtyp = get_rtyp f in
   Debug.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
-  let rtyp' = uncps_ref_type typ_exn rtyp ENone etyp in
+  let rtyp' = Ref_type.map_pred Trans.reconstruct @@ uncps_ref_type typ_exn rtyp ENone etyp in
   if !!Flag.print_ref_typ_debug then
-    Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+    Format.printf "CPS ref_typ: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 let initialize () =
