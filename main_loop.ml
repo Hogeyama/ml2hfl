@@ -106,15 +106,15 @@ let preprocesses spec : preprocess list =
     Encode_array,
       (Fun.const true,
        map_trans Encode.array);
+    Copy_poly,
+      (Fun.const true,
+       Trans.copy_poly_funs -| last_t);
     Abst_ref,
       (Fun.const true,
        map_trans Encode.abst_ref);
     Make_fun_tuple,
       (Fun.const !Flag.tupling,
        map_trans Ref_trans.make_fun_tuple);
-    Copy_poly,
-      (Fun.const true,
-       Trans.copy_poly_funs -| last_t);
     Make_ext_funs,
       (Fun.const true,
        fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
