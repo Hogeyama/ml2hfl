@@ -38,6 +38,8 @@ let _TAttr attr typ =
     | TAttr(attr', typ') -> TAttr(attr@attr', typ')
     | _ -> TAttr(attr, typ)
 let pureTFun(x,typ) = TAttr([TAPureFun], TFun(x,typ))
+let add_tapred x ps typ =
+  _TAttr [TAPred(x,ps)] typ
 
 let typ_unknown = TData "???"
 
@@ -75,7 +77,12 @@ let make_toption typ = TApp(TOption, [typ])
 let make_tarray typ = TApp(TArray, [typ])
 
 
-let is_fun_typ = function
+let elim_tattr = function
+  | TAttr(_,typ) -> typ
+  | typ -> typ
+
+let is_fun_typ typ =
+  match elim_tattr typ with
   | TFun(_,_) -> true
   | TFuns(_,_) -> true
   | _ -> false
@@ -87,10 +94,6 @@ let rec is_base_typ = function
   | TData "string" -> true
   | TAttr(_,typ) -> is_base_typ typ
   | _ -> false
-
-let elim_tattr = function
-  | TAttr(_,typ) -> typ
-  | typ -> typ
 
 let tfuns_to_tfun = function
   | TFuns(xs,typ) -> List.fold_right _TFun xs typ
@@ -112,7 +115,8 @@ let rec elim_tattr_all = function
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ elim_tattr_all) fields)
   | Type(decls, s) -> Type(List.map (Pair.map_snd @@ elim_tattr_all) decls, s)
 
-let rec decomp_tfun = function
+let rec decomp_tfun typ =
+  match elim_tattr typ with
   | TFun(x,typ) ->
       let xs,typ = decomp_tfun typ in
       x :: xs, typ

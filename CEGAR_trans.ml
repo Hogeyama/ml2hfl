@@ -164,8 +164,7 @@ and trans_typ = function
       let typ2 = trans_typ typ in
       TFun(typ1, fun _ -> typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
-  | Type.TAttr _ -> unsupported "CEGAR_trans.trans_typ TAttr"(*
-  | Type.TPred(x,ps) ->
+  | Type.TAttr([Type.TAPred(x,ps)], typ) ->
       begin
         let x' = trans_var x in
         let ps' = List.map (snd -| trans_term "" [] []) ps in
@@ -174,7 +173,7 @@ and trans_typ = function
             let preds' y = List.map (subst x' y) ps' @ preds y in
             TBase(b, preds')
         | typ -> Format.printf "trans_typ[TPred]: %a@." CEGAR_print.typ typ; assert false
-      end*)
+      end
   | Type.TTuple xs -> make_ttuple @@ List.map (trans_typ -| Id.typ) xs
   | typ -> Format.printf "trans_typ: %a@." Print.typ typ; assert false
 

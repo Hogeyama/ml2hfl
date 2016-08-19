@@ -51,6 +51,7 @@ val to_id_string : 'a t -> string
 val order : 'a t -> int
 val arity : 'a t -> int
 val var_name_of : 'a t -> string
+val add_tapred : 'a t Id.t -> 'a list -> 'a t -> 'a t
 
 (** {6 destructor} *)
 val tuple_num : 'a t -> int option

@@ -137,33 +137,32 @@ let rec remove_pair_typ = function
   | TApp(TList, typs) -> leaf (TList (root (remove_pair_typ typ)))
  *)
   | TData s -> leaf (TData s)
-  | TAttr(attr, typ) -> unsupported "Curry.remove_pair_typ TAttr"
-(*
-  | TPred({Id.typ=TTuple[x; {Id.typ=typ}]} as y, ps) ->
+  | TAttr([TAPred(y, ps)], TTuple[x; {Id.typ}]) ->
       begin
         match typ with (* Function types cannot have predicates *)
         | TFun _ ->
-            let x1 = Id.new_var ~name:(Id.name x) (elim_tattr @@ Id.typ x) in
+            let x1 = Id.new_var_id x in
             let x2 = Id.new_var typ in
             let ps' = List.map (subst y @@ make_pair (make_var x1) (make_var x2)) ps in
-            let x' = Id.set_typ x (TPred(x1,ps')) in
+            let x' = Id.map_typ (add_tapred x1 ps') x in
             remove_pair_typ @@ TTuple [x'; Id.new_var typ]
         | _ ->
             let y' = Id.set_typ y typ in
             let ps' = List.map (subst y @@ make_pair (make_var x) (make_var y')) ps in
-            let typ' = TPred(y', ps') in
+            let typ' = add_tapred y' ps' typ in
             remove_pair_typ @@ TTuple [x; Id.new_var typ']
       end
-  | TPred({Id.typ=TTuple _}, ps) ->
-      unsupported "Not implemented: remove_pair_typ"
-  | TPred(x,ps) ->
+  | TAttr([TAPred(x,ps)], typ) ->
       let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ (Id.typ x) with
         | Node(Some typ, []) -> typ
-        | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
+        | Node _ -> fatal "Not implemented CPS.remove_pair_typ(TPred)"
       in
-      leaf (TPred(Id.set_typ x typ', ps'))
+      leaf (add_tapred x ps' typ')
+(*
+  | TPred({Id.typ=TTuple _}, ps) ->
+      unsupported "Not implemented: remove_pair_typ"
  *)
   | typ -> Format.printf "remove_pair_typ: %a@." Print.typ typ; assert false
 

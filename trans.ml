@@ -2159,6 +2159,7 @@ let copy_poly_funs t =
   let map,t' = copy_poly_funs.fold_tr_term [] t in
   let t'' =
     t'
+    |@> Type_check.check -$- Type.TUnit
     |> flatten_tvar
     |> inline_var_const
     |@> Type_check.check -$- Type.TUnit

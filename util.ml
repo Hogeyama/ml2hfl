@@ -154,6 +154,7 @@ module Fun = struct
     else repeat f (n-1) (f x)
   let const x _ = x
   let const2 x _ _ = x
+  let ignore2 _ _  = ()
 end
 
 module Option = struct
