@@ -153,10 +153,7 @@ let rec main_loop history c prog cmp f typ ce_set extend =
                  refine_loop (Modular_infer.next_mode infer_mode) neg_env' ce_set3 extend')
               else if true then
                 (Debug.printf "extend counterexample@.";
-                 let ce_set4,extend'' =
-                   let funs = f :: (List.unique ~cmp:Id.eq @@ Ref_type.Env.dom candidate) in
-                   List.fold_left incr_extend (ce_set3,extend') funs
-                 in
+                 let ce_set4,extend'' = incr_extend (ce_set3,extend') f in
                  refine_loop Modular_infer.init_mode neg_env' ce_set4 extend'')
               else
                 raise NoProgress
