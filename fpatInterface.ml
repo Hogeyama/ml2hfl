@@ -412,7 +412,7 @@ let infer_with_ext
       List.map (flip (@) [2]) cexs
     else
       cexs in
-  NORDebug.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
+  Verbose.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
   let old_split_eq = !Fpat.AbsType.split_equalities in
   let old_eap = !Fpat.AbsType.extract_atomic_predicates in
   let old_hccs_solver = Fpat.HCCSSolver.get_dyn () in
@@ -425,7 +425,7 @@ let infer_with_ext
   Fpat.AbsType.split_equalities := old_split_eq;
   Fpat.AbsType.extract_atomic_predicates := old_eap;
   Fpat.HCCSSolver.link_dyn old_hccs_solver;
-  NORDebug.printf "END refinement@,@]";
+  Verbose.printf "END refinement@,@]";
 
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
@@ -526,7 +526,7 @@ let insert_extra_param t =
                       (fun (f', _, recursive) -> recursive && Id.same f' f)
                       rfs
                   in
-                  (NORDebug.printf "rec: %a@." Print.term t1');
+                  (Debug.printf "rec: %a@." Print.term t1');
                   let xxss =
                     List.take (List.length ts) xxss
                   in

@@ -10,7 +10,7 @@ let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ)
   Debug.printf "END: %s@." desc;
   let t' = proj_out r in
   if proj_in t <> t' && opt
-  then NORDebug.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
+  then Verbose.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
   r
 
 
@@ -292,21 +292,20 @@ let report_safe env orig t0 =
       Ref.tmp_set Flag.web true (fun () -> Format.printf "  @[<v>%a@]@.@." Print.term t)
     end;
 
-  let only_result_termination = not !!NORDebug.check && !Flag.mode = Flag.Termination in
-  if env <> [] && not only_result_termination then
+  if env <> [] && !Flag.mode <> Flag.Termination then
     begin
-      Format.printf "Refinement Types:@.";
+      Verbose.printf "Refinement Types:@.";
       let env' = List.map (Pair.map_snd Ref_type.simplify) env in
-      let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
+      let pr (f,typ) = Verbose.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
       List.iter pr env';
-      Format.printf "@.";
+      Verbose.printf "@.";
 
       if !Flag.print_abst_typ then
         begin
-          Format.printf "Abstraction Types:@.";
-          let pr (f,typ) = Format.printf "  %s: %a@." (Id.name f) Print.typ @@ Ref_type.to_abst_typ typ in
+          Verbose.printf "Abstraction Types:@.";
+          let pr (f,typ) = Verbose.printf "  %s: %a@." (Id.name f) Print.typ @@ Ref_type.to_abst_typ typ in
           List.iter pr env';
-          Format.printf "@."
+          Verbose.printf "@."
         end
     end
 
@@ -362,7 +361,7 @@ let insert_extra_param t =
     |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
   in
   if true then
-    NORDebug.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
+    Verbose.printf "insert_extra_param (%d added)::@. @[%a@.@.%a@.@."
                   (List.length !Fpat.RefTypInfer.params) Print.term t' Print.term' t';
   t'
 
@@ -440,7 +439,7 @@ let run ?(make_pps=None) ?(fun_list=None) orig exparam_sol ?(spec=Spec.init) par
   | CEGAR.Safe env ->
       Flag.result := "Safe";
       let env' = trans_env (Term_util.get_top_funs parsed) make_get_rtyp env in
-      if not !Flag.exp && !Flag.mode = Flag.FairTermination => !!NORDebug.check then
+      if not !Flag.exp && !Flag.mode = Flag.FairTermination => !!Verbose.check then
         report_safe env' orig set_target';
       true
   | CEGAR.Unsafe(sol,_) ->
