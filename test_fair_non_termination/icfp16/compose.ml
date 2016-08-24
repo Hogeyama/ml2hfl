@@ -14,8 +14,7 @@ let rec f c =
   else
     (event "B";
      compose f pred c)
+
 let main () =
   let r = read_int () in
   f r
-
-(* found *)

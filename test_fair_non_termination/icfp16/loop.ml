@@ -5,6 +5,7 @@
   {SPEC}*)
 
 let app_unit f = f ()
+
 let rec loop () =
   let x = read_int () in
   if x > 0 then
@@ -13,7 +14,5 @@ let rec loop () =
   else
     (event "B";
      app_unit loop)
-let main () = loop ()
 
-(* option: {-expand-ce-count 10} *)
-(* found *)
+let main () = loop ()

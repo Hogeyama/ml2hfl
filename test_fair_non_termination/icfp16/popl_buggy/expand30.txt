@@ -1,7 +1,0 @@
-hofmann-1-buggy.ml
-koskinen-1-buggy.ml
-koskinen-2-buggy.ml
-koskinen-3-1-buggy.ml
-koskinen-3-3-buggy.ml
-murase-closure-buggy.ml
-murase-intro-buggy.ml

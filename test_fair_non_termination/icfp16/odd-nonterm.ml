@@ -15,7 +15,7 @@ let rec f x =
       (event "B"; f (x - 2))
 
 
-let rec main () =
+let main () =
   let r = read_int () in
   if r > 0 then
     f r

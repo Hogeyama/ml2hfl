@@ -1,2 +1,0 @@
-alternate-buggy.ml
-foldr_nonterm-buggy.ml

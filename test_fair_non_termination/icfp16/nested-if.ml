@@ -6,6 +6,7 @@
 
 let ev_a _ = event "A"; ()
 let ev_b _ = event "B"; ()
+
 let rec f ev =
   ev ();
   let x = read_int () in
@@ -17,8 +18,5 @@ let rec f ev =
       f ev_b
   else
     f ev_a
-let main () =
-  f ev_a
 
-(* option: {-expand-ce-count 10} *)
-(* found *)
+let main () = f ev_a

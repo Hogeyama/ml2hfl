@@ -16,8 +16,4 @@ let rec op_loop op =
     (event "B";
      op_loop succ)
 
-let main () =
-  op_loop succ
-
-(* option: {-expand-ce-count 10} *)
-(* found *)
+let main () = op_loop succ

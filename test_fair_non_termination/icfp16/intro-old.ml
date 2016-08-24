@@ -1,5 +1,7 @@
 (*{SPEC}
+
   fairness: (A, B)
+
   {SPEC}*)
 
 let rand () =

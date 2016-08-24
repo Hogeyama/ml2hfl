@@ -12,9 +12,7 @@ let rec update_max x =
   else
     (event "A";
      update_max x)
+
 let main () =
   let x = read_int () in
   update_max x
-
-(* option: {-expand-ce-count 10} *)
-(* found *)
