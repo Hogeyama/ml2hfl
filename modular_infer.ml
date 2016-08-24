@@ -1346,12 +1346,19 @@ let infer mode prog f typ (ce_set:ce_set) extend =
       Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env''';
       Some env'''
 
+let use_ToFalse = false
+
 let next_mode mode =
   match mode with
   | ToTrue -> ToStronger
   | ToFalse -> invalid_arg "incr_mode"
-  | ToStronger -> ToFalse
+  | ToStronger when use_ToFalse -> ToFalse
+  | ToStronger -> invalid_arg "incr_mode"
 
 let init_mode = ToTrue
 
-let is_last_mode mode = mode = ToFalse
+let is_last_mode mode =
+  if use_ToFalse then
+    mode = ToFalse
+  else
+    mode = ToStronger
