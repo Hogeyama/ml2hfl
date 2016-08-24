@@ -90,6 +90,8 @@ let conv_var x =
 
 let rec conv_term env t =
   match t with
+  | App(App(App(Const(If), t1), Const(True)), Const(False)) ->
+     conv_term env t1
   | Const(Rand(TInt, Some n)) ->
       let typs,_ = decomp_rand_typ @@ assoc_renv n env in
       let typs' = List.map conv_typ typs in
