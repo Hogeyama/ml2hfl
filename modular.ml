@@ -8,8 +8,10 @@ module Debug = Debug.Make(struct let check () = List.mem "Modular" !Flag.debug_m
 
 exception NoProgress
 
-let merge_neg_tenv env' env = Ref_type.NegEnv.merge env' env
-let merge_tenv env' env = Ref_type.Env.merge env' env (*
+let merge_neg_tenv env' env =
+  Ref_type.NegEnv.normalize @@ Ref_type.NegEnv.merge env' env
+let merge_tenv env' env =
+  Ref_type.Env.normalize @@ Ref_type.Env.merge env' env (*
   let aux acc (f,typ) =
 (*
     Format.printf "MERGE_TENV acc: %a@\n" print_typ_env @@ Ref_type.Env.of_list acc;
@@ -85,19 +87,34 @@ let incr_extend (ce_set, extend) f =
   in
   if dbg then Debug.printf "IE EXTEND': %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
   let new_ce_set =
-    let aux ce =
-      let rev xs =
-        if xs = [] then
-          []
+    let aux (g,ce) =
+      let ce' =
+        if Id.same g f then
+          let rev xs =
+            if xs = [] then
+              []
+            else
+              let xs',last = List.decomp_snoc xs in
+              xs' @ [1-last]
+          in
+          List.map (Pair.map_snd rev) ce
         else
-          let xs',last = List.decomp_snoc xs in
-          xs' @ [1-last]
+          ce
       in
-      List.map (Pair.map_snd rev) ce
+      g, ce'
     in
-    snd @@ List.assoc_map ~eq:Id.eq f aux ce_set
+    List.map aux ce_set
   in
+  if dbg then Debug.printf "IE CE_SET: %a@." print_ce_set ce_set;
+  if dbg then Debug.printf "IE NEW_CE_SET: %a@." print_ce_set new_ce_set;
   merge_ce_set new_ce_set ce_set, extend'
+
+let make_init_env cmp fbindings =
+(*  if true then
+    Modular_check.check prog f typ
+  else*)
+    List.flatten_map (snd |- List.map Triple.fst) fbindings
+    |> Ref_type.Env.create (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ)
 
 let rec main_loop history c prog cmp f typ ce_set extend =
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
@@ -153,7 +170,13 @@ let rec main_loop history c prog cmp f typ ce_set extend =
                  refine_loop (Modular_infer.next_mode infer_mode) neg_env' ce_set3 extend')
               else if true then
                 (Debug.printf "extend counterexample@.";
-                 let ce_set4,extend'' = incr_extend (ce_set3,extend') f in
+                 let ce_set4,extend'' =
+                   if false then
+                     let funs = f :: (List.unique ~cmp:Id.eq @@ Ref_type.Env.dom candidate) in
+                     List.fold_left incr_extend (ce_set3,extend') funs
+                   else
+                     incr_extend (ce_set3,extend') f
+                 in
                  refine_loop Modular_infer.init_mode neg_env' ce_set4 extend'')
               else
                 raise NoProgress
@@ -187,24 +210,6 @@ let main _ spec parsed =
   let fun_env = List.flatten_map (fun (_,bindings) -> List.map Triple.to_pair_r bindings) fbindings in
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
-  let prog =
-    let env_init =
-      List.flatten_map (snd |- List.map Triple.fst) fbindings
-      |> Ref_type.Env.create (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ)
-    in
-    Debug.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
-    let fun_typ_neg_env =
-      List.flatten_map (snd |- List.map Triple.fst) fbindings
-      |> Ref_type.NegEnv.create (Ref_type.union -$- [] -| Id.typ)
-    in
-    let exn_decl =
-      match find_exn_typ parsed with
-      | None -> []
-      | Some(Type(["exn", TVariant decl], "exn")) -> decl
-      | Some _ -> assert false
-    in
-    {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
-  in
   let cmp =
     let map =
       let edges =
@@ -219,6 +224,21 @@ let main _ spec parsed =
       |> List.mapi (fun i x -> x, i)
     in
     Compare.on (Id.assoc -$- map)
+  in
+  let prog =
+    let env_init = make_init_env cmp fbindings in
+    Debug.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
+    let fun_typ_neg_env =
+      List.flatten_map (snd |- List.map Triple.fst) fbindings
+      |> Ref_type.NegEnv.create (Ref_type.union -$- [] -| Id.typ)
+    in
+    let exn_decl =
+      match find_exn_typ parsed with
+      | None -> []
+      | Some(Type(["exn", TVariant decl], "exn")) -> decl
+      | Some _ -> assert false
+    in
+    {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
   in
   let r, env, neg_env, ce_set = main_loop prog cmp main typ in
   match r with

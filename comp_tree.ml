@@ -73,8 +73,10 @@ and print_label fm label =
       Format.fprintf fm "@[App %a %a@]" print_fun_id f pr_env map
   | App(f,map) ->
       Format.fprintf fm "@[App %a ...@]" print_fun_id f
-  | Let(f,t) ->
+  | Let(f,t) when false ->
       Format.fprintf fm "@[Let %a =@ %a@]" Id.print f Print.term t
+  | Let(f,t) ->
+      Format.fprintf fm "@[Let %a =@ ...@]" Id.print f
   | Assume t -> Format.fprintf fm "@[Assume %a@]" Print.term t
   | Spawn(f,gs) -> Format.fprintf fm "@[Spawn %a, %a@]" Id.print f (Option.print @@ List.print Id.print) gs
   | Fail -> Format.fprintf fm "Fail"

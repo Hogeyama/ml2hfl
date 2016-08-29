@@ -704,7 +704,7 @@ type neg_env = NegEnv.t
 
 
 let rec contract typ =
-  match typ with
+  match flatten typ with
   | Base _ -> typ
   | Fun(x, typ1, typ2) -> Fun(x, contract typ1, contract typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd contract) xtyps)

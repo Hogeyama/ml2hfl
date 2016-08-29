@@ -1315,14 +1315,14 @@ let infer mode prog f typ (ce_set:ce_set) extend =
           let typ_ =
             Debug.printf "  typ: %a@." Ref_type.print typ;
             Debug.printf "  typ': %a@." Ref_type.print typ';
-            let typ'' = Ref_type.contract typ' in
-            make_get_rtyp (fun y -> assert (Id.same y x); typ'') x
+            make_get_rtyp (fun y -> assert (Id.same y x); typ') x
           in
           Debug.printf "  typ_: %a@." Ref_type.print typ_;
           x', typ_
         in
         env'
         |> List.map aux
+        |> List.map (Pair.map_snd Ref_type.contract)
         |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
         |> List.remove_lower (fun (x,typ) (x',typ') -> Id.same x x' && Ref_type.equiv typ typ')
         |> List.filter_out (fun (g,typ') -> Id.same f g && Ref_type.subtype typ typ')
