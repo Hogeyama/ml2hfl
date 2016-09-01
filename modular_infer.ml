@@ -285,7 +285,7 @@ let inline_sub templates typ1 typ2 =
 let get_nid (Rose_tree.Node({CT.nid}, _)) = nid
 
 let in_comp_tree ct nid =
-  List.exists (fun {CT.nid=nid'} -> nid' = nid) @@ Rose_tree.flatten ct
+  Rose_tree.exists (fun {CT.nid=nid'} -> nid' = nid) ct
 
 
 let hd_of_inter typ =
