@@ -296,8 +296,8 @@ let rec arg_spec () =
      "-relative-complete", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
      (* predicate abstraction *)
      "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
-     "-no-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := false; Flag.expand_nonrec_init := false), " Do not expand non-recursive functions";
-     "-enr", Arg.Unit (fun _ -> Flag.expand_nonrec := true; Flag.expand_nonrec_init := false),
+     "-no-enr", Arg.Unit (fun _ -> Flag.expand_non_rec := false; Flag.expand_non_rec_init := false), " Do not expand non-recursive functions";
+     "-enr", Arg.Unit (fun _ -> Flag.expand_non_rec := true; Flag.expand_non_rec_init := false),
              " Expand non-recursive functions except those in the original program";
      "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
      "-neg-pred-off", Arg.Set Flag.never_use_neg_pred,
@@ -312,7 +312,9 @@ let rec arg_spec () =
      "-trecs-bin", Arg.Set_string Flag.trecs,
                    Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
      "-horsat-bin", Arg.Set_string Flag.horsat,
-                   Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
+                    Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
+     "-horsatp-bin", Arg.Set_string Flag.horsatp,
+                     Format.sprintf "<cmd>  Change horsatp command to <cmd> (default: \"%s\")" !Flag.horsatp;
      (* predicate discovery *)
      "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,
@@ -356,17 +358,7 @@ let rec arg_spec () =
                  Flag.church_encode := true;
                  Flag.mc := Flag.HorSat),
      " Check non-termination";
-     (* fair non-termination mode *)
-     "-fair-non-termination",
-     Arg.Unit (fun _ ->
-       Flag.mode := Flag.FairNonTermination;
-       Flag.church_encode := true;
-       Flag.mc := Flag.HorSatP),
-     " Check fair-non-termination";
-     "-expand-ce-count",
-     Arg.Int (fun c ->
-       Flag.expand_ce_count := c),
-     " Set the number of counterexample expansion for fair-non-termination-mode";
+     (* non-termination mode *)
      "-merge-paths",
        Arg.Set Flag.merge_paths_of_same_branch,
        " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
@@ -378,7 +370,22 @@ let rec arg_spec () =
        " (Option for non-termination checking) Do not use omega solver for under-approximation";
      "-use-omega-first",
        Arg.Set Flag.use_omega_first,
-       " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)"
+     " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)";
+     (* fair non-termination mode *)
+     "-fair-non-termination",
+     Arg.Unit (fun _ ->
+       Flag.mode := Flag.FairNonTermination;
+       Flag.church_encode := true;
+       Flag.mc := Flag.HorSatP),
+     " Check fair-non-termination";
+     "-expand-ce-iter-init",
+     Arg.Int (fun c ->
+       Flag.expand_ce_iter_init := c),
+     " Set the initial interation count of counterexample expansion for fair-non-termination-mode";
+     "-expand-ce-count",
+     Arg.Int (fun c ->
+       Flag.expand_ce_iter_init := c),
+     " Same as -expand-ce-iter-init";
     ]
 and print_option_and_exit () = print_string @@ String.join " " @@ List.map Triple.fst (arg_spec ()); exit 0
 let arg_spec = arg_spec ()

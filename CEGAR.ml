@@ -62,7 +62,7 @@ let rec loop prog0 is_cp ces =
     else prog0
   in
   let pr =
-    if !Flag.expand_nonrec
+    if !Flag.expand_non_rec
     then CEGAR_util.print_prog_typ' prog.info.inlined
     else CEGAR_print.prog_typ
   in
@@ -110,7 +110,21 @@ let rec loop prog0 is_cp ces =
        let prog' = CEGAR_fair_non_term.cegar prog0 labeled is_cp ce_rules prog in
        post ();
        Fpat.PredAbst.use_neg_pred := true;
-       loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces)
+       let same_counterexample =
+         match ces with
+         | [] -> false
+         | MC.CEFairNonTerm ce_pre :: _ -> ce_pre = ce_rules (*TODO*)
+         | _ -> assert false
+       in
+       if same_counterexample then
+         try
+           improve_precision ();
+           loop prog is_cp ces
+         with NoProgress ->
+           post ();
+           raise NoProgress
+       else
+         loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces)
      end
   | MC.Unsafe ce, _ ->
       let ce_orig =
@@ -119,11 +133,11 @@ let rec loop prog0 is_cp ces =
         | _ -> assert false
       in
       if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_orig;
-      let ce' = CEGAR_trans.trans_ce labeled prog ce_orig in
+      let ce' = CEGAR_trans.trans_ce labeled prog ce_orig None in
       let same_counterexample =
         match ces with
         | [] -> false
-        | MC.CESafety ce_pre :: _ -> ce' = CEGAR_trans.trans_ce labeled prog ce_pre
+        | MC.CESafety ce_pre :: _ -> ce' = CEGAR_trans.trans_ce labeled prog ce_pre None
         | _ -> assert false
       in
       if same_counterexample then
@@ -154,7 +168,7 @@ let rec loop prog0 is_cp ces =
               let inlined_functions = inlined_functions prog0 in
               let aux ce =
                 match ce with
-                | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce'
+                | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce' None
                 | _ -> assert false
               in
               let prog' =
@@ -178,8 +192,8 @@ let run prog =
   in
   make_ID_map prog;
   let info =
-    if !Flag.expand_nonrec then
-      {prog.info with nonrec = get_nonrec CEGAR_abst_CPS.beta_reduce_term @@ snd @@ CEGAR_abst_util.add_label prog}
+    if !Flag.expand_non_rec then
+      {prog.info with non_rec = get_non_rec CEGAR_abst_CPS.beta_reduce_term @@ snd @@ CEGAR_abst_util.add_label prog}
     else
       prog.info
   in

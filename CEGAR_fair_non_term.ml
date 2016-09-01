@@ -2,6 +2,9 @@ open HORS_syntax
 open Util
 open CEGAR_util
 
+let expansion_iter_count_ref = ref 0
+module Debug = Debug.Make(struct let check () = List.mem "CEGAR_fair_non_term" !Flag.debug_module end)
+
 (**
    [x -> ex1] ex2
 *)
@@ -36,8 +39,9 @@ let rec expand_tree rules n expr =
   let get_fun f =
     List.assoc f rules in
 
-  if n < - !Flag.expand_ce_count then
-    Var "end" (* 打ち切れる場所が現れないときの無限ループ防止 *)
+  if n < - (max 30 !Flag.expand_ce_iter_init) then
+    (Flag.break_expansion_ref := true;
+     Var "end") (* 打ち切れる場所が現れないときの無限ループ防止 *)
   else match expr with
   | Var s when is_term s ->
      Var s
@@ -48,7 +52,7 @@ let rec expand_tree rules n expr =
      Abst (x, e)
   | Apply (e1, e2) ->
      begin match expand_tree rules (n - 1) e1 with
-     | Var s when n < 0 && (s = "l0" || s = "l1") -> (* n回展開済みで、分岐の直前なら、展開を打ち切る*)
+     | Var s when n < 0 && (String.starts_with s "randint_") -> (* n回展開済みで、乱数生成の直前なら、展開を打ち切る*)
         Var "end"
      | Abst (x, e) ->
         expand_tree rules n (subst x e2 e)
@@ -75,12 +79,24 @@ let rec value2tree v =
      Rose_tree.Node (s, List.map value2tree children)
   | _ -> assert false
 
-let cegar prog0 labeled is_cp ce_rules prog =
-  Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules;
-  let start_symbol = fst @@ List.hd ce_rules in
-  let ce_value = expand_tree ce_rules !Flag.expand_ce_count (Var start_symbol) in
-  let ce_tree = value2tree ce_value in
-  Format.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
+let rec expansion_loop prog0 labeled is_cp ce_rules prog start_symbol =
+  let count = !expansion_iter_count_ref in
+  try
+    Debug.printf "Expand counterexample: Size %d@." count;
+    Flag.break_expansion_ref := false;
+    let ce_value = expand_tree ce_rules count (Var start_symbol) in
+    let ce_tree = value2tree ce_value in
+    Debug.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
+    (*feasiblity check and refinement is common with that of non-termination*)
+    CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog
+  with
+  | CEGAR_syntax.NoProgress ->
+     (Debug.printf "Increase iteration of counterexample expansion@.";
+      expansion_iter_count_ref := count + 5;
+      expansion_loop prog0 labeled is_cp ce_rules prog start_symbol)
 
-  (*feasiblity checking and refinement is common with that of non-termination*)
-  CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog
+let cegar prog0 labeled is_cp ce_rules prog =
+  expansion_iter_count_ref := max !Flag.expand_ce_iter_init !expansion_iter_count_ref;
+  (* Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules; *)
+  let start_symbol = fst @@ List.hd ce_rules in
+  expansion_loop prog0 labeled is_cp ce_rules prog start_symbol

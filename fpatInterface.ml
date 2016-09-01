@@ -545,10 +545,10 @@ let insert_extra_param t =
                     ts xxss
                 with Not_found ->
                   (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
-                  Debug.printf "nonrec: %a@." Print.term t1';
+                  Debug.printf "non_rec: %a@." Print.term t1';
                   false, [])
            | _ ->
-               Debug.printf "nonrec: %a@." Print.term t1';
+               Debug.printf "non_rec: %a@." Print.term t1';
                false, []
          in
          let ts' = List.map (aux rfs bvs exs) ts in

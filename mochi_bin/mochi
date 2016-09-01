@@ -7,7 +7,8 @@ stdlib=$dir/stdlib
 
 ld="$lib/ld-linux-x86-64.so.2 --library-path $lib"
 horsat="$ld $bin/horsat"
+horsatp="$ld $bin/horsatp"
 trecs="$ld $bin/trecs"
 cvc3=$bin/cvc3
 
-$ld $bin/mochi.opt -trecs-bin "$trecs" -horsat-bin "$horsat" -cvc3-bin "$cvc3" -I $stdlib "$@"
+$ld $bin/mochi.opt -trecs-bin "$trecs" -horsat-bin "$horsat" -horsatp-bin "$horsatp" -cvc3-bin "$cvc3" -I $stdlib "$@"

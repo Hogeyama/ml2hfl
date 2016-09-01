@@ -1,0 +1,42 @@
+foldr_nonterm-buggy.ml
+koskinen-3-1-buggy.ml
+
+alternate-buggy.ml
+4.97, 57.64, 0.76 | 63.67
+
+koskinen-1-buggy.ml
+TIMEOUT: abstraction
+
+koskinen-2-buggy.ml
+TIMEOUT: abstraction
+
+koskinen-3-1-buggy.ml
+TIMEOUT: model check
+10分やれば動くはず
+
+koskinen-3-2-buggy.ml
+TIMEOUT: model check
+
+koskinen-3-3-buggy.ml
+TIMEOUT: abstraction
+
+closure-buggy.ml
+TIMEOUT: abstraction
+
+indirectHO_e-buggy.ml
+TIMEOUT: CEGARループを回り続ける（述語発見できてない？）
+
+intro-buggy.ml
+TIMEOUT: CEGARループを回り続ける（述語発見できてない？）
+
+
+--------
+koskinen-4-buggy.ml
+fairness constraintが2つ
+
+----
+loop
+制約書いてない
+
+omega_nonterm
+シンプルすぎて、バグらせられない
