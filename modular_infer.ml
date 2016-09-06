@@ -1348,17 +1348,17 @@ let infer mode prog f typ (ce_set:ce_set) extend =
 
 let use_ToFalse = false
 
-let next_mode mode =
+let next_mode_aux mode =
   match mode with
-  | ToTrue -> ToStronger
-  | ToFalse -> invalid_arg "incr_mode"
-  | ToStronger when use_ToFalse -> ToFalse
-  | ToStronger -> invalid_arg "incr_mode"
+  | ToTrue -> Some ToStronger
+  | ToFalse -> None
+  | ToStronger ->
+      if use_ToFalse then
+        Some ToFalse
+      else
+        None
+let next_mode mode = Option.get @@ next_mode_aux mode
 
 let init_mode = ToTrue
 
-let is_last_mode mode =
-  if use_ToFalse then
-    mode = ToFalse
-  else
-    mode = ToStronger
+let is_last_mode mode = None = next_mode_aux mode
