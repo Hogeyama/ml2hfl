@@ -4,7 +4,8 @@ open Term_util
 open Type
 open Modular_syntax
 
-module Debug = Debug.Make(struct let check () = List.mem "Modular_infer" !Flag.debug_module end)
+let () = Flag.modules := "Modular_infer"::!Flag.modules
+module Debug = Debug.Make(struct let check = make_debug_check "Modular_infer" end)
 
 module CT = Comp_tree
 module HC = Horn_clause

@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_syntax
 
-module Debug = Debug.Make(struct let check () = List.mem "Verify_ref_typ" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Verify_ref_typ" end)
 
 let remove_ext_def = make_trans2 ()
 

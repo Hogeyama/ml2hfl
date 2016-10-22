@@ -5,7 +5,7 @@ module S = Syntax
 module U = Term_util
 module T = Type
 
-module Debug = Debug.Make(struct let check () = List.mem "Ref_type" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Ref_type" end)
 
 let add_comment s t =
   if !!Debug.check then

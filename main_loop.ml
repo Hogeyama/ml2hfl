@@ -2,7 +2,7 @@ open Util
 
 type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
-module Debug = Debug.Make(struct let check () = List.mem "Main_loop" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Main_loop" end)
 
 let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
   Debug.printf "START: %s@." desc;

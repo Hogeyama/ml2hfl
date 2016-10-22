@@ -3,7 +3,7 @@ open Type
 open Syntax
 open Term_util
 
-module Debug = Debug.Make(struct let check () = List.mem "Ref_trans" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Ref_trans" end)
 
 let trans = make_trans2 ()
 

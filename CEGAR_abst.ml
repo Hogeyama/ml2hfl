@@ -5,7 +5,7 @@ open CEGAR_print
 open CEGAR_util
 open CEGAR_abst_util
 
-module Debug = Debug.Make(struct let check () = List.mem "CEGAR_abst" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "CEGAR_abst" end)
 
 exception NotRefined
 

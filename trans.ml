@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-module Debug = Debug.Make(struct let check () = List.mem "Trans" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Trans" end)
 
 
 let flatten_tvar = (make_trans ()).tr_term

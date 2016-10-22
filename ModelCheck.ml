@@ -4,7 +4,7 @@ open CEGAR_type
 open CEGAR_util
 open ModelCheck_util
 
-module Debug = Debug.Make(struct let check () = List.mem "ModelCheck" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "ModelCheck" end)
 
 type filename = string
 type node = UnitNode | BrNode | LineNode of int | EventNode of string

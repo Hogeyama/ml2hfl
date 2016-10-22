@@ -5,7 +5,7 @@ open Util
 
 module RT = Ref_type
 
-module Debug = Debug.Make(struct let check () = List.mem "CPS" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "CPS" end)
 
 let counter = ref 0
 let new_evar () = incr counter; !counter

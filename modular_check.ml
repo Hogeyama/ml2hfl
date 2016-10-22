@@ -5,7 +5,7 @@ open Type
 open Modular_syntax
 
 
-module Debug = Debug.Make(struct let check () = List.mem "Modular_check" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Modular_check" end)
 
 
 (*

@@ -1,7 +1,7 @@
 
 open Util
 
-module Debug = Debug.Make(struct let check () = List.mem "Type" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Type" end)
 
 type 'a t =
   | TUnit

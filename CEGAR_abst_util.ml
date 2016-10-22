@@ -4,7 +4,7 @@ open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 
-module Debug = Debug.Make(struct let check () = List.mem "CEGAR_abst_util" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "CEGAR_abst_util" end)
 
 let hd = function
   | [] -> assert false

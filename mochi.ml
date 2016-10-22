@@ -246,8 +246,9 @@ let rec arg_spec () =
                  Flag.print_progress := false),
        " Show only result";
      "-debug",
-     Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module),
-     "<modules>  Set debug flag of modules (comma-separated)";
+      Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module;
+                              List.iter (fun m -> if not @@ List.mem m !Flag.modules then (Format.printf "Module \"%s\" not found" m; exit 1)) !Flag.debug_module),
+      "<modules>  Set debug flag of modules (comma-separated)";
      "-debug-abst", Arg.Set Flag.debug_abst, " Debugging abstraction";
      "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
      "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
@@ -266,6 +267,7 @@ let rec arg_spec () =
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options (for completion)";
+     "-module-list", Arg.Unit (fun _ -> Format.printf "%a" (print_list Format.pp_print_string " ") !Flag.modules; exit 0), " Print list of modules (for completion)";
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      "-print-as-ocaml", Arg.Set Flag.print_as_ocaml, " Print terms in OCaml syntax";

@@ -5,7 +5,7 @@ open CEGAR_util
 
 exception UnknownOutput
 
-module Debug = Debug.Make(struct let check () = List.mem "HorSatInterface" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "HorSatInterface" end)
 
 type apt_transition =
   | APT_True | APT_False

@@ -2,7 +2,7 @@ open Util
 open Syntax
 open Type
 
-module Debug = Debug.Make(struct let check () = List.mem "Term_util" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Term_util" end)
 
 let occur = Syntax.occur
 let get_vars_pat = Syntax.get_vars_pat

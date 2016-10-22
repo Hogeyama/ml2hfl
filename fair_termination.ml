@@ -7,7 +7,7 @@ open Fair_termination_util
 
 exception FailedToFindRF
 
-module Debug = Debug.Make(struct let check () = List.mem "Fair_termination" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Fair_termination" end)
 
 
 type trans_env =

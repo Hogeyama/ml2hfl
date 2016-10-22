@@ -5,7 +5,7 @@ open Type
 
 module RT = Ref_type
 
-module Debug = Debug.Make(struct let check () = List.mem "Encode_rec" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Encode_rec" end)
 
 let rec extract_decls_typ ?prev_type env typ =
   match typ with
