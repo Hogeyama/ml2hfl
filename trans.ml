@@ -161,7 +161,7 @@ let rec define_randvalue name (env, defs as ed) typ =
   if List.mem_assoc typ env then
     (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
   else
-    match typ with
+    match elim_tattr typ with
     | TUnit -> (env, defs), unit_term
     | TBool -> (env, defs), randbool_unit_term
     | TInt -> (env, defs), randint_unit_term
@@ -233,6 +233,10 @@ let rec define_randvalue name (env, defs as ed) typ =
         in
         let env', defs' = List.fold_right aux decls (env,defs) in
         (env', defs'), snd @@ define_randvalue "" (env',defs') (TData s)
+    | TApp(TOption, [typ']) ->
+        let (env',defs'),t_typ' = define_randvalue "" (env,defs) typ' in
+        let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
+        (env',defs'), t
     | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
 let define_randvalue ed typ = define_randvalue "" ed typ
 
@@ -253,7 +257,16 @@ let inst_randval_term ed t =
 let () = inst_randval.fold_tr_term <- inst_randval_term
 let inst_randval t =
   let (_,defs),t' = inst_randval.fold_tr_term ([],[]) t in
-  make_letrec defs t'
+  let defs' =
+    let edges =
+      defs
+      |> List.map (fun (f,xs,t) -> f, List.Set.diff ~eq:Id.eq (get_fv t) (f::xs))
+      |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
+    in
+    let cmp = Compare.topological ~eq:Id.eq ~dom:(List.map Triple.fst defs) edges in
+    List.sort ~cmp:(Compare.on ~cmp Triple.fst) defs
+  in
+  make_letrecs defs' t'
 
 
 
@@ -1781,8 +1794,8 @@ let is_base_typ s = List.mem s base_types
 
 let replace_base_with_int_desc desc =
   match desc with
-  | Const(Char c) -> Const (Int (int_of_char c))
-  | Const(String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
+  (*  | Const(Char c) -> Const (Int (int_of_char c))*)
+  | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
   | Const(RandValue(TData s, b)) when is_base_typ s ->
       Const (RandValue(TInt,b))
   | _ -> replace_base_with_int.tr_desc_rec desc
@@ -1826,6 +1839,7 @@ let short_circuit_eval = make_trans ()
 
 let short_circuit_eval_term t =
   match t.desc with
+  | _ when has_no_effect t -> t
   | BinOp(And, t1, t2) ->
       let t1' = short_circuit_eval.tr_term t1 in
       let t2' = short_circuit_eval.tr_term t2 in
@@ -2416,15 +2430,47 @@ let simplify_bool_exp = simplify_bool_exp.tr_term
 
 
 
+let conv = Fpat.Formula.of_term -| FpatInterface.of_term
+let is_sat = FpatInterface.is_sat -| conv
+let is_valid = FpatInterface.is_valid -| conv
+let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
 
 
-let simplify_if_cond = make_trans ()
-let simplify_if_cond_desc desc =
+let simplify_if_cond = make_trans2 ()
+let simplify_if_cond_desc cond desc =
   match desc with
-  | If(t1,t2,t3) -> (make_if (simplify_bool_exp t1) (simplify_if_cond.tr_term t2) (simplify_if_cond.tr_term t3)).desc
-  | _ -> simplify_if_cond.tr_desc_rec desc
-let () = simplify_if_cond.tr_desc <- simplify_if_cond_desc
-let simplify_if_cond = simplify_if_cond.tr_term
+  | If(t1,t2,t3) ->
+      let t1' = simplify_bool_exp t1 in
+      let ts =
+        let rec decomp t =
+          match t.desc with
+          | BinOp(And, t1, t2) -> decomp t1 @ decomp t2
+          | _ -> [t]
+        in
+        decomp t1'
+      in
+      let t1'' =
+        let simplify t =
+          if has_no_effect t then
+            if implies cond t then
+              true_term
+            else if implies cond @@ make_not t then
+              false_term
+            else
+              t
+          else
+            t
+        in
+        make_ands @@ List.map simplify ts
+      in
+      let cond1 = List.filter has_no_effect ts @ cond in
+      let cond2 = if has_no_effect t1' then make_not t1' :: cond else cond in
+      let t2' = simplify_if_cond.tr2_term cond1 t2 in
+      let t3' = simplify_if_cond.tr2_term (List.map make_not cond2) t3 in
+      (make_if t1'' t2' t3').desc
+  | _ -> simplify_if_cond.tr2_desc_rec cond desc
+let () = simplify_if_cond.tr2_desc <- simplify_if_cond_desc
+let simplify_if_cond = simplify_if_cond.tr2_term []
 
 
 

@@ -226,9 +226,21 @@ and print_desc attr pri typ fm desc =
   | SetField(t1,s,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
-      let p = 60 in
-      let s1,s2 = paren pri p in
-      fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+      let rec decomp_list desc =
+        match desc with
+        | Nil -> Some []
+        | Cons(t1, t2) -> Option.map (List.cons t1) @@ decomp_list t2.desc
+        | _ -> None
+      in
+      begin
+        match decomp_list desc with
+        | None ->
+            let p = 60 in
+            let s1,s2 = paren pri p in
+            fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+        | Some ts' ->
+            Format.printf "%a" (List.print @@ print_term 0 typ) ts'
+      end
   | Constr(s,ts) ->
       let p = 80 in
       let s1,s2 = paren pri p in

@@ -54,9 +54,9 @@ let replace_decl (Decl(s, _)) sm sigma =
 
 exception Break;;
 
-let stream_skip strm =
+let stream_skip strm =(*
  match strm with parser
- | [< '_ >] -> ()
+ | [< '_ >] -> ()*)()
 ;;
 
 let go () =
@@ -118,4 +118,3 @@ global_typing_env :=
     Arrow
      (TypeVar {index = 1; value = Unknown},
       TypeVar {index = 2; value = Unknown})) :: !global_typing_env;;
-

@@ -22,9 +22,9 @@ open Graphics;;
 
 
 
-let nround x y = (2 * x + y) / ( 2 * y);;
 
 let rgb_of_hsb h s v =
+  let nround x y = (2 * x + y) / ( 2 * y) in
   let h = h * 6 in
   let i = h / 255 * 255 in
   let f = h - i in

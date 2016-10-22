@@ -285,6 +285,7 @@ let rec arg_spec () =
      "-elim-same-arg", Arg.Set Flag.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.base_to_int, " Replace primitive base types with int";
      "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
+     "-abst-list-literal", Arg.Set_int Flag.abst_list_literal, " Abstract long list literals";
      (* verifier *)
      "-modular", Arg.Set Flag.modular, " Modular verification";
      "-verify-ref-typ", Arg.Set Flag.verify_ref_typ, " Verify functions have given refinement types";

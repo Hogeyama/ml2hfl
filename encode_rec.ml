@@ -130,11 +130,16 @@ let abst_label typ s =
   in
   make_int (1 + pos typ)
 
-let get_ground_types typ =
-  match abst_recdata.tr_typ typ with
-  | TTuple (_::[{Id.typ=TFun(_, TInt)}]) -> []
-  | TTuple (_::[{Id.typ=TFun(_, TTuple [_; {Id.typ=TTuple xs}])}]) -> List.map Id.typ xs
-  | _ -> assert false
+let rec get_ground_types typ =
+  let rec aux typ' =
+    match typ' with
+    | TTuple (_::[{Id.typ=TFun(_, TInt)}]) -> []
+    | TTuple (_::[{Id.typ=TFun(_, TTuple [_; {Id.typ=TTuple xs}])}]) -> List.map Id.typ xs
+    | TTuple (_::[{Id.typ=TAttr(_,TFun(_, TTuple [_; {Id.typ=TTuple xs}]))}]) -> List.map Id.typ xs
+    | _ ->
+        unsupported @@ Format.asprintf "data types (%a)" Print.typ typ'
+  in
+  aux @@ abst_recdata.tr_typ typ
 
 let rec abst_recdata_pat p =
   let typ = abst_recdata.tr_typ p.pat_typ in
@@ -203,7 +208,22 @@ let rec abst_recdata_pat p =
         in
         let ps,cond,bind = List.fold_right aux fields ([],true_term,[]) in
         PTuple ps, cond, bind
-    | POr(p1,p2) -> assert false
+    | POr({pat_desc=PConst _},_)
+    | POr(_,{pat_desc=PConst _}) -> p.pat_desc, true_term, []
+    | POr(p1,p2) ->
+        let p1',cond1,bind1 = abst_recdata_pat p1 in
+        let p2',cond2,bind2 = abst_recdata_pat p2 in
+        let rec get_bind_map p1' p2' =
+          match p1'.pat_desc, p2'.pat_desc with
+          | PVar x1, PVar x2 -> [x2, x1]
+          | PTuple ps1, PTuple ps2 -> unsupported "POr1"
+          | _ ->
+              Format.printf"%a,%a@." Print.pattern p1' Print.pattern p2';
+              unsupported "POr2"
+        in
+        let map = get_bind_map p1' p2' in
+        let cond2' = List.fold_right (Fun.uncurry subst_var) map cond2 in
+        p1'.pat_desc, make_or cond1 cond2', bind1
     | PTuple ps ->
         let aux p (ps,cond,bind) =
           let p',cond',bind' = abst_recdata_pat p in
@@ -302,8 +322,8 @@ let trans t =
   let typ = trans_typ t.typ in
   t
   |@> pr "input"
-  |> Trans.remove_top_por
-  |@> pr "remove_top_por"
+  |*> Trans.remove_top_por
+  |*@> pr "remove_top_por"
   |@> Type_check.check -$- t.typ
   |> abst_recdata.tr_term
   |@> pr "abst_rec"

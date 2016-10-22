@@ -1,5 +1,6 @@
 
 let rec dotsPrint n = if n = 0 then () else begin print_string "."; dotsPrint (n-1) end
+
 let queenPrint size n queenArray =
   let get i n map = map i in
 
@@ -14,6 +15,8 @@ let queenPrint size n queenArray =
   in
   aux(0); print_string "\n"
 
+
+let rec loop row size n queenArray =
 let test j n queenArray =
   let get i n map = map i in
   assert (0 <= j);
@@ -25,8 +28,7 @@ let test j n queenArray =
       if qi = qj then false else if abs(qj - qi) = j - i then false else aux (i+1)
     else true
   in aux 0
-
-let rec loop row size n queenArray =
+in
   let get i n map = map i in
   let update i x n map = fun j -> if i = j then x else map j in
 

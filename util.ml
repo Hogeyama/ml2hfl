@@ -426,6 +426,14 @@ module List = struct
 
   let eq ?(eq=(=)) xs ys = length xs = length ys && for_all2 eq xs ys
 
+  let transpose xss =
+    match xss with
+    | [] -> []
+    | xs::_ ->
+        let m = List.length xss in
+        let n = List.length xs in
+        init n (fun i -> init m (fun j -> List.nth (nth xss j) i))
+
   module Set = struct
     let diff ?(eq=(=)) l1 l2 = filter_out (mem ~eq -$- l2) l1
     let inter ?(eq=(=)) l1 l2 = filter (mem ~eq -$- l2) l1
@@ -436,9 +444,41 @@ module List = struct
   end
 end
 
+let rec topological_sort_aux eq edges roots xs rev_acc =
+  match roots with
+  | [] -> List.rev rev_acc
+  | r::roots' ->
+      let edges1,edges2 = List.partition (fst |- eq r) edges in
+      let roots'' =
+        let ys = List.map snd edges1 in
+        List.filter (fun y -> not @@ List.exists (snd |- eq y) edges2) ys @ roots'
+      in
+      let xs' = List.filter_out (eq r) xs in
+      let rev_acc' = r::rev_acc in
+      topological_sort_aux eq edges2 roots'' xs' rev_acc'
+
+let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
+  let xs = List.unique ~cmp:eq @@ List.flatten_map Pair.to_list edges in
+  let roots = List.filter (fun x -> not @@ List.exists (snd |- eq x) edges) xs in
+  topological_sort_aux eq edges roots xs []
+
 module Compare = struct
   let on ?(cmp=compare) f x y = cmp (f x) (f y)
   let eq_on ?(eq=(=)) f x y = eq (f x) (f y)
+  let topological ?(eq=(=)) ?dom edges =
+    let map =
+      let dom' =
+        match dom with
+        | None -> List.unique ~cmp:eq @@ List.flatten_map Pair.to_list edges
+        | Some dom' -> dom'
+      in
+      let no_edge = List.filter_out (fun x -> List.exists (fun (y,z) -> eq x y || eq x z) edges) dom' in
+      edges
+      |> topological_sort ~eq
+      |> (@) no_edge
+      |> List.mapi (fun i x -> x, i)
+    in
+    on (List.assoc ~eq -$- map)
 end
 
 module Array = ExtArray.Array
@@ -701,24 +741,6 @@ let rec fixed_point ?(eq=(=)) ?(max= -1) f init =
   else fixed_point ~eq ~max:(max-1) f x
 
 
-let rec topological_sort_aux eq edges roots xs rev_acc =
-  match roots with
-  | [] -> List.rev rev_acc
-  | r::roots' ->
-      let edges1,edges2 = List.partition (fst |- eq r) edges in
-      let roots'' =
-        let ys = List.map snd edges1 in
-        List.filter (fun y -> not @@ List.exists (snd |- eq y) edges2) ys @ roots'
-      in
-      let xs' = List.filter_out (eq r) xs in
-      let rev_acc' = r::rev_acc in
-      topological_sort_aux eq edges2 roots'' xs' rev_acc'
-
-let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
-  let xs = List.unique ~cmp:eq @@ List.flatten_map Pair.to_list edges in
-  let roots = List.filter (fun x -> not @@ List.exists (snd |- eq x) edges) xs in
-  topological_sort_aux eq edges roots xs []
-
 let rec transitive_closure ?(eq=(=)) edges =
   let eq' = Pair.eq eq eq in
   let cons (x,y) es =
@@ -734,3 +756,7 @@ let rec transitive_closure ?(eq=(=)) edges =
     List.fold_left aux edges' edges'
   in
   fixed_point ~eq:(List.Set.eq ~eq:eq') f edges
+
+let make_debug_check s =
+  Flag.modules := s::!Flag.modules;
+  fun () -> List.mem s !Flag.debug_module

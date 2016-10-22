@@ -111,12 +111,21 @@ let incr_extend (ce_set, extend) f =
   if dbg then Debug.printf "IE NEW_CE_SET: %a@." print_ce_set new_ce_set;
   merge_ce_set new_ce_set ce_set, extend'
 
+let is_external_id f =
+  let name = Id.name f in
+  String.contains name '.' && is_uppercase name.[0]
+
 let make_init_env cmp fbindings =
+  let make f =
+    Id.typ f
+    |> Trans.inst_tvar_tunit_typ
+    |> (if is_external_id f then Ref_type.of_simple else Ref_type.make_weakest)
+  in
 (*  if true then
     Modular_check.check prog f typ
   else*)
     List.flatten_map (snd |- List.map Triple.fst) fbindings
-    |> Ref_type.Env.create (Ref_type.make_weakest -| Trans.inst_tvar_tunit_typ -| Id.typ)
+    |> Ref_type.Env.create make
 
 let rec main_loop history c prog cmp f typ ce_set extend =
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
@@ -126,13 +135,15 @@ let rec main_loop history c prog cmp f typ ce_set extend =
     `Untypable, env, neg_env, ce_set
   else
     let space = String.make (8*List.length history) ' ' in
+    Debug.printf "%sTIME: %.3f@." space !!get_time;
     let pr f = Debug.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
-    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print env;
-    pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
-    pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
+    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fun (f,_) -> is_external_id f) env;
+    if false then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
+    if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t extend:@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
+    incr num_tycheck;
     match Modular_check.check prog f typ with
     | Modular_check.Typable env' ->
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
@@ -144,7 +155,7 @@ let rec main_loop history c prog cmp f typ ce_set extend =
     | Modular_check.Untypable ce_set1 ->
         pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let rec refine_loop infer_mode neg_env ce_set2 extend' =
-          pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set2;
+          if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- is_external_id) ce_set2;
           pr "%a{%a,%d}%t extend':@ %a" Color.set Color.Blue Id.print f c Color.reset (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
           match Modular_infer.infer infer_mode prog f typ ce_set2 extend' with
           | None ->
@@ -152,13 +163,15 @@ let rec main_loop history c prog cmp f typ ce_set extend =
               let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
               `Untypable, env, neg_env', ce_set2
           | Some candidate ->
-              pr "%a{%a,%d}%t CANDIDATES:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print candidate;
               let candidate' =
                 candidate
                 |> Ref_type.Env.to_list
+                |> List.filter_out (fun (g,_) -> Id.same f g)
+                |> List.filter_out (fun (g,_) -> is_external_id g)
                 |> List.sort ~cmp:(Compare.on ~cmp fst)
                 |*> List.flatten_map (fun (g,typ) -> List.map (Pair.pair g) @@ Ref_type.decomp_inter typ)
               in
+              pr "%a{%a,%d}%t CANDIDATES:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.of_list candidate';
               let aux (r,env',neg_env',ce_set4) (g,typ') =
                 main_loop ((f,typ)::history) 0 {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp g typ' ce_set4 extend'
               in
@@ -168,10 +181,10 @@ let rec main_loop history c prog cmp f typ ce_set extend =
               else if not @@ List.Set.eq ce_set3 ce_set2 then
                 (refine_loop Modular_infer.init_mode neg_env' ce_set3 extend')
               else if not @@ Modular_infer.is_last_mode infer_mode then
-                (Debug.printf "change infer_mode@.";
+                (Debug.printf "%schange infer_mode@." space;
                  refine_loop (Modular_infer.next_mode infer_mode) neg_env' ce_set3 extend')
               else if true then
-                (Debug.printf "extend counterexample@.";
+                (Debug.printf "%sextend counterexample@." space;
                  let ce_set4,extend'' =
                    if false then
                      let funs = f :: (List.unique ~cmp:Id.eq @@ Ref_type.Env.dom candidate) in
@@ -208,24 +221,17 @@ let main _ spec parsed =
   Debug.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;
   if List.exists (snd |- List.exists (Triple.fst |- is_fun_var |- not)) fbindings then
     unsupported "top-level let-bindings of non-functions";
-  List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
+  List.iter (fun (flag,bindings) -> if flag=Recursive then let ()=Format.printf "%a@." Id.print @@ Triple.fst @@List.hd bindings in assert (List.length bindings=1)) fbindings;
   let fun_env = List.flatten_map (fun (_,bindings) -> List.map Triple.to_pair_r bindings) fbindings in
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
   let cmp =
-    let map =
-      let edges =
-        fun_env
-        |> List.map (fun (f,(xs,t)) -> f, List.Set.diff ~eq:Id.eq (get_fv t) (f::xs))
-        |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
-      in
-      let unused = List.filter_map (fun (f,_) -> if List.exists (fun (g,h) -> Id.same f g || Id.same f h) edges then None else Some f) fun_env in
-      edges
-      |> topological_sort ~eq:Id.eq
-      |> (@) unused
-      |> List.mapi (fun i x -> x, i)
+    let edges =
+      fun_env
+      |> List.map (fun (f,(xs,t)) -> f, List.Set.diff ~eq:Id.eq (get_fv t) (f::xs))
+      |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
     in
-    Compare.on (Id.assoc -$- map)
+    Compare.topological ~eq:Id.eq ~dom:(List.map fst fun_env) edges
   in
   let prog =
     let env_init = make_init_env cmp fbindings in
@@ -243,6 +249,7 @@ let main _ spec parsed =
     {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
   in
   let r, env, neg_env, ce_set = main_loop prog cmp main typ in
+  Format.printf "#tycheck: %n@." !num_tycheck;
   match r with
   | `Typable ->
       report_safe env;

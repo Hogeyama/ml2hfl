@@ -515,36 +515,43 @@ let rec simplify_typs constr sub styp is_zero make_zero and_or typs =
     |> flatten
     |> decomp
   in
-  Debug.printf "ST: @[%a ==>@ %a@." (List.print print) typs (List.print print) typs';
-  if List.exists is_zero typs' then
+  let typs'' =
+    let remove_exn = function Exn(typ,_) | typ -> typ in
+    if List.length typs' >= 2 && List.exists (function Exn _ -> false | _ -> true) typs' then
+      List.map remove_exn typs'
+    else
+      typs'
+  in
+  Debug.printf "ST: @[%a ==>@ %a@." (List.print print) typs (List.print print) typs'';
+  if List.exists is_zero typs'' then
     make_zero styp
   else
-    match typs' with
+    match typs'' with
     | [] -> constr styp []
     | [typ] -> typ
     | _ ->
-        if List.for_all is_base typs' then
-          let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
+        if List.for_all is_base typs'' then
+          let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs'' in
           let base = List.hd bs in
           assert (List.for_all ((=) base) bs);
           let x = List.hd xs in
           let ts' = List.map2 (U.subst_var -$- x) xs ts in
           Base(base, x, and_or ts')
-        else if List.for_all is_fun typs' then
-          let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_fun) typs' in
+        else if List.for_all is_fun typs'' then
+          let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_fun) typs'' in
           if List.for_all (same @@ List.hd typs1) @@ List.tl typs1 then
             let x = List.hd xs in
             let typs2' = List.map2 (subst_var -$- x) xs typs2 in
             let styp' = to_simple @@ List.hd typs2 in
             Fun(x, List.hd typs1, simplify_typs constr sub styp' is_zero make_zero and_or typs2')
           else
-            flatten @@ constr styp typs'
+            flatten @@ constr styp typs''
 (*
     else if List.for_all is_list typs' then
       let xs,p_lens,ys,p_is,typs'' = List.split3 @@ List.map (Option.get -| decomp_fun) typs' in
 *)
         else
-          flatten @@ constr styp typs'
+          flatten @@ constr styp typs''
 
 and simplify typ =
   match flatten typ with
@@ -566,7 +573,27 @@ and simplify typ =
       else
         Tuple xtyps'
   | Inter(styp, []) -> Inter(styp, [])
-  | Inter(styp, typs) -> simplify_typs _Inter subtype styp is_bottom (_Union -$- []) U.make_ands typs
+  | Inter(styp, typs) ->
+      let _Inter' styp typs =
+        if List.for_all (function Tuple _ -> true | _ -> false) typs then
+          let xtypss = List.map (function Tuple xs -> xs | _ -> assert false) typs in
+          let xs,typss =
+            match xtypss with
+            | [] -> assert false
+            | xtyps::ytypss ->
+                let xs = List.map fst xtyps in
+                let rename ytyps =
+                  List.fold_right2 (fun x (y,typ) acc -> let sbst = subst_var x y in sbst typ :: List.map sbst acc) xs ytyps []
+                in
+                xs, List.map snd xtyps :: List.map rename ytypss
+          in
+          let typss' = List.transpose typss in
+          let typ = Tuple (List.map2 (fun x typs -> x, _Inter (to_simple @@ List.hd typs) typs) xs typss') in
+          typ
+        else
+          _Inter styp typs
+      in
+      simplify_typs _Inter' subtype styp is_bottom (_Union -$- []) U.make_ands typs
   | Union(styp, []) -> Union(styp, [])
   | Union(styp, typs) -> simplify_typs _Union suptype styp is_top (_Inter -$- []) U.make_ors typs
   | ExtArg(x,typ1,typ2) -> ExtArg(x, simplify typ1, simplify typ2)

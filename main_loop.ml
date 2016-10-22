@@ -419,6 +419,11 @@ let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   List.filter_map aux top_funs
 
 let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
+  (if true then
+  let oc = open_out "tmp/parsed.ml" in
+  let ocf = Format.formatter_of_out_channel oc in
+  Format.fprintf ocf "parsed: %a@." Print.term parsed;
+  close_out oc);
   let main,set_target =
     if spec.Spec.ref_env = [] then
       trans_and_print Trans.set_main "set_main" Fun.id snd parsed

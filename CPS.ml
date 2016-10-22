@@ -1014,8 +1014,9 @@ let rec uncps_ref_type typ_exn rtyp e etyp =
       RT.top styp
   | _, _, TBaseCPS styp when RT.is_bottom' rtyp ->
       RT.bottom styp
-  | RT.Fun(_, RT.Inter _, RT.Fun(_,RT.Fun _, RT.Base(_,_,_))),
-    EExcep, _ -> assert false
+  | RT.Fun(x, RT.Inter(_,[rtyp]), rtyp'), _, _ -> uncps_ref_type typ_exn (RT.Fun(x, rtyp, rtyp')) e etyp
+  | RT.Fun(x, RT.Inter(styp,rtyp::rtyps), rtyp'), _, _ when List.exists (Ref_type.equiv rtyp) rtyps -> uncps_ref_type typ_exn (RT.Fun(x, RT.Inter(styp,rtyps), rtyp')) e etyp
+  | RT.Fun(x, RT.Inter(styp,rtyp::rtyps), rtyp'), _, _ -> assert false
   | _ ->
       assert false
 

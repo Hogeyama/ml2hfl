@@ -1291,7 +1291,12 @@ let infer mode prog f typ (ce_set:ce_set) extend =
     |*> List.rev (* for debug *)
     |@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
-  let merge_candidates = get_merge_candidates templates in
+  let merge_candidates =
+    templates
+    |*> List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env')
+    |> List.filter_out (fun ((f,_),_) -> String.contains (Id.name f) '.')
+    |> get_merge_candidates
+  in
   match solve_merged merge_candidates hcs with
   | None -> None
   | Some sol ->
