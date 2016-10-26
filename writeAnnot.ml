@@ -143,7 +143,7 @@ let process_top_level_phrase env = function
         | Pstr_value(_, binds) ->
             Util.List.concat_map (process_binding env) binds
         | Pstr_primitive _ -> []
-        | Pstr_type decls -> []
+        | Pstr_type _ -> []
         | Pstr_exception _ -> []
         | Pstr_module _ -> []
         | Pstr_recmodule _ -> []
