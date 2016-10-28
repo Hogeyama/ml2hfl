@@ -131,6 +131,7 @@ and process_expression env e =
       process_expression env e
   | Pexp_coerce (_, _, _) -> Util.unsupported "Not implemented: writeAnnot"
   | Pexp_extension _ -> Util.unsupported "Not implemented: writeAnnot"
+  | Pexp_unreachable -> Util.unsupported "Not implemented: writeAnnot"
 
 let process_top_level_phrase env = function
   | Ptop_dir _ ->

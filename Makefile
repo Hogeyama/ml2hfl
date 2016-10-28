@@ -6,8 +6,9 @@ PACKAGES = fpat,str,unix,extlib,compiler-libs.common
 
 MOCHI_BIN_DIR = mochi_bin
 
-OCAMLCFLAGS = -g -annot -bin-annot -package $(PACKAGES)
-OCAMLOPTFLAGS = -g -annot -bin-annot -package $(PACKAGES)
+WARN_FLAGS = -w -52-58
+OCAMLCFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
+OCAMLOPTFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
 
 DOC = doc
 

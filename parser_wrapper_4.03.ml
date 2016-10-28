@@ -547,7 +547,7 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   | Texp_lazy e -> assert false
   | Texp_object _ -> unsupported "expression (class)"
   | Texp_pack _ -> unsupported "expression (pack)"
-  | Texp_unreachable _ -> unsupported "Texp_unreachable"
+  | Texp_unreachable -> unsupported "Texp_unreachable"
   | Texp_extension_constructor _ -> unsupported "Texp_extension_constructor"
 
 and from_case {c_lhs;c_guard;c_rhs} =
