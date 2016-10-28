@@ -131,6 +131,7 @@ and process_expression env e =
       process_expression env e
   | Pexp_coerce (_, _, _) -> Util.unsupported "Not implemented: writeAnnot"
   | Pexp_extension _ -> Util.unsupported "Not implemented: writeAnnot"
+  | Pexp_unreachable -> Util.unsupported "Not implemented: writeAnnot"
 
 let process_top_level_phrase env = function
   | Ptop_dir _ ->
@@ -143,7 +144,7 @@ let process_top_level_phrase env = function
         | Pstr_value(_, binds) ->
             Util.List.concat_map (process_binding env) binds
         | Pstr_primitive _ -> []
-        | Pstr_type decls -> []
+        | Pstr_type _ -> []
         | Pstr_exception _ -> []
         | Pstr_module _ -> []
         | Pstr_recmodule _ -> []

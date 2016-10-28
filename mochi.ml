@@ -448,8 +448,8 @@ let fpat_init1 () =
 let fpat_init2 () =
   let open Fpat in
   Global.target_filename := !Flag.filename;
-  SMTProver.cvc3 := !Flag.cvc3;
-  SMTProver.open_ ()
+  SMTProver.cvc3_command := !Flag.cvc3;
+  SMTProver.initialize ()
 
 let check_env () =
   match !Flag.mc with
@@ -471,7 +471,7 @@ let () =
       if not !Flag.only_result then print_env true;
       check_env ();
       if main cin then decr Flag.cegar_loop;
-      Fpat.SMTProver.close ();
+      Fpat.SMTProver.finalize ();
       print_info ()
     with
     | e when !Flag.exp ->

@@ -816,9 +816,13 @@ let solve hcs =
       |> FpatInterface.of_term
       |> Fpat.Formula.of_term
     in
+    let tr' {HC.head;HC.body} =
+      let hd,bd = tr head, List.map tr body in
+      Fpat.Formula.fvs hd @@@ List.flatten_map Fpat.Formula.fvs bd, hd, bd
+    in
     hcs
-    |> List.map (fun {HC.head;HC.body} -> tr head, List.map tr body)
-    |> List.map (Fun.uncurry Fpat.HornClause.of_formulas)
+    |> List.map tr'
+    |> List.map (Triple.uncurry Fpat.HornClause.of_formulas)
     |> Fpat.HCCSSolver.solve_dyn
     |> Fpat.PredSubst.normalize
   in

@@ -68,8 +68,8 @@ let rec add_pred n path typ =
 let refine labeled is_cp prefix ces ext_ces prog =
   let tmp = get_time () in
   let post () =
-    Fpat.SMTProver.close ();
-    Fpat.SMTProver.open_ ();
+    Fpat.SMTProver.finalize ();
+    Fpat.SMTProver.initialize ();
     add_time tmp Flag.time_cegar
   in
   try
@@ -125,13 +125,13 @@ let refine_with_ext labeled is_cp prefix ces ext_ces prog =
         add_preds_env map prog.env
     in
     if !Flag.print_progress then Format.printf "DONE!@.@.";
-    Fpat.SMTProver.close ();
-    Fpat.SMTProver.open_ ();
+    Fpat.SMTProver.finalize ();
+    Fpat.SMTProver.initialize ();
     add_time tmp Flag.time_cegar;
     map, {prog with env}
   with e ->
-    Fpat.SMTProver.close ();
-    Fpat.SMTProver.open_ ();
+    Fpat.SMTProver.finalize ();
+    Fpat.SMTProver.initialize ();
     add_time tmp Flag.time_cegar;
     raise e
 
@@ -178,7 +178,7 @@ let refine_rank_fun ce ex_ce prog =
 
     raise (PostCondition (env, spc, spcWithExparam))
   with e ->
-    Fpat.SMTProver.close ();
-    Fpat.SMTProver.open_ ();
+    Fpat.SMTProver.finalize ();
+    Fpat.SMTProver.initialize ();
     add_time tmp Flag.time_cegar;
     raise e
