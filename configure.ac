@@ -22,11 +22,6 @@ if test "$OCAMLYACC" = "no"; then
   AC_MSG_ERROR([ocamlyacc not found])
 fi
 
-AC_CHECK_OCAML_PKG([ocamlgraph])
-if test "$OCAML_PKG_ocamlgraph" = "no"; then
-  AC_MSG_ERROR([ocamlgraph not found])
-fi
-
 AC_CHECK_OCAML_PKG([fpat])
 if test "$OCAML_PKG_fpat" = "no"; then
   AC_MSG_ERROR([fpat not found])
