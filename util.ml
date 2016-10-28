@@ -1,7 +1,7 @@
 exception Fatal of string
 exception Unsupported of string
 
-module NORDebug = Debug.Make(struct let check () = not @@ !Flag.only_result end)
+module Verbose = Debug.Make(struct let check () = not @@ !Flag.only_result end)
 
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
@@ -154,6 +154,7 @@ module Fun = struct
     else repeat f (n-1) (f x)
   let const x _ = x
   let const2 x _ _ = x
+  let ignore2 _ _  = ()
 end
 
 module Option = struct
@@ -498,6 +499,7 @@ module String = struct
       | '^' -> "_caret_"
       | '|' -> "_bar_"
       | '~' -> "_tilde_"
+      | '\'' -> "_prime_"
       | c -> String.make 1 c
     in
     replace_chars map s

@@ -69,7 +69,7 @@ let subst_matched_var = subst_matched_var.tr_term
 
 
 let rec get_rtyp_list rtyp typ =
-  match rtyp, elim_tpred typ with
+  match rtyp, elim_tattr typ with
   | RT.Inter(_, rtyps), _ ->
      RT.Inter(typ, List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Union(_, rtyps), _ ->
@@ -140,7 +140,7 @@ let abst_list_typ post typ =
   | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
   | TApp(TList, [typ]) ->
       let l = Id.new_var ~name:"l" TInt in
-      TTuple[l; Id.new_var @@ TFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
+      TTuple[l; Id.new_var @@ pureTFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
   | _ -> abst_list.tr2_typ_rec post typ
 
 let rec get_match_bind_cond t p =
@@ -285,7 +285,7 @@ let trans t =
 
 
 let make_list_eq typ =
-  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TBool)) in
+  let f = Id.new_var ~name:"list_eq" @@ pureTFun(Id.new_var ~name:"xs" @@ make_tlist typ, pureTFun(Id.new_var ~name:"xs" @@ make_tlist typ, TBool)) in
   let xs = Id.new_var ~name:"xs'" @@ make_tlist typ in
   let ys = Id.new_var ~name:"ys'" @@ make_tlist typ in
   let t_eq =

@@ -121,22 +121,30 @@ let rec trans_inv_term = function
   | t -> Format.printf "%a@." CEGAR_print.term t; assert false
 
 
+let rec preds_of typ =
+  match typ with
+  | Type.TAttr(attr,_) ->
+      begin
+        let ypss = List.filter_map (function Type.TAPred(y,ps) -> Some (y,ps) | _ -> None) attr in
+        match ypss with
+        | [] -> fun _ -> []
+        | [y,ps] ->
+            let y' = trans_var y in
+            let ps = List.map (snd -| trans_term "" [] []) ps in
+            fun z -> List.map (subst y' z) ps
+        | _ -> assert false
+      end
+  | _ -> fun _ -> []
 
-
-let rec trans_typ = function
+and trans_typ = function
   | Type.TUnit -> typ_unit
   | Type.TBool -> typ_bool ()
   | Type.TInt -> typ_int
   | Type.TVar{contents=None} -> typ_int
   | Type.TVar{contents=Some typ} -> trans_typ typ
-  | Type.TFun({Id.typ=Type.TBool|Type.TPred({Id.typ=Type.TBool},_)} as x,typ) ->
+  | Type.TFun({Id.typ=Type.TBool|Type.TAttr(_,Type.TBool)} as x,typ) ->
       let x' = trans_var x in
-      let ps' =
-        match Id.typ x with
-        | Type.TPred(y,ps) ->
-            fun z -> List.map (fun p -> subst (trans_var y) z (snd (trans_term "" [] [] p))) ps
-        | _ -> fun _ -> []
-      in
+      let ps' = preds_of @@ Id.typ x in
       let ps'' =
         if !Flag.bool_init_empty
         then fun z -> ps' z
@@ -145,16 +153,9 @@ let rec trans_typ = function
       let typ1 = TBase(TBool, ps'') in
       let typ2 = trans_typ typ in
       TFun(typ1, fun y -> subst_typ x' y typ2)
-  | Type.TFun({Id.typ=Type.TInt|Type.TPred({Id.typ=Type.TInt},_)} as x,typ) ->
+  | Type.TFun({Id.typ=Type.TInt|Type.TAttr(_,Type.TInt)} as x,typ) ->
       let x' = trans_var x in
-      let ps' =
-        match Id.typ x with
-        | Type.TPred(y,ps) ->
-            let y' = trans_var y in
-            let ps' = List.map (snd -| trans_term "" [] []) ps in
-            fun z -> List.map (subst y' z) ps'
-        | _ -> fun _ -> []
-      in
+      let ps' = preds_of @@ Id.typ x in
       let typ1 = TBase(TInt, ps') in
       let typ2 = trans_typ typ in
       TFun(typ1, fun y -> subst_typ x' y typ2)
@@ -163,7 +164,7 @@ let rec trans_typ = function
       let typ2 = trans_typ typ in
       TFun(typ1, fun _ -> typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
-  | Type.TPred(x,ps) ->
+  | Type.TAttr([Type.TAPred(x,ps)], typ) ->
       begin
         let x' = trans_var x in
         let ps' = List.map (snd -| trans_term "" [] []) ps in
@@ -221,10 +222,10 @@ and trans_term post xs env t =
       defs1@defs2, make_app head args
   | S.App({S.desc=S.Const(S.RandValue(Type.TData s, true))}, [t1]) ->
       assert false
-(*
+  (*
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
- *)
+   *)
   | S.App({S.desc=S.Const(S.RandValue(typ,true))}, [t1;t2]) ->
       assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
@@ -271,7 +272,7 @@ and trans_term post xs env t =
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
       let op =
-        match Type.elim_tpred t1.S.typ with
+        match Type.elim_tattr t1.S.typ with
         | Type.TUnit -> EqUnit
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt
@@ -317,7 +318,7 @@ let rec formula_of t =
       let t1' = formula_of t1 in
       let t2' = formula_of t2 in
       let op =
-        match Type.elim_tpred t1.S.typ with
+        match Type.elim_tattr t1.S.typ with
         | Type.TUnit -> EqUnit
         | Type.TBool -> EqBool
         | Type.TInt -> EqInt

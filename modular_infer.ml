@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_syntax
 
-module Debug = Debug.Make(struct let check () = List.mem "Infer_mod" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check () = List.mem "Modular_infer" !Flag.debug_module end)
 
 module CT = Comp_tree
 module HC = Horn_clause
@@ -285,7 +285,7 @@ let inline_sub templates typ1 typ2 =
 let get_nid (Rose_tree.Node({CT.nid}, _)) = nid
 
 let in_comp_tree ct nid =
-  List.exists (fun {CT.nid=nid'} -> nid' = nid) @@ Rose_tree.flatten ct
+  Rose_tree.exists (fun {CT.nid=nid'} -> nid' = nid) ct
 
 
 let hd_of_inter typ =
@@ -338,7 +338,7 @@ let rec decomp_fun typ =
   | _ -> [], typ
 
 let base_of_typ typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TUnit -> Ref_type.Unit
   | TInt -> Ref_type.Int
   | TBool -> Ref_type.Bool
@@ -1274,7 +1274,7 @@ let infer mode prog f typ (ce_set:ce_set) extend =
     Debug.printf "env': %a@.@." Ref_type.Env.print env';
     CT.from_program env' fun_env' ce_set extend t
   in
-  Format.printf "reached_empty_branch: %a@." (List.print Id.print) reached_empty_branch;
+  Debug.printf "reached_empty_branch: %a@." (List.print Id.print) reached_empty_branch;
   let fun_env = [](*make_fun_env comp_tree*) in
   Debug.printf "fun_env: %a@.@." (List.print @@ Pair.print Id.print @@ Pair.print Id.print @@ Option.print Format.pp_print_int) fun_env;
   let templates = make_template env comp_tree in
@@ -1300,8 +1300,8 @@ let infer mode prog f typ (ce_set:ce_set) extend =
   | Some sol ->
       Debug.printf "TEMPLATES of TOP_FUNS: @[%a@.@." print_tmp_env @@ List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env') templates;
       Debug.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
-      let top_funs = used_by f prog in
-      Debug.printf "TOP_FUNS: %a@.@." (List.print Id.print) top_funs;
+      let top_funs = List.Set.inter ~eq:Id.eq (get_fv @@ snd @@ Id.assoc f prog.fun_def_env) (List.map fst prog.fun_def_env) in
+      Debug.printf "TOP_FUNS[%a]: %a@.@." Id.print f (List.print Id.print) top_funs;
       let env' =
         let aux ((g,_),tmp) =
           if Id.mem g top_funs then
@@ -1319,14 +1319,14 @@ let infer mode prog f typ (ce_set:ce_set) extend =
           let typ_ =
             Debug.printf "  typ: %a@." Ref_type.print typ;
             Debug.printf "  typ': %a@." Ref_type.print typ';
-            let typ'' = Ref_type.contract typ' in
-            make_get_rtyp (fun y -> assert (Id.same y x); typ'') x
+            make_get_rtyp (fun y -> assert (Id.same y x); typ') x
           in
           Debug.printf "  typ_: %a@." Ref_type.print typ_;
           x', typ_
         in
         env'
         |> List.map aux
+        |> List.map (Pair.map_snd Ref_type.contract)
         |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
         |> List.remove_lower (fun (x,typ) (x',typ') -> Id.same x x' && Ref_type.equiv typ typ')
         |> List.filter_out (fun (g,typ') -> Id.same f g && Ref_type.subtype typ typ')
@@ -1347,15 +1347,22 @@ let infer mode prog f typ (ce_set:ce_set) extend =
       Debug.printf "env_unused: %a@.@." Ref_type.Env.print env_unused;
       Debug.printf "env'': %a@.@." Ref_type.Env.print env'';
       let env''' = Ref_type.Env.merge env_unused env'' in
-      Debug.printf "Infer_mod.infer: %a@.@." Ref_type.Env.print env''';
+      Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env''';
       Some env'''
+
+let use_ToFalse = false
 
 let next_mode mode =
   match mode with
   | ToTrue -> ToStronger
   | ToFalse -> invalid_arg "incr_mode"
-  | ToStronger -> ToFalse
+  | ToStronger when use_ToFalse -> ToFalse
+  | ToStronger -> invalid_arg "incr_mode"
 
 let init_mode = ToTrue
 
-let is_last_mode mode = mode = ToFalse
+let is_last_mode mode =
+  if use_ToFalse then
+    mode = ToFalse
+  else
+    mode = ToStronger

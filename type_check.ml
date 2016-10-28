@@ -15,7 +15,7 @@ let rec check t typ =
   if not (Type.can_unify t.typ typ) then
     (Format.printf "check: %a, %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
      assert false);
-  match t.desc, elim_tpred t.typ with
+  match t.desc, elim_tattr t.typ with
   | _, TFuns _ -> ()
   | Label(_, t), _ -> check t typ
   | Const Unit, TUnit -> ()
@@ -42,7 +42,8 @@ let rec check t typ =
       check_var x (Id.typ y);
       check t typ'
   | App(t,ts), typ' ->
-      let rec aux = function
+      let rec aux (ts,typ) =
+        match ts, elim_tattr typ with
         | [], _ -> ()
         | t::ts, TFun(x,typ) ->
             check t (Id.typ x);
@@ -59,7 +60,7 @@ let rec check t typ =
       check t3 typ'
   | Let(flag, bindings, t2), typ' ->
       let rec aux t xs typ =
-        match xs, typ with
+        match xs, elim_tattr typ with
         | x::xs,TFun(y,typ) ->
             check_var x @@ Id.typ y;
             aux t xs typ
@@ -76,9 +77,9 @@ let rec check t typ =
       List.iter (fun (f,xs,t) -> aux t xs @@ Id.typ f) bindings;
       let aux' f =
         let fv = get_fv t2 in
-        List.for_all (fun f' -> Id.same f f' => Type.can_unify (Id.typ f) (Id.typ f')) fv
+        List.iter (fun f' -> assert (Id.same f f' => Type.can_unify (Id.typ f) (Id.typ f'))) fv
       in
-      assert (List.for_all (aux' -| Triple.fst) bindings);
+      List.iter (aux' -| Triple.fst) bindings;
       check t2 typ'
   | BinOp(Eq,t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);

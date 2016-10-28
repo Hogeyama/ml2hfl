@@ -201,7 +201,7 @@ simple_type_core:
 
 id_simple_type:
 | simple_type_core { make_self_id $1 }
-| simple_type_core LSQUAR pred_list RSQUAR { make_self_id (TPred(make_self_id $1, $3)) }
+| simple_type_core LSQUAR pred_list RSQUAR { make_self_id (TAttr([TAPred(make_self_id $1, $3)], $1)) }
 | id COLON simple_type_core { Id.new_var ~name:(Id.name $1) $3 }
 | id COLON simple_type_core LSQUAR pred_list RSQUAR
   {
@@ -209,8 +209,8 @@ id_simple_type:
     let typ = $3 in
     let ps = $5 in
     let x' = Id.new_var ~name:(Id.name x) typ in
-    let ps' = List.map (subst_var x @@ Id.set_typ x' @@ elim_tpred typ) ps in
-    Id.new_var ~name:(Id.name x) (TPred(x', ps'))
+    let ps' = List.map (subst_var x @@ Id.set_typ x' @@ elim_tattr typ) ps in
+    Id.new_var ~name:(Id.name x) (TAttr([TAPred(x', ps')], typ))
   }
 
 typ:
@@ -222,8 +222,8 @@ typ:
     let r = $3 in
     let typ1 = Id.typ x in
     let typ2 = Id.typ r in
-    let typ2' = subst_type_var (orig_id x) (Id.set_typ x (elim_tpred typ1)) typ2 in
-    let typ2'' = subst_type_var r (Id.set_typ abst_var (elim_tpred typ2)) typ2' in
+    let typ2' = subst_type_var (orig_id x) (Id.set_typ x (elim_tattr typ1)) typ2 in
+    let typ2'' = subst_type_var r (Id.set_typ abst_var (elim_tattr typ2)) typ2' in
     make_self_id @@ TTuple [x; Id.new_var typ2'']
   }
 | typ ARROW typ
@@ -232,8 +232,8 @@ typ:
     let r = $3 in
     let typ1 = Id.typ x in
     let typ2 = Id.typ r in
-    let typ2' = subst_type_var (orig_id x) (Id.set_typ x @@ elim_tpred typ1) typ2 in
-    let typ2'' = subst_type_var r (Id.set_typ abst_var @@ elim_tpred typ2) typ2' in
+    let typ2' = subst_type_var (orig_id x) (Id.set_typ x @@ elim_tattr typ1) typ2 in
+    let typ2'' = subst_type_var r (Id.set_typ abst_var @@ elim_tattr typ2) typ2' in
     make_self_id @@ TFun(x, typ2'')
   }
 | typ LIST

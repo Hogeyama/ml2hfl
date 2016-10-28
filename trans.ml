@@ -75,7 +75,7 @@ let get_tvars = make_col [] (List.fold_left (fun xs y -> if List.memq y xs then 
 let get_tvars_typ typ =
   match typ with
   | TVar({contents=None} as x) -> [x]
-  | TPred(x,_) -> get_tvars.col_var x
+  | TAttr(_,typ) -> get_tvars.col_typ typ
   | _ -> get_tvars.col_typ_rec typ
 
 let () = get_tvars.col_typ <- get_tvars_typ
@@ -497,7 +497,7 @@ let replace_typ_desc env desc =
         let f' = replace_typ_var env f in
         if not @@ Type.can_unify (Id.typ f) (Id.typ f') then
           begin
-            let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
+            let f'' = Id.set_typ f @@ elim_tattr_all @@ Id.typ f' in
             Format.printf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
             let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
             fatal @@ msg ^ " (please specify monomorphic types if polymorphic types exist)"
@@ -1656,7 +1656,7 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 
 let elim_unused_let = make_trans2 ()
 
-let elim_unused_let_term cbv t =
+let elim_unused_let_term (leave,cbv) t =
   let has_no_effect t =
     if false
     then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
@@ -1666,31 +1666,38 @@ let elim_unused_let_term cbv t =
     let flag = List.mem ADoNotInline t.attr in
     match t.desc with
     | Let(Nonrecursive, bindings, t) when not flag ->
-        let t' = elim_unused_let.tr2_term cbv t in
-        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let t' = elim_unused_let.tr2_term (leave,cbv) t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
         let fv = get_fv t' in
         let used (f,xs,t) =
-          Id.mem f fv ||
+          Id.mem f (leave@fv) ||
           cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
         in
         let bindings'' = List.filter used bindings' in
         (make_let bindings'' t').desc
     | Let(Recursive, bindings, t) when not flag ->
-        let t' = elim_unused_let.tr2_term cbv t in
-        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let t' = elim_unused_let.tr2_term (leave,cbv) t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
         let fv = get_fv t' in
         let used (f,xs,t) =
-          Id.mem f fv ||
+          Id.mem f (leave@fv) ||
           cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
         in
         if List.exists used bindings'
         then (make_letrec bindings' t').desc
         else t'.desc
-    | _ -> elim_unused_let.tr2_desc_rec cbv t.desc
+    | _ -> elim_unused_let.tr2_desc_rec (leave,cbv) t.desc
   in
   {t with desc=desc'}
 let () = elim_unused_let.tr2_term <- elim_unused_let_term
-let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
+let elim_unused_let ?(leave_last=false) ?(cbv=true) t =
+  let leave =
+    if leave_last then
+      Option.to_list @@ get_last_definition t
+    else
+      []
+  in
+  elim_unused_let.tr2_term (leave,cbv) t
 
 
 
@@ -2152,6 +2159,7 @@ let copy_poly_funs t =
   let map,t' = copy_poly_funs.fold_tr_term [] t in
   let t'' =
     t'
+    |@> Type_check.check -$- Type.TUnit
     |> flatten_tvar
     |> inline_var_const
     |@> Type_check.check -$- Type.TUnit

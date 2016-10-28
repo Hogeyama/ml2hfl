@@ -192,7 +192,7 @@ and print_desc attr pri typ fm desc =
       let print_binding fm (f,xs,t1) =
         let pre =
           if !b then
-            "let" ^ (if List.mem ADoNotInline attr then "!" else "") ^ s_rec
+            "let" ^ (if List.mem ADoNotInline attr && not !Flag.print_as_ocaml then "!" else "") ^ s_rec
           else
             "and"
         in

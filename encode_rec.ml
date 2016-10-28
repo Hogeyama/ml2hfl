@@ -88,7 +88,7 @@ let abst_recdata_leaves typs =
     else make_ttuple [TInt; make_ttuple typs']
   in
   make_ttuple [TUnit; (* extra-param *)
-               TFun(Id.new_var ~name:"path" @@ make_tlist TInt, r_typ)]
+               pureTFun(Id.new_var ~name:"path" @@ make_tlist TInt, r_typ)]
 
 let abst_recdata_typ typ =
   match fold_data_type typ with
@@ -263,9 +263,8 @@ let abst_recdata_term t =
         let p',c',bind = abst_recdata_pat p in
         let t' = abst_recdata.tr_term t in
         let aux (t,p) t' =
-          make_match t
-                     [p, true_term, t';
-                      make_pany p.pat_typ, true_term, make_bottom t'.typ]
+          make_match t [p, true_term, t';
+                        make_pany p.pat_typ, true_term, make_bottom t'.typ]
         in
         p', make_and c c', List.fold_right aux bind t'
       in

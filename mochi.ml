@@ -129,13 +129,13 @@ let main_termination orig parsed =
   let open BRA_util in
   (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
   let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-  let _ = NORDebug.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
+  let _ = Verbose.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
   let parsed = BRA_transform.regularization parsed in
-  let _ = NORDebug.printf "regularized::@. @[%a@.@." Print.term parsed in
+  let _ = Verbose.printf "regularized::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-  let _ = if !Flag.add_closure_depth then NORDebug.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_depth then Verbose.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-  let _ = if !Flag.add_closure_exparam then NORDebug.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_exparam then Verbose.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
   let holed_list = BRA_transform.to_holed_programs parsed in
   let result =
     try
@@ -203,7 +203,7 @@ let main in_channel =
     let orig = Parse.use_file lb in
     Id.set_counter (Ident.current_time () + 1000);
     let parsed = Parser_wrapper.from_use_file orig in
-    NORDebug.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
+    Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
     if !Flag.randint_refinement_log
     then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print Format.std_formatter in

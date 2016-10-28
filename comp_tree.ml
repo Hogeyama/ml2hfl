@@ -73,8 +73,10 @@ and print_label fm label =
       Format.fprintf fm "@[App %a %a@]" print_fun_id f pr_env map
   | App(f,map) ->
       Format.fprintf fm "@[App %a ...@]" print_fun_id f
-  | Let(f,t) ->
+  | Let(f,t) when false ->
       Format.fprintf fm "@[Let %a =@ %a@]" Id.print f Print.term t
+  | Let(f,t) ->
+      Format.fprintf fm "@[Let %a =@ ...@]" Id.print f
   | Assume t -> Format.fprintf fm "@[Assume %a@]" Print.term t
   | Spawn(f,gs) -> Format.fprintf fm "@[Spawn %a, %a@]" Id.print f (Option.print @@ List.print Id.print) gs
   | Fail -> Format.fprintf fm "Fail"
@@ -481,6 +483,7 @@ let rec from_term
         {nid; var_env; val_env; label; ref_typ; ce_env}
       in
       [RT.Node(node, [])]
+  | Let(Nonrecursive, _, _) -> assert false
   | _ ->
       Format.printf "@.t: @[%a@." Print.term t;
       Format.printf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
@@ -520,7 +523,11 @@ let from_program env fun_env (ce_set:ce_set) extend t =
     |> List.get
     |@> Debug.printf "comp_tree:@.%a@.@." print
   in
-  let reached_empty_branch = RT.filter_map_label (function {label = Empty_branch f} -> Some f | _ -> None) comp_tree in
+  let reached_empty_branch =
+    comp_tree
+    |> RT.filter_map_label (function {label = Empty_branch f} -> Some f | _ -> None)
+    |> List.unique ~cmp:Id.eq
+  in
   let comp_tree' =
     filter_ends comp_tree
     |@> Debug.printf "comp_tree':@.%a@.@." print

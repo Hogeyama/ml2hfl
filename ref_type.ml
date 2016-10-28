@@ -260,7 +260,7 @@ let rename typ =
 
 
 let rec of_simple typ =
-  match T.elim_tpred typ with
+  match T.elim_tattr typ with
   | T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
@@ -299,9 +299,10 @@ let rec to_abst_typ typ =
   | Base(b, x, t) when t = U.true_term ->
       to_abst_typ_base b
   | Base(b, x, t) ->
-      let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ_base b in
+      let x' = Id.new_var_id x in
+      let typ' = to_abst_typ_base b in
       let ps = Term_util.decomp_bexp @@ U.subst_var x x' t in
-      T.TPred(x', ps)
+      T.TAttr([T.TAPred(x', ps)], typ')
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ1 in
       let typ2' = to_abst_typ @@ subst_var x x' typ2 in
@@ -322,9 +323,10 @@ let rec to_abst_typ typ =
       else
         let typ1' = to_abst_typ typ1 in
         let x' = Id.new_var ~name:"xs" @@ T.make_tlist typ1' in
-        if p_len = U.true_term
-        then Id.typ x'
-        else T.TPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])
+        if p_len = U.true_term then
+          Id.typ x'
+        else
+          T.TAttr([T.TAPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])], Id.typ x')
   | Exn(typ1, _) -> to_abst_typ typ1
   in
   Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;
@@ -623,7 +625,7 @@ let rec from_fpat typ =
  *)
 
 let rec make_strongest typ =
-  match typ with
+  match T.elim_tattr typ with
   | T.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
   | T.TBool -> Base(Bool, Id.new_var typ, U.false_term)
   | T.TInt -> Base(Int, Id.new_var typ, U.false_term)
@@ -642,6 +644,7 @@ and make_weakest typ =
   | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
   | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
+  | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
@@ -701,7 +704,7 @@ type neg_env = NegEnv.t
 
 
 let rec contract typ =
-  match typ with
+  match flatten typ with
   | Base _ -> typ
   | Fun(x, typ1, typ2) -> Fun(x, contract typ1, contract typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd contract) xtyps)
@@ -724,3 +727,14 @@ let rec contract typ =
   | ExtArg(x,typ1,typ2) -> ExtArg(x, contract typ1, contract typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, contract typ)
   | Exn(typ1,typ2) -> Exn(contract typ1, contract typ2)
+
+let map_pred f typ =
+  match flatten typ with
+  | Base(base, x, p) -> Base(base, x, f p)
+  | Fun(x,typ1,typ2) -> Fun(x, map_pred f typ1, map_pred f typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ map_pred f) xtyps)
+  | Inter(styp, typs) -> Inter(styp, List.map (map_pred f) typs)
+  | Union(styp, typs) -> Union(styp, List.map (map_pred f) typs)
+  | ExtArg(x,typ1,typ2) -> ExtArg(x, map_pred f typ1, map_pred f typ2)
+  | List(x,p_len,y,p_i,typ) -> List(x, f p_len, y, f p_i, map_pred f typ)
+  | Exn(typ1,typ2) -> Exn(map_pred f typ1, map_pred f typ2)

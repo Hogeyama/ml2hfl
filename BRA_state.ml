@@ -10,7 +10,7 @@ and default_val' =
     | TBool -> Const False
     | TInt -> Const (Int 0)
     | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var ~name:"_" t1, default_val t2)
-    | TPred (t, _) -> default_val' (Id.typ t)
+    | TAttr(_, typ) -> default_val' typ
     | TData _ -> invalid_arg "default_val: not yet implemented syntax(Tconstr)"
     | TApp _ -> invalid_arg "default_val: not yet implemented syntax(TApp)"
     | TTuple _ -> invalid_arg "default_val: not yet implemented syntax(TTuple)"

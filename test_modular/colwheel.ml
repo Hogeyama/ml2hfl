@@ -28,8 +28,9 @@ let rgb_of_hsb h s v =
   let h = h * 6 in
   let i = h / 255 * 255 in
   let f = h - i in
-  let m = v * (255 - s) / 255 and n = v * (255 - s * f / 255) / 255
-  and k = v * (255 - s * (255 - f) / 255) / 255 in
+  let m = v * (255 - s) / 255 in
+  let n = v * (255 - s * f / 255) / 255 in
+  let k = v * (255 - s * (255 - f) / 255) / 255 in
   rgb
     (nround (255 * (
       match i / 255 with
@@ -81,7 +82,9 @@ let main foreground background =
         end else
         if e.button then begin
           let c = point_color e.mouse_x e.mouse_y in
-          let r = c lsr 16 and g = (c lsr 8) land 255 and b = c land 255 in
+          let r = c lsr 16 in
+          let g = (c lsr 8) land 255 in
+          let b = c land 255 in
             set_color background;
             fill_rect 0 0 msg_w msg_h;
             set_color foreground;
