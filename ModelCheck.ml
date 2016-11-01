@@ -325,7 +325,7 @@ let check abst prog spec =
           | TrecsInterface.Safe env -> Safe (uncapitalize_env env)
           | TrecsInterface.Unsafe ce -> Unsafe (CESafety ce)
         end
-    | Flag.HorSat, Flag.NonTermination ->
+    | (Flag.HorSat|Flag.HorSat2), Flag.NonTermination ->
        let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
        let spec = HorSatInterface.make_spec_nonterm labels in
         begin
@@ -334,7 +334,7 @@ let check abst prog spec =
           | HorSatInterface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
           | HorSatInterface.Unsafe _ -> assert false
         end
-    | Flag.HorSat, _ ->
+    | (Flag.HorSat|Flag.HorSat2), _ ->
         let spec = HorSatInterface.make_spec @@ List.length prog.defs in
         begin
           match HorSatInterface.check (abst',spec) with

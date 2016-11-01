@@ -1,4 +1,5 @@
 let horsat = ref Environment.horsat
+let horsat2 = ref Environment.horsat2
 let horsatp = ref Environment.horsatp
 let omega = ref Environment.omega
 let trecs = ref Environment.trecs
@@ -8,7 +9,7 @@ let filename = ref ""
 let spec_file = ref ""
 
 type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination
-type model_checker = TRecS | HorSat | HorSatP
+type model_checker = TRecS | HorSat | HorSat2 | HorSatP
 
 let use_abst = ref false
 
@@ -39,7 +40,7 @@ let use_multiple_paths = ref false
 let split_free_var = ref false
 let filter_forward = ref true
 let use_unknown = ref false
-let church_encode = ref false
+let church_encode = ref (!mc <> TRecS)
 let beta_reduce = false (* do beta reduction before model checking *)
 let useless_elim = false
 let lift_fv_only = ref false

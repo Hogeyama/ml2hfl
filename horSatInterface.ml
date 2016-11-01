@@ -27,7 +27,7 @@ module HS = HorSat_syntax
 
 
 (* returen "" if the version cannot be obtained *)
-let version () =
+let version_aux s =
   let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" !Flag.horsat) in
   let v =
     try
@@ -39,6 +39,7 @@ let version () =
   in
   match Unix.close_process (cin, cout) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v
+let version () = version_aux !Flag.horsat
 
 
 let string_of_arity_map arity_map =

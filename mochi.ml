@@ -100,12 +100,14 @@ let print_env cmd =
   let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   let horsat_version = HorSatInterface.version () in
+  let horsat2_version = HorSat2Interface.version () in
   let horsatp_version = HorSatPInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
   Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
   Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;
+  Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2_version;
   Option.iter (Format.printf "  HorSatP version: %s@.") horsatp_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   let args = List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s) !Flag.args in
@@ -311,11 +313,13 @@ let rec arg_spec () =
      "-bool-church", Arg.Set Flag.church_encode, " Use church-encoding for model checking";
      "-trecs", Arg.Unit (fun () -> Flag.mc:=Flag.TRecS), " Use TRecS as the model checker";
      "-horsat", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat), " Use HorSat as the model checker";
-     "-horsat2", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat;Flag.horsat:=!Flag.horsat^"2 -merge"(**TODO:FIX**)), " Use HorSat2 as the model checker";
+     "-horsat2", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat2), " Use HorSat2 as the model checker";
      "-trecs-bin", Arg.Set_string Flag.trecs,
                    Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
      "-horsat-bin", Arg.Set_string Flag.horsat,
                     Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
+     "-horsat2-bin", Arg.Set_string Flag.horsat2,
+                    Format.sprintf "<cmd>  Change horsat2 command to <cmd> (default: \"%s\")" !Flag.horsat2;
      "-horsatp-bin", Arg.Set_string Flag.horsatp,
                      Format.sprintf "<cmd>  Change horsatp command to <cmd> (default: \"%s\")" !Flag.horsatp;
      (* predicate discovery *)
@@ -455,6 +459,7 @@ let check_env () =
   match !Flag.mc with
   | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found"
   | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found"
+  | Flag.HorSat2 -> if not Environment.horsat2_available then fatal "HorSat2 not found"
   | Flag.HorSatP -> if not Environment.horsatp_available then fatal "HorSatP not found"
 
 let () =
