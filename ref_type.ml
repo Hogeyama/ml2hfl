@@ -4,7 +4,7 @@ module S = Syntax
 module U = Term_util
 module T = Type
 
-module Debug = Debug.Make(struct let check = make_debug_check "Ref_type" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type base =
   | Unit

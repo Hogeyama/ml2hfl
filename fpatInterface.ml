@@ -11,7 +11,7 @@ module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
 
-module Debug = Debug.Make(struct let check = make_debug_check "FpatInterface" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let rec conv_typ ty =
   match ty with

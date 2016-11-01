@@ -11,7 +11,7 @@ let root x = Option.get @@ root x
 let flatten x = List.filter_map Fun.id @@ flatten x
 let map f x = map (fun path label -> Option.map (f path) label) x
 
-module Debug = Debug.Make(struct let check = make_debug_check "Curry" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let rec element_num typ =
   match elim_tattr typ with

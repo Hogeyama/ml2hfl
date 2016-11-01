@@ -12,7 +12,7 @@ exception EvalTerminate
 
 module S = Syntax
 
-module Debug = Debug.Make(struct let check = make_debug_check "CEGAR_trans" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 

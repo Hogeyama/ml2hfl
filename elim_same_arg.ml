@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-module Debug = Debug.Make(struct let check = make_debug_check "Elim_same_arg" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
 (*let tbl = Hashtbl.create 0

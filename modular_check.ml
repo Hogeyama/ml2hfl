@@ -5,7 +5,7 @@ open Type
 open Modular_syntax
 
 
-module Debug = Debug.Make(struct let check = make_debug_check "Modular_check" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
 (*
@@ -335,7 +335,7 @@ let check prog f typ =
   let make_pps spec =
     let open Main_loop in
     preprocesses spec
-    |> preprocess_and_after CPS
+    |> Preprocess.and_after Preprocess.CPS
   in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t

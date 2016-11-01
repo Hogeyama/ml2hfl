@@ -2,97 +2,10 @@ open Util
 
 type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
-module Debug = Debug.Make(struct let check = make_debug_check "Main_loop" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
-  Debug.printf "START: %s@." desc;
-  let r = f t in
-  Debug.printf "END: %s@." desc;
-  let t' = proj_out r in
-  if proj_in t <> t' && opt
-  then Verbose.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
-  r
-
-
-type preprocess_label =
-  | Init
-  | Replace_const
-  | Encode_mutable_record
-  | Encode_record
-  | Encode_array
-  | Abst_ref
-  | Make_fun_tuple
-  | Make_ext_funs
-  | Copy_poly
-  | Ignore_non_termination
-  | Beta_reduce_trivial
-  | Recover_const_attr
-  | Decomp_pair_eq
-  | Add_preds
-  | Replace_fail_with_raise
-  | Encode_variant
-  | Encode_recdata
-  | Replace_base_with_int
-  | Encode_list
-  | Ret_fun
-  | Ref_trans
-  | Tupling
-  | Inline
-  | CPS
-  | Remove_pair
-  | Replace_bottom_def
-  | Add_cps_preds
-  | Eliminate_same_arguments
-  | Insert_unit_param
-  | Preprocessfortermination
-
-type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-
-type results = (preprocess_label * tr_result) list
-
-type preprocess = preprocess_label * ((results -> bool) * (results -> tr_result))
-
-let string_of_label = function
-  | Init -> "Init"
-  | Replace_const -> "Replace_const"
-  | Encode_mutable_record -> "Encode_mutable_record"
-  | Encode_record -> "Encode_record"
-  | Encode_array -> "Encode_array"
-  | Abst_ref -> "Abst_ref"
-  | Make_fun_tuple -> "Make_fun_tuple"
-  | Make_ext_funs -> "Make_ext_funs"
-  | Copy_poly -> "Copy_poly"
-  | Ignore_non_termination -> "Ignore_non_termination"
-  | Beta_reduce_trivial -> "Beta_reduce_trivial"
-  | Recover_const_attr -> "Recover_const_attr"
-  | Decomp_pair_eq -> "Decomp_pair_eq"
-  | Add_preds -> "Add_preds"
-  | Replace_fail_with_raise -> "Replace_fali_with_raise"
-  | Encode_variant -> "Encode_variant"
-  | Encode_recdata -> "Encode_recdata"
-  | Replace_base_with_int -> "Replace_base_with_int"
-  | Encode_list -> "Encode_list"
-  | Ret_fun -> "Ret_fun"
-  | Ref_trans -> "Ref_trans"
-  | Tupling -> "Tupling"
-  | Inline -> "Inline"
-  | CPS -> "CPS"
-  | Remove_pair -> "Remove_pair"
-  | Replace_bottom_def -> "Replace_bottom_def"
-  | Add_cps_preds -> "Add_cps_preds"
-  | Eliminate_same_arguments -> "Eliminate_same_arguments"
-  | Insert_unit_param -> "Insert_unit_param"
-  | Preprocessfortermination -> "Preprocessfortermination"
-
-let last acc = snd @@ List.hd acc
-let last_t acc = fst @@ last acc
-let last_get_rtyp acc = snd @@ last acc
-let take_result l acc = fst @@ List.assoc l acc
-
-let get_rtyp_id get_rtyp f = get_rtyp f
-
-let map_trans tr acc = tr @@ last_t acc, get_rtyp_id
-let preprocesses spec : preprocess list =
+let preprocesses spec : Preprocess.t list =
+  let open Preprocess in
   [
     Replace_const,
       (Fun.const !Flag.replace_const,
@@ -184,36 +97,17 @@ let preprocesses spec : preprocess list =
   ]
 
 
-let preprocess_before label pps =
-  List.takewhile ((<>) label -| fst) pps
-
-let preprocess_and_after label pps =
-  List.dropwhile ((<>) label -| fst) pps
-
-let preprocess_filter_out labels pps =
-  List.filter_out (fst |- List.mem -$- labels) pps
-
-let run_preprocess pps t =
-  let aux acc (label,(cond,f)) =
-    if cond acc then
-      let r = trans_and_print f (string_of_label label) last_t fst acc in
-      (label, r)::acc
-    else
-      acc
-  in
-  List.fold_left aux [Init, (t, get_rtyp_id)] pps
-
 let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
   let pps' =
     match make_pps with
     | None -> preprocesses spec
     | Some make_pps' -> make_pps' spec
   in
-  let results = run_preprocess pps' t in
-  let t = last_t results in
+  let results = Preprocess.run pps' t in
+  let t = Preprocess.last_t results in
   let fun_list' =
     match fun_list with
-    | None -> Term_util.get_top_funs @@ take_result Decomp_pair_eq results
+    | None -> Term_util.get_top_funs @@ Preprocess.take_result Preprocess.Decomp_pair_eq results
     | Some fun_list' -> fun_list'
   in
 
@@ -234,9 +128,9 @@ let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
   let make_get_rtyp =
     if !!Debug.check then
       let aux f (label,(_,g)) map x =
-        Format.printf "BEGIN %s@." @@ string_of_label label;
-        let r = try g (f map) x with _ -> Format.printf "GET_RTYP ERROR: %s@." @@ string_of_label label; assert false in
-        Format.printf "END %s@." @@ string_of_label label;
+        Format.printf "BEGIN %s@." @@ Preprocess.string_of_label label;
+        let r = try g (f map) x with _ -> Format.printf "GET_RTYP ERROR: %s@." @@ Preprocess.string_of_label label; assert false in
+        Format.printf "END %s@." @@ Preprocess.string_of_label label;
         r
         in
       List.fold_left aux make_get_rtyp_trans results
@@ -429,14 +323,14 @@ let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
   close_out oc);
   let main,set_target =
     if spec.Spec.ref_env = [] then
-      trans_and_print Trans.set_main "set_main" Fun.id snd parsed
+      Preprocess.trans_and_print Trans.set_main "set_main" Fun.id snd parsed
     else
       let ref_env =
         Spec.get_ref_env spec parsed
         |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter
         |> Ref_type.Env.of_list
       in
-      None, trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
+      None, Preprocess.trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
   in
   loop ~make_pps ~fun_list exparam_sol ~spec parsed set_target, main, set_target
 
