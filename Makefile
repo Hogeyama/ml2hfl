@@ -77,10 +77,11 @@ CMO = environment.cmo flag.cmo debug.cmo util.cmo ext.cmo color.cmo	\
 	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo		\
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo	\
 	extraClsDepth.cmo extraParamInfer.cmo eval.cmo			\
-	elim_same_arg.cmo main_loop.cmo modular_syntax.cmo		\
-	comp_tree.cmo horn_clause.cmo modular_infer.cmo			\
-	modular_check.cmo modular.cmo termination_loop.cmo		\
-	fair_termination.cmo verify_ref_typ.cmo mochi.cmo
+	elim_same_arg.cmo preprocess.cmo main_loop.cmo			\
+	modular_syntax.cmo comp_tree.cmo horn_clause.cmo		\
+	modular_infer.cmo modular_check.cmo modular.cmo			\
+	termination_loop.cmo fair_termination.cmo verify_ref_typ.cmo	\
+	mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =

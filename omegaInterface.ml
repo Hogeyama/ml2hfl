@@ -18,7 +18,7 @@ open CEGAR_syntax
 
 exception Unknown
 
-module Debug = Debug.Make(struct let check = make_debug_check "OmegaInterface" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let rec print_conj print fm xs =
   match xs with

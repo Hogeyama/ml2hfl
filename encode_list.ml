@@ -7,7 +7,7 @@ open Type
 module RT = Ref_type
 
 
-module Debug = Debug.Make(struct let check = make_debug_check "Encode_list" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
 

@@ -6,7 +6,7 @@ open Modular_syntax
 
 module RT = Rose_tree
 
-module Debug = Debug.Make(struct let check = make_debug_check "Comp_tree" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type label =
   | App of fun_id * (id * value) list

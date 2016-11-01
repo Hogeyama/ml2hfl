@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_syntax
 
-module Debug = Debug.Make(struct let check = make_debug_check "Modular" end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let num_tycheck = ref 0
 
@@ -205,13 +205,13 @@ let main _ spec parsed =
     let pps =
       let open Main_loop in
       preprocesses spec
-      |> preprocess_before CPS
-      |> preprocess_filter_out [(*Encode_mutable_record; Encode_recdata; Encode_list;*) Beta_reduce_trivial]
+      |> Preprocess.before Preprocess.CPS
+      |> Preprocess.filter_out [Preprocess.Beta_reduce_trivial]
     in
     parsed
     |@> Debug.printf "PARSED: %a@.@." Print.term_typ
-    |> Main_loop.run_preprocess pps
-    |> Main_loop.last_t
+    |> Preprocess.run pps
+    |> Preprocess.last_t
     |@> Debug.printf "INITIALIZED: %a@.@." Print.term_typ
     |> normalize
     |@> Debug.printf "NORMALIZED: %a@.@." Print.term
