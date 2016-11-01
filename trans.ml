@@ -1795,8 +1795,11 @@ let is_base_typ s = List.mem s base_types
 let replace_base_with_int_desc desc =
   match desc with
   (*  | Const(Char c) -> Const (Int (int_of_char c))*)
-  | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
+  | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) ->
+      Flag.use_abst := true;
+      randint_unit_term.desc
   | Const(RandValue(TData s, b)) when is_base_typ s ->
+      Flag.use_abst := true;
       Const (RandValue(TInt,b))
   | _ -> replace_base_with_int.tr_desc_rec desc
 

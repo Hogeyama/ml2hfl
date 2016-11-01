@@ -315,7 +315,10 @@ let report_unsafe main ce set_target =
     if !Flag.mode = Flag.NonTermination || !Flag.ignore_non_termination then
       "Unknown."
     else
-      "Unsafe!"
+      if !Flag.use_abst then
+        "Unknown (because of abstraction options)"
+      else
+        "Unsafe!"
   in
   Color.printf Color.Bright "%s@.@." s;
   Option.may (fun (main_fun, arg_num) ->

@@ -157,16 +157,16 @@ let rec print fm = function
       Format.fprintf fm "(@[";
       if p_i = U.true_term then
         if occur y typ2
-        then Format.fprintf fm "[%a]%a" Id.print y print typ2
-        else Format.fprintf fm "%a" print typ2
+        then Format.fprintf fm "[%a]%a " Id.print y print typ2
+        else Format.fprintf fm "%a " print typ2
       else
-        Format.fprintf fm "[%a: %a]%a" Id.print y Print.term p_i print typ2;
+        Format.fprintf fm "[%a: %a]%a " Id.print y Print.term p_i print typ2;
       if p_len <> U.true_term then
         Format.fprintf fm "|%a: %a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;
-      Format.fprintf fm " list@])"
+      Format.fprintf fm "list@])"
   | Exn(typ1, typ2) ->
       Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" print typ1 print typ2
 
@@ -462,6 +462,10 @@ let rec subtype env typ1 typ2 =
   | Exn(typ11,typ12), _ when is_bottom typ12 -> subtype env typ11 typ2
   | _, Exn(typ21,typ22) -> subtype env typ1 typ21
   | Exn _, _ -> false
+  | List(x1,p_len1,y1,p_i1,typ1'), List(x2,p_len2,y2,p_i2,typ2') ->
+      let typ1'' = Tuple [x1,Base(Int,x1,p_len1); Id.new_var Type.TInt,Fun(y1,Base(Int,y1,p_i1),typ1')] in
+      let typ2'' = Tuple [x2,Base(Int,x2,p_len2); Id.new_var Type.TInt,Fun(y2,Base(Int,y2,p_i2),typ2')] in
+      subtype env typ1'' typ2''
   | _ ->
       Format.printf "typ1: %a@." print typ1;
       Format.printf "typ2: %a@." print typ2;

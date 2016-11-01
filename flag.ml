@@ -10,6 +10,8 @@ let spec_file = ref ""
 type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination
 type model_checker = TRecS | HorSat | HorSatP
 
+let use_abst = ref false
+
 (* TRecS option *)
 let trecs_param1 = ref 1000
 let trecs_param2 = ref 10
@@ -24,7 +26,7 @@ let print_ref_typ_debug () = List.mem "Ref_type" !debug_module
 
 (* method option *)
 let mode = ref Reachability
-let mc = ref TRecS
+let mc = ref (if Environment.horsat2_available then HorSat2 else if Environment.horsat_available then HorSat else TRecS)
 let input_cegar = ref false
 let nondet = ref false (* eager evaluation for branch *)
 let use_prefix_trace = false

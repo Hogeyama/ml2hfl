@@ -9,6 +9,7 @@ REQUIREMENTS:
  - The directory of MoCHi is the parent directory "../"
  - The directory of MoCHi's wiki is "../wiki/"
  - Git is installed
+ - User has write permission of the MoCHi's repository
 *)
 
 

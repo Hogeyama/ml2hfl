@@ -207,7 +207,7 @@ clean-test:
 
 TEST = sum mult max mc91 ack a-copy-print hors exc-simple exc-fact lock file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e
 LIMIT = 120
-OPTION = -only-result -horsat -limit $(LIMIT)
+OPTION = -only-result -limit $(LIMIT)
 
 test: opt
 	for i in $(TEST); \

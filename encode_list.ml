@@ -365,6 +365,7 @@ let abst_list_literal = make_trans ()
 let abst_list_literal_term t =
   match t.desc with
   | Cons _ when is_long_literal t ->
+      Flag.use_abst := true;
       let ts = List.take !Flag.abst_list_literal @@ Option.get @@ decomp_list t in
       List.fold_right make_cons ts @@ make_randvalue_unit t.typ
   | _ -> abst_list_literal.tr_term_rec t
