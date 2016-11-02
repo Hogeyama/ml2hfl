@@ -459,11 +459,12 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
       constr1 @ constr templates assumption
   | CT.Let(f, t) ->
       constr templates assumption
-  | CT.Spawn(f, None) -> constr templates assumption
-  | CT.Spawn(f, Some tids) -> constr templates assumption
+  | CT.Branch(f, tids) ->
+      constr templates assumption
   | CT.Assume t ->
       constr templates @@ t::assumption
-  | CT.End -> [Exp true_term]
+  | CT.End ->
+      [Exp true_term]
   | CT.Fail ->
       assert (children = []);
       let asm1 = filter_assumption val_env assumption in
@@ -486,7 +487,6 @@ let generate_constraints templates ct = generate_constraints templates [] ct
 let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.label}, children)) =
   let dbg = 0=1 in
   let pr f = if dbg then Debug.printf @@ "MT " ^^ f else Format.ifprintf Format.std_formatter f in
-  let r=
   let templates = merge_template @@ List.map (make_template cnt env args) children in
   match label with
   | CT.App(f, map) ->
@@ -494,45 +494,40 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       pr "  TEMPLATE: %a@." print_tmp_env templates;
       pr "  Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
       let typ =
-        let assoc_parg x =
-          try
-            CT.term_of_value @@ Id.assoc x val_env
-          with Not_found ->
-            Format.printf "Not_found %a@." Id.print x;
-            assert false
-        in
-        let aux' (pargs,k) (x,vl) =
-          let CT.Closure(_, _, t) = vl in
-          pr "  pargs,t: %a, %a@." (List.print Print.term) pargs Print.term t;
-          let tmp1 =
-            if is_base_typ t.typ then
-              new_pred (base_of_typ t.typ) cnt
-            else
-              templates
-              |> List.filter (Id.eq x -| fst -| fst)
-              |> List.map (Pair.map_fst fst)
-              |> List.sort
-              |> List.map snd
-              |> List.map elim_papp
-              |*@> Format.printf "LENGTH: %a@." (List.print print_template)
-              |> _Inter t.typ
+        let head =
+          let aux' (pargs,k) (x,vl) =
+            let CT.Closure(_, _, t) = vl in
+            pr "  pargs,t: %a, %a@." (List.print Print.term) pargs Print.term t;
+            let tmp1 =
+              if is_base_typ t.typ then
+                new_pred (base_of_typ t.typ) cnt
+              else
+                templates
+                |> List.filter (Id.eq x -| fst -| fst)
+                |> List.map (Pair.map_fst fst)
+                |> List.sort
+                |> List.map snd
+                |> List.map elim_papp
+                |> _Inter t.typ
+            in
+            let tmp1' =
+              match tmp1 with
+              | Inter(styp, []) ->
+                  if false then
+                    Inter(styp, [])
+                  else
+                    styp
+                    |> Ref_type.of_simple
+                    |> from_ref_type
+                    |> init_with_pred_var cnt
+              | _ ->
+                  _PApp tmp1 pargs
+            in
+            pr "  [%a] tmp1: %a@." Id.print x print_template tmp1;
+            pr "  [%a] tmp1': %a@." Id.print x print_template tmp1';
+            make_var x :: pargs, fun tmp2 -> k @@ Fun(x, tmp1', tmp2)
           in
-          let tmp1' =
-            match tmp1 with
-            | Inter(styp, []) ->
-                if false then
-                  Inter(styp, [])
-                else
-                  styp
-                  |> Ref_type.of_simple
-                  |> from_ref_type
-                  |> init_with_pred_var cnt
-            | _ ->
-                _PApp tmp1 pargs
-          in
-          pr "  [%a] tmp1: %a@." Id.print x print_template tmp1;
-          pr "  [%a] tmp1': %a@." Id.print x print_template tmp1';
-          make_var x :: pargs, fun tmp2 -> k @@ Fun(x, tmp1', tmp2)
+          (snd @@ List.fold_left aux' ([], Fun.id) map) @@ Base None
         in
         let pargs' =
           pr "  f: %a@." Id.print f;
@@ -540,20 +535,18 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
           pr "  Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
           Id.assoc f var_env
           |@> pr "  var_env(%a): %a@." Id.print f (List.print Id.print)
-          |*> List.map assoc_parg
           |> List.map make_var
+          |@> pr "  pargs': %a@." (List.print Print.term)
         in
-        (*        let pargs' = [] in*)
-        pr "  pargs': %a@." (List.print Print.term) pargs';
-        _PApp ((snd @@ List.fold_left aux' ([], Fun.id) map) @@ Base None) pargs'
+        _PApp head pargs'
       in
       pr "  typ[%a]: %a@." Id.print f print_template typ;
       let arg_templates =
-            let typs,_ = decomp_tfun typ in
-            if dbg then Debug.printf "  typs: %a@." (List.print print_template) @@ List.map snd typs;
-            assert (List.length map = List.length typs);
-            List.map2 (fun (x,_) (_,typ) -> ((x,None), typ)) map typs
-            |> List.filter (fst |- fst |- is_base_var)
+        let typs,_ = decomp_tfun typ in
+        if dbg then Debug.printf "  typs: %a@." (List.print print_template) @@ List.map snd typs;
+        assert (List.length map = List.length typs);
+        List.map2 (fun (x,_) (_,typ) -> ((x,None), typ)) map typs
+        |> List.filter (fst |- fst |- is_base_var)
       in
       let arg_templates' =
         if dbg then Debug.printf "  var_env(%a): %a@." Id.print f (List.print Id.print) @@ Id.assoc f var_env;
@@ -592,9 +585,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
   | CT.Let(f, t) ->
       assert (is_fun_var f);
       templates
-  | CT.Spawn(f, None) ->
-      templates
-  | CT.Spawn(f, Some gs) ->
+  | CT.Branch(f, gs) ->
       let nids = List.map get_nid children in
       pr "  TEMPLATES: @[%a@.@."  print_tmp_env templates;
       pr "  SPAWN: %a@.@." Id.print f;
@@ -605,36 +596,17 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
   | CT.End -> []
   | CT.Fail -> []
   | CT.Empty_branch _ -> []
-  in
-  pr "  %a@." CT.print_label label;
-  pr "  LEN: %d@." (List.length r);
-  r
 
 let make_template env t =
   make_template (Counter.create()) env [] t
 
 
-let elim_not t =
-  match t.desc with
-  | Not {desc=BinOp(Leq, t1, t2)} -> make_gt t1 t2
-  | _ -> t
-
-let map_horn_clause f (body, head) = List.map f body, f head
-
 let rec to_horn_clause asm constr =
   match constr with
-  | Exp t -> [asm, elim_not t]
+  | Exp t -> [asm, t]
   | And(c1, c2) -> to_horn_clause asm c1 @ to_horn_clause asm c2
-  | Imply(c1, c2) ->
-      let t =
-        match c1 with
-        | Exp t -> elim_not t
-        | Pred(p, ts) -> assert false
-        | _ -> assert false
-      in
-      to_horn_clause (asm@[t]) c2
-  | Sub _ -> assert false
-  | Pred _ -> assert false
+  | Imply(Exp t, c2) -> to_horn_clause (asm@[t]) c2
+  | _ -> assert false
 let to_horn_clause constr = to_horn_clause [] constr
 
 let check_arity hcs =

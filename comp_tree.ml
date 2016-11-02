@@ -12,7 +12,7 @@ type label =
   | App of id * (id * value) list
   | Let of id * term
   | Assume of term
-  | Spawn of id * id list option
+  | Branch of id * id list
   | Fail
   | End
   | Empty_branch of id
@@ -52,7 +52,7 @@ and print_label fm label =
   | Let(f,t) ->
       Format.fprintf fm "@[Let %a =@ ...@]" Id.print f
   | Assume t -> Format.fprintf fm "@[Assume %a@]" Print.term t
-  | Spawn(f,gs) -> Format.fprintf fm "@[Spawn %a, %a@]" Id.print f (Option.print @@ List.print Id.print) gs
+  | Branch(f,gs) -> Format.fprintf fm "@[Branch %a, %a@]" Id.print f (List.print Id.print) gs
   | Fail -> Format.fprintf fm "Fail"
   | End -> Format.fprintf fm "End"
   | Empty_branch f -> Format.fprintf fm "Empty_branch %a" Id.print f
@@ -156,17 +156,14 @@ let assoc_fun f var_env val_env =
 
 let ends = RT.exists (fun {label} -> label = Fail || label = End)
 
-let spawn is_top nid var_env val_env ce_env f children =
+let spawn nid var_env val_env ce_env f children =
   let label =
-    if is_top then
-      let aux (Rose_tree.Node({label},_)) =
-        match label with
-        | App(f, _) -> f
-        | _ -> assert false
-      in
-      Spawn(f, Some (List.map aux children))
-    else
-      Spawn(f, None)
+    let aux (Rose_tree.Node({label},_)) =
+      match label with
+      | App(g, _) -> g
+      | _ -> assert false
+    in
+    Branch(f, List.map aux children)
   in
   RT.Node({nid; var_env; val_env; label; ce_env}, children)
 
@@ -190,12 +187,12 @@ let filter_extend extend = List.filter_out (fun (_,n) -> n <= 0) extend
 (* 't' must be a CPS term *)
 let rec from_term
           (cnt : Counter.t)  (* counter for nid *)
-          (fun_env : (id * (id list * term)) list)
-          (var_env : var_env)
-          (val_env : val_env)
-          (ce_set : ce_set)
-          (ce_env : (tid * (id * int * int list)) list)
-          (t : term)
+          (fun_env : (id * (id list * term)) list)  (* *)
+          (var_env : var_env)  (* scope environment *)
+          (val_env : val_env)  (* value environment *)
+          (ce_set : ce_set)  (* counterexamples of top-level functions *)
+          (ce_env : (tid * (id * int * int list)) list)  (* counterexamples of functions spawned *)
+          (t : term)  (* term to be reduced *)
         : t list =
   let f g = if !!Debug.check then print_begin_end g else !!g in
   f (fun () ->
@@ -254,7 +251,7 @@ let rec from_term
         let paths = List.assoc_all ~eq:Id.eq f ce_set in
         List.flatten_mapi aux paths
       in
-      [spawn true nid var_env val_env ce_env f children]
+      [spawn nid var_env val_env ce_env f children]
   | App({desc=Var f}, ts) when Id.mem_assoc f val_env ->
       Debug.printf "  APP1: %a@\n" Print.term t;
       let var_env_f,val_env_f,(ys,t_f) = assoc_fun f var_env val_env in
