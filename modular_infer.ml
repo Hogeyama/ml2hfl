@@ -1060,7 +1060,7 @@ let get_merge_candidates templates =
   |> List.map (List.flatten_map (snd |- decomp_inter))
   |> List.flatten_map aux
 
-let infer mode prog f typ (ce_set:ce_set) extend =
+let infer mode prog f typ (ce_set:ce_set) =
   let ce_set =
     if 0=1 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x print_ce ce; read_int() <> 0) ce_set
@@ -1075,7 +1075,7 @@ let infer mode prog f typ (ce_set:ce_set) extend =
     Debug.printf "Dom(Fun_env'): %a@.@." (List.print Id.print) @@ List.map fst fun_env';
     Debug.printf "t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
     Debug.printf "t: %a@.@." Print.term t;
-    CT.from_program fun_env' ce_set extend t
+    CT.from_program fun_env' ce_set t
   in
   Debug.printf "reached_empty_branch: %a@." (List.print Id.print) reached_empty_branch;
   let fun_env = [](*make_fun_env comp_tree*) in
