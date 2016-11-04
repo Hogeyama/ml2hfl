@@ -369,15 +369,12 @@ let from_program fun_env (ce_set:ce_set) t =
     t
     |> from_term fun_env ce_set
     |> List.get
-    |@> Debug.printf "comp_tree:@.%a@.@." print
+    |@> Debug.printf "@.@.comp_tree:@.%a@.@." print
   in
   let reached_empty_branch =
     comp_tree
     |> RT.filter_map_label (function {label = Empty_branch f} -> Some f | _ -> None)
     |> List.unique ~cmp:Id.eq
   in
-  let comp_tree' =
-    filter_ends comp_tree
-    |@> Debug.printf "comp_tree':@.%a@.@." print
-  in
+  let comp_tree' = filter_ends comp_tree in
   reached_empty_branch, comp_tree'

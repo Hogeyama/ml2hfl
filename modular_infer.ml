@@ -495,8 +495,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       pr "  Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
       let typ =
         let head =
-          let aux' (pargs,k) (x,vl) =
-            let CT.Closure(_, _, t) = vl in
+          let aux' (pargs,k) (x,CT.Closure(_, _, t)) =
             pr "  pargs,t: %a, %a@." (List.print Print.term) pargs Print.term t;
             let tmp1 =
               if is_base_typ t.typ then
@@ -565,23 +564,9 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
         List.map (Pair.map_snd @@ List.fold_right aux vars) arg_templates
       in
       if dbg then Debug.printf "  arg_templates[%a]: %a@." Id.print f print_tmp_env arg_templates;
-      if dbg &&arg_templates<>arg_templates' then Format.printf "  arg_templates'[%a]: %a@." Id.print f print_tmp_env arg_templates';
-      let arg_templates = arg_templates' in
-      let templates' =
-        let aux ((x,nid),typ) =
-          let typ' =
-            if Id.mem_assoc x map then
-              List.fold_right (fun (y,vl) typ -> subst_template y (CT.term_of_value vl) typ) map typ
-            else
-              typ
-          in
-          (x,nid), typ'
-        in
-        List.map aux templates
-      in
+      if dbg && arg_templates<>arg_templates' then Format.printf "  arg_templates'[%a]: %a@." Id.print f print_tmp_env arg_templates';
       pr "  TEMPLATE: %a@." print_tmp_env templates;
-      pr "  TEMPLATE': %a@." print_tmp_env templates';
-      ((f,Some nid), typ) :: arg_templates @ templates
+      ((f,Some nid), typ) :: arg_templates' @ templates
   | CT.Let(f, t) ->
       assert (is_fun_var f);
       templates
