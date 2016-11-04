@@ -1160,6 +1160,8 @@ let trans t =
     |> Trans.elim_unused_let ~cbv:false
     |> Trans.elim_unused_branch
     |@> pr "elim_unused_let"
+    |> Trans.eta_reduce
+    |@> pr "elim_reduce"
   in
   t', make_get_rtyp typ_exn typed
 

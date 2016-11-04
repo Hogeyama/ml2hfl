@@ -2687,3 +2687,25 @@ let eta_tuple_desc desc =
   | desc' -> desc'
 let () = eta_tuple.tr_desc <- eta_tuple_desc
 let eta_tuple = eta_tuple.tr_term
+
+
+
+let eta_reduce = make_trans ()
+let eta_reduce_desc desc =
+  let desc' = eta_reduce.tr_desc_rec desc in
+  match desc' with
+  | Fun(x, {desc=App(t1, ts)}) ->
+      let ts',t2 = List.decomp_snoc ts in
+      let t1' = make_app t1 ts' in
+      begin
+        match t2.desc with
+        | Var y when Id.same x y ->
+            if has_no_effect t1' && not @@ List.mem ~eq:Id.eq x @@ get_fv t1' then
+              t1'.desc
+            else
+              desc'
+        | _ -> desc'
+      end
+  | _ -> desc'
+let () = eta_reduce.tr_desc <- eta_reduce_desc
+let eta_reduce = eta_reduce.tr_term
