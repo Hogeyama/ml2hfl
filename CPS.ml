@@ -1058,18 +1058,18 @@ let exists_let = exists_let.col_term
 
 let inline_affine = make_trans2 ()
 
-let inline_affine_term env t =
+let inline_affine_term (vars,env) t =
   let t' =
     match t.desc with
     | App({desc=Var f}, ts) ->
         begin
           try
             let xs,t = Id.assoc f env in
-            let ts' = List.map (inline_affine.tr2_term env) ts in
+            let ts' = List.map (inline_affine.tr2_term (vars,env)) ts in
             if List.length xs = List.length ts
             then List.fold_right2 (Trans.subst_with_rename ~check:true) xs ts' t
             else raise Not_found
-          with Not_found -> inline_affine.tr2_term_rec env t
+          with Not_found -> inline_affine.tr2_term_rec (vars,env) t
         end
     | Let(flag, bindings, t1) ->
         let not_rand_int t =
@@ -1077,22 +1077,24 @@ let inline_affine_term env t =
           | App({desc=Const(RandValue(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
           | _ -> true
         in
-        let linear f xs t =
+        let affine f xs t =
           let fv = get_fv ~cmp:(fun _ _ -> false) t in
-          fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
+          fv = List.unique fv && List.Set.subset ~eq:Id.eq fv (xs@vars) && not @@ exists_let t
         in
-        let check f xs t1 = not_rand_int t1 && linear f xs t1 && not @@ List.mem ADoNotInline t.attr in
+        let check f xs t1 = not_rand_int t1 && affine f xs t1 && not @@ List.mem ADoNotInline t.attr in
+        let vars' = List.map Triple.fst bindings @ vars in
         let env' = List.filter_map (fun (f,xs,t) -> if check f xs t then Some (f,(xs,t)) else None) bindings @ env in
-        let bindings' = List.map (Triple.map_trd @@ inline_affine.tr2_term env') bindings in
-        make_let_f flag bindings' @@ inline_affine.tr2_term env' t1
-    | _ -> inline_affine.tr2_term_rec env t
+        let bindings' = List.map (fun (f,xs,t) -> f, xs, inline_affine.tr2_term (xs@vars',env') t) bindings in
+        make_let_f flag bindings' @@ inline_affine.tr2_term (vars',env') t1
+    | Fun(x, t) -> make_fun x @@ inline_affine.tr2_term (x::vars,env) t
+    | _ -> inline_affine.tr2_term_rec (vars,env) t
   in
   {t' with attr=t.attr}
 
 let () = inline_affine.tr2_term <- inline_affine_term
 let inline_affine t =
   t
-  |> inline_affine.tr2_term []
+  |> inline_affine.tr2_term ([],[])
   |> Trans.elim_unused_let
   |> Trans.inline_var_const
 
@@ -1158,6 +1160,8 @@ let trans t =
     |> Trans.elim_unused_let ~cbv:false
     |> Trans.elim_unused_branch
     |@> pr "elim_unused_let"
+    |> Trans.eta_reduce
+    |@> pr "elim_reduce"
   in
   t', make_get_rtyp typ_exn typed
 

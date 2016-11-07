@@ -59,4 +59,3 @@ mochi_bin/lib/
 gmon.out
 fpat/
 tmp/
-test*.ml
