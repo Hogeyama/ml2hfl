@@ -473,7 +473,6 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
       if dbg then Debug.printf "  FAIL: asm1: %a@." (List.print print_constr) asm1;
       if dbg then Debug.printf "  FAIL: asm2: %a@." (List.print print_constr) asm2;
       [_Imply asm @@ Exp false_term]
-  | CT.Empty_branch _ -> assert false
   in
   if dbg then Debug.printf "  label: %a@." CT.print_label label;
   if dbg then Debug.printf "  assumption: %a@." (List.print Print.term) assumption;
@@ -580,7 +579,6 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
   | CT.Assume _ -> templates
   | CT.End -> []
   | CT.Fail -> []
-  | CT.Empty_branch _ -> []
 
 let make_template env t =
   make_template (Counter.create()) env [] t
@@ -1028,13 +1026,12 @@ let infer mode prog f typ (ce_set:ce_set) =
   Debug.printf "INFER prog: %a@." print_prog prog;
   let fun_env',t,make_get_rtyp = add_context true prog f typ in
   Debug.printf "t: %a@.@." Print.term t;
-  let reached_empty_branch,comp_tree =
+  let comp_tree =
     Debug.printf "Dom(Fun_env'): %a@.@." (List.print Id.print) @@ List.map fst fun_env';
     Debug.printf "t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
     Debug.printf "t: %a@.@." Print.term t;
     CT.from_program fun_env' ce_set t
   in
-  Debug.printf "reached_empty_branch: %a@." (List.print Id.print) reached_empty_branch;
   let fun_env = [](*make_fun_env comp_tree*) in
   Debug.printf "fun_env: %a@.@." (List.print @@ Pair.print Id.print @@ Pair.print Id.print @@ Option.print Format.pp_print_int) fun_env;
   let templates = make_template env comp_tree in

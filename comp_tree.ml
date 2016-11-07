@@ -15,7 +15,6 @@ type label =
   | Branch of id * id list
   | Fail
   | End
-  | Empty_branch of id
 and t = node RT.t
 and node =
   {nid : nid; (* ID of node *)
@@ -55,7 +54,6 @@ and print_label fm label =
   | Branch(f,gs) -> Format.fprintf fm "@[Branch %a, %a@]" Id.print f (List.print Id.print) gs
   | Fail -> Format.fprintf fm "Fail"
   | End -> Format.fprintf fm "End"
-  | Empty_branch f -> Format.fprintf fm "Empty_branch %a" Id.print f
 and print_value fm (Closure(var_env,val_env,t)) =
   Format.fprintf fm "Value %a" Print.term t
 and print_node fm {nid;var_env;val_env;label} =
@@ -296,7 +294,7 @@ let rec from_term
               match ce with
               | [] ->
                   let node =
-                    let label = Empty_branch f in
+                    let label = End in
                     {nid; var_env; val_env; label; ce_env}
                   in
                   [RT.Node(node, [])]
@@ -365,16 +363,8 @@ let from_program fun_env (ce_set:ce_set) t =
   Debug.printf "@.CE_SET: %a@." print_ce_set ce_set;
   Debug.printf "FUN_ENV: %a@." (List.print @@ Pair.print Id.print Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) fun_env;
   Debug.printf "from_program: %a@." Print.term t;
-  let comp_tree =
-    t
-    |> from_term fun_env ce_set
-    |> List.get
-    |@> Debug.printf "@.@.comp_tree:@.%a@.@." print
-  in
-  let reached_empty_branch =
-    comp_tree
-    |> RT.filter_map_label (function {label = Empty_branch f} -> Some f | _ -> None)
-    |> List.unique ~cmp:Id.eq
-  in
-  let comp_tree' = filter_ends comp_tree in
-  reached_empty_branch, comp_tree'
+  t
+  |> from_term fun_env ce_set
+  |> List.get
+  |@> Debug.printf "@.@.comp_tree:@.%a@.@." print
+  |> filter_ends
