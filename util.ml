@@ -354,6 +354,19 @@ module List = struct
       Some (find f xs)
     with Not_found -> None
 
+  let rec find_map_option f xs =
+    match xs with
+    | [] -> None
+    | x::xs' ->
+        match f x with
+        | None -> find_map_option f xs'
+        | Some y -> Some y
+
+  let rec find_map f xs =
+    match find_map_option f xs with
+    | None -> raise Not_found
+    | Some x -> x
+
   let find_pos f xs =
     fst @@ findi f xs
 

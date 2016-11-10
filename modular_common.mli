@@ -5,17 +5,19 @@ type program = {
   fun_def_env : (Syntax.id * (Syntax.id list * Syntax.term)) list;
   exn_decl : (string * Syntax.typ list) list;
 }
-type ce = (Syntax.id * int list) list
+
+type label = int
+type ce = (label * bool) list
 type ce_set = (Syntax.id * ce) list
+
 val print_typ_env : Format.formatter -> Ref_type.Env.t -> unit
 val print_typ_neg_env : Format.formatter -> Ref_type.NegEnv.t -> unit
-val print_def_env :
-  Format.formatter -> ('a Id.t * (Syntax.id list * Syntax.term)) list -> unit
+val print_def_env : Format.formatter -> (Syntax.id * (Syntax.id list * Syntax.term)) list -> unit
 val print_prog : Format.formatter -> program -> unit
-val print_ce : Format.formatter -> ('a Id.t * int list) list -> unit
-val print_ce_set :
-  Format.formatter -> ('a Id.t * ('b Id.t * int list) list) list -> unit
+val print_ce : Format.formatter -> ce -> unit
+val print_ce_set : Format.formatter -> ce_set -> unit
+
 val is_atom : Syntax.term -> bool
-val normalize : Syntax.term -> Syntax.term
+val normalize : bool -> Syntax.term -> Syntax.term
 val used_by : Syntax.id -> program -> Syntax.id list
 val term_of_prog : program -> Syntax.term

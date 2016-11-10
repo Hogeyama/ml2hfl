@@ -111,7 +111,7 @@ and print_attr fm = function
   | AMark -> fprintf fm "AMark"
   | ADoNotInline -> fprintf fm "ADoNotInline"
 
-and ignore_attr_list = if true then ADoNotInline::const_attr else []
+and ignore_attr_list = ADoNotInline::const_attr
 
 and print_attr_list fm attrs =
   List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
@@ -129,9 +129,15 @@ and print_term pri typ fm t =
     else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc attr pri typ) desc
   in
   let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
-  if List.Set.subset attr ignore_attr_list || !Flag.print_as_ocaml
+  let ignore_attr_list' =
+    if !Flag.print_only_if_id then
+      List.filter (function AId _ -> true | _ -> false) t.attr @ ignore_attr_list
+    else
+      ignore_attr_list
+  in
+  if List.Set.subset attr ignore_attr_list' || !Flag.print_as_ocaml
   then pr t.attr fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list t.attr
+  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list (List.Set.diff t.attr ignore_attr_list')
 
 and print_desc attr pri typ fm desc =
   match desc with
@@ -161,11 +167,27 @@ and print_desc attr pri typ fm desc =
   | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "@[<hov 2>%sassert %a%s@]" s1 (print_term p typ) t1 s2
+      let label =
+        if !Flag.print_only_if_id then
+          match List.find_option (function AId _ -> true | _ -> false) attr with
+          | Some (AId n) -> Format.sprintf "^%d" n
+          | _ -> ""
+        else
+          ""
+      in
+      fprintf fm "@[<hov 2>%sassert%s %a%s@]" s1 label (print_term p typ) t1 s2
   | If(t1, t2, t3) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[<hv>if@[@ %a@]@ then@ " s1 (print_term p typ) t1;
+      let label =
+        if !Flag.print_only_if_id then
+          match List.find_option (function AId _ -> true | _ -> false) attr with
+          | Some (AId n) -> Format.sprintf "^%d" n
+          | _ -> ""
+        else
+          ""
+      in
+      fprintf fm "%s@[<hv>if%s@[@ %a@]@ then@ " s1 label (print_term p typ) t1;
       pp_print_if_newline fm ();
       pp_print_string fm "  ";
       fprintf fm "@[%a@]" (print_term p typ) t2;

@@ -6,7 +6,7 @@ module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
 
-let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
+let preprocess make_pps ?(fun_list=None) t spec =
   let pps' =
     match make_pps with
     | None -> Preprocess.all spec
@@ -186,7 +186,7 @@ let improve_precision e =
       incr Fpat.RefTypInfer.number_of_extra_params
   | _ -> raise e
 
-let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_target =
+let rec loop make_pps ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_target =
   (** Unno: I temporally placed the following code here
             so that we can infer refinement types for a safe program
             with extra parameters added *)
@@ -197,7 +197,7 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
       set_target
   in
   (**)
-  let prog, make_get_rtyp = preprocess ~make_pps ~fun_list set_target' spec in
+  let prog, make_get_rtyp = preprocess make_pps ~fun_list set_target' spec in
   let prog' =
     if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
     then
@@ -216,7 +216,7 @@ let rec loop ?(make_pps=None) ?(fun_list=None) exparam_sol ?(spec=Spec.init) par
     result, make_get_rtyp, set_target'
   with e ->
     improve_precision e;
-    loop ~make_pps ~fun_list exparam_sol ~spec parsed set_target
+    loop make_pps ~fun_list exparam_sol ~spec parsed set_target
 
 
 let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
@@ -241,10 +241,10 @@ let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
       in
       None, Preprocess.trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
   in
-  loop ~make_pps ~fun_list exparam_sol ~spec parsed set_target, main, set_target
+  loop make_pps ~fun_list exparam_sol ~spec parsed set_target, main, set_target
 
 
-let run ?(make_pps=None) ?(fun_list=None) orig exparam_sol ?(spec=Spec.init) parsed =
+let run ?make_pps ?fun_list orig exparam_sol ?(spec=Spec.init) parsed =
   let (result, make_get_rtyp, set_target'), main, set_target = verify ~make_pps ~fun_list exparam_sol spec parsed in
   match result with
   | CEGAR.Safe env ->

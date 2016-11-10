@@ -178,6 +178,7 @@ val get_last_definition : term -> id option
 val get_body : term -> term
 val count_occurrence : id -> term -> int
 val add_attr : attr -> term -> term
+val add_attrs : attr list -> term -> term
 val add_comment : string -> term -> term
 val add_id : int -> term -> term
 val remove_attr : attr -> term -> term

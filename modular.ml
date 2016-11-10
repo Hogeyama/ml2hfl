@@ -2,7 +2,7 @@ open Util
 open Syntax
 open Term_util
 open Type
-open Modular_syntax
+open Modular_common
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
@@ -39,13 +39,10 @@ let merge_tenv env' env = (* ??? *)
   Ref_type.Env.of_list @@ List.fold_right (fun (x,typ) acc -> if Id.mem_assoc x acc then acc else (x,typ)::acc) (Ref_type.Env.to_list env) (Ref_type.Env.to_list env')
  *)
 
-let merge_ce_set (ce_set':ce_set) (ce_set:ce_set) =
-  let dbg = 0=1 in
-  let prefix (f,ce1) (g,ce2) =
-    Id.same f g && List.for_all (fun (f,path) -> List.is_prefix path (Id.assoc f ce2)) ce1
-  in
-  List.remove_lower prefix (ce_set' @ ce_set)
-  |@dbg&> Format.printf "MERGE_CE_SET: %a@." print_ce_set
+let normalize_ce_set (ce_set:ce_set) =
+  let prefix (f,ce1) (g,ce2) = List.is_prefix ce1 ce2 in
+  List.remove_lower prefix ce_set
+
 
 let is_closed f def_env =
   let ys,t = Id.assoc f def_env in
@@ -61,55 +58,6 @@ let report_unsafe neg_env ce_set =
   Format.printf "Modular counterexamples: %a@.@." print_ce_set ce_set
 
 
-let extend_ce f ce_set = assert false(*
-  if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) ce_set;
-  let r =
-    if 0=9 then
-      List.flatten_map (fun (g,ce) -> if Id.same f g then [f, 0::ce; f, 1::ce] else [g,ce]) ce_set
-    else
-      List.flatten_map (fun (g,ce) -> if Id.same f g then [f, ce@[0]; f, ce@[1]] else [g,ce]) ce_set
-  in
-  if false then Format.printf "EC: ce_set: %a@." (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) r;
-  r
-*)
-
-let incr_extend (ce_set, extend) f =
-  let dbg = 0=1 in
-  assert (ce_set <> []);
-  if dbg then Debug.printf "IE f: %a@." Id.print f;
-  if dbg then Debug.printf "IE CE_SET: %a@." print_ce_set ce_set;
-  if dbg then Debug.printf "IE EXTEND: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend;
-  let extend' =
-    let aux g extend' =
-      try
-        snd @@ List.assoc_map ~eq:Id.eq g succ extend'
-      with Not_found -> (g,1)::extend'
-    in
-    List.fold_left (fun extend' (g,_) -> aux g extend') extend @@ Id.assoc f ce_set
-  in
-  if dbg then Debug.printf "IE EXTEND': %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) extend';
-  let new_ce_set =
-    let aux (g,ce) =
-      let ce' =
-        if Id.same g f then
-          let rev xs =
-            if xs = [] then
-              []
-            else
-              let xs',last = List.decomp_snoc xs in
-              xs' @ [1-last]
-          in
-          List.map (Pair.map_snd rev) ce
-        else
-          ce
-      in
-      g, ce'
-    in
-    List.map aux ce_set
-  in
-  if dbg then Debug.printf "IE CE_SET: %a@." print_ce_set ce_set;
-  if dbg then Debug.printf "IE NEW_CE_SET: %a@." print_ce_set new_ce_set;
-  merge_ce_set new_ce_set ce_set, extend'
 
 let is_external_id f =
   let name = Id.name f in
@@ -147,11 +95,11 @@ let rec main_loop history c prog cmp f typ ce_set =
     | Modular_check.Typable env' ->
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         `Typable, merge_tenv env' env, neg_env, ce_set
-    | Modular_check.Untypable ce_set1 when is_closed f fun_def_env ->
+    | Modular_check.Untypable ce when is_closed f fun_def_env ->
         pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
-        `Untypable, env, neg_env', merge_ce_set ce_set ce_set1
-    | Modular_check.Untypable ce_set1 ->
+        `Untypable, env, neg_env', normalize_ce_set @@ (f,ce)::ce_set
+    | Modular_check.Untypable ce ->
         pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let rec refine_loop infer_mode neg_env ce_set2 =
           if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- is_external_id) ce_set2;
@@ -184,10 +132,11 @@ let rec main_loop history c prog cmp f typ ce_set =
               else
                 raise NoProgress
         in
-        refine_loop Modular_infer.init_mode neg_env (merge_ce_set ce_set1 ce_set)
+        refine_loop Modular_infer.init_mode neg_env (normalize_ce_set @@ (f,ce)::ce_set)
 let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ []
 
 let main _ spec parsed =
+  Flag.print_only_if_id := true;
   if spec <> Spec.init then unsupported "Modular.main: spec";
   let fbindings,body =
     let pps =
@@ -200,7 +149,7 @@ let main _ spec parsed =
     |> Preprocess.run pps
     |> Preprocess.last_t
     |@> Debug.printf "INITIALIZED: %a@.@." Print.term_typ
-    |> normalize
+    |> normalize true
     |@> Debug.printf "NORMALIZED: %a@.@." Print.term
     |> decomp_prog
   in
@@ -213,11 +162,7 @@ let main _ spec parsed =
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
   let cmp =
-    let edges =
-      fun_env
-      |> List.map (fun (f,(xs,t)) -> f, List.Set.diff ~eq:Id.eq (get_fv t) (f::xs))
-      |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
-    in
+    let edges = List.flatten_map (fun (f,(xs,t)) -> List.map (fun g -> g, f) @@ List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)) fun_env in
     Compare.topological ~eq:Id.eq ~dom:(List.map fst fun_env) edges
   in
   let prog =

@@ -2,7 +2,6 @@ open Util
 open Syntax
 open Term_util
 open Type
-open Modular_syntax
 
 type t = {head : term; body : term list}
 type horn_clauses = t list

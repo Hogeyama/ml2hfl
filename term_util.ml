@@ -892,6 +892,7 @@ let count_occurrence x t =
   List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t
 
 let add_attr attr t = {t with attr=attr::t.attr}
+let add_attrs attrs t = List.fold_right add_attr attrs t
 let add_comment s t = add_attr (AComment s) t
 let add_id id t = add_attr (AId id) t
 let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}

@@ -2,7 +2,6 @@ open Util
 open Syntax
 open Term_util
 open Type
-open Modular_syntax
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 

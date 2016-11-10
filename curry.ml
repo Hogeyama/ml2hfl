@@ -194,7 +194,7 @@ and remove_pair_aux t typ_opt =
       let t1' = root @@ remove_pair_aux t1 None in
       let t2' = root @@ remove_pair_aux t2 None in
       let t3' = root @@ remove_pair_aux t3 None in
-      leaf (make_if t1' t2' t3')
+      leaf (add_attrs t.attr @@ make_if t1' t2' t3')
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) =
         let f' = root @@ remove_pair_var f in
@@ -247,16 +247,17 @@ and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
 
 let remove_pair ?(check=true) t =
   assert (check => List.mem ACPS t.attr);
+  let pr s = Debug.printf "##[remove_pair] %s: %a@." s Print.term in
   let t' =
     t
-    |@> Debug.printf "remove_pair INPUT: %a@." Print.term
+    |@> pr "INPUT"
     |> remove_pair
-    |@> Debug.printf "remove_pair remove_pair: %a@." Print.term
+    |@> pr "remove_pair"
     |@check&> Type_check.check -$- typ_result
     |> Trans.beta_affine_fun
-    |@> Debug.printf "remove_pair beta_affine_fun: %a@." Print.term
+    |@> pr "beta_affine_fun"
     |> Trans.beta_size1
-    |@> Debug.printf "remove_pair beta_size1: %a@." Print.term
+    |@> pr "beta_size1"
   in
   t', uncurry_rtyp t
 

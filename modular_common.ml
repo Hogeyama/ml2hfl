@@ -13,7 +13,8 @@ type program =
    fun_def_env : (id * (id list * term)) list;
    exn_decl : (string * typ list) list}
 
-type ce = (id * int list) list
+type label = int
+type ce = (label * bool) list
 type ce_set = (id * ce) list
 
 let print_typ_env = Ref_type.Env.print
@@ -27,7 +28,8 @@ let print_prog fm {fun_typ_env; fun_typ_neg_env; fun_def_env} =
   Format.fprintf fm "fun_def_env: %a@\n" print_def_env fun_def_env;
   Format.fprintf fm "@]"
 
-let print_ce fm ce = (List.print @@ Pair.print Id.print @@ List.print Format.pp_print_int) fm ce
+let print_ce_aux fm (l,b) = Format.pp_print_int fm (if b then l else -l)
+let print_ce fm ce = (List.print print_ce_aux) fm ce
 let print_ce_set fm ce_set = (List.print @@ Pair.print Id.print print_ce) fm ce_set
 
 let rec is_atom t =
@@ -37,26 +39,27 @@ let rec is_atom t =
   | BinOp(_, t1, t2) -> is_atom t1 && is_atom t2
   | _ -> false
 
-let normalize t =
-  let dbg = 0=0 in
+let normalize add_id t =
   t
-  |@dbg&> Debug.printf "NORMALIZE0: %a@.@." Print.term
+  |@> Debug.printf "NORMALIZE0: %a@.@." Print.term
   |> Trans.replace_bottom_def
-  |@dbg&> Debug.printf "NORMALIZE1: %a@.@." Print.term
+  |@> Debug.printf "NORMALIZE1: %a@.@." Print.term
   |> Trans.short_circuit_eval
-  |@dbg&> Debug.printf "NORMALIZE2: %a@.@." Print.term
+  |@> Debug.printf "NORMALIZE2: %a@.@." Print.term
   |> Trans.normalize_let ~is_atom:is_atom
-  |@dbg&> Debug.printf "NORMALIZE3: %a@.@." Print.term
+  |@> Debug.printf "NORMALIZE3: %a@.@." Print.term
   |> Trans.flatten_let
-  |@dbg&> Debug.printf "NORMALIZE4: %a@.@." Print.term
+  |@> Debug.printf "NORMALIZE4: %a@.@." Print.term
   |> Trans.remove_no_effect_trywith
-  |@dbg&> Debug.printf "NORMALIZE5: %a@.@." Print.term
+  |@> Debug.printf "NORMALIZE5: %a@.@." Print.term
   |> fixed_point ~eq:same_term
        (Trans.inline_var
         |- Trans.inline_simple_exp
         |- Trans.bool_eta_reduce
         |- Trans.reconstruct
         |- Trans.elim_unused_let ~leave_last:true)
+  |> Trans.add_id_if (function {desc=If _} -> add_id | _ -> false)
+  |> snd
 
 (* `used_by f prog` returns top-level functions used (directly/indirectly) by f *)
 let used_by f prog =

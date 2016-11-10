@@ -1576,7 +1576,7 @@ let normalize_let_term is_atom t =
       let t1',post = normalize_let_aux is_atom t1 in
       let t2'  = normalize_let.tr2_term is_atom t2 in
       let t3'  = normalize_let.tr2_term is_atom t3 in
-      post @@ make_if t1' t2' t3'
+      post @@ add_attrs t.attr @@ make_if t1' t2' t3'
   | Let(flag,bindings,t1) ->
       let aux (f,xs,t) = f, xs, normalize_let.tr2_term is_atom t in
       let bindings' = List.map aux bindings in
@@ -2580,16 +2580,22 @@ let () = inline_specified.tr2_term <- inline_specified_term
 let inline_specified = inline_specified.tr2_term
 
 
-let add_id = make_trans2 ()
-let add_id_term counter t =
-  incr counter;
-  let id = AId !counter in
-  add_attr id @@ add_id.tr2_term_rec counter t
-let () = add_id.tr2_term <- add_id_term
-let add_id t =
-  let counter = ref 0 in
-  let t' = add_id.tr2_term counter t in
-  !counter, t'
+let add_id_if = make_trans2 ()
+let add_id_if_term (f,cnt) t =
+  let t' = add_id_if.tr2_term_rec (f,cnt) t in
+  if f t then
+    let id = AId (Counter.gen cnt) in
+    add_attr id t'
+  else
+    t'
+let () = add_id_if.tr2_term <- add_id_if_term
+let add_id_if f t =
+  let cnt = Counter.create () in
+  let t' = add_id_if.tr2_term (f,cnt) t in
+  Counter.peep cnt, t'
+
+
+let add_id t = add_id_if (Fun.const true) t
 
 
 let remove_id t = filter_attr (function AId _ -> false | _ -> true) t

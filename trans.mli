@@ -48,6 +48,7 @@ val map_attr : (attr list -> attr list) -> term -> term
 val filter_attr : (attr -> bool) -> term -> term
 val split_assert : term -> term
 val add_id : term -> int * term
+val add_id_if : (term -> bool) -> term -> int * term
 val remove_id : term -> term
 val replace_fail_with_raise : term -> term
 val remove_defs : id list -> term -> term

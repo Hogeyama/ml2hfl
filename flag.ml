@@ -88,6 +88,7 @@ let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
 let print_abst_typ = ref false
 let print_as_ocaml = ref false
+let print_only_if_id = ref false
 
 let web = ref false
 

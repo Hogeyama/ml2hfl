@@ -644,13 +644,15 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let k' = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let b = Id.new_var TBool in
-        make_fun k
-          (make_let [k', [], make_var k]
-             (make_app_cont t1.effect t1'
-                (make_fun b
-                   (make_if (make_var b)
-                      (make_app_cont t2.effect t2' (make_var k'))
-                      (make_app_cont t3.effect t3' (make_var k'))))))
+        make_fun k @@
+          make_let [k', [], make_var k] @@
+            make_app_cont t1.effect t1' @@
+              make_fun b @@
+                add_attrs t_orig.attr @@
+                  make_if
+                    (make_var b)
+                    (make_app_cont t2.effect t2' (make_var k'))
+                    (make_app_cont t3.effect t3' (make_var k'))
     | IfCPS(t1, t2, t3), EExcep ->
         let t1' = transform typ_excep k_post t1 in
         let t2' = transform typ_excep k_post t2 in
@@ -662,16 +664,19 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let h' = Id.new_var_id h in
-        make_fun k
-          (make_let [k', [], make_var k] (* to prevent the increase of code size in eta-reduction *)
-             (make_fun h
-                (make_let [h', [], make_var h] (* to prevent the increase of code size in eta-reduction *)
-                   (make_app_excep t1.effect t1'
-                      (make_fun b
-                         (make_if (make_var b)
-                            (make_app_excep t2.effect t2' (make_var k') (make_var h'))
-                            (make_app_excep t3.effect t3' (make_var k') (make_var h'))))
-                      (make_var h')))))
+        make_fun k @@
+          make_let [k', [], make_var k] @@ (* to prevent the increase of code size in eta-reduction *)
+            make_fun h @@
+              make_let [h', [], make_var h] @@ (* to prevent the increase of code size in eta-reduction *)
+                make_app_excep
+                  t1.effect t1'
+                  (make_fun b @@
+                     add_attrs t_orig.attr @@
+                       make_if
+                         (make_var b)
+                         (make_app_excep t2.effect t2' (make_var k') (make_var h'))
+                         (make_app_excep t3.effect t3' (make_var k') (make_var h')))
+                  (make_var h')
     | LetCPS(flag, bindings, t1), ENone ->
         let aux (f,t) =
           let f' = trans_var typ_excep f in
