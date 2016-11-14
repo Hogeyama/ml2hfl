@@ -218,6 +218,14 @@ test: opt
 	echo; \
 	done
 
+test-all: opt
+	for i in test/*.ml; \
+	do \
+	echo VERIFY $$i; \
+	(ulimit -t $(LIMIT); ./mochi.opt $$i $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	echo; \
+	done
+
 test-error: opt
 	for i in $(TEST); \
 	do \

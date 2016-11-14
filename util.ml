@@ -454,6 +454,7 @@ module List = struct
     let supset ?(eq=(=)) l1 l2 = subset ~eq l2 l1
     let eq ?(eq=(=)) l1 l2 = subset ~eq l1 l2 && supset ~eq l1 l2
     let union ?(eq=(=)) l1 l2 = rev_append l1 @@ diff ~eq l2 l1
+    let disjoint ?(eq=(=)) l1 l2 = inter ~eq l1 l2 = []
   end
 end
 

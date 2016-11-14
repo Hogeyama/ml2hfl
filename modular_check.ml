@@ -8,11 +8,6 @@ open Modular_common
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
-(*
-let print_ce_set fm ce_set =
-  let pr fm (f, ce) = Format.fprintf fm "%a: %a" Id.print f (List.print Format.pp_print_int) ce in
-  Format.fprintf fm "%a" (print_list pr ",@ ") ce_set
- *)
 let to_CEGAR_ref_type_base base =
   match base with
   | Ref_type.Unit -> CEGAR_ref_type.Unit
@@ -210,21 +205,19 @@ type result =
   | Typable of Ref_type.env
   | Untypable of ce
 
-let add_context prog f typ =
-  let {fun_typ_env=env; fun_def_env=fun_env} = prog in
+let add_context prog f xs t typ =
   let dbg = 0=0 in
+  let {fun_typ_env=env; fun_def_env=fun_env; exn_decl} = prog in
   if dbg then Debug.printf "ADD_CONTEXT prog: %a@." print_prog prog;
   if dbg then Debug.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let fs =
-    let xs,t = Id.assoc f fun_env in
     List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)
   in
   let af = "Assert_failure" in
-  let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
+  let etyp = Type(["exn", TVariant (exn_decl@[af,[]])], "exn") in
   let typ_exn = Encode.typ_of Encode.all etyp in
   let make_fail typ =
-    make_raise (make_construct af [] etyp) typ
-    |> Encode.all
+    Encode.all @@ make_raise (make_construct af [] etyp) typ
   in
   let t' =
     unit_term
@@ -242,7 +235,7 @@ let add_context prog f typ =
   in
   let fun_env'' =
     List.map (Pair.map_snd @@ Pair.map_snd @@ normalize false) fun_env' @
-    [f, Pair.map_snd (normalize false) @@ Id.assoc f fun_env]
+    [f, (xs, normalize false t)]
   in
   if dbg then Debug.printf "ADD_CONTEXT fun_env'': %a@." print_def_env fun_env'';
   t', fun_env''
@@ -270,10 +263,31 @@ let make_init_ce_set f t =
   f, complete_ce_set f t []
 
 
-let check prog f typ =
+let check prog f typ depth =
   Debug.printf "MAIN_LOOP prog: %a@." print_prog prog;
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
-  let t,fun_env' = add_context prog f typ in
+  let t,fun_env' =
+    let xs, t = Id.assoc f prog.fun_def_env in
+    let t' =
+      let rec aux acc fs depth =
+        if depth <= 0 then
+          List.filter_out (Id.same f) acc
+        else
+          let fs' =
+            fs
+            |> List.flatten_map (fun g -> let xs,t = Id.assoc g fun_env in List.Set.diff ~eq:Id.eq (get_fv t) (g::xs))
+            |> List.unique ~cmp:Id.eq
+          in
+          aux (fs@acc) fs' (depth-1)
+      in
+      let fs = aux [] [f] depth in
+      Debug.printf "fs: %a@." (List.print Id.print) fs;
+      let fun_env' = List.filter (fst |- Id.mem -$- fs) fun_env in
+      make_letrecs (List.map Triple.of_pair_r fun_env') t
+    in
+    Debug.printf "t': %a@." Print.term t';
+    add_context prog f xs t' typ
+  in
   let top_funs = List.map fst fun_env' in
   Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   Debug.printf "  t: %a@." Print.term_typ t;
@@ -302,7 +316,13 @@ let check prog f typ =
       Debug.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_bool) ce_single';
       Debug.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
       let ans,ce_single'',ce =
-        let val_env = List.fold_left (fun val_env (f,(xs,t)) -> let rec val_env' = (f, Closure(val_env', make_funs xs t))::val_env in val_env') [] fun_env' in
+        let val_env =
+          let aux val_env (f,(xs,t)) =
+            let rec val_env' = (f, Closure(val_env', make_funs xs t))::val_env in
+            val_env'
+          in
+          List.fold_left aux [] fun_env'
+        in
         try
           eval val_env ce_single' t
         with Exception(ans, ce, paths) -> Fail, ce, paths

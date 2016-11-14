@@ -252,7 +252,15 @@ let rec from_term
       let var_env_f,val_env_f,ce_env_f,(ys,t_f) = assoc_fun f var_env val_env ce_env in
       Debug.printf "    APP1 (ys -> t_f): %a, %d@\n" Print.term (make_funs ys t_f) (List.length ts);
       Debug.printf "    APP1 var_env_f: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env_f;
-      let arg_map = make_arg_map var_env val_env None f ys ts in
+      let arg_ce_env =
+        let xs = List.Set.inter ~eq:Id.eq (List.map fst val_env_f) (List.map fst val_env) in
+        let ys = List.map fst fun_env in
+        if List.Set.subset ~eq:(fun x y -> Id.name x = Id.name y) xs ys then
+          Some ce_env
+        else
+          None
+      in
+      let arg_map = make_arg_map var_env val_env arg_ce_env f ys ts in
       Debug.printf "    APP1 arg_map: %a@\n" pr_env arg_map;
       let val_env' = List.rev arg_map @ val_env_f in
       Debug.printf "    APP1 val_env': %a@\n" pr_env val_env';
