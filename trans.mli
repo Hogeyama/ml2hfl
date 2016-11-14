@@ -3,6 +3,8 @@ open Syntax
 val flatten_tvar : term -> term
 val inst_tvar_tunit_typ : typ -> typ
 val inst_tvar_tunit : term -> term
+val inst_tvar_tint_typ : typ -> typ
+val inst_tvar_tint : term -> term
 val get_tvars : typ -> typ option ref list
 val rename_poly_funs : id -> term -> (id * id) list * term
 val copy_poly_funs : term -> term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)

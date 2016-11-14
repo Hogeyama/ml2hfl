@@ -55,6 +55,18 @@ let inst_tvar_tunit_typ = inst_tvar_tunit.tr_typ
 let inst_tvar_tunit = inst_tvar_tunit.tr_term
 
 
+let inst_tvar_tint = make_trans ()
+
+let inst_tvar_tint_typ typ =
+  match typ with
+  | TVar({contents=None} as r) -> r := Some TInt; TInt
+  | _ -> inst_tvar_tint.tr_typ_rec typ
+
+let () = inst_tvar_tint.tr_typ <- inst_tvar_tint_typ
+let inst_tvar_tint_typ = inst_tvar_tint.tr_typ
+let inst_tvar_tint = inst_tvar_tint.tr_term
+
+
 
 
 let rename_tvar = make_trans2 ()
@@ -2130,14 +2142,14 @@ let copy_poly_funs_desc map desc =
       let tvars = get_tvars (Id.typ f) in
       assert (tvars <> []);
       let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
-      let t2'' = inst_tvar_tunit t2' in
+      let t2'' = inst_tvar_tint t2' in
       let map_rename,t2''' = rename_poly_funs f t2'' in
       Debug.printf "COPY: @[";
       List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
       Debug.printf "@.";
       if map_rename = [] then
         let map1,t1' = copy_poly_funs.fold_tr_term map2 t1 in
-        (f,f)::map1, (inst_tvar_tunit @@ make_let_f flag [f, xs, t1'] t2').desc
+        (f,f)::map1, (inst_tvar_tint @@ make_let_f flag [f, xs, t1'] t2').desc
       else
         let aux (map',t) (_,f') =
           let tvar_map = List.map (fun v -> v, ref None) tvars in
