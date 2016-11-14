@@ -191,13 +191,12 @@ let main _ spec parsed =
   if spec <> Spec.init then unsupported "Modular.main: spec";
   let fbindings,body =
     let pps =
-      let open Main_loop in
-      preprocesses spec
+      Preprocess.all spec
       |> Preprocess.before Preprocess.CPS
       |> Preprocess.filter_out [Preprocess.Beta_reduce_trivial]
     in
     parsed
-    |@> Debug.printf "PARSED: %a@.@." Print.term_typ
+    |@> Debug.printf "PARSED: %a@.@." Print.term'
     |> Preprocess.run pps
     |> Preprocess.last_t
     |@> Debug.printf "INITIALIZED: %a@.@." Print.term_typ

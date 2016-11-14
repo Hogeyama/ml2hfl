@@ -333,9 +333,7 @@ let check prog f typ =
   Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   Debug.printf "  t: %a@." Print.term_typ t;
   let make_pps spec =
-    let open Main_loop in
-    preprocesses spec
-    |> Preprocess.and_after Preprocess.CPS
+    Preprocess.and_after Preprocess.CPS @@ Preprocess.all spec
   in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t

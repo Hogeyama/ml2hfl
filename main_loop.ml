@@ -4,103 +4,12 @@ type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let preprocesses spec : Preprocess.t list =
-  let open Preprocess in
-  [
-    Replace_const,
-      (Fun.const !Flag.replace_const,
-       map_trans CFA.replace_const);
-    Encode_mutable_record,
-      (Fun.const true,
-       map_trans Encode.mutable_record);
-    Encode_record,
-      (Fun.const true,
-       map_trans Encode.record);
-    Encode_array,
-      (Fun.const true,
-       map_trans Encode.array);
-    Copy_poly,
-      (Fun.const true,
-       Trans.copy_poly_funs -| last_t);
-    Abst_ref,
-      (Fun.const true,
-       map_trans Encode.abst_ref);
-    Make_fun_tuple,
-      (Fun.const !Flag.tupling,
-       map_trans Ref_trans.make_fun_tuple);
-    Make_ext_funs,
-      (Fun.const true,
-       fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
-    Ignore_non_termination,
-      (Fun.const !Flag.ignore_non_termination,
-       map_trans Trans.ignore_non_termination);
-    Beta_reduce_trivial,
-      (Fun.const true,
-       map_trans Trans.beta_reduce_trivial);
-    Recover_const_attr,
-      (Fun.const true,
-       map_trans Trans.recover_const_attr);
-    Decomp_pair_eq,
-      (Fun.const true,
-       map_trans Trans.decomp_pair_eq);
-    Add_preds,
-      (Fun.const (spec.Spec.abst_env <> []),
-       fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
-    Replace_fail_with_raise,
-      (Fun.const !Flag.fail_as_exception,
-       map_trans Trans.replace_fail_with_raise);
-    Encode_variant,
-      (Fun.const true,
-       map_trans Encode.variant);
-    Encode_recdata,
-      (Fun.const true,
-       map_trans Encode.recdata);
-    Replace_base_with_int,
-      (Fun.const !Flag.base_to_int,
-       map_trans Trans.replace_base_with_int);
-    Encode_list,
-      (Fun.const true,
-       Encode.list -| last_t);
-    Ret_fun,
-      (Fun.const !Flag.tupling,
-       Ret_fun.trans -| last_t);
-    Ref_trans,
-      (Fun.const !Flag.tupling,
-       Ref_trans.trans -| last_t);
-    Tupling,
-      (Fun.const !Flag.tupling,
-       Tupling.trans -| last_t);
-    Inline,
-      (Fun.const true,
-       (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
-    CPS,
-      (Fun.const !Flag.trans_to_CPS,
-       CPS.trans -| last_t);
-    Remove_pair,
-      (Fun.const !Flag.trans_to_CPS,
-       Curry.remove_pair -| last_t);
-    Replace_bottom_def,
-      (Fun.const true,
-       map_trans Trans.replace_bottom_def);
-    Add_preds,
-      (Fun.const (spec.Spec.abst_cps_env <> []),
-       fun acc -> Trans.replace_typ (Spec.get_abst_cps_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
-    Eliminate_same_arguments,
-      (Fun.const !Flag.elim_same_arg,
-       map_trans Elim_same_arg.trans);
-    Insert_unit_param,
-      (Fun.const !Flag.insert_param_funarg,
-       map_trans Trans.insert_param_funarg);
-    Preprocessfortermination,
-      (Fun.const (!Flag.mode = Flag.Termination),
-       map_trans !BRA_types.preprocessForTerminationVerification);
-  ]
 
 
 let preprocess ?(make_pps=None) ?(fun_list=None) t spec =
   let pps' =
     match make_pps with
-    | None -> preprocesses spec
+    | None -> Preprocess.all spec
     | Some make_pps' -> make_pps' spec
   in
   let results = Preprocess.run pps' t in
