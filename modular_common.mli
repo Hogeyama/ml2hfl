@@ -21,3 +21,4 @@ val is_atom : Syntax.term -> bool
 val normalize : bool -> Syntax.term -> Syntax.term
 val used_by : Syntax.id -> program -> Syntax.id list
 val term_of_prog : program -> Syntax.term
+val take_funs_of_depth : (Syntax.id * (Syntax.id list * Syntax.term)) list -> Syntax.id -> int -> Syntax.id list

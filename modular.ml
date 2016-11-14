@@ -44,9 +44,12 @@ let normalize_ce_set (ce_set:ce_set) =
   List.remove_lower prefix ce_set
 
 
-let is_closed f def_env =
-  let ys,t = Id.assoc f def_env in
-  List.Set.subset ~eq:Id.eq (get_fv t) (f::ys)
+let is_closed f def_env depth =
+  let fs = take_funs_of_depth def_env f depth in
+  let def_env' = List.filter (fst |- Id.mem -$- fs) def_env in
+  let fv = List.flatten_map (snd |- snd |- get_fv) def_env' in
+  let bv = List.flatten_map (fun (f,(xs,_)) -> f::xs) def_env' in
+  List.Set.subset ~eq:Id.eq fv bv
 
 let report_safe env =
   Format.printf "Safe!@.@.";
@@ -92,7 +95,7 @@ let rec main_loop history c prog cmp f typ depth ce_set =
     | Modular_check.Typable env' ->
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         `Typable, merge_tenv env' env, neg_env, ce_set
-    | Modular_check.Untypable ce when is_closed f fun_def_env ->
+    | Modular_check.Untypable ce when is_closed f fun_def_env depth ->
         pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
         `Untypable, env, neg_env', normalize_ce_set @@ (f,ce)::ce_set
@@ -127,13 +130,32 @@ let rec main_loop history c prog cmp f typ depth ce_set =
                 (Debug.printf "%schange infer_mode@." space;
                  refine_loop (Modular_infer.next_mode infer_mode) neg_env' ce_set3)
               else if true then
-                (Debug.printf "%sincr depth@." space;
+                (Debug.printf "%sdepth := %d@." space (depth+1);
                  main_loop history (c+1) prog cmp f typ (depth+1) ce_set3)
               else
                 raise NoProgress
         in
         refine_loop Modular_infer.init_mode neg_env (normalize_ce_set @@ (f,ce)::ce_set)
 let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ 1 []
+
+let rec last_def_to_fun t =
+  match t.desc with
+  | Let(flag, [f,xs,t1], ({desc=Const Unit} as t2)) ->
+      let f',xs' =
+        if xs = [] then
+          let u = Id.new_var ~name:"u" TUnit in
+          let typ = TFun(u, Id.typ f) in
+          Id.set_typ f typ, [u]
+        else
+          f, xs
+      in
+      let desc = Let(flag, [f',xs',t1], t2) in
+      {t with desc}
+  | Let(flag, _, {desc=Const Unit}) -> unsupported "last_def_to_fun"
+  | Let(flag, defs, t2) ->
+      let t2' = last_def_to_fun t2 in
+      {t with desc = Let(flag, defs, t2')}
+  | _ -> assert false
 
 let main _ spec parsed =
   Flag.print_only_if_id := true;
@@ -148,6 +170,7 @@ let main _ spec parsed =
     |@> Debug.printf "PARSED: %a@.@." Print.term'
     |> Preprocess.run pps
     |> Preprocess.last_t
+    |> last_def_to_fun
     |@> Debug.printf "INITIALIZED: %a@.@." Print.term_typ
     |> normalize true
     |@> Debug.printf "NORMALIZED: %a@.@." Print.term

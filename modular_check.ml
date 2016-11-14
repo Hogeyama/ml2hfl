@@ -269,19 +269,7 @@ let check prog f typ depth =
   let t,fun_env' =
     let xs, t = Id.assoc f prog.fun_def_env in
     let t' =
-      let rec aux acc fs depth =
-        if depth <= 0 then
-          List.filter_out (Id.same f) acc
-        else
-          let fs' =
-            fs
-            |> List.flatten_map (fun g -> let xs,t = Id.assoc g fun_env in List.Set.diff ~eq:Id.eq (get_fv t) (g::xs))
-            |> List.unique ~cmp:Id.eq
-          in
-          aux (fs@acc) fs' (depth-1)
-      in
-      let fs = aux [] [f] depth in
-      Debug.printf "fs: %a@." (List.print Id.print) fs;
+      let fs = List.filter_out (Id.same f) @@ take_funs_of_depth fun_env f depth in
       let fun_env' = List.filter (fst |- Id.mem -$- fs) fun_env in
       make_letrecs (List.map Triple.of_pair_r fun_env') t
     in

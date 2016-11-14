@@ -83,3 +83,18 @@ let term_of_prog prog =
   |> fst
   |> make_var
   |> make_letrecs (List.map Triple.of_pair_r prog.fun_def_env)
+
+
+let take_funs_of_depth env f depth =
+  let rec aux acc fs depth =
+    if depth <= 0 then
+      acc
+    else
+      let fs' =
+        fs
+        |> List.flatten_map (fun g -> let xs,t = Id.assoc g env in List.Set.diff ~eq:Id.eq (get_fv t) (g::xs))
+        |> List.unique ~cmp:Id.eq
+      in
+      aux (fs@acc) fs' (depth-1)
+  in
+  aux [] [f] depth
