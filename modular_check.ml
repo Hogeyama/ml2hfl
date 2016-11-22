@@ -104,7 +104,8 @@ and eval
   if dbg then
     if true then
       Debug.printf "Dom(VAL_ENV): %a@\n" (List.print Id.print) @@ List.map fst val_env
-    else Debug.printf "VAL_ENV: %a@\n" print_val_env val_env;
+    else
+      Debug.printf "VAL_ENV: %a@\n" print_val_env val_env;
   if dbg then Debug.printf "CE: %a@\n" (List.print Format.pp_print_bool) ce;
   match t.desc with
   | Const _

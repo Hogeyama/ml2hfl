@@ -1020,6 +1020,49 @@ let get_merge_candidates templates =
   |> List.map (List.flatten_map (snd |- decomp_inter))
   |> List.flatten_map aux
 
+
+let map_with_replacing_tuples f t =
+  let rec aux map t =
+    match t.desc with
+    | Const _ -> map, t
+    | Var x -> map, t
+    | Proj(i, {desc=Var x}) ->
+        if List.exists (snd |- same_term t) map then
+          map, make_var @@ fst @@ List.find (snd |- same_term t) map
+        else
+          let x' = Id.new_var t.typ in
+          [x', t], make_var x'
+    | Not t ->
+        let map',t' = aux map t in
+        map', make_not t'
+    | BinOp(op, t1, t2) ->
+        let map1,t1' = aux map t1 in
+        let map2,t2' = aux map1 t2 in
+        map2, {t with desc=BinOp(op,t1',t2')}
+    | _ -> unsupported "map_with_replacing_tuples"
+  in
+  let map,t' = aux [] t in
+  let t'' = f t' in
+  subst_map map t''
+
+
+let widen t =
+  if get_fv t = [] then
+    t
+  else
+    let () = Debug.printf "widen INPUT: %a@." Print.term t in
+    let aux =
+      FpatInterface.of_term
+      |- Fpat.Formula.of_term
+      |- Fpat.Polyhedron.convex_hull_dyn
+      |- Fpat.Formula.term_of
+      |- FpatInterface.inv_term
+      |- CEGAR_trans.trans_inv_term
+    in
+    map_with_replacing_tuples aux t
+    |@> Debug.printf "widen OUTPUT: %a@." Print.term
+
+
 let infer mode prog f typ (ce_set:ce_set) =
   let ce_set =
     if 0=1 then
@@ -1037,8 +1080,6 @@ let infer mode prog f typ (ce_set:ce_set) =
     Debug.printf "t: %a@.@." Print.term t;
     CT.from_program fun_env' ce_set t
   in
-  let fun_env = [](*make_fun_env comp_tree*) in
-  Debug.printf "fun_env: %a@.@." (List.print @@ Pair.print Id.print @@ Pair.print Id.print @@ Option.print Format.pp_print_int) fun_env;
   let templates = make_template env comp_tree in
   Debug.printf "TEMPLATES: @[%a@.@." print_tmp_env templates;
   let constrs = generate_constraints templates comp_tree in
@@ -1053,12 +1094,10 @@ let infer mode prog f typ (ce_set:ce_set) =
     |@> Debug.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!Debug.check&> check_arity
     |> HC.inline need
-    |*> List.rev (* for debug *)
     |@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates =
     templates
-    |*> List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env')
     |> List.filter_out (fun ((f,_),_) -> String.contains (Id.name f) '.')
     |> get_merge_candidates
   in
@@ -1097,8 +1136,17 @@ let infer mode prog f typ (ce_set:ce_set) =
         |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
         |> List.remove_lower (fun (x,typ) (x',typ') -> Id.same x x' && Ref_type.equiv typ typ')
         |> List.filter_out (fun (g,typ') -> Id.same f g && Ref_type.subtype typ typ')
+        |*> List.map (Pair.map_snd @@ Ref_type.map_pred widen)
         |> Ref_type.Env.of_list
-        |*> Ref_type.Env.normalize
+      in
+      let env'' =
+        if false then
+          env''
+        else
+          let env'' = Ref_type.Env.to_list env'' in
+          let env'' = env'' @ List.map (Pair.map_snd @@ Ref_type.map_pred widen) env'' in
+          let env'' = List.flatten_map (fun (x,typ) -> List.map (fun typ' -> x, typ') @@ Ref_type.split_inter typ) env'' in
+          Ref_type.Env.of_list env''
       in
       let env_unused =
         let aux f =

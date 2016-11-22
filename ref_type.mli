@@ -81,4 +81,4 @@ val has_no_predicate : t -> bool
 val subtype : t -> t -> bool
 val suptype : t -> t -> bool
 val equiv : t -> t -> bool
-val map_pred : (Syntax.term -> Syntax.term) -> t -> t
+val split_inter : t -> t list

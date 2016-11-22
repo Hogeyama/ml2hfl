@@ -1573,6 +1573,9 @@ let normalize_let_term is_atom t =
       let t1',post1 = normalize_let_aux is_atom t1 in
       let t2',post2 = normalize_let_aux is_atom t2 in
       post1 @@ post2 @@ {desc=BinOp(op, t1', t2'); typ=t.typ; attr=[]}
+  | Not t1 ->
+     let t1',post = normalize_let_aux is_atom t1 in
+     post @@ make_not t1'
   | App(t, ts) ->
      let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
      let t',post = normalize_let_aux is_atom t in
@@ -1876,11 +1879,12 @@ let expand_let_val = make_trans ()
 let expand_let_val_term t =
   match t.desc with
   | Let(flag, bindings, t2) ->
-      let bindings' = List.map (fun (f,xs,t) -> f, xs, expand_let_val.tr_term t) bindings in
+      let bindings' = List.map (Triple.map_trd expand_let_val.tr_term) bindings in
       let t2' = expand_let_val.tr_term t2 in
       let bindings1,bindings2 = List.partition (fun (_,xs,_) -> xs = []) bindings' in
       let t2'' = List.fold_left (fun t (f,_,t') -> subst_with_rename f t' t) t2' bindings1 in
-      {(make_let_f flag bindings2 t2'') with attr=t.attr}
+      let attr = if bindings2 = [] then t.attr @ t2''.attr else t.attr in
+      {(make_let_f flag bindings2 t2'') with attr}
   | _ -> expand_let_val.tr_term_rec t
 
 let () = expand_let_val.tr_term <- expand_let_val_term
@@ -1916,6 +1920,7 @@ let rec eval_bexp t =
         | Lt -> (<)
         | Gt -> (>)
         | Leq -> (<=)
+        | Geq -> (>=)
         | _ -> invalid_arg "eval_bexp"
       in
       f (eval_aexp t1) (eval_aexp t2)
@@ -2556,6 +2561,8 @@ let reconstruct_term t =
     | If(t1, t2, t3) -> make_if (reconstruct.tr_term t1) (reconstruct.tr_term t2) (reconstruct.tr_term t3)
     | Let(flag, bindings, t) ->
         make_let_f flag (List.map (Triple.map_trd reconstruct.tr_term) bindings) @@ reconstruct.tr_term t
+    | BinOp(And, t1, t2) -> make_and (reconstruct.tr_term t1) (reconstruct.tr_term t2)
+    | BinOp(Or, t1, t2) -> make_or (reconstruct.tr_term t1) (reconstruct.tr_term t2)
     | Not t -> make_not @@ reconstruct.tr_term t
     | Tuple ts -> make_tuple @@ List.map reconstruct.tr_term ts
     | Proj(i, t) -> make_proj i @@ reconstruct.tr_term t

@@ -200,12 +200,6 @@ let rec from_term
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
       let t2' = subst_var x (Id.new_var_id x) t2 in
       from_term cnt fun_env var_env val_env ce_env t2'
-  | App({desc=Fun(x, t)}, [t2]) when is_base_typ t2.typ ->
-      let x' = Id.new_var_id x in
-      let t' = subst_var x x' t in
-      let val_env' = (x', Closure(var_env, val_env, None, t2))::val_env in
-      let var_env' = (x', List.map fst val_env)::var_env in
-      from_term cnt fun_env var_env' val_env' ce_env t'
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       Debug.printf "  APP2,%a@\n" Id.print f;
       let t_f,ce_env' = Id.assoc f fun_env in
@@ -272,6 +266,11 @@ let rec from_term
       assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
       let ce_env' = Option.default ce_env ce_env_f in
       RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env' t_f])
+  | App({desc=Fun _; typ} as t1, ts) ->
+      let f = Id.new_var typ in
+      make_app (make_var f) ts
+      |> make_let [f, [], t1]
+      |> from_term cnt fun_env var_env val_env ce_env
   | If(t1, t2, t3) ->
       Debug.printf "  IF t1: %a@\n" Print.term t1;
       let tid = get_id_option t in
@@ -307,11 +306,6 @@ let rec from_term
       in
       let node = {nid; val_env; var_env; ce_env; nlabel = Branch tid} in
       RT.Node(node, children)
-  | App({desc=Fun _; typ} as t1, ts) ->
-      let f = Id.new_var typ in
-      make_app (make_var f) ts
-      |> make_let [f, [], t1]
-      |> from_term cnt fun_env var_env val_env ce_env
   | Let(flag, [f,[],({desc=Bottom} as t1)], _) ->
       from_term cnt fun_env var_env val_env ce_env t1
   | Let(flag, [f,xs,t1], t2) ->

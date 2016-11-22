@@ -592,8 +592,7 @@ and simplify typ =
                 xs, List.map snd xtyps :: List.map rename ytypss
           in
           let typss' = List.transpose typss in
-          let typ = Tuple (List.map2 (fun x typs -> x, _Inter (to_simple @@ List.hd typs) typs) xs typss') in
-          typ
+          Tuple (List.map2 (fun x typs -> x, simplify @@ _Inter (to_simple @@ List.hd typs) typs) xs typss')
         else
           _Inter styp typs
       in
@@ -614,46 +613,6 @@ and simplify typ =
       else
         Exn(typ1', typ2')
 
-
-
-(*
-let from_fpat_const typ =
-  match typ with
-  | Fpat.TypConst.Unit -> Unit
-  | Fpat.TypConst.Bool -> Bool
-  | Fpat.TypConst.Int -> Int
-  | Fpat.TypConst.Ext "X" -> Unit
-  | _ -> unsupported "Ref_type.from_fpat"
-let rec from_fpat typ =
-  match typ with
-  | Fpat.RefT.Bot -> Base(Int, Id.new_var T.TInt, U.false_term)
-  | Fpat.RefT.Top -> Inter []
-  | Fpat.RefT.Base(x, c, p) ->
-      let base = from_fpat_const c in
-      let typ =
-        match base with
-        | Int -> T.TInt
-        | Bool -> T.TBool
-        | Unit -> T.TUnit
-        | _ -> assert false
-      in
-      let x' = Id.from_string (Fpat.Idnt.string_of x) typ in
-      let t = U.from_fpat_formula p in
-      Base(base, x', t)
-  | Fpat.RefT.Fun typs ->
-      let aux (typ1,typ2) =
-        let typ1' = from_fpat typ1 in
-        let typ2' = from_fpat typ2 in
-        let x =
-          let typ1_simple = to_simple typ1' in
-          if is_base typ1'
-          then Id.from_string (Fpat.Idnt.string_of @@ Fpat.RefT.bv_of typ1) typ1_simple
-          else Id.new_var typ1_simple
-        in
-        Fun(x, typ1', typ2')
-      in
-      _Inter @@ List.map aux typs
- *)
 
 let rec make_strongest typ =
   match T.elim_tattr typ with
@@ -759,13 +718,25 @@ let rec contract typ =
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, contract typ)
   | Exn(typ1,typ2) -> Exn(contract typ1, contract typ2)
 
-let map_pred f typ =
-  match flatten typ with
-  | Base(base, x, p) -> Base(base, x, f p)
-  | Fun(x,typ1,typ2) -> Fun(x, map_pred f typ1, map_pred f typ2)
-  | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ map_pred f) xtyps)
-  | Inter(styp, typs) -> Inter(styp, List.map (map_pred f) typs)
-  | Union(styp, typs) -> Union(styp, List.map (map_pred f) typs)
-  | ExtArg(x,typ1,typ2) -> ExtArg(x, map_pred f typ1, map_pred f typ2)
-  | List(x,p_len,y,p_i,typ) -> List(x, f p_len, y, f p_i, map_pred f typ)
-  | Exn(typ1,typ2) -> Exn(map_pred f typ1, map_pred f typ2)
+let rec split_inter typ =
+  match typ with
+  | Base(base, x, p) ->
+      let rec decomp t =
+        match t.Syntax.desc with
+        | Syntax.BinOp(Syntax.And, t1, t2) -> decomp t1 @ decomp t2
+        | _ -> [t]
+      in
+      let ps = decomp p in
+      List.map (fun p' -> Base(base, x, p')) ps
+  | Fun(x,typ1,typ2) ->
+      let typs2 = split_inter typ2 in
+      List.map (fun typ2' -> Fun(x,typ1,typ2')) typs2
+  | Tuple xtyps ->
+      let make i typ =
+        let xtyps' = List.mapi (fun j (x,typ') -> x, if i = j then typ else top @@ to_simple typ') xtyps in
+        Tuple xtyps'
+      in
+      List.flatten_mapi (fun i (x,typ) -> List.map (make i) @@ split_inter typ) xtyps
+  | Inter(styp, typs) ->
+      [Inter(styp, List.flatten_map split_inter typs)]
+  | _ -> [typ]

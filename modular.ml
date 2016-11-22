@@ -13,31 +13,7 @@ exception NoProgress
 let merge_neg_tenv env' env =
   Ref_type.NegEnv.normalize @@ Ref_type.NegEnv.merge env' env
 let merge_tenv env' env =
-  Ref_type.Env.normalize @@ Ref_type.Env.merge env' env (*
-  let aux acc (f,typ) =
-(*
-    Format.printf "MERGE_TENV acc: %a@\n" print_typ_env @@ Ref_type.Env.of_list acc;
- *)
-    if Id.mem_assoc f acc then
-      List.map (fun (g,typ') -> g, if Id.same f g then Ref_type.inter (Ref_type.to_simple typ) [typ;typ'] else typ') acc
-    else
-      (f,typ)::acc
-  in
-  Ref_type.Env.to_list env' @ Ref_type.Env.to_list env
-  |> List.fold_left aux []
-  |> Ref_type.Env.of_list*)
-(*
-let merge_tenv env1 env2 =
-  Format.printf "MERGE_TENV env1: %a@\n" print_typ_env env1;
-  Format.printf "MERGE_TENV env1: %a@\n" print_typ_env env2;
-  let r = merge_tenv env1 env2 in
-  Format.printf "MERGE_TENV r: %a@\n" print_typ_env r;
-  r
- *)
-(*
-let merge_tenv env' env = (* ??? *)
-  Ref_type.Env.of_list @@ List.fold_right (fun (x,typ) acc -> if Id.mem_assoc x acc then acc else (x,typ)::acc) (Ref_type.Env.to_list env) (Ref_type.Env.to_list env')
- *)
+  Ref_type.Env.normalize @@ Ref_type.Env.merge env' env
 
 let normalize_ce_set (ce_set:ce_set) =
   let prefix (f,ce1) (g,ce2) = List.is_prefix ce1 ce2 in
