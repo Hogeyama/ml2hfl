@@ -98,7 +98,7 @@ let report_safe env orig t0 =
   if env <> [] && !Flag.mode <> Flag.Termination then
     begin
       Verbose.printf "Refinement Types:@.";
-      let env' = List.map (Pair.map_snd Ref_type.simplify) env in
+      let env' = (*List.map (Pair.map_snd Ref_type.simplify)*) env in
       let pr (f,typ) = Verbose.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
       List.iter pr env';
       Verbose.printf "@.";

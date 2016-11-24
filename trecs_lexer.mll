@@ -24,8 +24,7 @@ and token = parse
 | 'q' digit+
     {
       let s = Lexing.lexeme lexbuf in
-      let s1,s2 = String.split_nth s 1 in
-      assert (s1 = "q");
+      let _,s2 = String.split_nth s 1 in
       STATE (int_of_string s2)
     }
 | '(' { LPAREN }

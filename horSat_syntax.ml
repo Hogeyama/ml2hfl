@@ -7,7 +7,7 @@ let leaf () =
   Rose_tree.leaf "end"
 
 type result =
-  | Satisfied
+  | Satisfied of (string * Inter_type.t) list
   | UnsatisfiedAPT of string Rose_tree.t
   | Unsatisfied of (string * int) list
 

@@ -150,11 +150,11 @@ let rec verifyFile_aux cmd filename =
      Lexing.pos_bol = 0};
   ic, lb
 
-let rec verifyFile cmd parser filename =
+let rec verifyFile cmd parser token filename =
   let ic,lb = verifyFile_aux cmd filename in
   let r =
     try
-      parser HorSat_lexer.token lb
+      parser token lb
     with Parsing.Parse_error ->
       let open Lexing in
       let open Parsing in
@@ -170,7 +170,7 @@ let rec verifyFile cmd parser filename =
   in
   close_in ic;
   match r with
-  | HS.Satisfied ->
+  | HS.Satisfied env ->
       Safe []
   | HS.UnsatisfiedAPT ce ->
       (*
@@ -192,25 +192,25 @@ let write_log string_of filename target =
   close_out cout
 
 
-let check_apt_aux cmd target =
+let check_apt_aux cmd parser token target =
   let target' = trans_apt target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
     Debug.printf "%s@." @@ string_of_parseresult_apt target';
     write_log string_of_parseresult_apt input target';
-    verifyFile cmd HorSat_parser.output_apt input
+    verifyFile cmd parser token input
   with Failure("lex error") -> raise UnknownOutput
-let check_apt = check_apt_aux !Flag.horsat
+let check_apt = check_apt_aux !Flag.horsat HorSat_parser.output_apt HorSat_lexer.token
 
-let check_aux cmd target =
+let check_aux cmd parser token target =
   let target' = trans target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
     Debug.printf "%s@." @@ string_of_parseresult target';
     write_log string_of_parseresult input target';
-    verifyFile cmd HorSat_parser.output input
+    verifyFile cmd parser token input
   with Failure("lex error") -> raise UnknownOutput
-let check = check_aux !Flag.horsat
+let check = check_aux !Flag.horsat HorSat_parser.output HorSat_lexer.token
 
 
 let rec make_label_spec = function
