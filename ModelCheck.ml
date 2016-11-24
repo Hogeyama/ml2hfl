@@ -325,7 +325,7 @@ let check abst prog spec =
           | TrecsInterface.Safe env -> Safe (uncapitalize_env env)
           | TrecsInterface.Unsafe ce -> Unsafe (CESafety ce)
         end
-    | (Flag.HorSat|Flag.HorSat2), Flag.NonTermination ->
+    | Flag.HorSat, Flag.NonTermination ->
        let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
        let spec = HorSatInterface.make_spec_nonterm labels in
         begin
@@ -334,13 +334,30 @@ let check abst prog spec =
           | HorSatInterface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
           | HorSatInterface.Unsafe _ -> assert false
         end
-    | (Flag.HorSat|Flag.HorSat2), _ ->
+    | Flag.HorSat2, Flag.NonTermination ->
+       let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
+       let spec = HorSat2Interface.make_spec_nonterm labels in
+        begin
+          match HorSat2Interface.check_apt (abst',spec) with
+          | HorSat2Interface.Safe env -> Safe (uncapitalize_env env)
+          | HorSat2Interface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
+          | HorSat2Interface.Unsafe _ -> assert false
+        end
+    | Flag.HorSat, _ ->
         let spec = HorSatInterface.make_spec @@ List.length prog.defs in
         begin
           match HorSatInterface.check (abst',spec) with
           | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
           | HorSatInterface.Unsafe ce -> Unsafe (CESafety ce)
           | HorSatInterface.UnsafeAPT _ -> assert false
+        end
+    | Flag.HorSat2, _ ->
+        let spec = HorSat2Interface.make_spec @@ List.length prog.defs in
+        begin
+          match HorSat2Interface.check (abst',spec) with
+          | HorSat2Interface.Safe env -> Safe (uncapitalize_env env)
+          | HorSat2Interface.Unsafe ce -> Unsafe (CESafety ce)
+          | HorSat2Interface.UnsafeAPT _ -> assert false
         end
     | Flag.HorSatP, Flag.FairNonTermination ->
        let fairness =

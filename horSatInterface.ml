@@ -27,19 +27,19 @@ module HS = HorSat_syntax
 
 
 (* returen "" if the version cannot be obtained *)
-let version_aux s =
-  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" !Flag.horsat) in
+let version_aux cmd name =
+  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" cmd) in
   let v =
     try
       let s = input_line cin in
-      if Str.string_match (Str.regexp "HorSat \\([.0-9]+\\)") s 0
+      if Str.string_match (Str.regexp (name ^ " \\([.0-9]+\\)")) s 0
       then Some (String.sub s (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1))
       else None
     with Sys_error _ | End_of_file -> None
   in
   match Unix.close_process (cin, cout) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v
-let version () = version_aux !Flag.horsat
+let version () = version_aux !Flag.horsat "HorSat"
 
 
 let string_of_arity_map arity_map =
@@ -133,13 +133,13 @@ let get_pair s =
   let s' = String.sub s (n2+1) (String.length s-n2-1) in
   (q, n), s'
 
-let rec verifyFile_aux filename =
+let rec verifyFile_aux cmd filename =
   let default = "empty" in
   let result_file = Filename.change_extension !Flag.filename "horsat_out" in
   let oc = open_out result_file in
   output_string oc default;
   close_out oc;
-  let cmd = Format.sprintf "%s %s > %s" !Flag.horsat filename result_file in
+  let cmd = Format.sprintf "%s %s > %s" cmd filename result_file in
   ignore @@ Sys.command cmd;
   let ic = open_in result_file in
   let lb = Lexing.from_channel ic in
@@ -150,8 +150,8 @@ let rec verifyFile_aux filename =
      Lexing.pos_bol = 0};
   ic, lb
 
-let rec verifyFile parser filename =
-  let ic,lb = verifyFile_aux filename in
+let rec verifyFile cmd parser filename =
+  let ic,lb = verifyFile_aux cmd filename in
   let r =
     try
       parser HorSat_lexer.token lb
@@ -192,23 +192,25 @@ let write_log string_of filename target =
   close_out cout
 
 
-let check_apt target =
+let check_apt_aux cmd target =
   let target' = trans_apt target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
     Debug.printf "%s@." @@ string_of_parseresult_apt target';
     write_log string_of_parseresult_apt input target';
-    verifyFile HorSat_parser.output_apt input
+    verifyFile cmd HorSat_parser.output_apt input
   with Failure("lex error") -> raise UnknownOutput
+let check_apt = check_apt_aux !Flag.horsat
 
-let check target =
+let check_aux cmd target =
   let target' = trans target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
     Debug.printf "%s@." @@ string_of_parseresult target';
     write_log string_of_parseresult input target';
-    verifyFile HorSat_parser.output input
+    verifyFile cmd HorSat_parser.output input
   with Failure("lex error") -> raise UnknownOutput
+let check = check_aux !Flag.horsat
 
 
 let rec make_label_spec = function

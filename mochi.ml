@@ -312,8 +312,8 @@ let rec arg_spec () =
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      "-bool-church", Arg.Set Flag.church_encode, " Use church-encoding for model checking";
      "-trecs", Arg.Unit (fun () -> Flag.mc:=Flag.TRecS), " Use TRecS as the model checker";
-     "-horsat", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat), " Use HorSat as the model checker";
-     "-horsat2", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat2), " Use HorSat2 as the model checker";
+     "-horsat", Arg.Unit (fun () -> Flag.mc:=Flag.HorSat), " Use HorSat as the model checker";
+     "-horsat2", Arg.Unit (fun () -> Flag.mc:=Flag.HorSat2), " Use HorSat2 as the model checker";
      "-trecs-bin", Arg.Set_string Flag.trecs,
                    Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
      "-horsat-bin", Arg.Set_string Flag.horsat,
