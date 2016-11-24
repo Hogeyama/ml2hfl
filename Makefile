@@ -70,24 +70,28 @@ CMO = environment.cmo flag.cmo debug.cmo util.cmo ext.cmo color.cmo	\
 	CEGAR_lexer.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
 	trecs_syntax.cmo trecs_parser.cmo trecs_lexer.cmo		\
 	trecsInterface.cmo horSat_syntax.cmo horSat_parser.cmo		\
-	horSat_lexer.cmo horSatInterface.cmo horSat2Interface.cmo	\
-	feasibility.cmo refine.cmo CEGAR_non_term.cmo HORS_syntax.cmo	\
-	HORS_lexer.cmo HORS_parser.cmo horSatPInterface.cmo		\
-	CEGAR_fair_non_term.cmo ModelCheck.cmo CEGAR.cmo		\
-	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo		\
-	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo	\
-	extraClsDepth.cmo extraParamInfer.cmo eval.cmo			\
-	elim_same_arg.cmo preprocess.cmo main_loop.cmo			\
-	modular_common.cmo comp_tree.cmo horn_clause.cmo		\
-	modular_infer.cmo modular_check.cmo modular.cmo			\
-	termination_loop.cmo fair_termination.cmo verify_ref_typ.cmo	\
-	mochi.cmo
+	horSat_lexer.cmo horSatInterface.cmo horSat2_parser.cmo		\
+	horSat2_lexer.cmo horSat2Interface.cmo feasibility.cmo		\
+	refine.cmo CEGAR_non_term.cmo HORS_syntax.cmo HORS_lexer.cmo	\
+	HORS_parser.cmo horSatPInterface.cmo CEGAR_fair_non_term.cmo	\
+	ModelCheck.cmo CEGAR.cmo writeAnnot.cmo tupling.cmo		\
+	ref_trans.cmo ret_fun.cmo BRA_types.cmo BRA_util.cmo		\
+	BRA_state.cmo BRA_transform.cmo extraClsDepth.cmo		\
+	extraParamInfer.cmo eval.cmo elim_same_arg.cmo preprocess.cmo	\
+	main_loop.cmo modular_common.cmo comp_tree.cmo			\
+	horn_clause.cmo modular_infer.cmo modular_check.cmo		\
+	modular.cmo termination_loop.cmo fair_termination.cmo		\
+	verify_ref_typ.cmo mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)
 
-
+PARSER_LEXER = spec horSat horSat2 trecs CEGAR HORS
+GENERATED = $(addsuffix _parser.ml,$(PARSER_LEXER)) \
+	$(addsuffix _parser.mli,$(PARSER_LEXER)) \
+	$(addsuffix _lexer.ml,$(PARSER_LEXER)) \
+	parser_wrapper.ml
 
 
 $(NAME).byte: $(CMO)
@@ -99,31 +103,6 @@ $(NAME).opt: $(CMX)
 $(NAME).top: $(CMO)
 	$(OCAMLFIND) ocamlmktop $(OCAMLCFLAGS) -linkpkg -o $@ $(CMA) $(CMO)
 
-
-spec_parser.ml spec_parser.mli: spec_parser.mly
-	$(OCAMLYACC) -v $<
-spec_lexer.ml: spec_lexer.mll
-	$(OCAMLLEX) $<
-
-horSat_parser.ml horSat_parser.mli: horSat_parser.mly
-	$(OCAMLYACC) -v $<
-horSat_lexer.ml: horSat_lexer.mll
-	$(OCAMLLEX) $<
-
-trecs_parser.ml trecs_parser.mli: trecs_parser.mly
-	$(OCAMLYACC) -v $<
-trecs_lexer.ml: trecs_lexer.mll
-	$(OCAMLLEX) $<
-
-CEGAR_parser.ml CEGAR_parser.mli: CEGAR_parser.mly
-	$(OCAMLYACC) -v $<
-CEGAR_lexer.ml: CEGAR_lexer.mll
-	$(OCAMLLEX) $<
-
-HORS_parser.ml HORS_parser.mli: HORS_parser.mly
-	$(OCAMLYACC) -v $<
-HORS_lexer.ml: HORS_lexer.mll
-	$(OCAMLLEX) $<
 
 parser_wrapper.ml: parser_wrapper_$(OCAML_MAJOR_VER).ml
 	cp -f $< $@
@@ -140,7 +119,7 @@ $(addsuffix .cmx,$(DEP_FPAT)): $(FPAT_LIB)
 
 
 # Common rules
-.SUFFIXES: .ml .mli .cmo .cmi .cmx
+.SUFFIXES: .ml .mli .cmo .cmi .cmx .mly .mll
 
 .ml.cmo:
 	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -c $<
@@ -151,6 +130,14 @@ $(addsuffix .cmx,$(DEP_FPAT)): $(FPAT_LIB)
 .ml.cmx:
 	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -c $<
 
+.mly.ml:
+	$(OCAMLYACC) -v $<
+
+.mly.mli:
+	$(OCAMLYACC) -v $<
+
+.mll.ml:
+	$(OCAMLLEX) $<
 
 
 ################################################################################
@@ -194,13 +181,12 @@ doc:
 
 clean:
 	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *.output *~
-	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml horSat_parser.ml horSat_parser.mli horSat_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml HORS_parser.ml HORS_parser.mli HORS_lexer.ml
-	rm -f parser_wrapper.ml
+	rm -f $(GENERATED)
 	rm -f $(NAME).byte $(NAME).opt $(NAME).top
 	rm -rf $(MOCHI_BIN_DIR)/bin $(MOCHI_BIN_DIR)/lib $(MOCHI_BIN_DIR)/stdlib
 
 clean-test:
-	rm */*.trecs_out */*.hors */*.annot */*.dot */*.pml
+	rm */*.trecs_out */*.horsat_out */*.hors */*.annot */*.dot */*.pml
 
 
 ################################################################################
@@ -251,11 +237,6 @@ test-ft: opt
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-GENERATED = spec_parser.ml spec_parser.mli spec_lexer.ml	\
-	horSat_parser.ml horSat_parser.mli horSat_lexer.ml	\
-	trecs_parser.ml trecs_parser.mli trecs_lexer.ml		\
-	CEGAR_parser.mli CEGAR_parser.ml CEGAR_lexer.ml	\
-	HORS_parser.ml HORS_parser.mli HORS_lexer.ml
 
 depend: Makefile $(GENERATED) $(MLI) $(SRC)
 	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) > depend
