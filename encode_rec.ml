@@ -130,7 +130,7 @@ let abst_label typ s =
   in
   make_int (1 + pos typ)
 
-let rec get_ground_types typ =
+let get_ground_types typ =
   let rec aux typ' =
     match typ' with
     | TTuple (_::[{Id.typ=TFun(_, TInt)}]) -> []
@@ -139,7 +139,7 @@ let rec get_ground_types typ =
     | _ ->
         unsupported @@ Format.asprintf "data types (%a)" Print.typ typ'
   in
-  aux @@ abst_recdata.tr_typ typ
+  aux @@ elim_tattr_all @@ abst_recdata.tr_typ typ
 
 let rec abst_recdata_pat p =
   let typ = abst_recdata.tr_typ p.pat_typ in
@@ -188,7 +188,7 @@ let rec abst_recdata_pat p =
           in
           let cond0 =
             let t = make_app (make_snd @@ make_var f) [make_nil TInt] in
-            Format.printf "ground_types: %a@." (List.print Print.typ) ground_types;
+            Debug.printf "ground_types: %a@." (List.print Print.typ) ground_types;
             let t' = if ground_types = [] then t else make_proj 0 t in
             make_eq t' (abst_label p.pat_typ c)
           in
@@ -271,7 +271,7 @@ let abst_recdata_term t =
         in
         make_pcons (make_pconst @@ make_int i) (make_pvar path'), true_term, t
       in
-      let xtyps = List.map (fun t -> Id.new_var @@ abst_recdata.tr_typ t.typ |@> Format.printf "%a, %a@." Print.typ t.typ Print.id_typ, t.typ) ts in
+      let xtyps = List.map (fun t -> Id.new_var @@ abst_recdata.tr_typ t.typ, t.typ) ts in
       let pats = List.mapi make_pat xtyps in
       let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
       make_lets defs @@

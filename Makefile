@@ -199,25 +199,34 @@ OPTION = -only-result -limit $(LIMIT)
 test: opt
 	for i in $(TEST); \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt test/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
 	done
+
+test-web: opt
+	for i in web/src/*ml; \
+	do \
+	  echo VERIFY $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt $$i $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
+	done
+
 
 test-all: opt
 	for i in test/*.ml; \
 	do \
-	echo VERIFY $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt $$i $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
-	echo; \
+	  echo VERIFY $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt $$i $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
 	done
 
 test-error: opt
 	for i in $(TEST); \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null); \
+	  echo; \
 	done
 
 TEST_FT = benchmark/*.ml
@@ -225,9 +234,9 @@ TEST_FT = benchmark/*.ml
 test-ft: opt
 	for i in hofmann-1.ml hofmann-2.ml koskinen-1.ml koskinen-2.ml koskinen-3-1.ml koskinen-3-2.ml koskinen-3-3.ml koskinen-4.ml lester-1.ml; \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_fair_termination/$$i -only-result -limit $(LIMIT) 2> /dev/null || echo VERIFICATION FAILED!!!); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt test_fair_termination/$$i -only-result -limit $(LIMIT) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
 	done
 
 

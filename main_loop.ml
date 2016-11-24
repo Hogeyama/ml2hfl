@@ -98,7 +98,7 @@ let report_safe env orig t0 =
   if env <> [] && !Flag.mode <> Flag.Termination then
     begin
       Verbose.printf "Refinement Types:@.";
-      let env' = (*List.map (Pair.map_snd Ref_type.simplify)*) env in
+      let env' = List.map (Pair.map_snd Ref_type.simplify) env in
       let pr (f,typ) = Verbose.printf "  %s: %a@." (Id.name f) Ref_type.print typ in
       List.iter pr env';
       Verbose.printf "@.";
@@ -171,10 +171,16 @@ let insert_extra_param t =
                   (List.length !Fpat.RefTypInfer.params) Print.term t' Print.term' t';
   t'
 
+let use_gch = ref true (* Ad-hoc fix for avoiding FPat's bug *)
+
 let improve_precision e =
   match e with
   | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
       Flag.insert_param_funarg := true
+  | Fpat.RefTypInfer.FailedToRefineTypes when !use_gch -> (* Ad-hoc fix for avoiding FPat's bug *)
+      use_gch := false;
+      let args = [|"FPAT"; "-hccs"; "it"|] in
+      Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore ""
   | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
       if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
       if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
@@ -225,7 +231,7 @@ let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   List.filter_map aux top_funs
 
 let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
-  (if true then
+  (if !!Debug.check then
   let oc = open_out "tmp/parsed.ml" in
   let ocf = Format.formatter_of_out_channel oc in
   Format.fprintf ocf "parsed: %a@." Print.term parsed;
@@ -246,6 +252,7 @@ let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
 
 let run ?make_pps ?fun_list orig exparam_sol ?(spec=Spec.init) parsed =
   let (result, make_get_rtyp, set_target'), main, set_target = verify ~make_pps ~fun_list exparam_sol spec parsed in
+  if !!Verbose.check then Format.printf "%s@.@." @@ String.make !!Format.get_margin '=';
   match result with
   | CEGAR.Safe env ->
       Flag.result := "Safe";
