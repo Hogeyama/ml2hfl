@@ -29,7 +29,7 @@ let rec ref_of_inter env cond atyp ityp =
         | IT.Base IT.True -> [p]
         | IT.Base IT.False -> [CS.make_not p]
         | IT.Inter [] -> []
-        | _ -> assert false
+        | _ -> Format.printf "%a@." IT.print ityp; assert false
       in
       let ts = List.rev_flatten @@ List.map2 aux ps' ityps in
       let p = List.fold_left CS.make_and (CS.Const CS.True) ts in

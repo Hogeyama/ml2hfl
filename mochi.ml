@@ -462,6 +462,10 @@ let check_env () =
   | Flag.HorSat2 -> if not Environment.horsat2_available then fatal "HorSat2 not found"
   | Flag.HorSatP -> if not Environment.horsatp_available then fatal "HorSatP not found"
 
+let init_after_parse_arg () =
+  if !Flag.mc <> Flag.TRecS then
+    Flag.church_encode := true
+
 let () =
   if !Sys.interactive
   then ()
@@ -474,6 +478,7 @@ let () =
       fpat_init2 ();
       Color.init ();
       if not !Flag.only_result then print_env true;
+      init_after_parse_arg ();
       check_env ();
       if main cin then decr Flag.cegar_loop;
       Fpat.SMTProver.finalize ();
