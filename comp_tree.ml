@@ -217,7 +217,6 @@ let rec from_term
         val_env_f' @ val_env
       in
       let t' = make_app (make_var f') ts in
-      let node = {nid; var_env; val_env; ce_env; nlabel=Spawn(f, f')} in
       let child =
         let f = f' in
         let t = t' in
@@ -240,6 +239,7 @@ let rec from_term
         assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
         RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env' t_f])
       in
+      let node = {nid; var_env; val_env; ce_env; nlabel=Spawn(f, f')} in
       RT.Node(node, [child])
   | App({desc=Var f}, ts) when Id.mem_assoc f val_env ->
       Debug.printf "  APP1: %a@\n" Print.term t;
