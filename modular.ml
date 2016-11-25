@@ -7,6 +7,8 @@ open Modular_common
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let num_tycheck = ref 0
+let time_check = ref 0.
+let time_synthesize = ref 0.
 
 exception NoProgress
 
@@ -67,7 +69,8 @@ let rec main_loop history c prog cmp f typ depth ce_set =
     if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
     incr num_tycheck;
-    match Modular_check.check prog f typ depth with
+    let r = measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth) in
+    match r with
     | Modular_check.Typable env' ->
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         `Typable, merge_tenv env' env, neg_env, ce_set
@@ -79,7 +82,8 @@ let rec main_loop history c prog cmp f typ depth ce_set =
         pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let rec refine_loop infer_mode neg_env ce_set2 =
           if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- is_external_id) ce_set2;
-          match Modular_infer.infer infer_mode prog f typ ce_set2 with
+          let r = measure_and_add_time time_synthesize (fun () -> Modular_infer.infer infer_mode prog f typ ce_set2) in
+          match r with
           | None ->
               pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
               let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
@@ -180,7 +184,6 @@ let main _ spec parsed =
     {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
   in
   let r, env, neg_env, ce_set = main_loop prog cmp main typ in
-  Format.printf "#tycheck: %n@." !num_tycheck;
   match r with
   | `Typable ->
       report_safe env;

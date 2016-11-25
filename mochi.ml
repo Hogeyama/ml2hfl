@@ -71,7 +71,10 @@ let print_info_exp () =
   Format.printf "}@."
 
 let print_info_modular () =
-  Format.printf "total: %.3f sec@." !!get_time
+  Format.printf "#typeChecker: %n@." !Modular.num_tycheck;
+  Format.printf "total: %.3f sec@." !!get_time;
+  Format.printf "  typeChecker: %.3f sec@." !Modular.time_check;
+  Format.printf "  typeSynthesizer: %.3f sec@." !Modular.time_synthesize
 
 let print_info () =
   if !Flag.exp then

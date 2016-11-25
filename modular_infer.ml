@@ -912,6 +912,7 @@ let solve_merged merge_candidates hcs =
     match map with
     | [] -> last_sol, merged
     | (p1,p2)::map' when p1 = p2 ->
+        Debug.printf "MERGED %d@." p1;
         aux used last_sol merged deps map' hcs
     | (p1,p2)::map' when Dependency.mem (p1,p2) deps || Dependency.mem (p2,p1) deps ->
         Debug.printf "NOT MERGE %d, %d@." p1 p2;
@@ -930,7 +931,9 @@ let solve_merged merge_candidates hcs =
         let hcs' = List.map (Horn_clause.map @@ replace_id p1 p2) hcs in
         incr cnt;
         match solve_option hcs' with
-        | exception e -> Format.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps; raise e
+        | exception e ->
+            Format.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps;
+            raise e
         | None ->
             Debug.printf "CANNOT MERGE %d, %d@." p1 p2;
             aux used last_sol merged deps map' hcs
@@ -944,9 +947,6 @@ let solve_merged merge_candidates hcs =
             if List.for_all (fun (_,(_,t)) -> t.desc = Const True) sol then
               sol, merged
             else
-(*
-              Debug.printf "new_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ List.Set.diff deps' deps;
- *)
               let used' = List.remove used p1 in
               aux used' sol merged' deps' map'' hcs'
   in
