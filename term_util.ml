@@ -896,6 +896,7 @@ let add_attrs attrs t = List.fold_right add_attr attrs t
 let add_comment s t = add_attr (AComment s) t
 let add_id id t = add_attr (AId id) t
 let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}
+let replace_id id1 id2 t = add_id id2 @@ remove_attr (AId id1) t
 
 let get_id t =
   try
@@ -1060,3 +1061,11 @@ let col_typ_var_typ typ =
 let () = col_typ_var.col_typ <- col_typ_var_typ
 let col_typ_var t =
   List.unique ~cmp:(==) @@ col_typ_var.col_term t
+
+
+
+let col_id = make_col [] (@)
+let col_id_term t =
+  List.filter_map (function AId n -> Some n | _ -> None) t.attr @ col_id.col_term_rec t
+let () = col_id.col_term <- col_id_term
+let col_id t = List.unique @@ col_id.col_term t

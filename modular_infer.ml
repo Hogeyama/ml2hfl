@@ -1093,7 +1093,7 @@ let infer mode prog f typ (ce_set:ce_set) =
     |> HC.of_pair_list
     |@> Debug.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!Debug.check&> check_arity
-    |> HC.inline need
+    |*> HC.inline need
     |@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates =

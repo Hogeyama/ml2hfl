@@ -546,6 +546,6 @@ let () =
     | Sys_error s ->
         Main_loop.print_result_delimiter ();
         Format.printf "%s@." s
-    | e ->
+    | e when !Flag.debug_module = [] ->
         Main_loop.print_result_delimiter ();
         Format.printf "Exception: %s@." @@ Printexc.to_string e

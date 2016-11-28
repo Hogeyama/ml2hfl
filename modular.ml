@@ -110,7 +110,8 @@ let rec main_loop history c prog cmp f typ depth ce_set =
                 (Debug.printf "%schange infer_mode@." space;
                  refine_loop (Modular_infer.next_mode infer_mode) neg_env' ce_set3)
               else if true then
-                (Debug.printf "%sdepth := %d@." space (depth+1);
+                (raise NoProgress;
+                 Debug.printf "%sdepth := %d@." space (depth+1);
                  main_loop history (c+1) prog cmp f typ (depth+1) ce_set3)
               else
                 raise NoProgress

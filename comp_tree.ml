@@ -81,40 +81,24 @@ let get_arg_num = List.length -| Triple.snd -| Option.get -| decomp_fix
 
 
 let counter = Counter.create ()
+let make_new_tid () = Counter.gen counter
 let make_new_ce_env ce =
   let aux (f,path) =
     f, Counter.gen counter, path
   in
   List.map aux ce
 
-let add_tid_var = make_trans2 ()
-let add_tid_var_term (f,l) t =
-  let t' = add_tid_var.tr2_term_rec (f,l) t in
-  match t.desc with
-  | Var g when Id.same f g -> add_id l t'
-  | _ -> t'
-let () = add_tid_var.tr2_term <- add_tid_var_term
-let add_tid_var = add_tid_var.tr2_term
-
-let add_tid_if = make_trans2 ()
-let add_tid_if_term (tid,env) t =
-  match t.desc with
-  | If _ ->
-      add_id tid @@ add_tid_if.tr2_term_rec (tid,env) t
-  | Let(flag, bindings, t1) ->
-      let bindings' =
-        let aux (g,xs,t) =
-          g, xs, add_tid_if.tr2_term (List.assoc_default ~eq:Id.eq tid g env, env) t
-        in
-        List.map aux bindings
-      in
-      let t1' = add_tid_if.tr2_term (tid,env) t1 in
-      make_let_f flag bindings' t1'
-  | _ -> add_tid_if.tr2_term_rec (tid,env) t
-let () = add_tid_if.tr2_term <- add_tid_if_term
-let add_tid_if = add_tid_if.tr2_term
-
 let get_tid t = get_id t
+let get_tid_option t = get_id_option t
+
+let rename_tid_if = make_trans2 ()
+let rename_tid_if_term map t =
+  match t.desc, get_tid_option t with
+  | If _, Some tid ->
+      replace_id tid (List.assoc tid map) @@ rename_tid_if.tr2_term_rec map t
+  | _ -> rename_tid_if.tr2_term_rec map t
+let () = rename_tid_if.tr2_term <- rename_tid_if_term
+let rename_tid_if = rename_tid_if.tr2_term
 
 let term_of_value (Closure(_,_,_,t)) = t
 let var_env_of_value (Closure(env,_,_,_)) = env
@@ -177,6 +161,9 @@ let make_arg_map var_env val_env ce_env _ xs ts =
 let filter_extend extend = List.filter_out (fun (_,n) -> n <= 0) extend
 
 
+let global = true
+
+
 (* 't' must be a CPS term *)
 let rec from_term
           (cnt : Counter.t)  (* counter for nid *)
@@ -202,15 +189,24 @@ let rec from_term
       from_term cnt fun_env var_env val_env ce_env t2'
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       Debug.printf "  APP2,%a@\n" Id.print f;
-      let t_f,ce_env' = Id.assoc f fun_env in
+      let t_f,ce_env_f = Id.assoc f fun_env in
       let f' = Id.new_var_id f in
       Debug.printf "    SPAWN: %a => %a@\n" Id.print f Id.print f';
       let var_env' = (f', []) :: var_env in
+      let tid_map =
+        col_id t_f
+        |> List.map (fun x -> x, make_new_tid ())
+      in
+      let ce_env' =
+        let ce_env_f' = List.map (List.map (fun (n,t) -> List.assoc_default n n tid_map, t)) ce_env_f in
+        ce_env_f' @ ce_env
+      in
       let val_env' =
         let t_f' =
           t_f
           |> Trans.alpha_rename
           |> subst_var f f'
+          |> rename_tid_if tid_map
         in
         let var_env_f' = [f', []] in
         let rec val_env_f' = [f', Closure(var_env_f', val_env_f', None, t_f')] in
@@ -222,9 +218,10 @@ let rec from_term
         let t = t' in
         let var_env = var_env' in
         let val_env = val_env' in
+        let ce_env = ce_env' in
         let nid = Counter.gen cnt in
         Debug.printf "  APP1: %a@\n" Print.term t;
-        let var_env_f,val_env_f,ce_env_f,(ys,t_f) = assoc_fun f var_env val_env ce_env in
+        let var_env_f,val_env_f,_,(ys,t_f) = assoc_fun f var_env val_env ce_env in
         Debug.printf "    APP1 (ys -> t_f): %a, %d@\n" Print.term (make_funs ys t_f) (List.length ts);
         Debug.printf "    APP1 var_env_f: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env_f;
         let arg_map = make_arg_map var_env val_env (Some ce_env) f ys ts in
@@ -264,7 +261,12 @@ let rec from_term
       Debug.printf "    APP1 var_env': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env';
       let node = {nid; var_env; val_env; ce_env; nlabel = App(f, arg_map)} in
       assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
-      let ce_env' = Option.default ce_env ce_env_f in
+      let ce_env' =
+        if global then
+          ce_env
+        else
+          Option.default ce_env ce_env_f
+      in
       RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env' t_f])
   | App({desc=Fun _; typ} as t1, ts) ->
       let f = Id.new_var typ in
