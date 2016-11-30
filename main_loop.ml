@@ -249,10 +249,12 @@ let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
   in
   loop make_pps ~fun_list exparam_sol ~spec parsed set_target, main, set_target
 
+let print_result_delimiter () =
+  Format.printf "@.%s@.@." @@ String.make !!Format.get_margin '='
 
 let run ?make_pps ?fun_list orig exparam_sol ?(spec=Spec.init) parsed =
   let (result, make_get_rtyp, set_target'), main, set_target = verify ~make_pps ~fun_list exparam_sol spec parsed in
-  if !!Verbose.check then Format.printf "%s@.@." @@ String.make !!Format.get_margin '=';
+  if !!Verbose.check then print_result_delimiter ();
   match result with
   | CEGAR.Safe env ->
       Flag.result := "Safe";

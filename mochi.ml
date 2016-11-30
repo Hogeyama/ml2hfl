@@ -469,16 +469,21 @@ let init_after_parse_arg () =
   if !Flag.mc <> Flag.TRecS then
     Flag.church_encode := true
 
+let timeout_handler _ =
+  Main_loop.print_result_delimiter ();
+  Format.printf "Verification failed (time out)@.";
+  exit 1
+
 let () =
   if !Sys.interactive
   then ()
   else
     try
-      Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
       fpat_init1 ();
       let cin = parse_arg () in
       ignore @@ Unix.alarm !Flag.time_limit;
       fpat_init2 ();
+      Sys.set_signal Sys.sigalrm (Sys.Signal_handle timeout_handler);
       Color.init ();
       if not !Flag.only_result then print_env true;
       init_after_parse_arg ();
@@ -497,28 +502,50 @@ let () =
     | e when !Flag.exp2 ->
         output_csv (string_of_exception e)
     | Fpat.RefTypInfer.FailedToRefineTypes ->
+        Main_loop.print_result_delimiter ();
         Format.printf "Verification failed:@.";
         Format.printf "  MoCHi could not refute an infeasible error path @.";
         Format.printf "  due to the incompleteness of the refinement type system@."
     | e when Fpat.FPATConfig.is_fpat_exception e ->
+        Main_loop.print_result_delimiter ();
         Format.printf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
     | Syntaxerr.Error err ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a@." Syntaxerr.report_error err
     | Typecore.Error(loc,env,err) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
     | Typemod.Error(loc,env,err) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
-    | Env.Error e -> Format.printf "%a@." Env.report_error e
+    | Env.Error e ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "%a@." Env.report_error e
     | Typetexp.Error(loc,env,err) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
     | Lexer.Error(err, loc) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
-    | LongInput -> Format.printf "Input is too long@."
-    | TimeOut -> Format.printf "Verification failed (time out)@."
-    | CEGAR_syntax.NoProgress -> Format.printf "Unknown. (CEGAR not progress) @."
-    | CEGAR_abst.NotRefined -> Format.printf "Verification failed (new error path not found)@."
+    | LongInput ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Input is too long@."
+    | TimeOut -> assert false
+    | CEGAR_syntax.NoProgress ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Unknown. (CEGAR not progress) @."
+    | CEGAR_abst.NotRefined ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Verification failed (new error path not found)@."
     | Fatal s ->
-        Format.printf "Fatal error: %s@." s
+        Main_loop.print_result_delimiter ();
+        Format.printf "Fatal error?: %s@." s
     | Unsupported s ->
+        Main_loop.print_result_delimiter ();
         Format.printf "Unsupported: %s@." s
-    | Sys_error s -> Format.printf "%s@." s
+    | Sys_error s ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "%s@." s
+    | e ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Exception: %s@." @@ Printexc.to_string e
