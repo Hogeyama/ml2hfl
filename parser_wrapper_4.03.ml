@@ -590,7 +590,7 @@ let from_top_level_phrase (env,defs) = function
         | Tstr_class _
         | Tstr_class_type _ -> unsupported "class"
         | Tstr_include _ -> unsupported "include"
-        | Tstr_attribute _ -> unsupported "attribute"
+        | Tstr_attribute _ -> []
       in
       env', List.rev_map_flatten aux2 struc'.str_items @@@ defs
 
