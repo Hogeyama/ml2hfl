@@ -227,6 +227,11 @@ and print_desc attr pri typ fm desc =
       let p = 50 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
+      let p = 8 in
+      let s1,s2 = paren pri p in
+      fprintf fm "%srand_bool@ ()%s" s1 s2
   | BinOp(Mult, {desc=Const (Int -1)}, {desc=Var x}) ->
       let p = 70 in
       let s1,s2 = paren pri p in
