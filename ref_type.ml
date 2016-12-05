@@ -117,7 +117,7 @@ let rec print fm = function
       Format.fprintf fm "Bot"
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
-  | Fun(x, typ1, Exn(typ2, typ3)) ->
+  | Fun(x, typ1, Exn(typ2, typ3)) when not @@ is_bottom typ3 ->
       let arg =
         if occur x typ2 || occur x typ3 then
           Format.asprintf "%a:" Id.print x
@@ -168,7 +168,10 @@ let rec print fm = function
         then Format.fprintf fm "|%a|" Id.print x;
       Format.fprintf fm "list@])"
   | Exn(typ1, typ2) ->
-      Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" print typ1 print typ2
+      if is_bottom typ2 then
+        print fm typ1
+      else
+        Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" print typ1 print typ2
 
 let rec decomp_funs n typ =
   match typ with

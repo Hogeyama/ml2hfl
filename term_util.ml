@@ -1069,3 +1069,10 @@ let col_id_term t =
   List.filter_map (function AId n -> Some n | _ -> None) t.attr @ col_id.col_term_rec t
 let () = col_id.col_term <- col_id_term
 let col_id t = List.unique @@ col_id.col_term t
+
+
+let rec is_fail t =
+  match t.desc with
+  | Let(_, [_, [], t], _) -> is_fail t
+  | App({desc=Event("fail",_)}, [{desc=Const Unit}]) -> true
+  | _ -> false

@@ -134,6 +134,7 @@ val is_base_var : id -> bool
 val is_fun_var : id -> bool
 val is_list_literal : term -> bool
 val is_var : term -> bool
+val is_fail : term -> bool
 
 
 (** {6 Misc} *)
