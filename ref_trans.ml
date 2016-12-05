@@ -3,7 +3,7 @@ open Type
 open Syntax
 open Term_util
 
-module Debug = Debug.Make(struct let check () = List.mem "Ref_trans" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let trans = make_trans2 ()
 
@@ -16,7 +16,7 @@ let rec root x bb path_rev =
   try
     let y,dir = Option.get @@ List.find ((<>) None) @@ List.map aux bb in
     begin
-      match elim_tpred @@ fst_typ @@ Id.typ y with
+      match elim_tattr @@ fst_typ @@ Id.typ y with
       | TFun _ -> root y bb (dir::path_rev)
       | _ -> raise Not_found
     end

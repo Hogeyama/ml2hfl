@@ -7,7 +7,7 @@ exception UnknownOutput
 
 exception HorSatPVersionError
 
-module Debug = Debug.Make(struct let check () = List.mem "HorSatInterface" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let version () =
   let cin,cout = Unix.open_process (Format.sprintf "%s --version" !Flag.horsatp) in

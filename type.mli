@@ -4,24 +4,25 @@ type 'a t =
   | TInt
   | TVar of 'a t option ref
   | TFun of 'a t Id.t * 'a t
-  | TFuns of 'a t Id.t list * 'a t
+  | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)
   | TTuple of 'a t Id.t list
   | TData of string
-  | TPred of 'a t Id.t * 'a list
   | TVariant of (string * 'a t list) list
   | TRecord of (string * (mutable_flag * 'a t)) list
   | Type of (string * 'a t) list * string
   | TApp of constr * 'a t list
+  | TAttr of 'a attr list * 'a t
 and mutable_flag = Immutable | Mutable
 and constr =
   | TList
   | TRef
   | TOption
   | TArray
+and 'a attr =
+  | TAPred of 'a t Id.t * 'a list
+  | TAPureFun
 
 exception CannotUnify
-
-val _TFun : 'a t Id.t -> 'a t -> 'a t
 
 val print :
   ?occur:('a t Id.t -> 'a t -> bool) ->
@@ -37,9 +38,9 @@ val has_pred : 'a t -> bool
 val is_mutable_record : 'a t -> bool
 
 val typ_unknown : 'a t
-val elim_tpred : 'a t -> 'a t
+val elim_tattr : 'a t -> 'a t
 val tfuns_to_tfun : 'a t -> 'a t
-val elim_tpred_all : 'a t -> 'a t
+val elim_tattr_all : 'a t -> 'a t
 val decomp_tfun : 'a t -> 'a t Id.t list * 'a t
 val decomp_tfuns : 'a t -> 'a t Id.t list * 'a t
 val flatten : 'a t -> 'a t
@@ -50,6 +51,7 @@ val to_id_string : 'a t -> string
 val order : 'a t -> int
 val arity : 'a t -> int
 val var_name_of : 'a t -> string
+val add_tapred : 'a t Id.t -> 'a list -> 'a t -> 'a t
 
 (** {6 destructor} *)
 val tuple_num : 'a t -> int option
@@ -68,6 +70,9 @@ val array_typ : 'a t -> 'a t
 
 
 (** {6 Type constructor} *)
+val _TFun : 'a t Id.t -> 'a t -> 'a t
+val _TAttr : 'a attr list -> 'a t -> 'a t
+val pureTFun : ('a t Id.t * 'a t) -> 'a t
 val make_ttuple : 'a t list -> 'a t
 val make_ttuple' : 'a t list -> 'a t
 val make_tpair : 'a t -> 'a t -> 'a t

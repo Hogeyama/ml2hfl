@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-module Debug = Debug.Make(struct let check () = List.mem "CFA" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let normalize = make_trans ()
 let normalize_term t =

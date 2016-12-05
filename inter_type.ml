@@ -12,14 +12,14 @@ type t =
 
 let rec decomp_fun n typ =
   match typ with
-    Base _ -> assert (n=0); [], typ
+  | Base _ -> assert (n=0); [], typ
   | Inter _ -> assert (n=0); [], typ
   | Fun(typ1,typ2) ->
       if n <= 0
       then [], typ
       else
         let typs,typ' = decomp_fun (n-1) typ2 in
-          typ1::typs, typ'
+        typ1::typs, typ'
 
 let print_base fm = function
     True -> Format.fprintf fm "True"

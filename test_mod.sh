@@ -9,12 +9,10 @@ else
     LIMIT=$1
 fi
 
-COLS="$(tput cols)"
-
 cat COMMIT
 echo Timeout $LIMIT
 
-OPTION=" -only-result -ignore-conf -modular -horsat2 -base-to-int"
+OPTION="-fpat '-wp-max 2' -no-exparam -bool-init-empty -only-result -color -base-to-int -abst-list-literal 2 -debug"
 for i in $TEST
 do
     echo
@@ -23,5 +21,5 @@ do
     echo
     echo $i
     echo
-    timeout $LIMIT ./mochi.opt $OPTION -fpat '-wp-max 2' $i || echo 'TIMEOUT OR ERROR'
+    echo $OPTION | xargs timeout $LIMIT ./mochi.opt $i || echo 'TIMEOUT OR ERROR'
 done

@@ -142,7 +142,7 @@ type trans =
    mutable tr_attr:      attr list     -> attr list}
 
 let trans_typ trans = function
-    TUnit -> TUnit
+  | TUnit -> TUnit
   | TBool -> TBool
   | TInt -> TInt
   | TVar({contents=None} as x) -> TVar x
@@ -152,7 +152,13 @@ let trans_typ trans = function
   | TApp(c, typs) -> TApp(c, List.map trans.tr_typ typs)
   | TTuple xs -> TTuple (List.map trans.tr_var xs)
   | TData s -> TData s
-  | TPred(x,ps) -> TPred(trans.tr_var x, List.map trans.tr_term ps)
+  | TAttr(attr, typ) ->
+      let tr a =
+        match a with
+        | TAPred(x,ps) -> TAPred(trans.tr_var x, List.map trans.tr_term ps)
+        | TAPureFun -> TAPureFun
+      in
+      TAttr(List.map tr attr, trans.tr_typ typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd trans.tr_typ) fields)
   | Type(decls, s) -> Type(List.map (Pair.map_snd trans.tr_typ) decls, s)
@@ -304,7 +310,13 @@ let trans2_gen_typ tr env = function
   | TApp(c, typs) -> TApp(c, List.map (tr.tr2_typ env) typs)
   | TTuple xs -> TTuple (List.map (tr.tr2_var env) xs)
   | TData s -> TData s
-  | TPred(x,ps) -> TPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
+  | TAttr(attr, typ) ->
+      let aux a =
+        match a with
+        | TAPred(x,ps) -> TAPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
+        | TAPureFun -> TAPureFun
+      in
+      TAttr(List.map aux attr, tr.tr2_typ env typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ tr.tr2_typ env) fields)
   | Type(decls, s) -> Type(List.map (Pair.map_snd @@ tr.tr2_typ env) decls, s)
@@ -447,21 +459,31 @@ type 'a col =
    mutable col_app: 'a -> 'a -> 'a;
    mutable col_empty: 'a}
 
-let col_typ col = function
+let col_typ col typ =
+  let (-@-) = col.col_app in
+  match typ with
   | TUnit -> col.col_empty
   | TBool -> col.col_empty
   | TInt -> col.col_empty
   | TVar{contents=None} -> col.col_empty
   | TVar{contents=Some typ} -> col.col_typ typ
-  | TFun(x,typ) -> col.col_app (col.col_typ (Id.typ x)) (col.col_typ typ)
-  | TFuns(xs,typ) -> col.col_app (List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs) (col.col_typ typ)
-  | TApp(_, typs) -> List.fold_left (fun acc typ -> col.col_app acc @@ col.col_typ typ) col.col_empty typs
-  | TTuple xs -> List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) col.col_empty xs
+  | TFun(x,typ) -> col.col_typ (Id.typ x) -@- col.col_typ typ
+  | TFuns(xs,typ) -> List.fold_left (fun acc x -> acc -@- col.col_var x) col.col_empty xs -@- col.col_typ typ
+  | TApp(_, typs) -> List.fold_left (fun acc typ -> acc -@- col.col_typ typ) col.col_empty typs
+  | TTuple xs -> List.fold_left (fun acc x -> acc -@- col.col_var x) col.col_empty xs
   | TData s -> col.col_empty
-  | TPred(x,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_term p) (col.col_var x) ps
-  | TVariant labels -> List.fold_left (fun acc (_,typs) -> List.fold_left (fun acc' typ -> col.col_app acc' @@ col.col_typ typ) acc typs) col.col_empty labels
-  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> col.col_app acc @@ col.col_typ typ) col.col_empty fields
-  | Type(decls, _) -> List.fold_left (fun acc (_,typ) -> col.col_app acc @@ col.col_typ typ) col.col_empty decls
+  | TAttr(attr, typ) ->
+      let aux acc a =
+        match a with
+        | TAPred(x,ps) ->
+            let acc' = col.col_var x -@- acc in
+            List.fold_left (fun acc p -> acc -@- col.col_term p) acc' ps
+        | TAPureFun -> acc
+      in
+      List.fold_left aux (col.col_typ typ) attr
+  | TVariant labels -> List.fold_left (fun acc (_,typs) -> List.fold_left (fun acc' typ -> acc' -@- col.col_typ typ) acc typs) col.col_empty labels
+  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc -@- col.col_typ typ) col.col_empty fields
+  | Type(decls, _) -> List.fold_left (fun acc (_,typ) -> acc -@- col.col_typ typ) col.col_empty decls
 
 let col_var col x = col.col_typ (Id.typ x)
 
@@ -602,21 +624,31 @@ type ('a,'b) col2 =
    mutable col2_app: 'a -> 'a -> 'a;
    mutable col2_empty: 'a}
 
-let col2_typ col env = function
+let col2_typ col env typ =
+  let (-@-) = col.col2_app in
+  match typ with
   | TUnit -> col.col2_empty
   | TBool -> col.col2_empty
   | TInt -> col.col2_empty
   | TVar{contents=None} -> col.col2_empty
   | TVar{contents=Some typ} -> col.col2_typ env typ
-  | TFun(x,typ) -> col.col2_app (col.col2_var env x) (col.col2_typ env typ)
-  | TFuns(xs,typ) -> col.col2_app (List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs) (col.col2_typ env typ)
-  | TApp(_,typs) -> List.fold_left (fun acc typ -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty typs
-  | TTuple xs -> List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) col.col2_empty xs
+  | TFun(x,typ) -> col.col2_var env x -@- col.col2_typ env typ
+  | TFuns(xs,typ) -> List.fold_left (fun acc x -> acc -@- col.col2_var env x) col.col2_empty xs -@- col.col2_typ env typ
+  | TApp(_,typs) -> List.fold_left (fun acc typ -> acc -@- col.col2_typ env typ) col.col2_empty typs
+  | TTuple xs -> List.fold_left (fun acc x -> acc -@- col.col2_var env x) col.col2_empty xs
   | TData s -> col.col2_empty
-  | TPred(x,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_term env p) (col.col2_var env x) ps
-  | TVariant labels -> List.fold_left (fun acc (_, typs) -> List.fold_left (fun acc' typ -> col.col2_app acc @@ col.col2_typ env typ) acc typs) col.col2_empty labels
-  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty fields
-  | Type(decls, s) -> List.fold_left (fun acc (_,typ) -> col.col2_app acc @@ col.col2_typ env typ) col.col2_empty decls
+  | TAttr(attr, typ) ->
+      let aux acc a =
+        match a with
+        | TAPred(x,ps) ->
+            let acc' = col.col2_var env x -@- acc in
+            List.fold_left (fun acc p -> acc -@- col.col2_term env p) acc' ps
+        | TAPureFun -> acc
+      in
+      List.fold_left aux (col.col2_typ env typ) attr
+  | TVariant labels -> List.fold_left (fun acc (_, typs) -> List.fold_left (fun acc' typ -> acc -@- col.col2_typ env typ) acc typs) col.col2_empty labels
+  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc -@- col.col2_typ env typ) col.col2_empty fields
+  | Type(decls, s) -> List.fold_left (fun acc (_,typ) -> acc -@- col.col2_typ env typ) col.col2_empty decls
 
 let col2_var col env x = col.col2_typ env (Id.typ x)
 
@@ -783,10 +815,18 @@ let tr_col2_typ tc env = function
       let acc,xs' = tr_col2_list tc tc.tr_col2_var env xs in
       acc, TTuple xs'
   | TData s -> tc.tr_col2_empty, TData s
-  | TPred(x,ps) ->
-      let acc,x' = tc.tr_col2_var env x in
-      let acc',ps' = tr_col2_list tc tc.tr_col2_term ~init:acc env ps in
-      acc', TPred(x',ps')
+  | TAttr(attr, typ) ->
+      let aux env a =
+        match a with
+        | TAPred(x,ps) ->
+            let acc,x' = tc.tr_col2_var env x in
+            let acc',ps' = tr_col2_list tc tc.tr_col2_term ~init:acc env ps in
+            acc', TAPred(x',ps')
+        | TAPureFun -> tc.tr_col2_empty, TAPureFun
+      in
+      let acc,typ' = tc.tr_col2_typ env typ in
+      let acc',attr' = tr_col2_list tc aux ~init:acc env attr in
+      acc', TAttr(attr', typ')
   | TVariant labels ->
       let acc,labels' =
         let aux (s,typs) (acc,labels') =
@@ -1075,10 +1115,18 @@ let fold_tr_typ fld env = function
       let env',xs' = fold_tr_list fld.fold_tr_var env xs in
       env', TTuple xs'
   | TData s -> env, TData s
-  | TPred(x,ps) ->
-      let env',x' = fld.fold_tr_var env x in
-      let env'',ps' = fold_tr_list fld.fold_tr_term env' ps in
-      env'', TPred(x',ps')
+  | TAttr(attr, typ) ->
+      let aux env a =
+        match a with
+        | TAPred(x,ps) ->
+            let env',x' = fld.fold_tr_var env x in
+            let env'',ps' = fold_tr_list fld.fold_tr_term env' ps in
+            env'', TAPred(x',ps')
+        | TAPureFun -> env, TAPureFun
+      in
+      let env',attr' = fold_tr_list aux env attr in
+      let env'',typ' = fld.fold_tr_typ env' typ in
+      env'', TAttr(attr', typ')
   | TVariant labels ->
       let env,labels' =
         let aux (s,typs) (env,labels') =
@@ -1381,7 +1429,13 @@ let occur = make_col2 false (||)
 
 let occur_typ x typ =
   match typ with
-  | TPred(y,ps) -> List.exists (List.exists (Id.same x) -| get_fv) ps || occur.col2_var x y
+  | TAttr(attr, typ) ->
+      let aux a =
+        match a with
+        | TAPred(y,ps) -> List.exists (List.exists (Id.same x) -| get_fv) ps
+        | TAPureFun -> false
+      in
+      List.exists aux attr || occur.col2_typ x typ
   | _ -> occur.col2_typ_rec x typ
 
 let () = occur.col2_typ <- occur_typ

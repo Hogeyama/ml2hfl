@@ -5,7 +5,7 @@ open CEGAR_util
 
 exception UnknownOutput
 
-module Debug = Debug.Make(struct let check () = List.mem "HorSatInterface" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type apt_transition =
   | APT_True | APT_False
@@ -27,18 +27,19 @@ module HS = HorSat_syntax
 
 
 (* returen "" if the version cannot be obtained *)
-let version () =
-  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" !Flag.horsat) in
+let version_aux cmd name =
+  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" cmd) in
   let v =
     try
       let s = input_line cin in
-      if Str.string_match (Str.regexp "HorSat \\([.0-9]+\\)") s 0
+      if Str.string_match (Str.regexp (name ^ " \\([.0-9]+\\)")) s 0
       then Some (String.sub s (Str.group_beginning 1) (Str.group_end 1 - Str.group_beginning 1))
       else None
     with Sys_error _ | End_of_file -> None
   in
   match Unix.close_process (cin, cout) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v
+let version () = version_aux !Flag.horsat "HorSat"
 
 
 let string_of_arity_map arity_map =
@@ -58,16 +59,7 @@ let trans_const = function
   | c -> Format.printf "trans_const: %a@." CEGAR_print.term (Const c); assert false
 
 
-let rec trans_id x =
-  let map = function
-    | '\'' -> "_prime_"
-    | '.' -> "_dot_"
-    | '&' -> "_et_"
-    | '/' -> "_slash_"
-    | '^' -> "_caret_"
-    | c -> String.make 1 c
-  in
-  String.fold_left (fun s c -> s ^ map c) "" x
+let rec trans_id x = String.sign_to_letters x
 
 let rec trans_term br = function
   | Const c -> trans_const c
@@ -141,13 +133,13 @@ let get_pair s =
   let s' = String.sub s (n2+1) (String.length s-n2-1) in
   (q, n), s'
 
-let rec verifyFile_aux filename =
+let rec verifyFile_aux cmd filename =
   let default = "empty" in
   let result_file = Filename.change_extension !Flag.filename "horsat_out" in
   let oc = open_out result_file in
   output_string oc default;
   close_out oc;
-  let cmd = Format.sprintf "%s %s > %s" !Flag.horsat filename result_file in
+  let cmd = Format.sprintf "%s %s > %s" cmd filename result_file in
   ignore @@ Sys.command cmd;
   let ic = open_in result_file in
   let lb = Lexing.from_channel ic in
@@ -158,11 +150,11 @@ let rec verifyFile_aux filename =
      Lexing.pos_bol = 0};
   ic, lb
 
-let rec verifyFile parser filename =
-  let ic,lb = verifyFile_aux filename in
+let rec verifyFile cmd parser token filename =
+  let ic,lb = verifyFile_aux cmd filename in
   let r =
     try
-      parser HorSat_lexer.token lb
+      parser token lb
     with Parsing.Parse_error ->
       let open Lexing in
       let open Parsing in
@@ -178,7 +170,7 @@ let rec verifyFile parser filename =
   in
   close_in ic;
   match r with
-  | HS.Satisfied ->
+  | HS.Satisfied env ->
       Safe []
   | HS.UnsatisfiedAPT ce ->
       (*
@@ -200,23 +192,25 @@ let write_log string_of filename target =
   close_out cout
 
 
-let check_apt target =
+let check_apt_aux cmd parser token target =
   let target' = trans_apt target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
     Debug.printf "%s@." @@ string_of_parseresult_apt target';
     write_log string_of_parseresult_apt input target';
-    verifyFile HorSat_parser.output_apt input
+    verifyFile cmd parser token input
   with Failure("lex error") -> raise UnknownOutput
+let check_apt = check_apt_aux !Flag.horsat HorSat_parser.output_apt HorSat_lexer.token
 
-let check target =
+let check_aux cmd parser token target =
   let target' = trans target in
   let input = Filename.change_extension !Flag.filename "hors" in
   try
     Debug.printf "%s@." @@ string_of_parseresult target';
     write_log string_of_parseresult input target';
-    verifyFile HorSat_parser.output input
+    verifyFile cmd parser token input
   with Failure("lex error") -> raise UnknownOutput
+let check = check_aux !Flag.horsat HorSat_parser.output HorSat_lexer.token
 
 
 let rec make_label_spec = function

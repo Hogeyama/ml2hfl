@@ -11,10 +11,10 @@ let root x = Option.get @@ root x
 let flatten x = List.filter_map Fun.id @@ flatten x
 let map f x = map (fun path label -> Option.map (f path) label) x
 
-module Debug = Debug.Make(struct let check () = List.mem "Curry" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let rec element_num typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TTuple xs -> List.fold_right ((+) -| element_num -| Id.typ) xs 0
   | _ -> 1
 
@@ -96,7 +96,7 @@ let rec uncurry_typ rtyp typ =
 
 and uncurry_typ_arg rtyps typ =
   Debug.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps Print.typ typ;
-  match rtyps, elim_tpred typ with
+  match rtyps, elim_tattr typ with
   | _, TTuple xs ->
       let aux (rtyps,xrtyps) {Id.typ} =
         let rtyps1,rtyps2 = List.split_nth (element_num typ) rtyps in
@@ -115,7 +115,7 @@ and uncurry_typ_arg rtyps typ =
   | _ -> assert false
 
 let uncurry_rtyp t get_rtyp f =
-  let typ =try Trans.assoc_typ f t  with Not_found ->assert false in
+  let typ = Trans.assoc_typ f t in
   let rtyp = get_rtyp f in
   let rtyp' = correct_arg_refer @@ uncurry_typ (RT.copy_fun_arg_to_base rtyp) typ in
   Debug.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp Print.typ typ RT.print rtyp';
@@ -137,31 +137,33 @@ let rec remove_pair_typ = function
   | TApp(TList, typs) -> leaf (TList (root (remove_pair_typ typ)))
  *)
   | TData s -> leaf (TData s)
-  | TPred({Id.typ=TTuple[x; {Id.typ=typ}]} as y, ps) ->
+  | TAttr([TAPred(y, ps)], TTuple[x; {Id.typ}]) ->
       begin
         match typ with (* Function types cannot have predicates *)
         | TFun _ ->
-            let x1 = Id.new_var ~name:(Id.name x) (elim_tpred @@ Id.typ x) in
+            let x1 = Id.new_var_id x in
             let x2 = Id.new_var typ in
             let ps' = List.map (subst y @@ make_pair (make_var x1) (make_var x2)) ps in
-            let x' = Id.set_typ x (TPred(x1,ps')) in
+            let x' = Id.map_typ (add_tapred x1 ps') x in
             remove_pair_typ @@ TTuple [x'; Id.new_var typ]
         | _ ->
             let y' = Id.set_typ y typ in
             let ps' = List.map (subst y @@ make_pair (make_var x) (make_var y')) ps in
-            let typ' = TPred(y', ps') in
+            let typ' = add_tapred y' ps' typ in
             remove_pair_typ @@ TTuple [x; Id.new_var typ']
       end
-  | TPred({Id.typ=TTuple _}, ps) ->
-      unsupported "Not implemented: remove_pair_typ"
-  | TPred(x,ps) ->
+  | TAttr([TAPred(x,ps)], typ) ->
       let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ (Id.typ x) with
         | Node(Some typ, []) -> typ
-        | Node _ -> raise (Fatal "Not implemented CPS.remove_pair_typ(TPred)")
+        | Node _ -> fatal "Not implemented CPS.remove_pair_typ(TPred)"
       in
-      leaf (TPred(Id.set_typ x typ', ps'))
+      leaf (add_tapred x ps' typ')
+(*
+  | TPred({Id.typ=TTuple _}, ps) ->
+      unsupported "Not implemented: remove_pair_typ"
+ *)
   | typ -> Format.printf "remove_pair_typ: %a@." Print.typ typ; assert false
 
 and remove_pair_var x =
@@ -192,7 +194,7 @@ and remove_pair_aux t typ_opt =
       let t1' = root @@ remove_pair_aux t1 None in
       let t2' = root @@ remove_pair_aux t2 None in
       let t3' = root @@ remove_pair_aux t3 None in
-      leaf (make_if t1' t2' t3')
+      leaf (add_attrs t.attr @@ make_if t1' t2' t3')
   | Let(flag, bindings, t) ->
       let aux (f,xs,t) =
         let f' = root @@ remove_pair_var f in
@@ -205,7 +207,7 @@ and remove_pair_aux t typ_opt =
       leaf (make_let_f flag bindings' t')
   | BinOp(op, t1, t2) ->
       begin
-        match op, elim_tpred t1.typ with
+        match op, elim_tattr t1.typ with
         | (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TData _) -> ()
         | (Eq | Lt | Gt | Leq | Geq), _ ->
             Format.printf "%a@." Print.typ t1.typ;
@@ -245,16 +247,17 @@ and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
 
 let remove_pair ?(check=true) t =
   assert (check => List.mem ACPS t.attr);
+  let pr s = Debug.printf "##[remove_pair] %s: %a@." s Print.term in
   let t' =
     t
-    |@> Debug.printf "remove_pair INPUT: %a@." Print.term
+    |@> pr "INPUT"
     |> remove_pair
-    |@> Debug.printf "remove_pair remove_pair: %a@." Print.term
+    |@> pr "remove_pair"
     |@check&> Type_check.check -$- typ_result
     |> Trans.beta_affine_fun
-    |@> Debug.printf "remove_pair beta_affine_fun: %a@." Print.term
+    |@> pr "beta_affine_fun"
     |> Trans.beta_size1
-    |@> Debug.printf "remove_pair beta_size1: %a@." Print.term
+    |@> pr "beta_size1"
   in
   t', uncurry_rtyp t
 

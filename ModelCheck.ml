@@ -4,7 +4,7 @@ open CEGAR_type
 open CEGAR_util
 open ModelCheck_util
 
-module Debug = Debug.Make(struct let check () = List.mem "ModelCheck" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type filename = string
 type node = UnitNode | BrNode | LineNode of int | EventNode of string
@@ -334,6 +334,15 @@ let check abst prog spec =
           | HorSatInterface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
           | HorSatInterface.Unsafe _ -> assert false
         end
+    | Flag.HorSat2, Flag.NonTermination ->
+       let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
+       let spec = HorSat2Interface.make_spec_nonterm labels in
+        begin
+          match HorSat2Interface.check_apt (abst',spec) with
+          | HorSat2Interface.Safe env -> Safe (uncapitalize_env env)
+          | HorSat2Interface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
+          | HorSat2Interface.Unsafe _ -> assert false
+        end
     | Flag.HorSat, _ ->
         let spec = HorSatInterface.make_spec @@ List.length prog.defs in
         begin
@@ -341,6 +350,14 @@ let check abst prog spec =
           | HorSatInterface.Safe env -> Safe (uncapitalize_env env)
           | HorSatInterface.Unsafe ce -> Unsafe (CESafety ce)
           | HorSatInterface.UnsafeAPT _ -> assert false
+        end
+    | Flag.HorSat2, _ ->
+        let spec = HorSat2Interface.make_spec @@ List.length prog.defs in
+        begin
+          match HorSat2Interface.check (abst',spec) with
+          | HorSat2Interface.Safe env -> Safe (uncapitalize_env env)
+          | HorSat2Interface.Unsafe ce -> Unsafe (CESafety ce)
+          | HorSat2Interface.UnsafeAPT _ -> assert false
         end
     | Flag.HorSatP, Flag.FairNonTermination ->
        let fairness =

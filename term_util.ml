@@ -2,7 +2,7 @@ open Util
 open Syntax
 open Type
 
-module Debug = Debug.Make(struct let check () = List.mem "Term_util" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let occur = Syntax.occur
 let get_vars_pat = Syntax.get_vars_pat
@@ -79,7 +79,7 @@ let rec make_app t ts =
         assert false
       end
   in
-  match t.desc, tfuns_to_tfun @@ elim_tpred t.typ, ts with
+  match t.desc, tfuns_to_tfun @@ elim_tattr t.typ, ts with
   | _, _, [] -> t
   | App(t1,ts1), TFun(x,typ), t2::ts2 ->
       check (Id.typ x) t2.typ;
@@ -296,7 +296,7 @@ let make_length t =
   {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
 
 let rec make_term typ =
-  match elim_tpred typ with
+  match elim_tattr typ with
   | TUnit -> unit_term
   | TBool -> true_term
   | TInt -> make_int 0
@@ -398,9 +398,8 @@ let arg_num typ = List.length (get_args typ)
 let is_poly_typ = make_col false (||)
 
 let is_poly_typ_typ typ =
-  match typ with
+  match elim_tattr typ with
   | TVar{contents=None} -> true
-  | TPred(x,_) -> is_poly_typ.col_var x
   | _ -> is_poly_typ.col_typ_rec typ
 
 let () = is_poly_typ.col_typ <- is_poly_typ_typ
@@ -574,13 +573,40 @@ let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
 
 
-let merge_preds ps1 ps2 =
-  let aux p ps =
-    if List.exists (same_term p) ps
-    then ps
-    else p::ps
+
+let merge_attrs attr1 attr2 =
+  let attrs =
+    let eq x y =
+      match x, y with
+      | TAPred _, TAPred _ -> true
+      | TAPureFun,  TAPureFun -> true
+      | _ -> false
+    in
+    List.classify ~eq (attr1 @ attr2)
   in
-  List.fold_right aux ps1 ps2
+  let merge a1 a2 =
+    match a1, a2 with
+    | TAPred(x1,ps1), TAPred(x2,ps2) ->
+        let merge_preds ps1 ps2 =
+          let aux p ps =
+            if List.exists (same_term p) ps
+            then ps
+            else p::ps
+          in
+          List.fold_right aux ps1 ps2
+        in
+        let ps2' = List.map (subst_var x2 x1) ps2 in
+        TAPred(x1, merge_preds ps1 ps2')
+    | TAPureFun, TAPureFun -> TAPureFun
+    | _ -> assert false
+  in
+  let aux attr =
+    match attr with
+    | [] -> assert false
+    | [a] -> a
+    | a::attr' -> List.fold_left merge a attr'
+  in
+  List.map aux attrs
 
 let rec merge_typ typ1 typ2 =
   match typ1,typ2 with
@@ -593,14 +619,10 @@ let rec merge_typ typ1 typ2 =
   | TUnit, TUnit -> TUnit
   | TBool, TBool -> TBool
   | TInt, TInt -> TInt
-  | TPred(x1,ps1), TPred(x2,ps2) ->
-      let typ = merge_typ (Id.typ x1) (Id.typ x2) in
-      let x1' = Id.set_typ x1 typ in
-      let x1_no_pred = Id.set_typ x1 (elim_tpred typ) in
-      let ps2' = List.map (subst_var x2 x1_no_pred) ps2 in
-      TPred(x1', merge_preds ps1 ps2')
-  | TPred(x, ps), typ
-  | typ, TPred(x, ps) -> TPred(Id.set_typ x (merge_typ (Id.typ x) typ), ps)
+  | TAttr(attr1,typ1), TAttr(attr2,typ2) ->
+      TAttr(merge_attrs attr1 attr2, merge_typ typ1 typ2)
+  | TAttr(attr, typ'), typ
+  | typ, TAttr(attr, typ') -> TAttr(attr, merge_typ typ typ')
   | TFuns(xs1,typ1), TFuns(xs2,typ2) ->
       let xs = List.map2 (fun x1 x2 -> Id.new_var ~name:(Id.name x1) @@ merge_typ (Id.typ x1) (Id.typ x2)) xs1 xs2 in
       TFuns(xs, merge_typ typ1 typ2)
@@ -726,7 +748,7 @@ let rec var_name_of_term t =
       then List.nth names i
       else var_name_of_term t ^ "_" ^ string_of_int i
   | App({desc=Var f},_) -> "r" ^ "_" ^ Id.name f
-  | _ -> Type.var_name_of @@ elim_tpred t.typ
+  | _ -> Type.var_name_of @@ elim_tattr t.typ
 
 let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
@@ -870,9 +892,11 @@ let count_occurrence x t =
   List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t
 
 let add_attr attr t = {t with attr=attr::t.attr}
+let add_attrs attrs t = List.fold_right add_attr attrs t
 let add_comment s t = add_attr (AComment s) t
 let add_id id t = add_attr (AId id) t
 let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}
+let replace_id id1 id2 t = add_id id2 @@ remove_attr (AId id1) t
 
 let get_id t =
   try
@@ -1037,3 +1061,18 @@ let col_typ_var_typ typ =
 let () = col_typ_var.col_typ <- col_typ_var_typ
 let col_typ_var t =
   List.unique ~cmp:(==) @@ col_typ_var.col_term t
+
+
+
+let col_id = make_col [] (@)
+let col_id_term t =
+  List.filter_map (function AId n -> Some n | _ -> None) t.attr @ col_id.col_term_rec t
+let () = col_id.col_term <- col_id_term
+let col_id t = List.unique @@ col_id.col_term t
+
+
+let rec is_fail t =
+  match t.desc with
+  | Let(_, [_, [], t], _) -> is_fail t
+  | App({desc=Event("fail",_)}, [{desc=Const Unit}]) -> true
+  | _ -> false

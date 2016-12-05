@@ -3,6 +3,8 @@ open Syntax
 val flatten_tvar : term -> term
 val inst_tvar_tunit_typ : typ -> typ
 val inst_tvar_tunit : term -> term
+val inst_tvar_tint_typ : typ -> typ
+val inst_tvar_tint : term -> term
 val get_tvars : typ -> typ option ref list
 val rename_poly_funs : id -> term -> (id * id) list * term
 val copy_poly_funs : term -> term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
@@ -48,6 +50,7 @@ val map_attr : (attr list -> attr list) -> term -> term
 val filter_attr : (attr -> bool) -> term -> term
 val split_assert : term -> term
 val add_id : term -> int * term
+val add_id_if : (term -> bool) -> term -> int * term
 val remove_id : term -> term
 val replace_fail_with_raise : term -> term
 val remove_defs : id list -> term -> term
@@ -75,7 +78,7 @@ val direct_from_CPS : term -> term
 (** {6 Simplification, Inlining, Reduction} *)
 val simplify_match : term -> term
 val simplify_if_cond : term -> term
-val elim_unused_let : ?cbv:bool -> term -> term
+val elim_unused_let : ?leave_last:bool -> ?cbv:bool -> term -> term
 val elim_unused_branch : term -> term
 val inline_no_effect : term -> term
 val inline_var : term -> term
@@ -95,3 +98,4 @@ val reduce_fail_unit : term -> term
 val remove_no_effect_trywith : term -> term
 val bool_eta_reduce : term -> term
 val eta_tuple : term -> term
+val eta_reduce : term -> term

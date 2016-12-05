@@ -4,7 +4,7 @@ open CEGAR_type
 open CEGAR_util
 open CEGAR_abst_util
 
-module Debug = Debug.Make(struct let check () = List.mem "CEGAR_abst_CPS" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let abst_arg x typ =
   Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
@@ -238,7 +238,7 @@ let rec abstract_rand_int n must env cond pts xs t =
   let t' = hd @@ abstract_term must env cond pts t typ' in
   let x = new_id "r" in
   let preds' = preds (Var x) in
-  NORDebug.printf "preds': %a@." (List.print CEGAR_print.term) preds';
+  Debug.printf "preds': %a@." (List.print CEGAR_print.term) preds';
   let rec make_combs n =
     if n <= 0
     then [[]]

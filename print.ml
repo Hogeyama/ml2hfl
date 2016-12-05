@@ -111,7 +111,7 @@ and print_attr fm = function
   | AMark -> fprintf fm "AMark"
   | ADoNotInline -> fprintf fm "ADoNotInline"
 
-and ignore_attr_list = if true then ADoNotInline::const_attr else []
+and ignore_attr_list = ADoNotInline::const_attr
 
 and print_attr_list fm attrs =
   List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
@@ -129,9 +129,15 @@ and print_term pri typ fm t =
     else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc attr pri typ) desc
   in
   let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
-  if List.Set.subset attr ignore_attr_list || !Flag.print_as_ocaml
+  let ignore_attr_list' =
+    if !Flag.print_only_if_id then
+      List.filter (function AId _ -> true | _ -> false) t.attr @ ignore_attr_list
+    else
+      ignore_attr_list
+  in
+  if List.Set.subset attr ignore_attr_list' || !Flag.print_as_ocaml
   then pr t.attr fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list t.attr
+  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list (List.Set.diff t.attr ignore_attr_list')
 
 and print_desc attr pri typ fm desc =
   match desc with
@@ -161,11 +167,27 @@ and print_desc attr pri typ fm desc =
   | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "@[<hov 2>%sassert %a%s@]" s1 (print_term p typ) t1 s2
+      let label =
+        if !Flag.print_only_if_id then
+          match List.find_option (function AId _ -> true | _ -> false) attr with
+          | Some (AId n) -> Format.sprintf "^%d" n
+          | _ -> ""
+        else
+          ""
+      in
+      fprintf fm "@[<hov 2>%sassert%s %a%s@]" s1 label (print_term p typ) t1 s2
   | If(t1, t2, t3) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[<hv>if@[@ %a@]@ then@ " s1 (print_term p typ) t1;
+      let label =
+        if !Flag.print_only_if_id then
+          match List.find_option (function AId _ -> true | _ -> false) attr with
+          | Some (AId n) -> Format.sprintf "^%d" n
+          | _ -> ""
+        else
+          ""
+      in
+      fprintf fm "%s@[<hv>if%s@[@ %a@]@ then@ " s1 label (print_term p typ) t1;
       pp_print_if_newline fm ();
       pp_print_string fm "  ";
       fprintf fm "@[%a@]" (print_term p typ) t2;
@@ -192,7 +214,7 @@ and print_desc attr pri typ fm desc =
       let print_binding fm (f,xs,t1) =
         let pre =
           if !b then
-            "let" ^ (if List.mem ADoNotInline attr then "!" else "") ^ s_rec
+            "let" ^ (if List.mem ADoNotInline attr && not !Flag.print_as_ocaml then "!" else "") ^ s_rec
           else
             "and"
         in
@@ -205,6 +227,11 @@ and print_desc attr pri typ fm desc =
       let p = 50 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
+      let p = 8 in
+      let s1,s2 = paren pri p in
+      fprintf fm "%srand_bool@ ()%s" s1 s2
   | BinOp(Mult, {desc=Const (Int -1)}, {desc=Var x}) ->
       let p = 70 in
       let s1,s2 = paren pri p in
@@ -226,9 +253,21 @@ and print_desc attr pri typ fm desc =
   | SetField(t1,s,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
-      let p = 60 in
-      let s1,s2 = paren pri p in
-      fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+      let rec decomp_list desc =
+        match desc with
+        | Nil -> Some []
+        | Cons(t1, t2) -> Option.map (List.cons t1) @@ decomp_list t2.desc
+        | _ -> None
+      in
+      begin
+        match decomp_list desc with
+        | None ->
+            let p = 60 in
+            let s1,s2 = paren pri p in
+            fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+        | Some ts' ->
+            Format.printf "%a" (List.print @@ print_term 0 typ) ts'
+      end
   | Constr(s,ts) ->
       let p = 80 in
       let s1,s2 = paren pri p in

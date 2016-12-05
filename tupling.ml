@@ -3,7 +3,7 @@ open Type
 open Syntax
 open Term_util
 
-module Debug = Debug.Make(struct let check () = List.mem "Tupling" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type form =
   | FSimpleRec

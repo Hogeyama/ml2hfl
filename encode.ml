@@ -65,6 +65,7 @@ let abst_ref_term t =
   | Ref t1 ->
       make_ignore @@ abst_ref.tr_term t1
   | Deref t1 ->
+      Flag.use_abst := true;
       let t1' = abst_ref.tr_term t1 in
       let typ = abst_ref.tr_typ t.typ in
       make_seq t1' @@ make_randvalue_unit typ

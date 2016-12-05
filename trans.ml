@@ -4,7 +4,7 @@ open Term_util
 open Type
 
 
-module Debug = Debug.Make(struct let check () = List.mem "Trans" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
 let flatten_tvar = (make_trans ()).tr_term
@@ -55,6 +55,18 @@ let inst_tvar_tunit_typ = inst_tvar_tunit.tr_typ
 let inst_tvar_tunit = inst_tvar_tunit.tr_term
 
 
+let inst_tvar_tint = make_trans ()
+
+let inst_tvar_tint_typ typ =
+  match typ with
+  | TVar({contents=None} as r) -> r := Some TInt; TInt
+  | _ -> inst_tvar_tint.tr_typ_rec typ
+
+let () = inst_tvar_tint.tr_typ <- inst_tvar_tint_typ
+let inst_tvar_tint_typ = inst_tvar_tint.tr_typ
+let inst_tvar_tint = inst_tvar_tint.tr_term
+
+
 
 
 let rename_tvar = make_trans2 ()
@@ -75,7 +87,7 @@ let get_tvars = make_col [] (List.fold_left (fun xs y -> if List.memq y xs then 
 let get_tvars_typ typ =
   match typ with
   | TVar({contents=None} as x) -> [x]
-  | TPred(x,_) -> get_tvars.col_var x
+  | TAttr(_,typ) -> get_tvars.col_typ typ
   | _ -> get_tvars.col_typ_rec typ
 
 let () = get_tvars.col_typ <- get_tvars_typ
@@ -161,7 +173,7 @@ let rec define_randvalue name (env, defs as ed) typ =
   if List.mem_assoc typ env then
     (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
   else
-    match typ with
+    match elim_tattr typ with
     | TUnit -> (env, defs), unit_term
     | TBool -> (env, defs), randbool_unit_term
     | TInt -> (env, defs), randint_unit_term
@@ -233,6 +245,10 @@ let rec define_randvalue name (env, defs as ed) typ =
         in
         let env', defs' = List.fold_right aux decls (env,defs) in
         (env', defs'), snd @@ define_randvalue "" (env',defs') (TData s)
+    | TApp(TOption, [typ']) ->
+        let (env',defs'),t_typ' = define_randvalue "" (env,defs) typ' in
+        let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
+        (env',defs'), t
     | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
 let define_randvalue ed typ = define_randvalue "" ed typ
 
@@ -253,7 +269,16 @@ let inst_randval_term ed t =
 let () = inst_randval.fold_tr_term <- inst_randval_term
 let inst_randval t =
   let (_,defs),t' = inst_randval.fold_tr_term ([],[]) t in
-  make_letrec defs t'
+  let defs' =
+    let edges =
+      defs
+      |> List.map (fun (f,xs,t) -> f, List.Set.diff ~eq:Id.eq (get_fv t) (f::xs))
+      |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
+    in
+    let cmp = Compare.topological ~eq:Id.eq ~dom:(List.map Triple.fst defs) edges in
+    List.sort ~cmp:(Compare.on ~cmp Triple.fst) defs
+  in
+  make_letrecs defs' t'
 
 
 
@@ -497,7 +522,7 @@ let replace_typ_desc env desc =
         let f' = replace_typ_var env f in
         if not @@ Type.can_unify (Id.typ f) (Id.typ f') then
           begin
-            let f'' = Id.set_typ f @@ elim_tpred_all @@ Id.typ f' in
+            let f'' = Id.set_typ f @@ elim_tattr_all @@ Id.typ f' in
             Format.printf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
             let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
             fatal @@ msg ^ " (please specify monomorphic types if polymorphic types exist)"
@@ -1548,6 +1573,9 @@ let normalize_let_term is_atom t =
       let t1',post1 = normalize_let_aux is_atom t1 in
       let t2',post2 = normalize_let_aux is_atom t2 in
       post1 @@ post2 @@ {desc=BinOp(op, t1', t2'); typ=t.typ; attr=[]}
+  | Not t1 ->
+     let t1',post = normalize_let_aux is_atom t1 in
+     post @@ make_not t1'
   | App(t, ts) ->
      let ts',posts = List.split_map (normalize_let_aux is_atom) ts in
      let t',post = normalize_let_aux is_atom t in
@@ -1563,7 +1591,7 @@ let normalize_let_term is_atom t =
       let t1',post = normalize_let_aux is_atom t1 in
       let t2'  = normalize_let.tr2_term is_atom t2 in
       let t3'  = normalize_let.tr2_term is_atom t3 in
-      post @@ make_if t1' t2' t3'
+      post @@ add_attrs t.attr @@ make_if t1' t2' t3'
   | Let(flag,bindings,t1) ->
       let aux (f,xs,t) = f, xs, normalize_let.tr2_term is_atom t in
       let bindings' = List.map aux bindings in
@@ -1656,7 +1684,7 @@ let decomp_pair_eq = decomp_pair_eq.tr_term
 
 let elim_unused_let = make_trans2 ()
 
-let elim_unused_let_term cbv t =
+let elim_unused_let_term (leave,cbv) t =
   let has_no_effect t =
     if false
     then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
@@ -1666,31 +1694,38 @@ let elim_unused_let_term cbv t =
     let flag = List.mem ADoNotInline t.attr in
     match t.desc with
     | Let(Nonrecursive, bindings, t) when not flag ->
-        let t' = elim_unused_let.tr2_term cbv t in
-        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let t' = elim_unused_let.tr2_term (leave,cbv) t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
         let fv = get_fv t' in
         let used (f,xs,t) =
-          Id.mem f fv ||
+          Id.mem f (leave@fv) ||
           cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
         in
         let bindings'' = List.filter used bindings' in
         (make_let bindings'' t').desc
     | Let(Recursive, bindings, t) when not flag ->
-        let t' = elim_unused_let.tr2_term cbv t in
-        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term cbv) bindings in
+        let t' = elim_unused_let.tr2_term (leave,cbv) t in
+        let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
         let fv = get_fv t' in
         let used (f,xs,t) =
-          Id.mem f fv ||
+          Id.mem f (leave@fv) ||
           cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
         in
         if List.exists used bindings'
         then (make_letrec bindings' t').desc
         else t'.desc
-    | _ -> elim_unused_let.tr2_desc_rec cbv t.desc
+    | _ -> elim_unused_let.tr2_desc_rec (leave,cbv) t.desc
   in
   {t with desc=desc'}
 let () = elim_unused_let.tr2_term <- elim_unused_let_term
-let elim_unused_let ?(cbv=true) = elim_unused_let.tr2_term cbv
+let elim_unused_let ?(leave_last=false) ?(cbv=true) t =
+  let leave =
+    if leave_last then
+      Option.to_list @@ get_last_definition t
+    else
+      []
+  in
+  elim_unused_let.tr2_term (leave,cbv) t
 
 
 
@@ -1774,9 +1809,12 @@ let is_base_typ s = List.mem s base_types
 
 let replace_base_with_int_desc desc =
   match desc with
-  | Const(Char c) -> Const (Int (int_of_char c))
-  | Const(String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> randint_unit_term.desc
+  (*  | Const(Char c) -> Const (Int (int_of_char c))*)
+  | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) ->
+      Flag.use_abst := true;
+      randint_unit_term.desc
   | Const(RandValue(TData s, b)) when is_base_typ s ->
+      Flag.use_abst := true;
       Const (RandValue(TInt,b))
   | _ -> replace_base_with_int.tr_desc_rec desc
 
@@ -1819,6 +1857,7 @@ let short_circuit_eval = make_trans ()
 
 let short_circuit_eval_term t =
   match t.desc with
+  | _ when has_no_effect t -> t
   | BinOp(And, t1, t2) ->
       let t1' = short_circuit_eval.tr_term t1 in
       let t2' = short_circuit_eval.tr_term t2 in
@@ -1840,11 +1879,12 @@ let expand_let_val = make_trans ()
 let expand_let_val_term t =
   match t.desc with
   | Let(flag, bindings, t2) ->
-      let bindings' = List.map (fun (f,xs,t) -> f, xs, expand_let_val.tr_term t) bindings in
+      let bindings' = List.map (Triple.map_trd expand_let_val.tr_term) bindings in
       let t2' = expand_let_val.tr_term t2 in
       let bindings1,bindings2 = List.partition (fun (_,xs,_) -> xs = []) bindings' in
       let t2'' = List.fold_left (fun t (f,_,t') -> subst_with_rename f t' t) t2' bindings1 in
-      {(make_let_f flag bindings2 t2'') with attr=t.attr}
+      let attr = if bindings2 = [] then t.attr @ t2''.attr else t.attr in
+      {(make_let_f flag bindings2 t2'') with attr}
   | _ -> expand_let_val.tr_term_rec t
 
 let () = expand_let_val.tr_term <- expand_let_val_term
@@ -1880,6 +1920,7 @@ let rec eval_bexp t =
         | Lt -> (<)
         | Gt -> (>)
         | Leq -> (<=)
+        | Geq -> (>=)
         | _ -> invalid_arg "eval_bexp"
       in
       f (eval_aexp t1) (eval_aexp t2)
@@ -2106,14 +2147,14 @@ let copy_poly_funs_desc map desc =
       let tvars = get_tvars (Id.typ f) in
       assert (tvars <> []);
       let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
-      let t2'' = inst_tvar_tunit t2' in
+      let t2'' = inst_tvar_tint t2' in
       let map_rename,t2''' = rename_poly_funs f t2'' in
       Debug.printf "COPY: @[";
       List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
       Debug.printf "@.";
       if map_rename = [] then
         let map1,t1' = copy_poly_funs.fold_tr_term map2 t1 in
-        (f,f)::map1, (inst_tvar_tunit @@ make_let_f flag [f, xs, t1'] t2').desc
+        (f,f)::map1, (inst_tvar_tint @@ make_let_f flag [f, xs, t1'] t2').desc
       else
         let aux (map',t) (_,f') =
           let tvar_map = List.map (fun v -> v, ref None) tvars in
@@ -2152,6 +2193,7 @@ let copy_poly_funs t =
   let map,t' = copy_poly_funs.fold_tr_term [] t in
   let t'' =
     t'
+    |@> Type_check.check -$- Type.TUnit
     |> flatten_tvar
     |> inline_var_const
     |@> Type_check.check -$- Type.TUnit
@@ -2408,15 +2450,47 @@ let simplify_bool_exp = simplify_bool_exp.tr_term
 
 
 
+let conv = Fpat.Formula.of_term -| FpatInterface.of_term
+let is_sat = FpatInterface.is_sat -| conv
+let is_valid = FpatInterface.is_valid -| conv
+let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
 
 
-let simplify_if_cond = make_trans ()
-let simplify_if_cond_desc desc =
+let simplify_if_cond = make_trans2 ()
+let simplify_if_cond_desc cond desc =
   match desc with
-  | If(t1,t2,t3) -> (make_if (simplify_bool_exp t1) (simplify_if_cond.tr_term t2) (simplify_if_cond.tr_term t3)).desc
-  | _ -> simplify_if_cond.tr_desc_rec desc
-let () = simplify_if_cond.tr_desc <- simplify_if_cond_desc
-let simplify_if_cond = simplify_if_cond.tr_term
+  | If(t1,t2,t3) ->
+      let t1' = simplify_bool_exp t1 in
+      let ts =
+        let rec decomp t =
+          match t.desc with
+          | BinOp(And, t1, t2) -> decomp t1 @ decomp t2
+          | _ -> [t]
+        in
+        decomp t1'
+      in
+      let t1'' =
+        let simplify t =
+          if has_no_effect t then
+            if implies cond t then
+              true_term
+            else if implies cond @@ make_not t then
+              false_term
+            else
+              t
+          else
+            t
+        in
+        make_ands @@ List.map simplify ts
+      in
+      let cond1 = List.filter has_no_effect ts @ cond in
+      let cond2 = if has_no_effect t1' then make_not t1' :: cond else cond in
+      let t2' = simplify_if_cond.tr2_term cond1 t2 in
+      let t3' = simplify_if_cond.tr2_term (List.map make_not cond2) t3 in
+      (make_if t1'' t2' t3').desc
+  | _ -> simplify_if_cond.tr2_desc_rec cond desc
+let () = simplify_if_cond.tr2_desc <- simplify_if_cond_desc
+let simplify_if_cond = simplify_if_cond.tr2_term []
 
 
 
@@ -2487,6 +2561,8 @@ let reconstruct_term t =
     | If(t1, t2, t3) -> make_if (reconstruct.tr_term t1) (reconstruct.tr_term t2) (reconstruct.tr_term t3)
     | Let(flag, bindings, t) ->
         make_let_f flag (List.map (Triple.map_trd reconstruct.tr_term) bindings) @@ reconstruct.tr_term t
+    | BinOp(And, t1, t2) -> make_and (reconstruct.tr_term t1) (reconstruct.tr_term t2)
+    | BinOp(Or, t1, t2) -> make_or (reconstruct.tr_term t1) (reconstruct.tr_term t2)
     | Not t -> make_not @@ reconstruct.tr_term t
     | Tuple ts -> make_tuple @@ List.map reconstruct.tr_term ts
     | Proj(i, t) -> make_proj i @@ reconstruct.tr_term t
@@ -2523,16 +2599,22 @@ let () = inline_specified.tr2_term <- inline_specified_term
 let inline_specified = inline_specified.tr2_term
 
 
-let add_id = make_trans2 ()
-let add_id_term counter t =
-  incr counter;
-  let id = AId !counter in
-  add_attr id @@ add_id.tr2_term_rec counter t
-let () = add_id.tr2_term <- add_id_term
-let add_id t =
-  let counter = ref 0 in
-  let t' = add_id.tr2_term counter t in
-  !counter, t'
+let add_id_if = make_trans2 ()
+let add_id_if_term (f,cnt) t =
+  let t' = add_id_if.tr2_term_rec (f,cnt) t in
+  if f t then
+    let id = AId (Counter.gen cnt) in
+    add_attr id t'
+  else
+    t'
+let () = add_id_if.tr2_term <- add_id_if_term
+let add_id_if f t =
+  let cnt = Counter.create () in
+  let t' = add_id_if.tr2_term (f,cnt) t in
+  Counter.peep cnt, t'
+
+
+let add_id t = add_id_if (Fun.const true) t
 
 
 let remove_id t = filter_attr (function AId _ -> false | _ -> true) t
@@ -2630,3 +2712,25 @@ let eta_tuple_desc desc =
   | desc' -> desc'
 let () = eta_tuple.tr_desc <- eta_tuple_desc
 let eta_tuple = eta_tuple.tr_term
+
+
+
+let eta_reduce = make_trans ()
+let eta_reduce_desc desc =
+  let desc' = eta_reduce.tr_desc_rec desc in
+  match desc' with
+  | Fun(x, {desc=App(t1, ts)}) ->
+      let ts',t2 = List.decomp_snoc ts in
+      let t1' = make_app t1 ts' in
+      begin
+        match t2.desc with
+        | Var y when Id.same x y ->
+            if has_no_effect t1' && not @@ List.mem ~eq:Id.eq x @@ get_fv t1' then
+              t1'.desc
+            else
+              desc'
+        | _ -> desc'
+      end
+  | _ -> desc'
+let () = eta_reduce.tr_desc <- eta_reduce_desc
+let eta_reduce = eta_reduce.tr_term

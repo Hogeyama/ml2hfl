@@ -4,7 +4,7 @@ module S = Syntax
 module U = Term_util
 module T = Type
 
-module Debug = Debug.Make(struct let check () = List.mem "Ref_type" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type base =
   | Unit
@@ -117,7 +117,7 @@ let rec print fm = function
       Format.fprintf fm "Bot"
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
-  | Fun(x, typ1, Exn(typ2, typ3)) ->
+  | Fun(x, typ1, Exn(typ2, typ3)) when not @@ is_bottom typ3 ->
       let arg =
         if occur x typ2 || occur x typ3 then
           Format.asprintf "%a:" Id.print x
@@ -157,18 +157,21 @@ let rec print fm = function
       Format.fprintf fm "(@[";
       if p_i = U.true_term then
         if occur y typ2
-        then Format.fprintf fm "[%a]%a" Id.print y print typ2
-        else Format.fprintf fm "%a" print typ2
+        then Format.fprintf fm "[%a]%a " Id.print y print typ2
+        else Format.fprintf fm "%a " print typ2
       else
-        Format.fprintf fm "[%a: %a]%a" Id.print y Print.term p_i print typ2;
+        Format.fprintf fm "[%a: %a]%a " Id.print y Print.term p_i print typ2;
       if p_len <> U.true_term then
         Format.fprintf fm "|%a: %a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;
-      Format.fprintf fm " list@])"
+      Format.fprintf fm "list@])"
   | Exn(typ1, typ2) ->
-      Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" print typ1 print typ2
+      if is_bottom typ2 then
+        print fm typ1
+      else
+        Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" print typ1 print typ2
 
 let rec decomp_funs n typ =
   match typ with
@@ -260,7 +263,7 @@ let rename typ =
 
 
 let rec of_simple typ =
-  match T.elim_tpred typ with
+  match T.elim_tattr typ with
   | T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
@@ -299,9 +302,10 @@ let rec to_abst_typ typ =
   | Base(b, x, t) when t = U.true_term ->
       to_abst_typ_base b
   | Base(b, x, t) ->
-      let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ_base b in
+      let x' = Id.new_var_id x in
+      let typ' = to_abst_typ_base b in
       let ps = Term_util.decomp_bexp @@ U.subst_var x x' t in
-      T.TPred(x', ps)
+      T.TAttr([T.TAPred(x', ps)], typ')
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ1 in
       let typ2' = to_abst_typ @@ subst_var x x' typ2 in
@@ -322,9 +326,10 @@ let rec to_abst_typ typ =
       else
         let typ1' = to_abst_typ typ1 in
         let x' = Id.new_var ~name:"xs" @@ T.make_tlist typ1' in
-        if p_len = U.true_term
-        then Id.typ x'
-        else T.TPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])
+        if p_len = U.true_term then
+          Id.typ x'
+        else
+          T.TAttr([T.TAPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])], Id.typ x')
   | Exn(typ1, _) -> to_abst_typ typ1
   in
   Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;
@@ -447,7 +452,7 @@ let rec subtype env typ1 typ2 =
   | Inter(_, typs), _ ->
       List.exists (subtype env -$- typ2) typs || is_top' typ2
   | _, Union(_, typs) ->
-      List.exists (subtype env -$- typ1) typs || is_bottom' typ1
+      List.exists (subtype env -$- typ1) typs
   | Tuple xtyps1, Tuple xtyps2 ->
       let aux (env,acc) (x1,typ1) (x2,typ2) =
         make_env x1 typ1 :: env,
@@ -460,6 +465,10 @@ let rec subtype env typ1 typ2 =
   | Exn(typ11,typ12), _ when is_bottom typ12 -> subtype env typ11 typ2
   | _, Exn(typ21,typ22) -> subtype env typ1 typ21
   | Exn _, _ -> false
+  | List(x1,p_len1,y1,p_i1,typ1'), List(x2,p_len2,y2,p_i2,typ2') ->
+      let typ1'' = Tuple [x1,Base(Int,x1,p_len1); Id.new_var Type.TInt,Fun(y1,Base(Int,y1,p_i1),typ1')] in
+      let typ2'' = Tuple [x2,Base(Int,x2,p_len2); Id.new_var Type.TInt,Fun(y2,Base(Int,y2,p_i2),typ2')] in
+      subtype env typ1'' typ2''
   | _ ->
       Format.printf "typ1: %a@." print typ1;
       Format.printf "typ2: %a@." print typ2;
@@ -513,36 +522,43 @@ let rec simplify_typs constr sub styp is_zero make_zero and_or typs =
     |> flatten
     |> decomp
   in
-  Debug.printf "ST: @[%a ==>@ %a@." (List.print print) typs (List.print print) typs';
-  if List.exists is_zero typs' then
+  let typs'' =
+    let remove_exn = function Exn(typ,_) | typ -> typ in
+    if List.length typs' >= 2 && List.exists (function Exn _ -> false | _ -> true) typs' then
+      List.map remove_exn typs'
+    else
+      typs'
+  in
+  Debug.printf "ST: @[%a ==>@ %a@." (List.print print) typs (List.print print) typs'';
+  if List.exists is_zero typs'' then
     make_zero styp
   else
-    match typs' with
+    match typs'' with
     | [] -> constr styp []
     | [typ] -> typ
     | _ ->
-        if List.for_all is_base typs' then
-          let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs' in
+        if List.for_all is_base typs'' then
+          let bs,xs,ts = List.split3 @@ List.map (Option.get -| decomp_base) typs'' in
           let base = List.hd bs in
           assert (List.for_all ((=) base) bs);
           let x = List.hd xs in
           let ts' = List.map2 (U.subst_var -$- x) xs ts in
           Base(base, x, and_or ts')
-        else if List.for_all is_fun typs' then
-          let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_fun) typs' in
+        else if List.for_all is_fun typs'' then
+          let xs,typs1,typs2 = List.split3 @@ List.map (Option.get -| decomp_fun) typs'' in
           if List.for_all (same @@ List.hd typs1) @@ List.tl typs1 then
             let x = List.hd xs in
             let typs2' = List.map2 (subst_var -$- x) xs typs2 in
             let styp' = to_simple @@ List.hd typs2 in
             Fun(x, List.hd typs1, simplify_typs constr sub styp' is_zero make_zero and_or typs2')
           else
-            flatten @@ constr styp typs'
+            flatten @@ constr styp typs''
 (*
     else if List.for_all is_list typs' then
       let xs,p_lens,ys,p_is,typs'' = List.split3 @@ List.map (Option.get -| decomp_fun) typs' in
 *)
         else
-          flatten @@ constr styp typs'
+          flatten @@ constr styp typs''
 
 and simplify typ =
   match flatten typ with
@@ -564,7 +580,26 @@ and simplify typ =
       else
         Tuple xtyps'
   | Inter(styp, []) -> Inter(styp, [])
-  | Inter(styp, typs) -> simplify_typs _Inter subtype styp is_bottom (_Union -$- []) U.make_ands typs
+  | Inter(styp, typs) ->
+      let _Inter' styp typs =
+        if List.for_all (function Tuple _ -> true | _ -> false) typs then
+          let xtypss = List.map (function Tuple xs -> xs | _ -> assert false) typs in
+          let xs,typss =
+            match xtypss with
+            | [] -> assert false
+            | xtyps::ytypss ->
+                let xs = List.map fst xtyps in
+                let rename ytyps =
+                  List.fold_right2 (fun x (y,typ) acc -> let sbst = subst_var x y in sbst typ :: List.map sbst acc) xs ytyps []
+                in
+                xs, List.map snd xtyps :: List.map rename ytypss
+          in
+          let typss' = List.transpose typss in
+          Tuple (List.map2 (fun x typs -> x, simplify @@ _Inter (to_simple @@ List.hd typs) typs) xs typss')
+        else
+          _Inter styp typs
+      in
+      simplify_typs _Inter' subtype styp is_bottom (_Union -$- []) U.make_ands typs
   | Union(styp, []) -> Union(styp, [])
   | Union(styp, typs) -> simplify_typs _Union suptype styp is_top (_Inter -$- []) U.make_ors typs
   | ExtArg(x,typ1,typ2) -> ExtArg(x, simplify typ1, simplify typ2)
@@ -582,48 +617,8 @@ and simplify typ =
         Exn(typ1', typ2')
 
 
-
-(*
-let from_fpat_const typ =
-  match typ with
-  | Fpat.TypConst.Unit -> Unit
-  | Fpat.TypConst.Bool -> Bool
-  | Fpat.TypConst.Int -> Int
-  | Fpat.TypConst.Ext "X" -> Unit
-  | _ -> unsupported "Ref_type.from_fpat"
-let rec from_fpat typ =
-  match typ with
-  | Fpat.RefT.Bot -> Base(Int, Id.new_var T.TInt, U.false_term)
-  | Fpat.RefT.Top -> Inter []
-  | Fpat.RefT.Base(x, c, p) ->
-      let base = from_fpat_const c in
-      let typ =
-        match base with
-        | Int -> T.TInt
-        | Bool -> T.TBool
-        | Unit -> T.TUnit
-        | _ -> assert false
-      in
-      let x' = Id.from_string (Fpat.Idnt.string_of x) typ in
-      let t = U.from_fpat_formula p in
-      Base(base, x', t)
-  | Fpat.RefT.Fun typs ->
-      let aux (typ1,typ2) =
-        let typ1' = from_fpat typ1 in
-        let typ2' = from_fpat typ2 in
-        let x =
-          let typ1_simple = to_simple typ1' in
-          if is_base typ1'
-          then Id.from_string (Fpat.Idnt.string_of @@ Fpat.RefT.bv_of typ1) typ1_simple
-          else Id.new_var typ1_simple
-        in
-        Fun(x, typ1', typ2')
-      in
-      _Inter @@ List.map aux typs
- *)
-
 let rec make_strongest typ =
-  match typ with
+  match T.elim_tattr typ with
   | T.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
   | T.TBool -> Base(Bool, Id.new_var typ, U.false_term)
   | T.TInt -> Base(Int, Id.new_var typ, U.false_term)
@@ -642,6 +637,7 @@ and make_weakest typ =
   | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
   | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
+  | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
@@ -701,7 +697,7 @@ type neg_env = NegEnv.t
 
 
 let rec contract typ =
-  match typ with
+  match flatten typ with
   | Base _ -> typ
   | Fun(x, typ1, typ2) -> Fun(x, contract typ1, contract typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd contract) xtyps)
@@ -724,3 +720,26 @@ let rec contract typ =
   | ExtArg(x,typ1,typ2) -> ExtArg(x, contract typ1, contract typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, contract typ)
   | Exn(typ1,typ2) -> Exn(contract typ1, contract typ2)
+
+let rec split_inter typ =
+  match typ with
+  | Base(base, x, p) ->
+      let rec decomp t =
+        match t.Syntax.desc with
+        | Syntax.BinOp(Syntax.And, t1, t2) -> decomp t1 @ decomp t2
+        | _ -> [t]
+      in
+      let ps = decomp p in
+      List.map (fun p' -> Base(base, x, p')) ps
+  | Fun(x,typ1,typ2) ->
+      let typs2 = split_inter typ2 in
+      List.map (fun typ2' -> Fun(x,typ1,typ2')) typs2
+  | Tuple xtyps ->
+      let make i typ =
+        let xtyps' = List.mapi (fun j (x,typ') -> x, if i = j then typ else top @@ to_simple typ') xtyps in
+        Tuple xtyps'
+      in
+      List.flatten_mapi (fun i (x,typ) -> List.map (make i) @@ split_inter typ) xtyps
+  | Inter(styp, typs) ->
+      [Inter(styp, List.flatten_map split_inter typs)]
+  | _ -> [typ]

@@ -22,11 +22,6 @@ if test "$OCAMLYACC" = "no"; then
   AC_MSG_ERROR([ocamlyacc not found])
 fi
 
-AC_CHECK_OCAML_PKG([ocamlgraph])
-if test "$OCAML_PKG_ocamlgraph" = "no"; then
-  AC_MSG_ERROR([ocamlgraph not found])
-fi
-
 AC_CHECK_OCAML_PKG([fpat])
 if test "$OCAML_PKG_fpat" = "no"; then
   AC_MSG_ERROR([fpat not found])
@@ -52,10 +47,13 @@ AC_SUBST(TRECS)
 AC_PATH_TOOL(HORSAT, horsat, [no], [$PATH:$PWD])
 AC_SUBST(HORSAT)
 
+AC_PATH_TOOL(HORSAT2, horsat2, [no], [$PATH:$PWD])
+AC_SUBST(HORSAT2)
+
 AC_PATH_TOOL(HORSATP, horsatp, [no], [$PATH:$PWD])
 AC_SUBST(HORSATP)
 
-if test "$TRECS" = "no" -a "$HORSAT" = "no" -a "$HORSATP" = "no"; then
+if test "$TRECS" = "no" -a "$HORSAT" = "no" -a "$HORSAT2" = "no" -a "$HORSATP" = "no"; then
   AC_MSG_ERROR([No model checker found])
 fi
 

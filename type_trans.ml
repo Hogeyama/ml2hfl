@@ -4,6 +4,8 @@ module IT = Inter_type
 module AT = CEGAR_type
 module CS = CEGAR_syntax
 
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+
 let ref_base_of_abs_base = function
   | AT.TUnit -> RT.Unit
   | AT.TInt -> RT.Int
@@ -25,11 +27,30 @@ let rec ref_of_inter env cond atyp ityp =
       let env' = (x,AT.TBase(b,fun _ -> []))::env in
       let b' = ref_base_of_abs_base b in
       let aux p ityp =
-        match ityp with
-        | IT.Base IT.True -> [p]
-        | IT.Base IT.False -> [CS.make_not p]
-        | IT.Inter [] -> []
-        | _ -> assert false
+        let is_true ityp =
+          if !Flag.church_encode then
+            match ityp with
+            | IT.Fun(IT.Base _, IT.Fun(IT.Inter [], IT.Base _)) -> true
+            | _ -> false
+          else
+            ityp = IT.Base IT.True
+        in
+        let is_false ityp =
+          if !Flag.church_encode then
+            match ityp with
+            | IT.Fun(IT.Inter [], IT.Fun(IT.Base _, IT.Base _)) -> true
+            | _ -> false
+          else
+            ityp = IT.Base IT.False
+        in
+        if is_true ityp then
+          [p]
+        else if is_false ityp then
+          [CS.make_not p]
+        else if ityp = IT.Inter [] then
+          []
+        else
+          (Format.printf "%a@." IT.print ityp; assert false)
       in
       let ts = List.rev_flatten @@ List.map2 aux ps' ityps in
       let p = List.fold_left CS.make_and (CS.Const CS.True) ts in

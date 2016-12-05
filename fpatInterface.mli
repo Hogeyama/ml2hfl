@@ -60,3 +60,4 @@ val trans_ext :
   (int * CEGAR_syntax.env) list ->
   (int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list ->
   int * CEGAR_util.ext_path_part list list -> Fpat.Idnt.t * Fpat.Pred.t list
+val parse_arg : string -> unit

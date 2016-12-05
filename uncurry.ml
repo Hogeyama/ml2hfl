@@ -32,7 +32,7 @@ let rec from_type typ =
   | Type.TApp _
   | Type.TData _
   | Type.TVar _
-  | Type.TPred _
+  | Type.TAttr _
   | Type.TFuns _
   | Type.TVariant _
   | Type.TRecord _

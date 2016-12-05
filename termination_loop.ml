@@ -32,22 +32,20 @@ let incr_cycle () = cycle_counter := !cycle_counter + 1
 let reset_cycle () = cycle_counter := 0
 
 let verify_with holed pred =
-  let debug = Util.NORDebug.check() in
   (* combine holed program and predicate *)
   let transformed = pluging holed pred in
-  if debug then Format.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
+  Util.Verbose.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
   let orig, transformed = retyping transformed (BRA_state.type_of_state holed) in
   Main_loop.run orig [] transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
   (* reduce to linear constraint solving *)
   let generate = Fpat.PolyConstrSolver.gen_coeff_constr ~pos:false ~linear:true in
-  let debug = Util.NORDebug.check() in
   (** solve constraint and obtain coefficients **)
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
-    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
+    Util.Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
 
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
@@ -68,13 +66,12 @@ let inferCoeffs argumentVariables linear_templates constraints =
   end
 
 let inferCoeffsAndExparams argumentVariables linear_templates constraints =
-  let debug = Util.NORDebug.check() in
   let generate = Fpat.PolyConstrSolver.gen_coeff_constr ~pos:false ~linear:false in
   (** solve constraint and obtain coefficients **)
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
     if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
-    if debug then Format.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
+    Util.Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
 
     (List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
@@ -119,7 +116,6 @@ let makeLexicographicConstraints variables linearTemplates prevLinearTemplates f
                /\ R3(x_prev) > R3(x) /\ R3(x) >= 0]
       ...
   **)
-  let _debug = Util.NORDebug.check() in
   let lenSpcSequence = List.length failedSpc in
   let subst_ith i =
     Fpat.Formula.subst
@@ -147,7 +143,6 @@ let rec enqueueNextPredicateInfo que =
     try Some (nextGen ()) with _ -> enqueueNextPredicateInfo que
 
 let rec run predicate_que holed =
-  let debug = Util.NORDebug.check() in
   let _ =
     begin
       incr_cycle ();
@@ -177,9 +172,9 @@ let rec run predicate_que holed =
 	    verify_with holed predicate
 	in
 	if result then
-	  (if debug then Format.printf "%s is terminating.@." holed.verified.id.Id.name ; result)
+	  (Util.Verbose.printf "%s is terminating.@." holed.verified.id.Id.name ; result)
 	else
-	  (if debug then Format.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
+	  (Util.Verbose.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
       with Refine.PostCondition (env, spc, spcWithExparam) ->
 	let unwrap_template = function (Fpat.Term.App (Fpat.Term.App (_, t), _)) -> t | _ -> assert false in
 	let unwrap_template t = unwrap_template (Fpat.Formula.term_of t) in
@@ -194,9 +189,9 @@ let rec run predicate_que holed =
 
 	if !Flag.disjunctive then
 	  (* make templates *)
-	  let linear_template = unwrap_template (Fpat.Template.mk_atom arg_env) in
+	  let linear_template = unwrap_template (Fpat.Template.mk_atom arg_env 1) in
 	  let linear_template_prev = Fpat.Term.subst (List.combine arg_vars prev_var_terms) linear_template in
-	  if debug then Format.printf "Linear template:@.  %a@." Fpat.Term.pr linear_template;
+	  Util.Verbose.printf "Linear template:@.  %a@." Fpat.Term.pr linear_template;
 
 	  (* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
 	  let constraints =
@@ -204,7 +199,7 @@ let rec run predicate_que holed =
 	      (Fpat.Formula.band [ Fpat.NumAtom.gt Fpat.Type.mk_int linear_template_prev linear_template |> Fpat.Formula.of_atom
 			    ; Fpat.NumAtom.geq Fpat.Type.mk_int linear_template (Fpat.IntTerm.make 0) |> Fpat.Formula.of_atom])]
 	  in
-	  if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
+	  Util.Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 
           (* solve constraints and obtain coefficients of a ranking function *)
 	  let newPredicateInfo _ =
@@ -213,7 +208,7 @@ let rec run predicate_que holed =
 	      (* return updated predicate *)
 	      { predicate_info with coefficients = coefficientInfos @ predicate_info.coefficients; errorPaths = spc :: predicate_info.errorPaths }
             with Fpat.PolyConstrSolver.Unknown ->
-	      if debug then Format.printf "Failed to solve the constraints...@.@.";
+	      Util.Verbose.printf "Failed to solve the constraints...@.@.";
 
 	      (* Failed to infer a new ranking predicate -> Update extra parameters *)
 	      (** UPDATE [not implemented] **)
@@ -241,41 +236,41 @@ let rec run predicate_que holed =
 
 	  let successes = (flip List.map) (List.combine allSpcSequences allSpcSequencesWithExparam) (fun (spcSequence, spcSequenceWithExparam) -> fun _ ->
 	    (* make templates (for arguments and previous arguments) *)
-	    let linearTemplates = Fpat.Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Fpat.Template.mk_atom arg_env), i+1) else None) 0 in
+	    let linearTemplates = Fpat.Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Fpat.Template.mk_atom arg_env 1), i+1) else None) 0 in
 	    let prevLinearTemplates = List.map (Fpat.Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
-	    if debug then Fpat.Util.List.iteri (fun i lt -> Format.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;	    try
+	    Fpat.Util.List.iteri (fun i lt -> Util.Verbose.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;	    try
 	      (* make a constraint *)
 	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
-	      if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
+	      Util.Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 
 	      (* solve constraint and obtain coefficients *)
 	      let coefficientInfos = inferCoeffs arg_vars linearTemplates constraints in
 
               (* return new predicate information (coeffcients + error paths) *)
 	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
-	      if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
+	      Util.Verbose.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	      newPredicateInfo
 	    with _ (* | Fpat.PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
-	      if debug then Format.printf "Try to update extra parameters...@.@.";
+	      Util.Verbose.printf "Try to update extra parameters...@.@.";
 
 	      try
 		(* make a constraint *)
 		let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequenceWithExparam in
-		if debug then Format.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
+		Util.Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 
 		(* solve constraint and obtain coefficients *)
 		let coefficientInfos, exparamInfo = inferCoeffsAndExparams arg_vars linearTemplates constraints in
 
 		(* return new predicate information (coeffcients + error paths) *)
 		let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam } in
-		if debug then Format.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
+		Util.Verbose.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 		newPredicateInfo
               with
 		| Fpat.PolyConstrSolver.NoSolution ->
-		  if debug then Format.printf "Failed to find LLRF...@.";
+		  Util.Verbose.printf "Failed to find LLRF...@.";
 		  raise InferenceFailure (* failed to solve the constraints *)
 		| e ->
-		  if debug then Format.printf "error: %s@." (Printexc.to_string e);
+		  Util.Verbose.printf "error: %s@." (Printexc.to_string e);
 		  raise InferenceFailure (* failed to solve the constraints *)
 	  )
 	  in

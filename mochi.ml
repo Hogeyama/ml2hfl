@@ -1,3 +1,4 @@
+
 open Util
 
 exception TimeOut
@@ -71,7 +72,10 @@ let print_info_exp () =
   Format.printf "}@."
 
 let print_info_modular () =
-  Format.printf "total: %.3f sec@." !!get_time
+  Format.printf "#typeChecker: %n@." !Modular.num_tycheck;
+  Format.printf "total: %.3f sec@." !!get_time;
+  Format.printf "  typeChecker: %.3f sec@." !Modular.time_check;
+  Format.printf "  typeSynthesizer: %.3f sec@." !Modular.time_synthesize
 
 let print_info () =
   if !Flag.exp then
@@ -100,12 +104,14 @@ let print_env cmd =
   let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   let horsat_version = HorSatInterface.version () in
+  let horsat2_version = HorSat2Interface.version () in
   let horsatp_version = HorSatPInterface.version () in
   Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
   if mochi <> "" then Format.printf "  Build: %s@." mochi;
   Option.iter (Format.printf "  FPAT version: %s@.") fpat;
   Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
   Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;
+  Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2_version;
   Option.iter (Format.printf "  HorSatP version: %s@.") horsatp_version;
   Format.printf "  OCaml version: %s@." Sys.ocaml_version;
   let args = List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s) !Flag.args in
@@ -129,13 +135,13 @@ let main_termination orig parsed =
   let open BRA_util in
   (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
   let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
-  let _ = NORDebug.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
+  let _ = Verbose.printf "lambda-lifted::@. @[%a@.@." Print.term parsed in
   let parsed = BRA_transform.regularization parsed in
-  let _ = NORDebug.printf "regularized::@. @[%a@.@." Print.term parsed in
+  let _ = Verbose.printf "regularized::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_depth then ExtraClsDepth.addExtraClsDepth parsed else parsed in
-  let _ = if !Flag.add_closure_depth then NORDebug.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_depth then Verbose.printf "closure depth inserted::@. @[%a@.@." Print.term parsed in
   let parsed = if !Flag.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
-  let _ = if !Flag.add_closure_exparam then NORDebug.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
+  let _ = if !Flag.add_closure_exparam then Verbose.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
   let holed_list = BRA_transform.to_holed_programs parsed in
   let result =
     try
@@ -203,7 +209,7 @@ let main in_channel =
     let orig = Parse.use_file lb in
     Id.set_counter (Ident.current_time () + 1000);
     let parsed = Parser_wrapper.from_use_file orig in
-    NORDebug.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
+    Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
     if !Flag.randint_refinement_log
     then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print Format.std_formatter in
@@ -221,17 +227,6 @@ let main in_channel =
       Main_loop.run orig [] ~spec parsed
 
 
-let parse_fpat_arg arg =
-  let args = Array.of_list @@ "FPAT" :: split_spaces arg in
-  let usage = "Options for FPAT are:" in
-  try
-    Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore usage
-  with
-  | Arg.Bad s
-  | Arg.Help s -> Format.printf "%s" s; exit 0
-
-
-
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
@@ -246,8 +241,9 @@ let rec arg_spec () =
                  Flag.print_progress := false),
        " Show only result";
      "-debug",
-     Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module),
-     "<modules>  Set debug flag of modules (comma-separated)";
+      Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module;
+                              List.iter (fun m -> if not @@ List.mem m !Flag.modules then (Format.printf "Module \"%s\" not found" m; exit 1)) !Flag.debug_module),
+      "<modules>  Set debug flag of modules (comma-separated)";
      "-debug-abst", Arg.Set Flag.debug_abst, " Debugging abstraction";
      "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
      "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
@@ -266,6 +262,7 @@ let rec arg_spec () =
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options (for completion)";
+     "-module-list", Arg.Unit (fun _ -> Format.printf "%a" (print_list Format.pp_print_string " ") !Flag.modules; exit 0), " Print list of modules (for completion)";
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      "-print-as-ocaml", Arg.Set Flag.print_as_ocaml, " Print terms in OCaml syntax";
@@ -283,6 +280,7 @@ let rec arg_spec () =
      "-elim-same-arg", Arg.Set Flag.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.base_to_int, " Replace primitive base types with int";
      "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
+     "-abst-list-literal", Arg.Set_int Flag.abst_list_literal, " Abstract long list literals";
      (* verifier *)
      "-modular", Arg.Set Flag.modular, " Modular verification";
      "-verify-ref-typ", Arg.Set Flag.verify_ref_typ, " Verify functions have given refinement types";
@@ -302,21 +300,23 @@ let rec arg_spec () =
      "-abs-filter", Arg.Set Flag.use_filter, " Turn on the abstraction-filter option";
      "-neg-pred-off", Arg.Set Flag.never_use_neg_pred,
                       " Never use negative predicates for abstraction";
-     "-decomp-pred", Arg.Set Flag.decomp_pred, "Decompose abstraction predicates (e.g., [P1 && P2] ==> [P1, P2])";
+     "-decomp-pred", Arg.Set Flag.decomp_pred, " Decompose abstraction predicates (e.g., [P1 && P2] ==> [P1, P2])";
      (* higher-order model checking *)
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      "-bool-church", Arg.Set Flag.church_encode, " Use church-encoding for model checking";
      "-trecs", Arg.Unit (fun () -> Flag.mc:=Flag.TRecS), " Use TRecS as the model checker";
-     "-horsat", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat), " Use HorSat as the model checker";
-     "-horsat2", Arg.Unit (fun () -> Flag.church_encode:=true;Flag.mc:=Flag.HorSat;Flag.horsat:=!Flag.horsat^"2 -merge"(**TODO:FIX**)), " Use HorSat2 as the model checker";
+     "-horsat", Arg.Unit (fun () -> Flag.mc:=Flag.HorSat), " Use HorSat as the model checker";
+     "-horsat2", Arg.Unit (fun () -> Flag.mc:=Flag.HorSat2), " Use HorSat2 as the model checker";
      "-trecs-bin", Arg.Set_string Flag.trecs,
                    Format.sprintf "<cmd>  Change trecs command to <cmd> (default: \"%s\")" !Flag.trecs;
      "-horsat-bin", Arg.Set_string Flag.horsat,
                     Format.sprintf "<cmd>  Change horsat command to <cmd> (default: \"%s\")" !Flag.horsat;
+     "-horsat2-bin", Arg.Set_string Flag.horsat2,
+                    Format.sprintf "<cmd>  Change horsat2 command to <cmd> (default: \"%s\")" !Flag.horsat2;
      "-horsatp-bin", Arg.Set_string Flag.horsatp,
                      Format.sprintf "<cmd>  Change horsatp command to <cmd> (default: \"%s\")" !Flag.horsatp;
      (* predicate discovery *)
-     "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
+     "-fpat", Arg.String FpatInterface.parse_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
@@ -445,30 +445,41 @@ let fpat_init1 () =
 let fpat_init2 () =
   let open Fpat in
   Global.target_filename := !Flag.filename;
-  SMTProver.cvc3 := !Flag.cvc3;
-  SMTProver.open_ ()
+  SMTProver.cvc3_command := !Flag.cvc3;
+  SMTProver.initialize ()
 
 let check_env () =
   match !Flag.mc with
   | Flag.TRecS -> if not Environment.trecs_available then fatal "TRecS not found"
   | Flag.HorSat -> if not Environment.horsat_available then fatal "HorSat not found"
+  | Flag.HorSat2 -> if not Environment.horsat2_available then fatal "HorSat2 not found"
   | Flag.HorSatP -> if not Environment.horsatp_available then fatal "HorSatP not found"
+
+let init_after_parse_arg () =
+  if !Flag.mc <> Flag.TRecS then
+    Flag.church_encode := true
+
+let timeout_handler _ =
+  Main_loop.print_result_delimiter ();
+  Format.printf "Verification failed (time out)@.";
+  exit 1
 
 let () =
   if !Sys.interactive
   then ()
   else
     try
-      Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
       fpat_init1 ();
       let cin = parse_arg () in
       ignore @@ Unix.alarm !Flag.time_limit;
       fpat_init2 ();
+      Sys.set_signal Sys.sigalrm (Sys.Signal_handle timeout_handler);
       Color.init ();
       if not !Flag.only_result then print_env true;
+      init_after_parse_arg ();
       check_env ();
       if main cin then decr Flag.cegar_loop;
-      Fpat.SMTProver.close ();
+      Fpat.SMTProver.finalize ();
       print_info ()
     with
     | e when !Flag.exp ->
@@ -481,28 +492,50 @@ let () =
     | e when !Flag.exp2 ->
         output_csv (string_of_exception e)
     | Fpat.RefTypInfer.FailedToRefineTypes ->
+        Main_loop.print_result_delimiter ();
         Format.printf "Verification failed:@.";
         Format.printf "  MoCHi could not refute an infeasible error path @.";
         Format.printf "  due to the incompleteness of the refinement type system@."
     | e when Fpat.FPATConfig.is_fpat_exception e ->
+        Main_loop.print_result_delimiter ();
         Format.printf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
     | Syntaxerr.Error err ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a@." Syntaxerr.report_error err
     | Typecore.Error(loc,env,err) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
     | Typemod.Error(loc,env,err) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
-    | Env.Error e -> Format.printf "%a@." Env.report_error e
+    | Env.Error e ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "%a@." Env.report_error e
     | Typetexp.Error(loc,env,err) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
     | Lexer.Error(err, loc) ->
+        Main_loop.print_result_delimiter ();
         Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
-    | LongInput -> Format.printf "Input is too long@."
-    | TimeOut -> Format.printf "Verification failed (time out)@."
-    | CEGAR_syntax.NoProgress -> Format.printf "Unknown. (CEGAR not progress) @."
-    | CEGAR_abst.NotRefined -> Format.printf "Verification failed (new error path not found)@."
+    | LongInput ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Input is too long@."
+    | TimeOut -> assert false
+    | CEGAR_syntax.NoProgress ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Unknown. (CEGAR not progress) @."
+    | CEGAR_abst.NotRefined ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Verification failed (new error path not found)@."
     | Fatal s ->
-        Format.printf "Fatal error: %s@." s
+        Main_loop.print_result_delimiter ();
+        Format.printf "Fatal error?: %s@." s
     | Unsupported s ->
+        Main_loop.print_result_delimiter ();
         Format.printf "Unsupported: %s@." s
-    | Sys_error s -> Format.printf "%s@." s
+    | Sys_error s ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "%s@." s
+    | e when !Flag.debug_module = [] ->
+        Main_loop.print_result_delimiter ();
+        Format.printf "Exception: %s@." @@ Printexc.to_string e

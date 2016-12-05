@@ -134,6 +134,7 @@ val is_base_var : id -> bool
 val is_fun_var : id -> bool
 val is_list_literal : term -> bool
 val is_var : term -> bool
+val is_fail : term -> bool
 
 
 (** {6 Misc} *)
@@ -178,8 +179,11 @@ val get_last_definition : term -> id option
 val get_body : term -> term
 val count_occurrence : id -> term -> int
 val add_attr : attr -> term -> term
+val add_attrs : attr list -> term -> term
 val add_comment : string -> term -> term
 val add_id : int -> term -> term
+val col_id : term -> int list
+val replace_id : int -> int -> term -> term
 val remove_attr : attr -> term -> term
 val get_bound_variables : term -> id list
 val get_id : term -> int

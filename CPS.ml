@@ -5,7 +5,7 @@ open Util
 
 module RT = Ref_type
 
-module Debug = Debug.Make(struct let check () = List.mem "CPS" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let counter = ref 0
 let new_evar () = incr counter; !counter
@@ -186,7 +186,7 @@ let rec infer_effect_typ typ =
       (match typ2 with TFun _ -> () | _ -> constraints := CGeq(e, ECont) :: !constraints);
       TFunCPS(e, infer_effect_typ typ1, infer_effect_typ typ2)
   | TTuple xs -> TTupleCPS (List.map (infer_effect_typ -| Id.typ) xs)
-  | TPred(x,ps) -> infer_effect_typ (Id.typ x)
+  | TAttr(_,typ) -> infer_effect_typ typ
   | _ -> Format.printf "%a@." Print.typ typ; assert false
 
 let new_var x = {id_cps=x; id_typ=infer_effect_typ (Id.typ x)}
@@ -488,7 +488,14 @@ let rec trans_typ typ_excep typ_orig typ =
       TFun(x, typ2')
   | TTuple xs, TTupleCPS typs ->
       TTuple (List.map2 (fun x typ -> Id.map_typ (trans_typ typ_excep -$- typ) x) xs typs)
-  | TPred(x,ps), typ -> TPred(Id.map_typ (trans_typ typ_excep -$- typ) x, ps)
+  | TAttr(attr,typ_orig'), _ ->
+      let aux a =
+        match a with
+        | TAPred _ -> [a]
+        | TAPureFun -> []
+      in
+      let attr' = List.flatten_map aux attr in
+      _TAttr attr' @@ trans_typ typ_excep typ_orig' typ
   | _ ->
       Format.printf "%a,%a@." Print.typ typ_orig print_typ_cps typ;
       raise (Fatal "bug? (CPS.trans_typ)")
@@ -637,13 +644,15 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let k' = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let b = Id.new_var TBool in
-        make_fun k
-          (make_let [k', [], make_var k]
-             (make_app_cont t1.effect t1'
-                (make_fun b
-                   (make_if (make_var b)
-                      (make_app_cont t2.effect t2' (make_var k'))
-                      (make_app_cont t3.effect t3' (make_var k'))))))
+        make_fun k @@
+          make_let [k', [], make_var k] @@
+            make_app_cont t1.effect t1' @@
+              make_fun b @@
+                add_attrs t_orig.attr @@
+                  make_if
+                    (make_var b)
+                    (make_app_cont t2.effect t2' (make_var k'))
+                    (make_app_cont t3.effect t3' (make_var k'))
     | IfCPS(t1, t2, t3), EExcep ->
         let t1' = transform typ_excep k_post t1 in
         let t2' = transform typ_excep k_post t2 in
@@ -655,16 +664,19 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let h' = Id.new_var_id h in
-        make_fun k
-          (make_let [k', [], make_var k] (* to prevent the increase of code size in eta-reduction *)
-             (make_fun h
-                (make_let [h', [], make_var h] (* to prevent the increase of code size in eta-reduction *)
-                   (make_app_excep t1.effect t1'
-                      (make_fun b
-                         (make_if (make_var b)
-                            (make_app_excep t2.effect t2' (make_var k') (make_var h'))
-                            (make_app_excep t3.effect t3' (make_var k') (make_var h'))))
-                      (make_var h')))))
+        make_fun k @@
+          make_let [k', [], make_var k] @@ (* to prevent the increase of code size in eta-reduction *)
+            make_fun h @@
+              make_let [h', [], make_var h] @@ (* to prevent the increase of code size in eta-reduction *)
+                make_app_excep
+                  t1.effect t1'
+                  (make_fun b @@
+                     add_attrs t_orig.attr @@
+                       make_if
+                         (make_var b)
+                         (make_app_excep t2.effect t2' (make_var k') (make_var h'))
+                         (make_app_excep t3.effect t3' (make_var k') (make_var h')))
+                  (make_var h')
     | LetCPS(flag, bindings, t1), ENone ->
         let aux (f,t) =
           let f' = trans_var typ_excep f in
@@ -930,14 +942,14 @@ let assoc_typ_cps f typed =
 
 
 let rec uncps_ref_type typ_exn rtyp e etyp =
-  let dbg = 0=0 && !!Debug.check in
+  let dbg = 0=0 in
   Debug.printf "rtyp:%a@." RT.print rtyp;
   Debug.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
   Debug.printf "e:%a@." print_effect e;
   Debug.printf "etyp:%a@.@." print_typ_cps etyp;
   match rtyp, e, etyp with
   | RT.Inter(styp, rtyps), e, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       let typs = List.map (fun rtyp1 -> uncps_ref_type typ_exn rtyp1 e etyp) rtyps in
       let styp' =
         match typs with
@@ -946,53 +958,70 @@ let rec uncps_ref_type typ_exn rtyp e etyp =
       in
       RT.Inter(styp', typs)
   | RT.Base(b,x,ps), ENone, TBaseCPS _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       RT.Base(b,x,ps)
   | RT.Fun(x,rtyp1,rtyp2), ENone, TFunCPS(e,etyp1,etyp2) when !sol e <> EExcep ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp1 in
-      let rtyp2' = uncps_ref_type typ_exn rtyp2 (!sol e) etyp2 in
-      RT.Fun(x, rtyp1', rtyp2')
+      let x' = Id.set_typ x @@ RT.to_simple rtyp1' in
+      let rtyp2' = RT.subst_var x x' @@ uncps_ref_type typ_exn rtyp2 (!sol e) etyp2 in
+      RT.Fun(x', rtyp1', rtyp2')
   | RT.Fun(x,rtyp1,rtyp2), ENone, TFunCPS(e,etyp1,etyp2) ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       assert (!sol e = EExcep);
       let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp1 in
-      let rtyp2' = uncps_ref_type typ_exn rtyp2 EExcep etyp2 in
-      RT.Fun(x, rtyp1', rtyp2')
+      let x' = Id.set_typ x @@ RT.to_simple rtyp1' in
+      let rtyp2' = RT.subst_var x x' @@ uncps_ref_type typ_exn rtyp2 EExcep etyp2 in
+      RT.Fun(x', rtyp1', rtyp2')
   | RT.Fun(_, RT.Fun(_,rtyp,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_)),
     ECont, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       uncps_ref_type typ_exn rtyp ENone etyp
   | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(RT.Unit,_,_)), RT.Fun(_,RT.Fun(_,rtyp2,RT.Base(RT.Unit,_,_)), RT.Base(RT.Unit,_,_))),
     EExcep, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp in
       let rtyp2' = uncps_ref_type typ_exn rtyp2 ENone typ_exn in
       RT.Exn(rtyp1', rtyp2')
-  | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(RT.Unit,_,_)), ECont, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+  | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(RT.Unit,_,_)), RT.Fun(_,RT.Inter(_,rtyps), RT.Base(RT.Unit,_,_))),
+    EExcep, _ ->
+      if dbg then Debug.printf "%s@.@." __LOC__;
+      let rtyp1' = uncps_ref_type typ_exn rtyp1 ENone etyp in
       let aux = function
-        | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type typ_exn rtyp1 ENone etyp
+        | RT.Fun(_,rtyp2,RT.Base(RT.Unit,_,_)) -> uncps_ref_type typ_exn rtyp2 ENone typ_exn
         | _ -> assert false
       in
-      let typ' =
+      let styp' =
         match List.map aux rtyps with
         | [] -> typ_of_etyp etyp
         | rtyp'::_ -> RT.to_simple rtyp'
       in
-      RT.union typ' @@ List.map aux rtyps
+      RT.Exn(rtyp1', RT.union styp' @@ List.map aux rtyps)
+  | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(RT.Unit,_,_)), ECont, _ ->
+      if dbg then Debug.printf "%s@.@." __LOC__;
+      let aux = function
+        | RT.Fun(_,rtyp1,RT.Base(RT.Unit,_,_)) -> uncps_ref_type typ_exn rtyp1 ENone etyp
+        | _ -> assert false
+      in
+      let styp' =
+        match List.map aux rtyps with
+        | [] -> typ_of_etyp etyp
+        | rtyp'::_ -> RT.to_simple rtyp'
+      in
+      RT.union styp' @@ List.map aux rtyps
   | RT.Tuple xrtyps, _, TTupleCPS etyps ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       RT.Tuple (List.map2 (fun (x,rtyp) etyp -> x, uncps_ref_type typ_exn rtyp e etyp) xrtyps etyps)
   | RT.ExtArg(x,rtyp1,rtyp2), _, _ ->
-      if dbg then Format.printf "%s@.@." __LOC__;
+      if dbg then Debug.printf "%s@.@." __LOC__;
       RT.ExtArg(x, rtyp1, uncps_ref_type typ_exn rtyp2 e etyp)
   | _, _, TBaseCPS styp when RT.is_top' rtyp ->
       RT.top styp
   | _, _, TBaseCPS styp when RT.is_bottom' rtyp ->
       RT.bottom styp
-  | RT.Fun(_, RT.Inter _, RT.Fun(_,RT.Fun _, RT.Base(_,_,_))),
-    EExcep, _ -> assert false
+  | RT.Fun(x, RT.Inter(_,[rtyp]), rtyp'), _, _ -> uncps_ref_type typ_exn (RT.Fun(x, rtyp, rtyp')) e etyp
+  | RT.Fun(x, RT.Inter(styp,rtyp::rtyps), rtyp'), _, _ when List.exists (Ref_type.equiv rtyp) rtyps -> uncps_ref_type typ_exn (RT.Fun(x, RT.Inter(styp,rtyps), rtyp')) e etyp
+  | RT.Fun(x, RT.Inter(styp,rtyp::rtyps), rtyp'), _, _ -> assert false
   | _ ->
       assert false
 
@@ -1011,9 +1040,9 @@ let make_get_rtyp typ_exn typed get_rtyp f =
   let etyp = assoc_typ_cps f typed in
   let rtyp = get_rtyp f in
   Debug.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp print_typ_cps etyp;
-  let rtyp' = uncps_ref_type typ_exn rtyp ENone etyp in
+  let rtyp' = Ref_type.map_pred Trans.reconstruct @@ uncps_ref_type typ_exn rtyp ENone etyp in
   if !!Flag.print_ref_typ_debug then
-    Format.printf "CPS: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+    Format.printf "CPS ref_typ: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 let initialize () =
@@ -1034,18 +1063,18 @@ let exists_let = exists_let.col_term
 
 let inline_affine = make_trans2 ()
 
-let inline_affine_term env t =
+let inline_affine_term (vars,env) t =
   let t' =
     match t.desc with
     | App({desc=Var f}, ts) ->
         begin
           try
             let xs,t = Id.assoc f env in
-            let ts' = List.map (inline_affine.tr2_term env) ts in
+            let ts' = List.map (inline_affine.tr2_term (vars,env)) ts in
             if List.length xs = List.length ts
             then List.fold_right2 (Trans.subst_with_rename ~check:true) xs ts' t
             else raise Not_found
-          with Not_found -> inline_affine.tr2_term_rec env t
+          with Not_found -> inline_affine.tr2_term_rec (vars,env) t
         end
     | Let(flag, bindings, t1) ->
         let not_rand_int t =
@@ -1053,22 +1082,24 @@ let inline_affine_term env t =
           | App({desc=Const(RandValue(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
           | _ -> true
         in
-        let linear f xs t =
+        let affine f xs t =
           let fv = get_fv ~cmp:(fun _ _ -> false) t in
-          fv = List.unique fv && List.Set.subset fv xs && not @@ exists_let t
+          fv = List.unique fv && List.Set.subset ~eq:Id.eq fv (xs@vars) && not @@ exists_let t
         in
-        let check f xs t1 = not_rand_int t1 && linear f xs t1 && not @@ List.mem ADoNotInline t.attr in
+        let check f xs t1 = not_rand_int t1 && affine f xs t1 && not @@ List.mem ADoNotInline t.attr in
+        let vars' = List.map Triple.fst bindings @ vars in
         let env' = List.filter_map (fun (f,xs,t) -> if check f xs t then Some (f,(xs,t)) else None) bindings @ env in
-        let bindings' = List.map (Triple.map_trd @@ inline_affine.tr2_term env') bindings in
-        make_let_f flag bindings' @@ inline_affine.tr2_term env' t1
-    | _ -> inline_affine.tr2_term_rec env t
+        let bindings' = List.map (fun (f,xs,t) -> f, xs, inline_affine.tr2_term (xs@vars',env') t) bindings in
+        make_let_f flag bindings' @@ inline_affine.tr2_term (vars',env') t1
+    | Fun(x, t) -> make_fun x @@ inline_affine.tr2_term (x::vars,env) t
+    | _ -> inline_affine.tr2_term_rec (vars,env) t
   in
   {t' with attr=t.attr}
 
 let () = inline_affine.tr2_term <- inline_affine_term
 let inline_affine t =
   t
-  |> inline_affine.tr2_term []
+  |> inline_affine.tr2_term ([],[])
   |> Trans.elim_unused_let
   |> Trans.inline_var_const
 
@@ -1134,6 +1165,8 @@ let trans t =
     |> Trans.elim_unused_let ~cbv:false
     |> Trans.elim_unused_branch
     |@> pr "elim_unused_let"
+    |> Trans.eta_reduce
+    |@> pr "elim_reduce"
   in
   t', make_get_rtyp typ_exn typed
 

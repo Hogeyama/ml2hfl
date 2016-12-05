@@ -6,8 +6,9 @@ PACKAGES = fpat,str,unix,extlib,compiler-libs.common
 
 MOCHI_BIN_DIR = mochi_bin
 
-OCAMLCFLAGS = -g -annot -bin-annot -package $(PACKAGES)
-OCAMLOPTFLAGS = -g -annot -bin-annot -package $(PACKAGES)
+WARN_FLAGS = -w -52-58
+OCAMLCFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
+OCAMLOPTFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
 
 DOC = doc
 
@@ -51,7 +52,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	trans.mli tree.mli rose_tree.mli type.mli color.mli		\
 	CEGAR_trans.mli CEGAR_util.mli fair_termination_type.mli	\
 	HORS_parser.mli fpatInterface.mli ref_type.mli encode.mli	\
-	ref_type_gen.mli modular_syntax.mli CEGAR_abst_CPS.mli		\
+	ref_type_gen.mli modular_common.mli CEGAR_abst_CPS.mli		\
 	CEGAR_abst_util.mli
 CMI = $(MLI:.mli=.cmi)
 
@@ -69,22 +70,28 @@ CMO = environment.cmo flag.cmo debug.cmo util.cmo ext.cmo color.cmo	\
 	CEGAR_lexer.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
 	trecs_syntax.cmo trecs_parser.cmo trecs_lexer.cmo		\
 	trecsInterface.cmo horSat_syntax.cmo horSat_parser.cmo		\
-	horSat_lexer.cmo horSatInterface.cmo feasibility.cmo		\
+	horSat_lexer.cmo horSatInterface.cmo horSat2_parser.cmo		\
+	horSat2_lexer.cmo horSat2Interface.cmo feasibility.cmo		\
 	refine.cmo CEGAR_non_term.cmo HORS_syntax.cmo HORS_lexer.cmo	\
 	HORS_parser.cmo horSatPInterface.cmo CEGAR_fair_non_term.cmo	\
 	ModelCheck.cmo CEGAR.cmo writeAnnot.cmo tupling.cmo		\
 	ref_trans.cmo ret_fun.cmo BRA_types.cmo BRA_util.cmo		\
 	BRA_state.cmo BRA_transform.cmo extraClsDepth.cmo		\
-	extraParamInfer.cmo eval.cmo elim_same_arg.cmo main_loop.cmo	\
-	modular_syntax.cmo comp_tree.cmo horn_clause.cmo		\
-	infer_mod.cmo check_mod.cmo modular.cmo termination_loop.cmo	\
-	fair_termination.cmo verify_ref_typ.cmo mochi.cmo
+	extraParamInfer.cmo eval.cmo elim_same_arg.cmo preprocess.cmo	\
+	main_loop.cmo modular_common.cmo comp_tree.cmo			\
+	horn_clause.cmo modular_infer.cmo modular_check.cmo		\
+	modular.cmo termination_loop.cmo fair_termination.cmo		\
+	verify_ref_typ.cmo mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =
 CMXA = $(CMA:.cma=.cmxa)
 
-
+PARSER_LEXER = spec horSat horSat2 trecs CEGAR HORS
+GENERATED = $(addsuffix _parser.ml,$(PARSER_LEXER)) \
+	$(addsuffix _parser.mli,$(PARSER_LEXER)) \
+	$(addsuffix _lexer.ml,$(PARSER_LEXER)) \
+	parser_wrapper.ml
 
 
 $(NAME).byte: $(CMO)
@@ -96,31 +103,6 @@ $(NAME).opt: $(CMX)
 $(NAME).top: $(CMO)
 	$(OCAMLFIND) ocamlmktop $(OCAMLCFLAGS) -linkpkg -o $@ $(CMA) $(CMO)
 
-
-spec_parser.ml spec_parser.mli: spec_parser.mly
-	$(OCAMLYACC) -v $<
-spec_lexer.ml: spec_lexer.mll
-	$(OCAMLLEX) $<
-
-horSat_parser.ml horSat_parser.mli: horSat_parser.mly
-	$(OCAMLYACC) -v $<
-horSat_lexer.ml: horSat_lexer.mll
-	$(OCAMLLEX) $<
-
-trecs_parser.ml trecs_parser.mli: trecs_parser.mly
-	$(OCAMLYACC) -v $<
-trecs_lexer.ml: trecs_lexer.mll
-	$(OCAMLLEX) $<
-
-CEGAR_parser.ml CEGAR_parser.mli: CEGAR_parser.mly
-	$(OCAMLYACC) -v $<
-CEGAR_lexer.ml: CEGAR_lexer.mll
-	$(OCAMLLEX) $<
-
-HORS_parser.ml HORS_parser.mli: HORS_parser.mly
-	$(OCAMLYACC) -v $<
-HORS_lexer.ml: HORS_lexer.mll
-	$(OCAMLLEX) $<
 
 parser_wrapper.ml: parser_wrapper_$(OCAML_MAJOR_VER).ml
 	cp -f $< $@
@@ -137,7 +119,7 @@ $(addsuffix .cmx,$(DEP_FPAT)): $(FPAT_LIB)
 
 
 # Common rules
-.SUFFIXES: .ml .mli .cmo .cmi .cmx
+.SUFFIXES: .ml .mli .cmo .cmi .cmx .mly .mll
 
 .ml.cmo:
 	$(OCAMLFIND) ocamlc $(OCAMLCFLAGS) -c $<
@@ -148,6 +130,14 @@ $(addsuffix .cmx,$(DEP_FPAT)): $(FPAT_LIB)
 .ml.cmx:
 	$(OCAMLFIND) ocamlopt $(OCAMLOPTFLAGS) -c $<
 
+.mly.ml:
+	$(OCAMLYACC) -v $<
+
+.mly.mli:
+	$(OCAMLYACC) -v $<
+
+.mll.ml:
+	$(OCAMLLEX) $<
 
 
 ################################################################################
@@ -163,7 +153,7 @@ endif
 bin: $(NAME).opt
 	@echo make $(MOCHI_BIN_DIR)
 	@mkdir -p $(MOCHI_BIN_DIR)/bin
-	@cp $(CVC3) $(HORSAT) $(TRECS) $(HORSATP) $(NAME).opt $(MOCHI_BIN_DIR)/bin
+	@cp $(CVC3) $(HORSAT) $(HORSAT2) $(TRECS) $(HORSATP) $(NAME).opt $(MOCHI_BIN_DIR)/bin
 	@mkdir -p $(MOCHI_BIN_DIR)/lib
 	@ldd $(NAME).opt | while read line; \
 	do \
@@ -191,13 +181,12 @@ doc:
 
 clean:
 	rm -f *.cm[ioxt] *.cmti *.o *.a *.annot *.output *~
-	rm -f spec_parser.ml spec_parser.mli spec_lexer.ml horSat_parser.ml horSat_parser.mli horSat_lexer.ml trecs_parser.ml trecs_parser.mli trecs_lexer.ml HORS_parser.ml HORS_parser.mli HORS_lexer.ml
-	rm -f parser_wrapper.ml
+	rm -f $(GENERATED)
 	rm -f $(NAME).byte $(NAME).opt $(NAME).top
 	rm -rf $(MOCHI_BIN_DIR)/bin $(MOCHI_BIN_DIR)/lib $(MOCHI_BIN_DIR)/stdlib
 
 clean-test:
-	rm */*.trecs_out */*.hors */*.annot */*.dot */*.pml
+	rm */*.trecs_out */*.horsat_out */*.hors */*.annot */*.dot */*.pml
 
 
 ################################################################################
@@ -205,22 +194,41 @@ clean-test:
 
 TEST = sum mult max mc91 ack a-copy-print hors exc-simple exc-fact lock file sum_intro copy_intro fact_notpos fold_right forall_eq_pair forall_leq isnil iter length mem nth nth0 harmonic fold_left zip map_filter risers search fold_fun_list fact_notpos-e harmonic-e map_filter-e search-e
 LIMIT = 120
-OPTION = -only-result -horsat -limit $(LIMIT)
+OPTION = -only-result -limit $(LIMIT)
 
 test: opt
 	for i in $(TEST); \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt test/$$i.ml $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
+	done
+
+test-web: opt
+	@echo -n "OPTION: "
+	@head -1 option.conf
+	for i in web/src/*ml; \
+	do \
+	  echo VERIFY $$i; \
+	  ./mochi.opt $$i $(OPTION) 2> /dev/null; \
+	  echo; \
+	done
+
+
+test-all: opt
+	for i in test/*.ml; \
+	do \
+	  echo VERIFY $$i; \
+	  ./mochi.opt $$i $(OPTION) 2> /dev/null; \
+	  echo; \
 	done
 
 test-error: opt
 	for i in $(TEST); \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt test_pepm/$$i.ml $(OPTION) 1> /dev/null); \
+	  echo; \
 	done
 
 TEST_FT = benchmark/*.ml
@@ -228,9 +236,9 @@ TEST_FT = benchmark/*.ml
 test-ft: opt
 	for i in hofmann-1.ml hofmann-2.ml koskinen-1.ml koskinen-2.ml koskinen-3-1.ml koskinen-3-2.ml koskinen-3-3.ml koskinen-4.ml lester-1.ml; \
 	do \
-	echo $$i; \
-	(ulimit -t $(LIMIT); ./mochi.opt test_fair_termination/$$i -only-result -limit $(LIMIT) 2> /dev/null || echo VERIFICATION FAILED!!!); \
-	echo; \
+	  echo $$i; \
+	  (ulimit -t $(LIMIT); ./mochi.opt test_fair_termination/$$i -only-result -limit $(LIMIT) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  echo; \
 	done
 
 
@@ -240,11 +248,6 @@ test-ft: opt
 # depend
 
 SRC = $(CMO:.cmo=.ml)
-GENERATED = spec_parser.ml spec_parser.mli spec_lexer.ml	\
-	horSat_parser.ml horSat_parser.mli horSat_lexer.ml	\
-	trecs_parser.ml trecs_parser.mli trecs_lexer.ml		\
-	CEGAR_parser.mli CEGAR_parser.ml CEGAR_lexer.ml	\
-	HORS_parser.ml HORS_parser.mli HORS_lexer.ml
 
 depend: Makefile $(GENERATED) $(MLI) $(SRC)
 	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) > depend

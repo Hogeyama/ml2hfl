@@ -11,7 +11,7 @@ module String = Fpat.Util.String
 module List = Fpat.Util.List
 module Array = Fpat.Util.Array
 
-module Debug = Debug.Make(struct let check () = List.mem "FpatInterface" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let rec conv_typ ty =
   match ty with
@@ -108,7 +108,7 @@ let rec conv_term env t =
 let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
 
 let rec of_typ typ =
-  match Type.elim_tpred typ with
+  match Type.elim_tattr typ with
   | Type.TUnit -> Fpat.Type.mk_unit
   | Type.TInt -> Fpat.Type.mk_int
   | Type.TBool -> Fpat.Type.mk_bool
@@ -132,7 +132,7 @@ let rec of_term t =
         match op with
         | S.Eq ->
             begin
-              match Type.elim_tpred @@ S.typ t1 with
+              match Type.elim_tattr @@ S.typ t1 with
               | Type.TUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
               | Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
               | Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
@@ -414,7 +414,7 @@ let infer_with_ext
       List.map (flip (@) [2]) cexs
     else
       cexs in
-  NORDebug.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
+  Verbose.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
   let old_split_eq = !Fpat.AbsType.split_equalities in
   let old_eap = !Fpat.AbsType.extract_atomic_predicates in
   let old_hccs_solver = Fpat.HCCSSolver.get_dyn () in
@@ -427,7 +427,7 @@ let infer_with_ext
   Fpat.AbsType.split_equalities := old_split_eq;
   Fpat.AbsType.extract_atomic_predicates := old_eap;
   Fpat.HCCSSolver.link_dyn old_hccs_solver;
-  NORDebug.printf "END refinement@,@]";
+  Verbose.printf "END refinement@,@]";
 
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
@@ -528,7 +528,7 @@ let insert_extra_param t =
                       (fun (f', _, recursive) -> recursive && Id.same f' f)
                       rfs
                   in
-                  (NORDebug.printf "rec: %a@." Print.term t1');
+                  (Debug.printf "rec: %a@." Print.term t1');
                   let xxss =
                     List.take (List.length ts) xxss
                   in
@@ -770,3 +770,13 @@ let trans_ext (renv : (int * CEGAR_syntax.env) list) (map : (int * (CEGAR_syntax
   let ext_abstraction = List.map (List.fold_left2 add_pred (Const True) abst_preds) bs in
   let preds_sequence = List.map (conv_pred env) ext_abstraction in
   rand_var, preds_sequence
+
+
+let parse_arg arg =
+  let args = Array.of_list @@ "FPAT" :: split_spaces arg in
+  let usage = "Options for FPAT are:" in
+  try
+    Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore usage
+  with
+  | Arg.Bad s
+  | Arg.Help s -> Format.printf "%s" s; exit 0

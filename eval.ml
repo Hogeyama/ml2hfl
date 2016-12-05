@@ -228,10 +228,14 @@ let rec eval_print fm rands t =
       r
   | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
 
+exception Unsound
+
 let print fm (ce, t) =
   try
     ignore @@ eval_print fm ce t;
+    if !Flag.use_abst then raise Unsound;
     assert false
   with
   | RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@."
   | EventFail -> Format.fprintf fm "@\nFAIL!@."
+  | Unsound -> Format.fprintf fm "@\nThis is not a counterexample@\nDisable abstraction options@."

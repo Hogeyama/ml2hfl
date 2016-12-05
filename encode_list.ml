@@ -7,7 +7,7 @@ open Type
 module RT = Ref_type
 
 
-module Debug = Debug.Make(struct let check () = List.mem "Encode_list" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
 
@@ -69,7 +69,7 @@ let subst_matched_var = subst_matched_var.tr_term
 
 
 let rec get_rtyp_list rtyp typ =
-  match rtyp, elim_tpred typ with
+  match rtyp, elim_tattr typ with
   | RT.Inter(_, rtyps), _ ->
      RT.Inter(typ, List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Union(_, rtyps), _ ->
@@ -140,7 +140,7 @@ let abst_list_typ post typ =
   | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
   | TApp(TList, [typ]) ->
       let l = Id.new_var ~name:"l" TInt in
-      TTuple[l; Id.new_var @@ TFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
+      TTuple[l; Id.new_var @@ pureTFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
   | _ -> abst_list.tr2_typ_rec post typ
 
 let rec get_match_bind_cond t p =
@@ -153,7 +153,7 @@ let rec get_match_bind_cond t p =
   | PConst {desc=Const Unit} -> [], true_term
   | PConst t' when t'.desc = randint_unit_term.desc -> [], randbool_unit_term (* just for -base-to-int *)
   | PConst t' -> [], make_eq t t'
-  | PNil -> [], make_eq (make_fst t) (make_int 0)
+  | PNil -> [], make_leq (make_fst t) (make_int 0)
   | PCons _ ->
       let rec decomp = function
         | {pat_desc=PCons(p1,p2)} ->
@@ -176,6 +176,11 @@ let rec get_match_bind_cond t p =
       List.rev_flatten binds,
       List.fold_left make_and true_term conds
   | PRecord fields -> assert false
+  | POr(p1, p2) ->
+      let bind1,cond1 = get_match_bind_cond t p1 in
+      let bind2,cond2 = get_match_bind_cond t p2 in
+      let cond2' = List.fold_right2 (fun (x1,_) (x2,_) -> subst_var x2 x1) bind1 bind2 cond2 in
+      bind1, make_or cond1 cond2'
   | _ -> Format.printf "get_match_bind_cond: %a@." Print.pattern p; assert false
 
 let print_bind fm bind =
@@ -200,7 +205,9 @@ let abst_list_term post t =
       t
   | App({desc=Const(RandValue(typ,false))}, t2) ->
       assert (t2 = [unit_term]);
-      make_rand typ
+      make_randvalue_unit @@ abst_list.tr2_typ post t.typ(*
+      make_rand t.typ
+ *)
   | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
@@ -285,7 +292,7 @@ let trans t =
 
 
 let make_list_eq typ =
-  let f = Id.new_var ~name:"list_eq" @@ TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TFun(Id.new_var ~name:"xs" @@ make_tlist typ, TBool)) in
+  let f = Id.new_var ~name:"Primitive.list_eq" @@ pureTFun(Id.new_var ~name:"xs" @@ make_tlist typ, pureTFun(Id.new_var ~name:"xs" @@ make_tlist typ, TBool)) in
   let xs = Id.new_var ~name:"xs'" @@ make_tlist typ in
   let ys = Id.new_var ~name:"ys'" @@ make_tlist typ in
   let t_eq =
@@ -314,28 +321,35 @@ let make_list_eq typ =
 
 (* TODO: support other types *)
 let inst_list_eq = make_trans2 ()
-let inst_list_eq_term f t =
+let inst_list_eq_term map t =
   match t.desc with
   | BinOp(Eq, t1, t2) ->
-      let t1' = inst_list_eq.tr2_term f t1 in
-      let t2' = inst_list_eq.tr2_term f t2 in
+      let t1' = inst_list_eq.tr2_term map t1 in
+      let t2' = inst_list_eq.tr2_term map t2 in
       begin
         match t1.typ with
-        | TApp(TList, [TInt]) -> make_app (make_var f) [t1'; t2']
+        | TApp(TList, [TInt|TData _ as typ]) when List.mem_assoc typ map ->
+            if !Flag.abst_list_eq then
+              randbool_unit_term
+            else
+              make_app (make_var @@ List.assoc typ map) [t1'; t2']
         | TApp(TList, _) ->
             Format.printf "%a@." Print.typ t1.typ;
             unsupported "inst_list_eq"
-        | _ -> inst_list_eq.tr2_term_rec f t
+        | _ -> inst_list_eq.tr2_term_rec map t
       end
-  | _ -> inst_list_eq.tr2_term_rec f t
+  | _ -> inst_list_eq.tr2_term_rec map t
 let () = inst_list_eq.tr2_term <- inst_list_eq_term
 let inst_list_eq t =
-  let (f,_,_ as def) = make_list_eq TInt in
-  let t' = inst_list_eq.tr2_term f t in
-  if Id.mem f @@ get_fv t' then
-    make_letrec [def] t'
-  else
+  let defs = List.map (Pair.add_right make_list_eq) [TInt; TData "string"] in(* TODO *)
+  let map = List.map (Pair.map_snd Triple.fst) defs in
+  let t' = inst_list_eq.tr2_term map t in
+  let fv = get_fv t' in
+  let defs' = List.filter (fun (_,(f,_,_)) -> Id.mem f fv) defs in
+  if !Flag.abst_list_eq then
     t'
+  else
+    make_letrecs (List.map snd defs') t'
 
 
 
@@ -343,8 +357,24 @@ let inst_list_eq t =
 
 
 
-
-
+let is_long_literal t =
+  match decomp_list t with
+  | None -> false
+  | Some ts -> List.length ts >= !Flag.abst_list_literal (*&& List.for_all has_no_effect ts*)
+let abst_list_literal = make_trans ()
+let abst_list_literal_term t =
+  match t.desc with
+  | Cons _ when is_long_literal t ->
+      Flag.use_abst := true;
+      let ts = List.take !Flag.abst_list_literal @@ Option.get @@ decomp_list t in
+      List.fold_right make_cons ts @@ make_randvalue_unit t.typ
+  | _ -> abst_list_literal.tr_term_rec t
+let () = abst_list_literal.tr_term <- abst_list_literal_term
+let abst_list_literal t =
+  if !Flag.abst_list_literal >= 0 then
+    abst_list_literal.tr_term t
+  else
+    t
 
 
 
@@ -483,14 +513,20 @@ let trans t =
   |> subst_matched_var
   |@> pr "subst_matched_var"
   |@> Type_check.check -$- t.typ
-  |> Trans.remove_top_por
-  |@> pr "remove_top_por"
+  |*> Trans.remove_top_por
+  |*@> pr "remove_top_por"
   |@> Type_check.check -$- t.typ
+  |> abst_list_literal
+  |@> pr "abst_list_literal"
   |> tr
   |@> Type_check.check -$- t.typ -| fst
   |@> pr "trans" -| fst
+  |> Pair.map_fst Trans.inst_randval
+  |@> pr "inst_randval" -| fst
   |> Pair.map_fst Trans.eta_tuple
   |@> pr "eta_tuple" -| fst
+  |*> Pair.map_fst Trans.simplify_if_cond
+  |*@> pr "simplify_if" -| fst
   |@> Type_check.check -$- t.typ -| fst
 
 let trans_typ typ =

@@ -1,4 +1,5 @@
 let horsat = ref Environment.horsat
+let horsat2 = ref Environment.horsat2
 let horsatp = ref Environment.horsatp
 let omega = ref Environment.omega
 let trecs = ref Environment.trecs
@@ -8,7 +9,9 @@ let filename = ref ""
 let spec_file = ref ""
 
 type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination
-type model_checker = TRecS | HorSat | HorSatP
+type model_checker = TRecS | HorSat | HorSat2 | HorSatP
+
+let use_abst = ref false
 
 (* TRecS option *)
 let trecs_param1 = ref 1000
@@ -17,13 +20,14 @@ let trecs_param2 = ref 10
 (* debug option *)
 let check_fun_arg_typ = false
 let check_typ = true
+let modules : string list ref = ref []
 let debug_module : string list ref = ref []
 let debug_abst = ref false
 let print_ref_typ_debug () = List.mem "Ref_type" !debug_module
 
 (* method option *)
 let mode = ref Reachability
-let mc = ref TRecS
+let mc = ref (if Environment.horsat2_available then HorSat2 else if Environment.horsat_available then HorSat else TRecS)
 let input_cegar = ref false
 let nondet = ref false (* eager evaluation for branch *)
 let use_prefix_trace = false
@@ -48,6 +52,8 @@ let bool_init_empty = ref false
 let insert_param_funarg = ref false
 let split_assert = ref false
 let encode_list_opt = ref false
+let abst_list_eq = ref true
+let abst_list_literal = ref (-1)
 let tupling = ref false
 let elim_same_arg = ref false
 let base_to_int = ref false
@@ -82,6 +88,7 @@ let print_fun_arg_typ = ref true
 let print_rd_constraints = ref true
 let print_abst_typ = ref false
 let print_as_ocaml = ref false
+let print_only_if_id = ref false
 
 let web = ref false
 
