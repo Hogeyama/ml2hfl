@@ -1,6 +1,6 @@
 #!/bin/bash
 
-TEST="$(echo test_esop2017/{sum_add,harmonic,fold_div,risers,various,colwheel,queen,queen_simple,soli,spir,various-e,queen-simple-e}.ml)"
+TEST=test_esop2017/*.ml
 
 if [ "$1" = "" ];then
     LIMIT=60s
@@ -12,7 +12,7 @@ cat COMMIT
 echo Timeout $LIMIT
 
 #OPTION=" -only-result -ignore-conf -modular -horsat2 -base-to-int -fpat '-wp-max 2'"
-OPTION="-base-to-int -abst-list-literal 1 -modular -fpat '-wp-max 2' -no-exparam -bool-init-empty -only-result -ignore-conf"
+OPTION="-fpat '-wp-max 2' -no-exparam -bool-init-empty -only-result -color -base-to-int -abst-list-literal 2 -modular -ignore-conf"
 for i in $TEST
 do
     echo

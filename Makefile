@@ -205,10 +205,12 @@ test: opt
 	done
 
 test-web: opt
+	@echo -n "OPTION: "
+	@head -1 option.conf
 	for i in web/src/*ml; \
 	do \
 	  echo VERIFY $$i; \
-	  (ulimit -t $(LIMIT); ./mochi.opt $$i $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  ./mochi.opt $$i $(OPTION) 2> /dev/null; \
 	  echo; \
 	done
 
@@ -217,7 +219,7 @@ test-all: opt
 	for i in test/*.ml; \
 	do \
 	  echo VERIFY $$i; \
-	  (ulimit -t $(LIMIT); ./mochi.opt $$i $(OPTION) 2> /dev/null || echo VERIFICATION FAILED!!!); \
+	  ./mochi.opt $$i $(OPTION) 2> /dev/null; \
 	  echo; \
 	done
 
