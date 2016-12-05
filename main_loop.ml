@@ -171,16 +171,10 @@ let insert_extra_param t =
                   (List.length !Fpat.RefTypInfer.params) Print.term t' Print.term' t';
   t'
 
-let use_gch = ref true (* Ad-hoc fix for avoiding FPat's bug *)
-
 let improve_precision e =
   match e with
   | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
       Flag.insert_param_funarg := true
-  | Fpat.RefTypInfer.FailedToRefineTypes when !use_gch -> (* Ad-hoc fix for avoiding FPat's bug *)
-      use_gch := false;
-      let args = [|"FPAT"; "-hccs"; "it"|] in
-      Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore ""
   | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
       if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
       if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";

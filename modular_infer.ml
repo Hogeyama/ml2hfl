@@ -10,7 +10,7 @@ module CT = Comp_tree
 module HC = Horn_clause
 
 (* How to instansiate predicates which do not occur in constraints *)
-type mode = ToTrue | ToFalse | ToStronger
+type mode = ToTrue | ToFalse | ToNatural | ToStronger
 
 
 type constr =
@@ -679,9 +679,9 @@ let solve_option hcs =
   try Some (solve hcs) with
   | Fpat.HCCSSolver.Unknown -> None
 
+let any_var = Id.make (-1) "any" TBool
 
-
-let rec apply_sol mode sol x vars pos tmp =
+let rec apply_sol mode sol x vars tmp =
   let dbg = 0=0 in
   let r =
   match tmp with
@@ -709,30 +709,15 @@ let rec apply_sol mode sol x vars pos tmp =
             if dbg then Debug.printf "  xs: %a@." (List.print Id.print) xs;
             if dbg then Debug.printf "  ts': %a@." (List.print Print.term) ts';
             List.fold_right2 subst xs ts' t
-          with Not_found ->
-            match mode with
-            | ToTrue -> true_term
-            | ToFalse -> false_term
-            | ToStronger -> make_bool @@ not pos
+          with Not_found -> make_var any_var
         in
         Ref_type.Base(base, x', p)
   | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
   | Fun(y,typ1,typ2) ->
-      Ref_type.Fun(y, apply_sol mode sol (Some y) vars (not pos) typ1, apply_sol mode sol None (y::vars) pos typ2)
+      Ref_type.Fun(y, apply_sol mode sol (Some y) vars typ1, apply_sol mode sol None (y::vars) typ2)
   | Inter(styp, []) ->
-      let r =
-      if pos then
-        Ref_type.make_strongest styp
-      else
-        Ref_type.make_weakest styp
-      in
-      if dbg then Debug.printf "  AS TOP: %a ==> %a@." Print.typ styp Ref_type.print r;
-      begin
-        match mode with
-        | ToTrue -> Ref_type.of_simple styp
-        | _ -> r
-      end
-  | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol mode sol x vars pos) tmps)
+      Ref_type.inter styp []
+  | Inter(styp, tmps) -> Ref_type.Inter(styp, List.map (apply_sol mode sol x vars) tmps)
   | _ ->
       Format.eprintf "%a@." print_template tmp;
       assert false
@@ -740,7 +725,7 @@ let rec apply_sol mode sol x vars pos tmp =
   if dbg then Debug.printf "AS tmp: %a@." print_template tmp;
   if dbg then Debug.printf "AS r: %a@." Ref_type.print r;
   r
-let apply_sol mode sol pos tmp = apply_sol mode sol None [] pos tmp
+let apply_sol mode sol tmp = apply_sol mode sol None [] tmp
 
 
 
@@ -1063,6 +1048,36 @@ let widen t =
     |@> Debug.printf "widen OUTPUT: %a@." Print.term
 
 
+let rec instantiate_any mode pos typ =
+  let open Ref_type in
+  match typ with
+  | Base(base,y,p) ->
+      let p' =
+        let t =
+          match mode with
+          | ToTrue -> true_term
+          | ToFalse -> false_term
+          | ToNatural -> true_term
+          | ToStronger -> make_bool (not pos)
+        in
+        Term_util.subst any_var t p
+      in
+      Base(base, y, p')
+  | Fun(y,typ1,typ2) -> Fun(y, instantiate_any mode (not pos) typ1, instantiate_any mode pos typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ instantiate_any mode pos) xtyps)
+  | Inter(typ, typs) -> Inter(typ, List.map (instantiate_any mode pos) typs)
+  | Union(typ, typs) -> Union(typ, List.map (instantiate_any mode pos) typs)
+  | ExtArg(y,typ1,typ2) -> unsupported "instantiate_any"
+  | List(y,p_len,z,p_i,typ) -> unsupported "instantiate_any"
+  | Exn(typ1, typ2) ->
+      let mode' =
+        if mode = ToNatural then
+          ToStronger
+        else
+          mode
+      in
+      Exn(instantiate_any mode pos typ1, instantiate_any mode' pos typ2)
+
 let infer mode prog f typ (ce_set:ce_set) =
   let ce_set =
     if 0=1 then
@@ -1093,7 +1108,7 @@ let infer mode prog f typ (ce_set:ce_set) =
     |> HC.of_pair_list
     |@> Debug.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!Debug.check&> check_arity
-    |*> HC.inline need
+    |> HC.inline need
     |@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates =
@@ -1111,7 +1126,7 @@ let infer mode prog f typ (ce_set:ce_set) =
       let env' =
         let aux ((g,_),tmp) =
           if Id.mem g top_funs then
-            Some (g, apply_sol mode sol true tmp)
+            Some (g, apply_sol mode sol tmp)
           else
             None
         in
@@ -1126,6 +1141,7 @@ let infer mode prog f typ (ce_set:ce_set) =
             Debug.printf "  typ: %a@." Ref_type.print typ;
             Debug.printf "  typ': %a@." Ref_type.print typ';
             make_get_rtyp (fun y -> assert (Id.same y x); typ') x
+            |> instantiate_any mode true
           in
           Debug.printf "  typ_: %a@." Ref_type.print typ_;
           x', typ_
@@ -1140,7 +1156,7 @@ let infer mode prog f typ (ce_set:ce_set) =
         |> Ref_type.Env.of_list
       in
       let env'' =
-        if false then
+        if true then
           env''
         else
           let env'' = Ref_type.Env.to_list env'' in
@@ -1167,17 +1183,17 @@ let infer mode prog f typ (ce_set:ce_set) =
 
 let use_ToFalse = false
 
+(* ToWeaker => ToTrue => ToStronger => ToFalse *)
 let next_mode_aux mode =
   match mode with
+  | ToNatural -> Some ToTrue
   | ToTrue -> Some ToStronger
+  | ToStronger when use_ToFalse -> Some ToFalse
+  | ToStronger -> None
   | ToFalse -> None
-  | ToStronger ->
-      if use_ToFalse then
-        Some ToFalse
-      else
-        None
 let next_mode mode = Option.get @@ next_mode_aux mode
 
 let init_mode = ToTrue
+let init_mode = ToNatural
 
 let is_last_mode mode = None = next_mode_aux mode

@@ -292,14 +292,20 @@ let rec from_term
             let then_ce_env,else_ce_env =  List.partition (function (_,b)::_ -> b | _ -> assert false) ce_env1 in
             let child1 =
               if then_ce_env = [] then
-                []
+                if is_fail t3 then
+                  [aux true ce_env2]
+                else
+                  []
               else
                 let then_ce_env' = List.map List.tl then_ce_env in
                 [aux true (then_ce_env'@ce_env2)]
             in
             let child2 =
               if else_ce_env = [] then
-                []
+                if then_ce_env = [] && is_fail t3 then
+                  [aux false []]
+                else
+                  []
               else
                 let else_ce_env' = List.map List.tl else_ce_env in
                 [aux false (else_ce_env'@ce_env2)]
