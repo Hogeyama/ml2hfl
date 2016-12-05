@@ -1,3 +1,4 @@
+
 open Util
 
 exception TimeOut
@@ -226,17 +227,6 @@ let main in_channel =
       Main_loop.run orig [] ~spec parsed
 
 
-let parse_fpat_arg arg =
-  let args = Array.of_list @@ "FPAT" :: split_spaces arg in
-  let usage = "Options for FPAT are:" in
-  try
-    Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore usage
-  with
-  | Arg.Bad s
-  | Arg.Help s -> Format.printf "%s" s; exit 0
-
-
-
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
@@ -326,7 +316,7 @@ let rec arg_spec () =
      "-horsatp-bin", Arg.Set_string Flag.horsatp,
                      Format.sprintf "<cmd>  Change horsatp command to <cmd> (default: \"%s\")" !Flag.horsatp;
      (* predicate discovery *)
-     "-fpat", Arg.String parse_fpat_arg, "<option>  Pass <option> to FPAT";
+     "-fpat", Arg.String FpatInterface.parse_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";

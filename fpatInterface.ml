@@ -768,3 +768,13 @@ let trans_ext (renv : (int * CEGAR_syntax.env) list) (map : (int * (CEGAR_syntax
   let ext_abstraction = List.map (List.fold_left2 add_pred (Const True) abst_preds) bs in
   let preds_sequence = List.map (conv_pred env) ext_abstraction in
   rand_var, preds_sequence
+
+
+let parse_arg arg =
+  let args = Array.of_list @@ "FPAT" :: split_spaces arg in
+  let usage = "Options for FPAT are:" in
+  try
+    Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore usage
+  with
+  | Arg.Bad s
+  | Arg.Help s -> Format.printf "%s" s; exit 0
