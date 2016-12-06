@@ -559,40 +559,52 @@ and from_case {c_lhs;c_guard;c_rhs} =
 let from_exception_declaration env = List.map (from_type_expr env)
 
 
+let rec from_module_binding mb =
+  match mb.mb_expr.mod_desc with
+  | Tmod_structure struc ->
+      from_structure struc
+  | _ -> unsupported "module"
+
+and from_str_item str_item =
+  match str_item.str_desc with
+  | Tstr_eval(e,_) ->
+      let t = from_expression e in
+      [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
+  | Tstr_value(rec_flag,pats) ->
+      let flag = from_rec_flag rec_flag in
+      let aux {vb_pat;vb_expr} =
+        let p = from_pattern vb_pat in
+        let e = from_expression vb_expr in
+        match p.pat_desc, flag with
+        | PVar x, _ -> x, e
+        | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
+        | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
+      in
+      [Decl_let(flag, List.map aux pats)]
+  | Tstr_primitive _ -> []
+  | Tstr_type _ -> []
+  | Tstr_typext _ -> unsupported "typext"
+  | Tstr_exception _ -> []
+  | Tstr_module mb ->
+      from_module_binding mb
+  | Tstr_recmodule _
+  | Tstr_modtype _ ->
+      unsupported "module"
+  | Tstr_open _ -> []
+  | Tstr_class _
+  | Tstr_class_type _ -> unsupported "class"
+  | Tstr_include _ -> unsupported "include"
+  | Tstr_attribute _ -> []
+
+and from_structure struc =
+      Format.printf "%a@." Printtyped.implementation struc;
+  List.rev_map_flatten from_str_item struc.str_items
+
 let from_top_level_phrase (env,defs) = function
   | Parsetree.Ptop_dir _ -> unsupported "toplevel_directive"
   | Parsetree.Ptop_def struc ->
       let struc',_,env' = Typemod.type_structure env struc Location.none in
-      let aux2 str_item =
-        match str_item.str_desc with
-        | Tstr_eval(e,_) ->
-            let t = from_expression e in
-            [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
-        | Tstr_value(rec_flag,pats) ->
-            let flag = from_rec_flag rec_flag in
-            let aux {vb_pat;vb_expr} =
-              let p = from_pattern vb_pat in
-              let e = from_expression vb_expr in
-              match p.pat_desc, flag with
-              | PVar x, _ -> x, e
-              | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
-              | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
-            in
-            [Decl_let(flag, List.map aux pats)]
-        | Tstr_primitive _ -> []
-        | Tstr_type _ -> []
-        | Tstr_typext _ -> unsupported "typext"
-        | Tstr_exception _ -> []
-        | Tstr_module _
-        | Tstr_recmodule _
-        | Tstr_modtype _ -> unsupported "module"
-        | Tstr_open _ -> []
-        | Tstr_class _
-        | Tstr_class_type _ -> unsupported "class"
-        | Tstr_include _ -> unsupported "include"
-        | Tstr_attribute _ -> []
-      in
-      env', List.rev_map_flatten aux2 struc'.str_items @@@ defs
+      env', from_structure struc' @@@ defs
 
 
 let from_use_file ast =
