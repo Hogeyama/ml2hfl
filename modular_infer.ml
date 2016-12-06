@@ -1121,7 +1121,12 @@ let infer mode prog f typ (ce_set:ce_set) =
   | Some sol ->
       Debug.printf "TEMPLATES of TOP_FUNS: @[%a@.@." print_tmp_env @@ List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env') templates;
       Debug.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
-      let top_funs = List.Set.inter ~eq:Id.eq (get_fv @@ snd @@ Id.assoc f prog.fun_def_env) (List.map fst prog.fun_def_env) in
+      let top_funs =
+        prog.fun_def_env
+        |> List.map fst
+        |> List.filter (Id.mem_assoc -$- fun_env')
+        |> List.filter_out (Id.same f)
+      in
       Debug.printf "TOP_FUNS[%a]: %a@.@." Id.print f (List.print Id.print) top_funs;
       let env' =
         let aux ((g,_),tmp) =
@@ -1164,29 +1169,15 @@ let infer mode prog f typ (ce_set:ce_set) =
           let env'' = List.flatten_map (fun (x,typ) -> List.map (fun typ' -> x, typ') @@ Ref_type.split_inter typ) env'' in
           Ref_type.Env.of_list env''
       in
-      let env_unused =
-        let aux f =
-          if Id.mem_assoc f env' then
-            None
-          else
-            match mode with
-            | ToTrue -> Some (f, Ref_type.of_simple @@ Id.typ f)
-            | _ -> Some (f, Ref_type.make_strongest @@ Id.typ f)
-        in
-        Ref_type.Env.of_list @@ List.filter_map aux top_funs
-      in
-      Debug.printf "env_unused: %a@.@." Ref_type.Env.print env_unused;
-      Debug.printf "env'': %a@.@." Ref_type.Env.print env'';
-      let env''' = Ref_type.Env.merge env_unused env'' in
-      Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env''';
-      Some env'''
+      Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env'';
+      Some env''
 
 let use_ToFalse = false
 
-(* ToWeaker => ToTrue => ToStronger => ToFalse *)
+(* ToNatural => (*ToTrue*) => ToStronger => ToFalse *)
 let next_mode_aux mode =
   match mode with
-  | ToNatural -> Some ToTrue
+  | ToNatural -> Some ToStronger
   | ToTrue -> Some ToStronger
   | ToStronger when use_ToFalse -> Some ToFalse
   | ToStronger -> None

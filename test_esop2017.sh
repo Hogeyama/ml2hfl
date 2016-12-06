@@ -12,7 +12,7 @@ cat COMMIT
 echo Timeout $LIMIT
 
 #OPTION=" -only-result -ignore-conf -modular -horsat2 -base-to-int -fpat '-wp-max 2'"
-OPTION="-fpat '-wp-max 2' -no-exparam -bool-init-empty -only-result -color -base-to-int -abst-list-literal 2 -modular -ignore-conf"
+OPTION="-fpat '-wp-max 2' -no-exparam -bool-init-empty -only-result -base-to-int -abst-list-literal 2 -modular -ignore-conf"
 for i in $TEST
 do
     echo

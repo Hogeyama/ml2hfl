@@ -149,8 +149,12 @@ and eval
         (ans, ce, paths)
       else
         let val_env' = (f, ans)::val_env in
-        eval val_env' ce t2
-        |> append_paths paths
+        begin
+          try
+            eval val_env' ce t2
+            |> append_paths paths
+          with Exception(ans', ce', paths') -> raise (Exception(ans', ce', merge_paths paths paths'))
+        end
   | Let([f,xs,t1], t2) ->
       assert (xs <> []);
       let rec val_env' = (f, Closure(val_env', make_funs xs t1))::val_env in
@@ -199,7 +203,7 @@ and eval
       unsupported "Modular_check.eval"
   in
   if dbg then
-    Debug.printf"@]@\nRETURN: %a@\n@]" Print.term (value_of @@ Triple.fst r);
+    Debug.printf"@]@\nRETURN: %a, %a@\n@]" Print.term (value_of @@ Triple.fst r) print_ce (Triple.trd r);
   r
 
 type result =
