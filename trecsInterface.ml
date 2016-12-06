@@ -119,8 +119,7 @@ let rec verifyFile filename =
   | TS.Unsafe trace ->
       Unsafe (trans_ce trace)
   | TS.TimeOut ->
-      if not !Flag.only_result
-      then Format.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
+      Verbose.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
       Flag.trecs_param1 := 2 * p1;
       verifyFile filename
 

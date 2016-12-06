@@ -251,6 +251,6 @@ test-ft: opt
 SRC = $(CMO:.cmo=.ml)
 
 depend: Makefile $(GENERATED) $(MLI) $(SRC)
-	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) > depend
+	$(OCAMLFIND) ocamldep -package $(PACKAGES) $(MLI) $(SRC) $(GENERATED) > depend
 
 -include depend

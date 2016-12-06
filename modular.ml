@@ -62,7 +62,7 @@ let rec main_loop history c prog cmp f typ depth ce_set =
   else
     let space = String.make (8*List.length history) ' ' in
     Debug.printf "%sTIME: %.3f@." space !!get_time;
-    let pr f = Debug.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
+    let pr f = MVerbose.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
     pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fun (f,_) -> is_external_id f) env;
     if false then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
@@ -107,10 +107,10 @@ let rec main_loop history c prog cmp f typ depth ce_set =
               else if not @@ List.Set.eq ce_set3 ce_set2 then
                 refine_loop Modular_infer.init_mode neg_env' ce_set3
               else if not @@ Modular_infer.is_last_mode infer_mode then
-                (Debug.printf "%schange infer_mode@." space;
+                (MVerbose.printf "%schange infer_mode@." space;
                  refine_loop (Modular_infer.next_mode infer_mode) neg_env' ce_set3)
               else if true then
-                (Debug.printf "%sdepth := %d@." space (depth+1);
+                (MVerbose.printf "%sdepth := %d@." space (depth+1);
                  main_loop history (c+1) prog cmp f typ (depth+1) ce_set3)
               else
                 raise NoProgress
@@ -184,6 +184,7 @@ let main _ spec parsed =
     {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
   in
   let r, env, neg_env, ce_set = main_loop prog cmp main typ in
+  Main_loop.print_result_delimiter ();
   match r with
   | `Typable ->
       report_safe env;

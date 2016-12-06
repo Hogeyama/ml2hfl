@@ -80,6 +80,7 @@ let print_trecs_output = false
 let print_trace = false
 let print_interpolant = true
 let print_progress = ref true
+let print_modular_progress = ref true
 let print_constraints = true
 let print_lower_bound = true
 let print_refine_log = true
@@ -107,7 +108,6 @@ let args = ref [""] (* command-line options *)
 
 
 (* mode option *)
-let only_result = ref false
 let exp = ref false
 let exp2 = ref false
 let ignore_conf = ref false

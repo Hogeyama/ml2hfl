@@ -117,7 +117,9 @@ let rec print fm = function
       Format.fprintf fm "Bot"
   | Base(base,x,p) ->
       Format.fprintf fm "{%a:%a | %a}" Id.print x print_base base Print.term p
-  | Fun(x, typ1, Exn(typ2, typ3)) when not @@ is_bottom typ3 ->
+  | Fun(x, typ1, Exn(typ2, typ3)) when is_bottom typ3 ->
+      print fm (Fun(x, typ1, typ2))
+  | Fun(x, typ1, Exn(typ2, typ3)) ->
       let arg =
         if occur x typ2 || occur x typ3 then
           Format.asprintf "%a:" Id.print x

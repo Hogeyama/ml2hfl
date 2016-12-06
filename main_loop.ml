@@ -31,7 +31,7 @@ let preprocess make_pps ?(fun_list=None) t spec =
   let prog,map,_,make_get_rtyp_trans = CEGAR_trans.trans_prog (*~spec:abst_cegar_env*) t in
   let abst_cegar_env =
     Spec.get_abst_cegar_env spec prog
-    |@(not !Flag.only_result)&> Spec.print_abst_cegar_env Format.std_formatter
+    |@> Verbose.printf "%a@." Spec.print_abst_cegar_env
   in
   let prog = CEGAR_trans.add_env abst_cegar_env prog in
   let make_get_rtyp =
@@ -148,8 +148,8 @@ let rec run_cegar prog =
       Flag.insert_param_funarg := true;
       run_cegar prog
   | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
-      if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
-      if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
+      Verbose.printf "@.REFINEMENT FAILED!@.";
+      Verbose.printf "Restart with relative_complete := true@.@.";
       Flag.relative_complete := true;
       run_cegar prog
   | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
@@ -176,8 +176,8 @@ let improve_precision e =
   | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
       Flag.insert_param_funarg := true
   | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
-      if not !Flag.only_result then Format.printf "@.REFINEMENT FAILED!@.";
-      if not !Flag.only_result then Format.printf "Restart with relative_complete := true@.@.";
+      Verbose.printf "@.REFINEMENT FAILED!@.";
+      Verbose.printf "Restart with relative_complete := true@.@.";
       Flag.relative_complete := true
   | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
       Fpat.RefTypInfer.params := [];
@@ -236,7 +236,7 @@ let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
     else
       let ref_env =
         Spec.get_ref_env spec parsed
-        |@ not !Flag.only_result &> Spec.print_ref_env Format.std_formatter
+        |@> Verbose.printf "%a@." Spec.print_ref_env
         |> Ref_type.Env.of_list
       in
       None, Preprocess.trans_and_print (Trans.ref_to_assert ref_env) "ref_to_assert" Fun.id Fun.id parsed
@@ -244,11 +244,12 @@ let verify ?(make_pps=None) ?(fun_list=None) exparam_sol spec parsed =
   loop make_pps ~fun_list exparam_sol ~spec parsed set_target, main, set_target
 
 let print_result_delimiter () =
-  Format.printf "@.%s@.@." @@ String.make !!Format.get_margin '='
+  if not !!is_only_result then
+    Format.printf "@.%s@.@." @@ String.make !!Format.get_margin '='
 
 let run ?make_pps ?fun_list orig exparam_sol ?(spec=Spec.init) parsed =
   let (result, make_get_rtyp, set_target'), main, set_target = verify ~make_pps ~fun_list exparam_sol spec parsed in
-  if !!Verbose.check then print_result_delimiter ();
+  print_result_delimiter ();
   match result with
   | CEGAR.Safe env ->
       Flag.result := "Safe";

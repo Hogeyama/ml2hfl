@@ -1,7 +1,15 @@
 exception Fatal of string
 exception Unsupported of string
 
-module Verbose = Debug.Make(struct let check () = not @@ !Flag.only_result end)
+module Verbose = Debug.Make(struct let check () = !Flag.print_progress end)
+module MVerbose = Debug.Make(struct let check () = !Flag.print_modular_progress end)
+
+let set_only_result () =
+  Flag.print_progress := false;
+  Flag.print_modular_progress := false
+let is_only_result () =
+  not !Flag.print_progress &&
+  not !Flag.print_modular_progress
 
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)

@@ -212,7 +212,7 @@ let main in_channel =
     Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
     if !Flag.randint_refinement_log
     then output_randint_refinement_log input_string;
-    let spec = Spec.read Spec_parser.spec Spec_lexer.token |@ not !Flag.only_result &> Spec.print Format.std_formatter in
+    let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
     if !Flag.split_assert then
       main_split_assert orig spec parsed
     else if !Flag.modular then
@@ -235,11 +235,7 @@ let rec arg_spec () =
     ["-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
      "<dir>  Add <dir> to the list of include directories";
      "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
-     "-only-result",
-       Arg.Unit (fun () ->
-                 Flag.only_result := true;
-                 Flag.print_progress := false),
-       " Show only result";
+     "-only-result", Arg.Unit set_only_result, " Show only result";
      "-debug",
       Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module;
                               List.iter (fun m -> if not @@ List.mem m !Flag.modules then (Format.printf "Module \"%s\" not found" m; exit 1)) !Flag.debug_module),
@@ -250,12 +246,12 @@ let rec arg_spec () =
      "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
      "-exp",
        Arg.Unit (fun () ->
-                 Flag.only_result := true;
+                 set_only_result ();
                  Flag.exp := true),
        " For experiments";
      "-exp2",
        Arg.Unit (fun () ->
-                 Flag.only_result := true;
+                 set_only_result ();
                  Flag.exp2 := true),
        " Experiment mode (output mochi_exp.csv)";
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
@@ -282,7 +278,12 @@ let rec arg_spec () =
      "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
      "-abst-list-literal", Arg.Set_int Flag.abst_list_literal, " Abstract long list literals";
      (* verifier *)
-     "-modular", Arg.Set Flag.modular, " Modular verification";
+     "-modular",
+       Arg.Unit (fun () ->
+                 Flag.modular := true;
+                 Flag.print_modular_progress := !Flag.print_progress;
+                 Flag.print_progress := false),
+       " Modular verification";
      "-verify-ref-typ", Arg.Set Flag.verify_ref_typ, " Verify functions have given refinement types";
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
      "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
@@ -475,7 +476,7 @@ let () =
       fpat_init2 ();
       Sys.set_signal Sys.sigalrm (Sys.Signal_handle timeout_handler);
       Color.init ();
-      if not !Flag.only_result then print_env true;
+      if not !!is_only_result then print_env true;
       init_after_parse_arg ();
       check_env ();
       if main cin then decr Flag.cegar_loop;

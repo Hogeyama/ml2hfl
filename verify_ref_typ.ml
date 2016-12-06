@@ -51,7 +51,7 @@ let main orig spec parsed =
     s, Main_loop.run orig [] ~spec t
   in
   Spec.get_ref_env spec parsed
-  |@(not !Flag.only_result)&> Spec.print_ref_env Format.std_formatter
+  |@> Verbose.printf "%a@." Spec.print_ref_env
   |> divide spec parsed
   |> List.map verify
   |@> Format.printf "RESULT: %a@." (List.print @@ Pair.print Format.pp_print_string Format.pp_print_bool)
