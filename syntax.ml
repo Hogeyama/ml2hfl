@@ -40,7 +40,7 @@ and desc =
   | Fun of id * term
   | App of term * term list
   | If of term * term * term
-  | Let of rec_flag * (id * id list * term) list * term
+  | Let of (id * id list * term) list * term
   | BinOp of binop * term * term
   | Not of term
   | Event of string * bool
@@ -69,8 +69,6 @@ and info =
   | InfoId of id
   | InfoTerm of term
   | InfoIdTerm of id * term
-
-and rec_flag = Nonrecursive | Recursive
 
 
 and type_kind =
@@ -211,10 +209,10 @@ let trans_desc trans = function
   | Fun(y, t) -> Fun(trans.tr_var y, trans.tr_term t)
   | App(t1, ts) -> App(trans.tr_term t1, List.map trans.tr_term ts)
   | If(t1, t2, t3) -> If(trans.tr_term t1, trans.tr_term t2, trans.tr_term t3)
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let bindings' = List.map (Triple.map trans.tr_var (List.map trans.tr_var) trans.tr_term) bindings in
       let t2' = trans.tr_term t2 in
-      Let(flag, bindings', t2')
+      Let(bindings', t2')
   | BinOp(op, t1, t2) -> BinOp(op, trans.tr_term t1, trans.tr_term t2)
   | Not t1 -> Not (trans.tr_term t1)
   | Event(s,b) -> Event(s,b)
@@ -370,9 +368,9 @@ let trans2_gen_desc tr env = function
   | Fun(y, t) -> Fun(tr.tr2_var env y, tr.tr2_term env t)
   | App(t1, ts) -> App(tr.tr2_term env t1, List.map (tr.tr2_term env) ts)
   | If(t1, t2, t3) -> If(tr.tr2_term env t1, tr.tr2_term env t2, tr.tr2_term env t3)
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) = tr.tr2_var env f, List.map (tr.tr2_var env) xs, tr.tr2_term env t in
-      Let(flag, List.map aux bindings, tr.tr2_term env t2)
+      Let(List.map aux bindings, tr.tr2_term env t2)
   | BinOp(op, t1, t2) -> BinOp(op, tr.tr2_term env t1, tr.tr2_term env t2)
   | Not t1 -> Not (tr.tr2_term env t1)
   | Event(s,b) -> Event(s,b)
@@ -524,7 +522,7 @@ let col_desc col = function
   | Fun(y, t) -> col.col_app (col.col_var y) (col.col_term t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) (col.col_term t1) ts
   | If(t1, t2, t3) -> col.col_app (col.col_term t1) @@ col.col_app (col.col_term t2) (col.col_term t3)
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux acc (f,xs,t) =
         col.col_app acc @@
         col.col_app (col.col_var f) @@
@@ -689,7 +687,7 @@ let col2_desc col env = function
   | Fun(y, t) -> col.col2_app (col.col2_var env y) (col.col2_term env t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) (col.col2_term env t1) ts
   | If(t1, t2, t3) -> col.col2_app (col.col2_term env t1) @@ col.col2_app (col.col2_term env t2) (col.col2_term env t3)
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux acc (f,xs,t) =
         col.col2_app acc @@
         col.col2_app (col.col2_var env f) @@
@@ -942,7 +940,7 @@ let tr_col2_desc tc env = function
       let acc2,t2' = tc.tr_col2_term env t2 in
       let acc3,t3' = tc.tr_col2_term env t3 in
       tc.tr_col2_app acc1 @@ tc.tr_col2_app acc2 acc3, If(t1',t2',t3')
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux env (f,xs,t) =
         let acc1,f' = tc.tr_col2_var env f in
         let acc1',xs' = tr_col2_list tc tc.tr_col2_var ~init:acc1 env xs in
@@ -951,7 +949,7 @@ let tr_col2_desc tc env = function
       in
       let acc1,bindings' = tr_col2_list tc aux env bindings in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, Let(flag,bindings',t2')
+      tc.tr_col2_app acc1 acc2, Let(bindings',t2')
   | BinOp(op, t1, t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
@@ -1243,7 +1241,7 @@ let fold_tr_desc fld env = function
       let env'',t2' = fld.fold_tr_term env' t2 in
       let env''',t3' = fld.fold_tr_term env'' t3 in
       env''', If(t1',t2',t3')
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux env (f,xs,t) =
         let env',f' = fld.fold_tr_var env f in
         let env'',xs' = fold_tr_list fld.fold_tr_var env' xs in
@@ -1252,7 +1250,7 @@ let fold_tr_desc fld env = function
       in
       let env',bindings' = fold_tr_list aux env bindings in
       let env'',t2' = fld.fold_tr_term env' t2 in
-      env'', Let(flag,bindings',t2')
+      env'', Let(bindings',t2')
   | BinOp(op, t1, t2) ->
       let env',t1' = fld.fold_tr_term env t1 in
       let env'',t2' = fld.fold_tr_term env' t2 in
@@ -1402,11 +1400,10 @@ let get_fv_typ vars typ = []
 let get_fv_term vars t =
   match t.desc with
   | Var x -> if Id.mem x vars then [] else [x]
-  | Let(flag, bindings, t2) ->
-      let vars_with_fun = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-      let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
+  | Let(bindings, t2) ->
+      let vars' = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
       let aux fv (_,xs,t) = get_fv.col2_term (xs@@@vars') t @@@ fv in
-      let fv_t2 = get_fv.col2_term vars_with_fun t2 in
+      let fv_t2 = get_fv.col2_term vars' t2 in
       List.fold_left aux fv_t2 bindings
   | Fun(x,t) -> get_fv.col2_term (x::vars) t
   | Match(t,pats) ->
@@ -1446,3 +1443,11 @@ let coeff_suffix = "_COEF"
 let make_extra_coeff ?(name="c") ?(typ=TInt) () = Id.new_var ~name:(name^coeff_suffix) TInt
 let is_extra_coeff_name s = Str.string_match (Str.regexp @@ Format.sprintf ".*%s.*" coeff_suffix) s 0
 let is_extra_coeff = is_extra_coeff_name -| Id.name
+
+
+
+let is_non_rec bindings =
+  match bindings with
+  | [] -> assert false
+  | [f, _, t] -> not @@ Id.mem f @@ get_fv t
+  | _ -> false

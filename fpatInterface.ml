@@ -584,14 +584,11 @@ let insert_extra_param t =
          Syntax.App(t1', ts'')
       | Syntax.If(t1, t2, t3) ->
          Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
-      | Syntax.Let(flag, bindings, t2) ->
+      | Syntax.Let(bindings, t2) ->
          let bvs' =
            bvs @
-             (if flag = Syntax.Nonrecursive then
-                []
-              else
-                List.map
-                  Fpat.Triple.fst bindings)
+             (List.map
+                Fpat.Triple.fst bindings)
          in
          let aux' (f,xs,t) =
            let f' = trans_id f in
@@ -630,7 +627,7 @@ let insert_extra_param t =
               List.map2
                 (fun xs x -> x, xs)
                 xss xs',
-              flag <> Syntax.Nonrecursive) :: rfs
+              true) :: rfs
            in
            (* mutual recursion and binding partial applied functions are not supported
               let rfs' = (if flag = Flag.Nonrecursive then [] else List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
@@ -639,7 +636,7 @@ let insert_extra_param t =
          in
          let bindings' = List.map aux' bindings in
          Syntax.Let
-           (flag, bindings',
+           (bindings',
             aux rfs
                 (bvs @
                    List.map

@@ -15,7 +15,7 @@ let alpha_rename = make_trans ()
 
 let alpha_rename_term t =
   match t.desc with
-  | Let(flag, bindings, t) ->
+  | Let(bindings, t) ->
       let bindings' =
         let aux (f,xs,t) =
           let f' = Id.new_var_id f in
@@ -33,7 +33,7 @@ let alpha_rename_term t =
       let sbst t = List.fold_left2 (fun t' (f,_,_) (f',_,_) -> subst_var f f' t') t bindings bindings' in
       let bindings'' = List.map (Triple.map_trd sbst) bindings' in
       let t' = sbst @@ alpha_rename.tr_term t in
-      make_let_f flag bindings'' t'
+      make_let bindings'' t'
   | Fun(x, t) ->
       let x' = Id.new_var_id x in
       make_fun x' @@ subst_var x x' @@ alpha_rename.tr_term t
@@ -278,7 +278,7 @@ let inst_randval t =
     let cmp = Compare.topological ~eq:Id.eq ~dom:(List.map Triple.fst defs) edges in
     List.sort ~cmp:(Compare.on ~cmp Triple.fst) defs
   in
-  make_letrecs defs' t'
+  make_lets defs' t'
 
 
 
@@ -291,12 +291,12 @@ let merge_let_fun = make_trans ()
 
 let merge_let_fun_desc desc =
   match desc with
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) =
         let ys,t' = decomp_funs t in
         f, xs@ys, merge_let_fun.tr_term t'
       in
-      Let(flag, List.map aux bindings, merge_let_fun.tr_term t2)
+      Let(List.map aux bindings, merge_let_fun.tr_term t2)
   | _ -> merge_let_fun.tr_desc_rec desc
 
 let () = merge_let_fun.tr_desc <- merge_let_fun_desc
@@ -380,7 +380,7 @@ let part_eval t =
           begin
             try
               let xs, t1 = List.assoc x apply in
-              Let(Nonrecursive, [x, xs, t1], make_var x)
+              Let([x, xs, t1], make_var x)
             with Not_found -> Var x
           end
       | Fun(x, t) -> Fun(x, aux apply t)
@@ -390,7 +390,7 @@ let part_eval t =
             match ts with
             | [] ->
                 let xs, t1 = List.assoc f apply in
-                Let(Nonrecursive, [f, xs, t1], (make_var f))
+                Let([f, xs, t1], (make_var f))
             | [t] -> t.desc
             | t::ts' -> App(t, ts')
           else
@@ -420,17 +420,15 @@ let part_eval t =
           if t2 = t3
           then t2.desc
           else If(aux apply t1, aux apply t2, aux apply t3)
-      | Let(flag, [f, xs, t1], t2) ->
+      | Let([f, xs, t1], t2) ->
           if is_apply xs t1.desc
           then (aux ((f,(xs,t1))::apply) (aux apply t2)).desc
           else
             begin
-              match flag, is_alias xs t1.desc  with
-              | Nonrecursive, None -> Let(flag, [f, xs, aux apply t1], aux apply t2)
-              | Nonrecursive, Some x -> (subst_var f x @@ aux apply t2).desc
-              | Recursive, Some x when not @@ List.mem f @@ get_fv t1 ->
+              match is_alias xs t1.desc  with
+              | Some x when not @@ List.mem f @@ get_fv t1 ->
                   (subst_var f x @@ aux apply t2).desc
-              | Recursive, _ -> Let(flag, [f, xs, aux apply t1], aux apply t2)
+              | _ -> Let([f, xs, aux apply t1], aux apply t2)
             end
       | Let _ -> assert false
       | BinOp(op, t1, t2) -> BinOp(op, aux apply t1, aux apply t2)
@@ -469,9 +467,9 @@ let trans_let = make_trans ()
 
 let trans_let_term t =
   match t.desc with
-  | Let(Nonrecursive, [f, [], t1], t2) ->
+  | Let([f, [], t1], t2) ->
       make_app (make_fun f @@ trans_let.tr_term t2) [trans_let.tr_term t1]
-  | Let(Nonrecursive, bindings, t2) when List.exists (fun (_,xs,_) -> xs=[]) bindings -> assert false
+  | Let(bindings, t2) when List.exists (fun (_,xs,_) -> xs=[]) bindings -> assert false
   | _ -> trans_let.tr_term_rec t
 
 let () = trans_let.tr_term <- trans_let_term
@@ -485,7 +483,7 @@ let propagate_typ_arg = make_trans ()
 
 let propagate_typ_arg_desc desc =
   match desc with
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) =
         let xs' =
           let ys = List.take (List.length xs) (get_args @@ Id.typ f) in
@@ -501,7 +499,7 @@ let propagate_typ_arg_desc desc =
       in
       let bindings' = List.map aux bindings in
       let t2' = propagate_typ_arg.tr_term t2 in
-      Let(flag, bindings', t2')
+      Let(bindings', t2')
   | _ -> propagate_typ_arg.tr_desc_rec desc
 
 let () = propagate_typ_arg.tr_desc <- propagate_typ_arg_desc
@@ -517,7 +515,7 @@ let replace_typ = make_trans2 ()
 
 let replace_typ_desc env desc =
   match desc with
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) =
         let f' = replace_typ_var env f in
         if not @@ Type.can_unify (Id.typ f) (Id.typ f') then
@@ -531,19 +529,18 @@ let replace_typ_desc env desc =
           let ys = List.take (List.length xs) (get_args @@ Id.typ f') in
           List.map2 (fun x y -> Id.set_typ x @@ Id.typ y) xs ys
         in
-        let t' = replace_typ.tr2_term env t in
-        let t'' =
-          if flag = Nonrecursive
-          then t'
-          else subst_var f f' t'
+        let t' =
+          t
+          |> replace_typ.tr2_term env
+          |> subst_var f f'
+          |> List.fold_right2 subst_var xs xs'
         in
-        let t''' = List.fold_right2 subst_var xs xs' t'' in
-        f', xs', t'''
+        f', xs', t'
       in
       let bindings' = List.map aux bindings in
       let t2' = replace_typ.tr2_term env t2 in
       let t2'' = List.fold_left2 (fun t (f,_,_) (f',_,_) -> subst_var f f' t) t2' bindings bindings' in
-      Let(flag, bindings', t2'')
+      Let(bindings', t2'')
   | _ -> replace_typ.tr2_desc_rec env desc
 
 let () = replace_typ.tr2_desc <- replace_typ_desc
@@ -822,11 +819,11 @@ let elim_fun_term fun_name t =
   | Fun(y, t1) ->
       let f = Id.new_var ~name:fun_name t.typ in
       make_let [f, [y], elim_fun.tr2_term fun_name t1] @@ make_var f
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) = f, xs, elim_fun.tr2_term ("f_" ^ Id.name f) t in
       let bindings' = List.map aux bindings in
       let t2' = elim_fun.tr2_term fun_name t2 in
-      make_let_f flag bindings' t2'
+      make_let bindings' t2'
   | _ -> elim_fun.tr2_term_rec fun_name t
 
 let () = elim_fun.tr2_term <- elim_fun_term
@@ -919,38 +916,17 @@ let rec inlined_f inlined fs t =
              let ts' = List.map (inlined_f inlined fs) ts in
              App(t1', ts'))
     | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
-    | Let(flag, bindings, t2) ->
+    | Let(bindings, t2) ->
         let aux (f,xs,t) =
           (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
-          let rec lift t =
-            match t.desc with
-            | Fun(x, t') ->
-                let xs, t' = lift t' in
-                x::xs, t'
-            | _ -> [], t
-          in
-          if flag = Nonrecursive then
-            if List.exists (fun f' -> Id.same f' f) inlined then
-              let t' = inlined_f inlined fs t in
-              let xs', t' = lift t' in
-              (*let _ = Format.printf "inlined: %a, %a, %a@." print_id f (Fpat.Util.List.pr print_id ",") xs pp_print_term t' in*)
-              `R(f, xs @ xs', t')
-            else if xs = [] && (match t.desc with Proj(_,{desc=Var _}) -> true | _ -> false) then
-              (*let _ = Format.printf "fst/snd: %a@." print_id f in*)
-              `R(f, xs, t)
-            else
-              let t' = inlined_f inlined fs t in
-              let xs', t' = lift t' in
-              `L(f, xs @ xs', t')
-          else
-            `L(f, xs, inlined_f inlined fs t)
+          `L(f, xs, inlined_f inlined fs t)
         in
         let bindings', fs' = Fpat.Util.List.partition_map aux bindings in
         let t2' = inlined_f inlined (fs @ fs') t2 in
         if bindings' = [] then
           t2'.desc
         else
-          Let(flag, bindings', t2')
+          Let(bindings', t2')
     | BinOp(op, t1, t2) -> BinOp(op, inlined_f inlined fs t1, inlined_f inlined fs t2)
     | Not t1 -> Not (inlined_f inlined fs t1)
     | Event(s,b) -> Event(s,b)
@@ -982,7 +958,7 @@ let lift_fst_snd = make_trans2 ()
 let lift_fst_snd_term fs t =
   match t.desc with
   | Fun(y, t1) -> make_fun y @@ lift_fst_snd.tr2_term fs t1(* ommit the case where y is a pair *)
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let bindings' =
         List.map
           (fun (f,xs,t) ->
@@ -1010,7 +986,7 @@ let lift_fst_snd_term fs t =
           (* ommit the case where f is a pair *))
           bindings
       in
-      make_let_f flag bindings' @@ lift_fst_snd.tr2_term fs t2
+      make_let bindings' @@ lift_fst_snd.tr2_term fs t2
   | Proj(0, {desc=Var x}) when tuple_num (Id.typ x) = Some 2 ->
       (try
           let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.same x' x) fs in
@@ -1109,7 +1085,7 @@ let insert_param_funarg_term t =
           else ts'
         in
         App(insert_param_funarg.tr_term t1, ts'')
-    | Let(flag, defs, t) ->
+    | Let(defs, t) ->
         let aux (f,xs,t) =
           let xs' = List.map insert_param_funarg.tr_var xs in
           let xs'' =
@@ -1119,7 +1095,7 @@ let insert_param_funarg_term t =
           in
           insert_param_funarg.tr_var f, xs'', insert_param_funarg.tr_term t
         in
-        Let(flag, List.map aux defs, insert_param_funarg.tr_term t)
+        Let(List.map aux defs, insert_param_funarg.tr_term t)
     | _ -> insert_param_funarg.tr_desc_rec t.desc
   in
   {desc; typ; attr=t.attr}
@@ -1149,7 +1125,7 @@ let rec search_fail path t =
       in
       aux [] 0 (t1::ts)
   | If(t1, t2, t3) -> search_fail (1::path) t1 @ search_fail (2::path) t2 @ search_fail (3::path) t3
-  | Let(_, defs, t) ->
+  | Let(defs, t) ->
       let rec aux acc i ts =
         match ts with
           [] -> acc
@@ -1210,10 +1186,10 @@ let rec screen_fail path target t =
     | If(t1, t2, t3) ->
         let aux i t = screen_fail (i::path) target t in
         If(aux 1 t1, aux 2 t2, aux 3 t3)
-    | Let(flag, defs, t) ->
+    | Let(defs, t) ->
         let aux i t = screen_fail (i::path) target t in
         let aux_def i (f,xs,t) = f, xs, aux i t in
-        Let(flag, List.mapi aux_def defs, aux (List.length defs) t)
+        Let(List.mapi aux_def defs, aux (List.length defs) t)
     | BinOp(op, t1, t2) ->
         let aux i t = screen_fail (i::path) target t in
         BinOp(op, aux 1 t1, aux 2 t2)
@@ -1259,9 +1235,9 @@ let screen_fail target t = screen_fail [] target t
 let remove_defs = make_trans2 ()
 let remove_defs_desc xs desc =
   match desc with
-  | Let(flag, bindings, t) ->
+  | Let(bindings, t) ->
       let bindings' = List.filter_out (fun (f,_,_) -> Id.mem f xs) bindings in
-      (make_let_f flag bindings' @@ remove_defs.tr2_term xs t).desc
+      (make_let bindings' @@ remove_defs.tr2_term xs t).desc
   | _ -> remove_defs.tr2_desc_rec xs desc
 let () = remove_defs.tr2_desc <- remove_defs_desc
 let remove_defs = remove_defs.tr2_term
@@ -1305,7 +1281,7 @@ let make_ext_fun_def f =
   in
   let (env,defs),t = define_randvalue ([],[]) typ' in
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
-  f, xs', make_letrec defs' t'
+  f, xs', make_let defs' t'
 
 let make_ext_funs ?(fvs=[]) env t =
   let dbg = 0=1 in
@@ -1338,14 +1314,14 @@ let make_ext_funs ?(fvs=[]) env t =
   in
   let defs = List.map snd (genv @ cenv) in
   if dbg then Format.printf "MEF t'': %a@." Print.term' t'';
-  make_letrecs defs @@ make_lets defs2 @@ make_lets defs1 t''
+  make_lets defs @@ make_lets defs2 @@ make_lets defs1 t''
 
 
 let assoc_typ = make_col2 [] (@@@)
 
 let assoc_typ_desc f desc =
   match desc with
-  | Let(flag, bindings, t1) ->
+  | Let(bindings, t1) ->
       let aux (g,_,t) =
         let typs1 = if Id.same f g then [Id.typ g] else [] in
         typs1 @@@ assoc_typ.col2_term f t
@@ -1369,11 +1345,11 @@ let let2fun = make_trans ()
 
 let let2fun_desc desc =
   match desc with
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) = let2fun.tr_var f, [], List.fold_right make_fun xs (let2fun.tr_term t) in
       let bindings' = List.map aux bindings in
       let t2' = let2fun.tr_term t2 in
-      Let(flag, bindings', t2')
+      Let(bindings', t2')
   | _ -> let2fun.tr_desc_rec desc
 
 let () = let2fun.tr_desc <- let2fun_desc
@@ -1386,14 +1362,14 @@ let fun2let = make_trans ()
 
 let fun2let_desc desc =
   match desc with
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) =
         let ys,t' = decomp_funs t in
         fun2let.tr_var f, xs@ys, fun2let.tr_term t'
       in
       let bindings' = List.map aux bindings in
       let t2' = fun2let.tr_term t2 in
-      Let(flag, bindings', t2')
+      Let(bindings', t2')
   | _ -> fun2let.tr_desc_rec desc
 
 let () = fun2let.tr_desc <- fun2let_desc
@@ -1405,13 +1381,13 @@ let inline_no_effect = make_trans ()
 
 let inline_no_effect_desc desc =
   match desc with
-  | Let(Nonrecursive, [x,[],t], {desc=Var y}) when x = y ->
+  | Let([x,[],t], {desc=Var y}) when Id.same x y && not @@ Id.mem x @@ get_fv t ->
       (inline_no_effect.tr_term t).desc
-  | Let(Nonrecursive, [x,[],t], t2) when Id.mem x (get_fv t2) && has_no_effect t ->
+  | Let([x,[],t], t2) when Id.mem x (get_fv t2) && has_no_effect t && not @@ Id.mem x @@ get_fv t ->
       let t' = inline_no_effect.tr_term t in
       let t2' = inline_no_effect.tr_term t2 in
       (subst x t' t2').desc
-  | Let(flag, bindings, t) ->
+  | Let(bindings, t) ->
       let aux (f,xs,t) =
         inline_no_effect.tr_var f,
         List.map inline_no_effect.tr_var xs,
@@ -1419,7 +1395,7 @@ let inline_no_effect_desc desc =
       in
       let bindings' = List.map aux bindings in
       let t' = inline_no_effect.tr_term t in
-      Let(flag, bindings', t')
+      Let(bindings', t')
   | _ -> inline_no_effect.tr_desc_rec desc
 
 let () = inline_no_effect.tr_desc <- inline_no_effect_desc
@@ -1465,7 +1441,7 @@ let rec diff_terms t1 t2 =
       diff_terms t1' t2'
   | If(t11,t12,t13), If(t21,t22,t23) ->
       diff_terms t11 t21 @ diff_terms t12 t22 @ diff_terms t13 t23
-  | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) -> [t1,t2]
+  | Let(bindings1,t1), Let(bindings2,t2) -> [t1,t2]
   | BinOp(op1,t11,t12), BinOp(op2,t21,t22) ->
       if op1 = op2
       then diff_terms t11 t21 @ diff_terms t12 t22
@@ -1497,10 +1473,10 @@ let subst_let_xy = make_trans ()
 let subst_let_xy_desc desc =
   let desc' = subst_let_xy.tr_desc_rec desc in
   match desc with
-  | Let(Nonrecursive, bindings, t) ->
+  | Let(bindings, t) when is_non_rec bindings ->
       let bindings',t' =
         match desc' with
-        | Let(Nonrecursive, bindings', t') -> bindings', t'
+        | Let(bindings', t') when is_non_rec bindings' -> bindings', t'
         | _ -> assert false
       in
       let sbst bind t =
@@ -1530,14 +1506,14 @@ let flatten_let = make_trans ()
 
 let flatten_let_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],t1], t2) ->
+  | Let([x,[],t1], t2) when is_non_rec [x,[],t1] ->
       let t1' = flatten_let.tr_term t1 in
       let t2' = flatten_let.tr_term t2 in
       begin match t1'.desc with
       | Let _ ->
           let fbindings,t12 = decomp_lets t1' in
-          let fbindings' = fbindings@[Nonrecursive,[x,[],t12]] in
-          List.fold_right (Fun.uncurry make_let_f) fbindings' t2'
+          let fbindings' = fbindings@[[x,[],t12]] in
+          List.fold_right make_let fbindings' t2'
       | _ ->
           make_let [x,[],t1'] t2'
       end
@@ -1592,11 +1568,11 @@ let normalize_let_term is_atom t =
       let t2'  = normalize_let.tr2_term is_atom t2 in
       let t3'  = normalize_let.tr2_term is_atom t3 in
       post @@ add_attrs t.attr @@ make_if t1' t2' t3'
-  | Let(flag,bindings,t1) ->
+  | Let(bindings,t1) ->
       let aux (f,xs,t) = f, xs, normalize_let.tr2_term is_atom t in
       let bindings' = List.map aux bindings in
       let t1' = normalize_let.tr2_term is_atom t1 in
-      make_let_f flag bindings' t1'
+      make_let bindings' t1'
   | Raise t1 ->
      let t1',post = normalize_let_aux is_atom t1 in
      post @@ make_raise t1' t.typ
@@ -1611,7 +1587,7 @@ let inline_var = make_trans ()
 
 let inline_var_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],({desc=Var _} as t1)], t2) ->
+  | Let([x,[],({desc=Var _} as t1)], t2) ->
       subst x t1 @@ inline_var.tr_term t2
   | _ -> inline_var.tr_term_rec t
 
@@ -1630,7 +1606,7 @@ let inline_var_const = make_trans ()
 
 let inline_var_const_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],t1], t2) when is_const t1 ->
+  | Let([x,[],t1], t2) when is_const t1 ->
       subst x t1 @@ inline_var_const.tr_term t2
   | _ -> inline_var_const.tr_term_rec t
 
@@ -1693,7 +1669,7 @@ let elim_unused_let_term (leave,cbv) t =
   let desc' =
     let flag = List.mem ADoNotInline t.attr in
     match t.desc with
-    | Let(Nonrecursive, bindings, t) when not flag ->
+    | Let(bindings, t) when not flag ->
         let t' = elim_unused_let.tr2_term (leave,cbv) t in
         let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
         let fv = get_fv t' in
@@ -1703,7 +1679,7 @@ let elim_unused_let_term (leave,cbv) t =
         in
         let bindings'' = List.filter used bindings' in
         (make_let bindings'' t').desc
-    | Let(Recursive, bindings, t) when not flag ->
+    | Let(bindings, t) when not flag ->
         let t' = elim_unused_let.tr2_term (leave,cbv) t in
         let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
         let fv = get_fv t' in
@@ -1712,7 +1688,7 @@ let elim_unused_let_term (leave,cbv) t =
           cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
         in
         if List.exists used bindings'
-        then (make_letrec bindings' t').desc
+        then (make_let bindings' t').desc
         else t'.desc
     | _ -> elim_unused_let.tr2_desc_rec (leave,cbv) t.desc
   in
@@ -1735,7 +1711,7 @@ let subst_with_rename_desc (x,t) desc =
   match desc with
   | Var y when Id.same x y -> (alpha_rename t).desc
   | Fun(y, t1) when Id.same x y -> desc
-  | Let(Nonrecursive, bindings, t2) ->
+  | Let(bindings, t2) when is_non_rec bindings ->
       let aux (f,xs,t1) =
         subst_with_rename.tr2_var (x,t) f,
         List.map (subst_with_rename.tr2_var (x,t)) xs,
@@ -1746,9 +1722,9 @@ let subst_with_rename_desc (x,t) desc =
         then t2
         else subst_with_rename.tr2_term (x,t) t2
       in
-      Let(Nonrecursive, bindings', t2')
-  | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> desc
-  | Let(Recursive, bindings, t2) ->
+      Let(bindings', t2')
+  | Let(bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> desc
+  | Let(bindings, t2) ->
       let aux (f,xs,t1) =
         subst_with_rename.tr2_var (x,t) f,
         List.map (subst_with_rename.tr2_var (x,t)) xs,
@@ -1756,7 +1732,7 @@ let subst_with_rename_desc (x,t) desc =
       in
       let bindings' = List.map aux bindings in
       let t2' = subst_with_rename.tr2_term (x,t) t2 in
-      Let(Recursive, bindings', t2')
+      Let(bindings', t2')
   | Match(t1,pats) ->
       let aux (pat,cond,t1) =
         let xs = get_vars_pat pat in
@@ -1793,7 +1769,7 @@ let inline_simple_exp = make_trans ()
 
 let inline_simple_exp_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],t1],t2) when is_simple_aexp t1 || is_simple_bexp t1 ->
+  | Let([x,[],t1],t2) when is_simple_aexp t1 || is_simple_bexp t1 ->
       inline_simple_exp.tr_term @@ subst x t1 t2
   | _ -> inline_simple_exp.tr_term_rec t
 
@@ -1878,13 +1854,13 @@ let expand_let_val = make_trans ()
 
 let expand_let_val_term t =
   match t.desc with
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let bindings' = List.map (Triple.map_trd expand_let_val.tr_term) bindings in
       let t2' = expand_let_val.tr_term t2 in
       let bindings1,bindings2 = List.partition (fun (_,xs,_) -> xs = []) bindings' in
       let t2'' = List.fold_left (fun t (f,_,t') -> subst_with_rename f t' t) t2' bindings1 in
       let attr = if bindings2 = [] then t.attr @ t2''.attr else t.attr in
-      {(make_let_f flag bindings2 t2'') with attr}
+      {(make_let bindings2 t2'') with attr}
   | _ -> expand_let_val.tr_term_rec t
 
 let () = expand_let_val.tr_term <- expand_let_val_term
@@ -1940,7 +1916,7 @@ let beta_reduce = make_trans ()
 
 let beta_reduce_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],{desc=Var y}], t1) ->
+  | Let([x,[],{desc=Var y}], t1) ->
       beta_reduce.tr_term @@ subst_with_rename ~check:true x (make_var y) t1
   | App(t1, []) ->
       beta_reduce.tr_term t1
@@ -1968,8 +1944,8 @@ let replace_bottom_def = make_trans ()
 
 let replace_bottom_def_desc desc =
   match desc with
-  | Let(flag, [f,xs,t1], t2) when is_bottom_def flag f xs t1 ->
-      Let(flag, [f,xs,make_bottom t1.typ], replace_bottom_def.tr_term t2)
+  | Let([f,xs,t1], t2) when is_bottom_def f xs t1 ->
+      Let([f,xs,make_bottom t1.typ], replace_bottom_def.tr_term t2)
   | _ -> replace_bottom_def.tr_desc_rec desc
 
 let () = replace_bottom_def.tr_desc <- replace_bottom_def_desc
@@ -2043,7 +2019,7 @@ let rec is_in_redex x t =
       let rs = List.map (is_in_redex x) ts in
       List.fold_right (fun r acc -> match acc with None -> None | Some b -> Option.map ((||) b) r) rs (Some false)
   | Proj(i,t1) -> is_in_redex x t1
-  | Let(flag, bindings, t1) when List.for_all ((<>) [] -| Triple.snd) bindings ->
+  | Let(bindings, t1) when List.for_all ((<>) [] -| Triple.snd) bindings ->
       is_in_redex x t1
   | _ -> None
 
@@ -2055,7 +2031,7 @@ let inline_next_redex = make_trans ()
 
 let inline_next_redex_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],t1], t2) ->
+  | Let([x,[],t1], t2) when is_non_rec [x,[],t1] ->
       let t1' = inline_next_redex.tr_term t1 in
       let t2' = inline_next_redex.tr_term t2 in
       if can_inline x t2'
@@ -2071,7 +2047,7 @@ let beta_var_tuple = make_trans2 ()
 
 let beta_var_tuple_term env t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t2) ->
+  | Let([x,[],({desc=Tuple ts} as t1)], t2) when is_non_rec [x,[],t1] ->
       let xs = List.map (function {desc=Var x} -> Some x | _ -> None) ts in
       if List.for_all Option.is_some xs
       then
@@ -2089,7 +2065,7 @@ let beta_no_effect_tuple = make_trans2 ()
 
 let beta_no_effect_tuple_term env t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t2) ->
+  | Let([x,[],({desc=Tuple ts} as t1)], t2) when is_non_rec [x,[],t1] ->
       if List.for_all has_no_effect ts
       then make_let [x,[],t1] @@ beta_no_effect_tuple.tr2_term ((x,ts)::env) t2
       else beta_no_effect_tuple.tr2_term_rec env t
@@ -2104,7 +2080,7 @@ let reduce_bottom = make_trans ()
 let reduce_bottom_term t =
   let t' = reduce_bottom.tr_term_rec t in
   match t'.desc with
-  | Let(_, [x,[],{desc=Bottom}], _) -> make_bottom t.typ
+  | Let([x,[],{desc=Bottom}], _) -> make_bottom t.typ
   | _ -> t'
 let () = reduce_bottom.tr_term <- reduce_bottom_term
 let reduce_bottom = reduce_bottom.tr_term
@@ -2115,7 +2091,7 @@ let merge_bound_var_typ = make_trans2 ()
 
 let merge_bound_var_typ_desc map desc =
   match desc with
-  | Let(flag,bindings,t) ->
+  | Let(bindings,t) ->
       let aux (f,xs,t) =
         let f' =
           try
@@ -2128,7 +2104,7 @@ let merge_bound_var_typ_desc map desc =
       in
       let bindings' = List.map aux bindings in
       let t' = merge_bound_var_typ.tr2_term map t in
-      Let(flag, bindings', t')
+      Let(bindings', t')
   | _ -> merge_bound_var_typ.tr2_desc_rec map desc
 
 let () = merge_bound_var_typ.tr2_desc <- merge_bound_var_typ_desc
@@ -2143,7 +2119,7 @@ let copy_poly_funs = make_fold_tr ()
 
 let copy_poly_funs_desc map desc =
   match desc with
-  | Let(flag, [f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
+  | Let([f, xs, t1], t2) when is_poly_typ (Id.typ f) ->
       let tvars = get_tvars (Id.typ f) in
       assert (tvars <> []);
       let map2,t2' = copy_poly_funs.fold_tr_term map t2 in
@@ -2154,25 +2130,21 @@ let copy_poly_funs_desc map desc =
       Debug.printf "@.";
       if map_rename = [] then
         let map1,t1' = copy_poly_funs.fold_tr_term map2 t1 in
-        (f,f)::map1, (inst_tvar_tint @@ make_let_f flag [f, xs, t1'] t2').desc
+        (f,f)::map1, (inst_tvar_tint @@ make_let [f, xs, t1'] t2').desc
       else
         let aux (map',t) (_,f') =
           let tvar_map = List.map (fun v -> v, ref None) tvars in
           Type.unify (rename_tvar.tr2_typ tvar_map @@ Id.typ f) (Id.typ f');
           let xs = List.map (rename_tvar.tr2_var tvar_map) xs in
           let t1 = rename_tvar.tr2_term tvar_map t1 in
-          let t1 =
-            match flag with
-            | Nonrecursive -> t1
-            | Recursive -> subst_var f f' t1
-          in
+          let t1 = subst_var f f' t1 in
           let map'', t1 = copy_poly_funs.fold_tr_term map' t1 in
           let t1 = alpha_rename t1 in
-          (f,f')::map'', make_let_f flag [f', xs, t1] t
+          (f,f')::map'', make_let [f', xs, t1] t
         in
         let map',t = List.fold_left aux (map2,t2''') map_rename in
         map', t.desc
-  | Let(flag, defs, t) ->
+  | Let(defs, t) ->
       if List.for_all (not -| is_poly_typ -| Id.typ -| Triple.fst) defs then
         let map',defs' =
           let aux (map,defs) (f,xs,t) =
@@ -2182,7 +2154,7 @@ let copy_poly_funs_desc map desc =
           List.fold_left aux (map,[]) defs
         in
         let map'',t' = copy_poly_funs.fold_tr_term map' t in
-        List.map (fun (f,_,_) -> f,f) defs @ map'', Let(flag, defs', t')
+        List.map (fun (f,_,_) -> f,f) defs @ map'', Let(defs', t')
       else
         fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations."
   | _ -> copy_poly_funs.fold_tr_desc_rec map desc
@@ -2210,15 +2182,15 @@ let copy_poly_funs t =
 
 let rec map_main f t =
   match t.desc with
-  | Let(flag, bindings, t2) ->
-      let desc = Let(flag, bindings, map_main f t2) in
+  | Let(bindings, t2) ->
+      let desc = Let(bindings, map_main f t2) in
       {t with desc}
   | _ -> f t
 
 let rec replace_main ?(force=false) main t =
   match t.desc with
-  | Let(flag, bindings, t2) ->
-      make_let_f flag bindings @@ replace_main ~force main t2
+  | Let(bindings, t2) ->
+      make_let bindings @@ replace_main ~force main t2
   | _ ->
       assert (force || t.desc = Const Unit);
       main
@@ -2230,7 +2202,7 @@ let set_main t =
     let u = Id.new_var ~name:"main" t.typ in
     None, make_let [u, [], t] unit_term
   else
-    let f = Triple.fst @@ List.last @@ snd @@ List.last defs in
+    let f = Triple.fst @@ List.last @@ List.last defs in
     let xs = get_args (Id.typ f) in
     let t' =
       if xs = [] && Id.typ f = TUnit then
@@ -2273,7 +2245,7 @@ let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
         end;
       let genv',cenv',t_typ = Ref_type_gen.generate_check typ_exn ~make_fail [] [] f typ in
       let defs = List.map snd (genv' @ cenv') in
-      make_letrecs defs @@ make_assert t_typ
+      make_lets defs @@ make_assert t_typ
     in
     List.fold_right (make_seq -| aux) ref_env unit_term
   in
@@ -2313,10 +2285,10 @@ let beta_reduce_trivial_term env t =
           else raise Not_found
         with Not_found -> beta_reduce_trivial.tr2_term_rec env t
       end
-  | Let(flag, bindings, t1) ->
+  | Let(bindings, t1) ->
       let env' = List.filter_map (fun (f,xs,t) -> if get_fv t = [] then Some (f,(List.length xs,t)) else None) bindings @ env in
       let bindings' = List.map (Triple.map_trd @@ beta_reduce_trivial.tr2_term env') bindings in
-      make_let_f flag bindings' @@ beta_reduce_trivial.tr2_term env' t1
+      make_let bindings' @@ beta_reduce_trivial.tr2_term env' t1
   | _ -> beta_reduce_trivial.tr2_term_rec env t
 
 let () = beta_reduce_trivial.tr2_term <- fun env t -> recover_const_attr_shallowly @@ beta_reduce_trivial_term env t
@@ -2345,7 +2317,7 @@ let ignore_non_termination_desc fail_free desc =
   match desc with
   | App({desc=Var f}, ts) when Id.mem f fail_free && Type.can_unify TUnit (make_app (make_var f) ts).typ->
       Const Unit
-  | Let(flag, bindings, t1) ->
+  | Let(bindings, t1) ->
       let bindings' = List.map (Triple.map_trd @@ ignore_non_termination.tr2_term fail_free) bindings in
       let fv = get_fv t1 in
       let check f (xs:id list) t =
@@ -2355,7 +2327,7 @@ let ignore_non_termination_desc fail_free desc =
       in
       let fail_free' = List.filter_map (fun (f,xs,t) -> if check f xs t then Some f else None) bindings' in
       let bindings'' = List.filter_out (fun (f,_,_) -> Id.mem f fail_free' && not @@ Id.mem f fv) bindings' in
-      (make_let_f flag bindings'' @@ ignore_non_termination.tr2_term (fail_free'@@@fail_free) t1).desc
+      (make_let bindings'' @@ ignore_non_termination.tr2_term (fail_free'@@@fail_free) t1).desc
   | _ -> ignore_non_termination.tr2_desc_rec fail_free desc
 
 let () = ignore_non_termination.tr2_desc <- ignore_non_termination_desc
@@ -2388,7 +2360,7 @@ let beta_full_app = beta_full_app.tr2_term
 let beta_affine_fun = make_trans ()
 let beta_affine_fun_desc desc =
   match desc with
-  | Let(Nonrecursive, [f, xs, t1], t2) when xs <> [] ->
+  | Let([f, xs, t1], t2) when xs <> [] && is_non_rec [f,xs,t1]  ->
       let t1' = beta_affine_fun.tr_term t1 in
       begin
         match t1' with
@@ -2411,7 +2383,7 @@ let beta_affine_fun_desc desc =
               let t2'' = beta_full_app (f, xs, t1') t2' in
               let t2''' = beta_affine_fun.tr_term t2'' in
               if Id.mem f @@ get_fv t2'''
-              then Let(Nonrecursive, [f, xs, t1'], t2''')
+              then Let([f, xs, t1'], t2''')
               else t2'''.desc
             else beta_affine_fun.tr_desc_rec desc
         | _ -> beta_affine_fun.tr_desc_rec desc
@@ -2559,8 +2531,8 @@ let reconstruct_term t =
     | Fun(x, t) -> make_fun x @@ reconstruct.tr_term t
     | App(t1, ts) -> make_app (reconstruct.tr_term t1) @@ List.map reconstruct.tr_term ts
     | If(t1, t2, t3) -> make_if (reconstruct.tr_term t1) (reconstruct.tr_term t2) (reconstruct.tr_term t3)
-    | Let(flag, bindings, t) ->
-        make_let_f flag (List.map (Triple.map_trd reconstruct.tr_term) bindings) @@ reconstruct.tr_term t
+    | Let(bindings, t) ->
+        make_let (List.map (Triple.map_trd reconstruct.tr_term) bindings) @@ reconstruct.tr_term t
     | BinOp(And, t1, t2) -> make_and (reconstruct.tr_term t1) (reconstruct.tr_term t2)
     | BinOp(Or, t1, t2) -> make_or (reconstruct.tr_term t1) (reconstruct.tr_term t2)
     | Not t -> make_not @@ reconstruct.tr_term t
@@ -2675,7 +2647,7 @@ let reduce_fail_unit = make_trans ()
 let reduce_fail_unit_term t =
   let t' = reduce_fail_unit.tr_term_rec t in
   match t'.desc with
-  | Let(_, [x,[],t''], _) when t''.desc = fail_unit_term.desc -> t''
+  | Let([x,[],t''], _) when t''.desc = fail_unit_term.desc -> t''
   | _ -> t'
 let () = reduce_fail_unit.tr_term <- reduce_fail_unit_term
 let reduce_fail_unit = reduce_fail_unit.tr_term

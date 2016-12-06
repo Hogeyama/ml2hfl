@@ -58,7 +58,7 @@ let rec check t typ =
       check t1 TBool;
       check t2 typ';
       check t3 typ'
-  | Let(flag, bindings, t2), typ' ->
+  | Let(bindings, t2), typ' ->
       let rec aux t xs typ =
         match xs, elim_tattr typ with
         | x::xs,TFun(y,typ) ->

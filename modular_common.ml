@@ -82,7 +82,7 @@ let term_of_prog prog =
   |> List.last
   |> fst
   |> make_var
-  |> make_letrecs (List.map Triple.of_pair_r prog.fun_def_env)
+  |> make_lets (List.map Triple.of_pair_r prog.fun_def_env)
 
 
 let take_funs_of_depth env f depth =

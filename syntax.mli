@@ -35,7 +35,7 @@ and desc =
   | Fun of id * term
   | App of term * term list
   | If of term * term * term
-  | Let of rec_flag * (id * id list * term) list * term
+  | Let of (id * id list * term) list * term
   | BinOp of binop * term * term
   | Not of term
   | Event of string * bool (** true denotes CPS-term *)
@@ -64,8 +64,6 @@ and info =
   | InfoId of id
   | InfoTerm of term
   | InfoIdTerm of id * term
-
-and rec_flag = Nonrecursive | Recursive
 
 
 and type_kind =
@@ -222,6 +220,7 @@ val make_fold_tr : unit -> 'a fold_tr
 val occur : id -> typ -> bool
 val get_vars_pat : pattern -> id list
 val get_fv : ?cmp:(id -> id -> bool) -> term -> id list
+val is_non_rec : (id * id list * term) list -> bool
 
 val make_extra_coeff : ?name:string -> ?typ:typ -> unit -> id
 val is_extra_coeff_name : string -> bool

@@ -75,17 +75,13 @@ let rec eval_print fm rands t =
       Format.fprintf fm "@\nif %b then ... ->" b;
       let t' = if b then t2 else t3 in
       eval_print fm rands' t'
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (rands,vs) (f,xs,t) =
         let rands',v = eval_print fm rands @@ List.fold_right make_fun xs t in
         rands', vs@[f,v]
       in
       let rands',vs = List.fold_left aux (rands,[]) bindings in
-      let subst' (x,v) t =
-        match flag with
-        | Nonrecursive -> subst x (fun_info x v) t
-        | Recursive -> subst x (fix x @@ fun_info x v) t
-      in
+      let subst' (x,v) t = subst x (fix x @@ fun_info x v) t in
       eval_print fm rands' @@ List.fold_right subst' vs t2
   | BinOp(And, t1, t2) ->
       let rands',v1 = eval_print fm rands t1 in

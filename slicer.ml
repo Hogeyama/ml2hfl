@@ -89,7 +89,7 @@ let rec trans f i n t =
                   | S t3' -> S (make_if t1 t2 t3')
                   | N i''' -> N i'''
         end
-    | Let(flag, defs, t) ->
+    | Let(defs, t) ->
         let rec aux i defs =
           match defs with
           | [] -> N i
@@ -103,10 +103,10 @@ let rec trans f i n t =
         in
         begin
           match aux (i+1) defs with
-          | S defs' -> S (make_let_f flag defs' t)
+          | S defs' -> S (make_let defs' t)
           | N i' ->
               match trans f i' n t with
-              | S t' -> S (make_let_f flag defs t')
+              | S t' -> S (make_let defs t')
               | N i'' -> N i''
         end
     | _ -> assert false

@@ -215,13 +215,13 @@ let abst_list_term post t =
       let t2' = abst_list.tr2_term post t2 in
       make_app (make_snd t1') [t2']
   | App({desc=Var x}, [t]) when Id.same x (make_length_var typ_unknown) -> make_fst @@ abst_list.tr2_term post t
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,xs,t) =
         let post' = "_" ^ Id.name f in
         abst_list.tr2_var post f, List.map (abst_list.tr2_var post) xs, abst_list.tr2_term post' t
       in
       let bindings' = List.map aux bindings in
-      make_let_f flag bindings' (abst_list.tr2_term post t2)
+      make_let bindings' (abst_list.tr2_term post t2)
   | Nil ->
       let typ'' = abst_list.tr2_typ post @@ list_typ t.typ in
       make_pair (make_int 0) (make_fun (Id.new_var TInt) (make_bottom typ''))
@@ -351,7 +351,7 @@ let inst_list_eq t =
   if !Flag.abst_list_eq then
     t'
   else
-    make_letrecs (List.map snd defs') t'
+    make_lets (List.map snd defs') t'
 
 
 

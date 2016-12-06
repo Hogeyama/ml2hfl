@@ -98,26 +98,20 @@ let rec make_app t ts =
 let make_app_raw t ts =
   let t' = make_app t ts in
   {t' with desc=App(t,ts)}
-let make_let_f flag bindings t2 =
+let make_let bindings t2 =
   if bindings = [] then
     t2
   else
     let rec aux (f,xs,t) =
       match t.desc with
       | Fun(x,t') -> aux (f, xs@[x], t')
-      | Let(Nonrecursive, [x,[],t'], {desc=Var y}) when Id.same x y -> f, xs, t'
+      | Let([x,[],t'], {desc=Var y}) when Id.same x y -> f, xs, t'
       | _ -> f, xs, t
     in
     let bindings' = List.map aux bindings in
-    {desc=Let(flag,bindings',t2); typ=t2.typ; attr=[]}
-let make_let bindings t2 = make_let_f Nonrecursive bindings t2
-let make_letrec bindings t2 = make_let_f Recursive bindings t2
+    {desc=Let(bindings',t2); typ=t2.typ; attr=[]}
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
-let make_letrecs bindings t2 =
-  List.fold_right (make_letrec -| List.singleton) bindings t2
-let make_lets_f bindings t2 =
-  List.fold_right (fun (flag,binding) -> make_let_f flag [binding]) bindings t2
 let make_seq t1 t2 =
   if is_value t1 then
     t2
@@ -360,9 +354,9 @@ let rec decomp_funs = function
 
 let rec decomp_lets t =
   match t.desc with
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let fbindings,t2' = decomp_lets t2 in
-      (flag,bindings)::fbindings, t2'
+      (bindings)::fbindings, t2'
   | _ -> [], t
 
 
@@ -414,21 +408,8 @@ let subst_term (x,t) t' =
   match t'.desc with
   | Var y when Id.same x y -> t
   | Fun(y, t1) when Id.same x y -> t'
-  | Let(Nonrecursive, bindings, t2) ->
-      let aux (f,xs,t1) =
-        subst.tr2_var (x,t) f,
-        List.map (subst.tr2_var (x,t)) xs,
-        if List.exists (Id.same x) xs then t1 else subst.tr2_term (x,t) t1 in
-      let bindings' = List.map aux bindings in
-      let t2' =
-        if List.exists (fun (f,_,_) -> Id.same f x) bindings
-        then t2
-        else subst.tr2_term (x,t) t2
-      in
-      let desc = Let(Nonrecursive, bindings', t2') in
-      {t' with desc}
-  | Let(Recursive, bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
-  | Let(Recursive, bindings, t2) ->
+  | Let(bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
+  | Let(bindings, t2) ->
       let aux (f,xs,t1) =
         subst.tr2_var (x,t) f,
         List.map (subst.tr2_var (x,t)) xs,
@@ -436,7 +417,7 @@ let subst_term (x,t) t' =
       in
       let bindings' = List.map aux bindings in
       let t2' = subst.tr2_term (x,t) t2 in
-      let desc = Let(Recursive, bindings', t2') in
+      let desc = Let(bindings', t2') in
       {t' with desc}
   | Match(t1,pats) ->
       let aux (pat,cond,t1) =
@@ -471,16 +452,7 @@ let subst_map_term map t =
       let map' = List.filter_out (fun (x,_) -> Id.same x y) map in
       let t1' = subst_map.tr2_term map' t1 in
       make_fun y t1'
-  | Let(Nonrecursive, bindings, t2) ->
-      let rec aux map acc = function
-          [] -> map, List.rev acc
-        | (f,xs,t1)::bindings ->
-            let map' = List.filter (fun (x,_) -> not (Id.mem x xs)) map in
-            aux map' ((f, xs, subst_map.tr2_term map' t1)::acc) bindings in
-      let map',bindings' = aux map [] bindings in
-      let t2' = subst_map.tr2_term map' t2 in
-      make_let bindings' t2'
-  | Let(Recursive, bindings, t2) ->
+  | Let(bindings, t2) ->
       let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_,_) -> Id.same f x) bindings)) map in
       let aux (f,xs,t1) =
         let map'' = List.filter (fun (x,_) -> not (Id.mem x xs)) map' in
@@ -488,7 +460,7 @@ let subst_map_term map t =
       in
       let bindings' = List.map aux bindings in
       let t2' = subst_map.tr2_term map' t2 in
-      make_letrec bindings' t2'
+      make_let bindings' t2'
   | Match(t1,pats) -> (* TODO: fix *)
       let aux (pat,cond,t1) = pat, cond, subst_map.tr2_term map t1 in
       {desc=Match(subst_map.tr2_term map t1, List.map aux pats); typ=t.typ; attr=[]}
@@ -540,9 +512,9 @@ and same_desc t1 t2 =
   | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
   | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
   | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
-  | Let(flag1,bindings1,t1), Let(flag2,bindings2,t2) ->
+  | Let(bindings1,t1), Let(bindings2,t2) ->
      let same_binding (f,xs,t1) (g,ys,t2) = Id.same f g && same_list Id.same xs ys && same_term t1 t2 in
-     flag1 = flag1 && same_list same_binding bindings1 bindings2 && same_term t1 t2
+     same_list same_binding bindings1 bindings2 && same_term t1 t2
   | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
   | Not t1, Not t2 -> same_term t1 t2
   | Event(s1,b1), Event(s2,b2) -> s1 = s2 && b1 = b2
@@ -665,19 +637,15 @@ let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
 let make_br t2 t3 = make_if randbool_unit_term t2 t3
 
 let rec get_top_funs acc = function
-  | {desc=Let(flag, defs, t)} ->
+  | {desc=Let(defs, t)} ->
       let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
       get_top_funs acc' t
   | _ -> acc
 let get_top_funs = get_top_funs []
 
 let rec get_top_rec_funs acc = function
-  | {desc=Let(flag, defs, t)} ->
-      let acc' =
-        match flag with
-        | Nonrecursive -> acc
-        | Recursive -> List.fold_left (fun acc (f,_,_) -> f::acc) acc defs
-      in
+  | {desc=Let(defs, t)} ->
+      let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
       get_top_rec_funs acc' t
   | _ -> acc
 let get_top_rec_funs = get_top_rec_funs []
@@ -691,7 +659,7 @@ let has_no_effect_term t =
   | Var _ -> true
   | Fun _ -> true
   | App _ -> false
-  | Let(_,bindings,t) ->
+  | Let(bindings,t) ->
       has_no_effect.col_term t &&
       List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect.col_term t) bindings
   | Field _ -> false
@@ -739,7 +707,7 @@ let rec var_name_of_term t =
   match t.desc with
   | Bottom -> "bot"
   | Var x -> Id.name x
-  | Let(_,_,t) -> var_name_of_term t
+  | Let(_,t) -> var_name_of_term t
   | Tuple(ts) -> String.join "__" @@ List.map var_name_of_term ts
   | Proj(i,t) ->
       let n = tuple_num t.typ in
@@ -802,7 +770,7 @@ let get_bound_variables = make_col [] (@@@)
 let get_bound_variables_desc desc =
   match desc with
   | Fun(x,t) -> x :: get_bound_variables.col_term t
-  | Let(flag,bindings,t) ->
+  | Let(bindings,t) ->
       let aux (f,xs,t) =
         f::xs @@@ get_bound_variables.col_term t
       in
@@ -830,9 +798,9 @@ let is_id_unique t =
 
 
 
-let rec is_bottom_def flag f xs t =
-  match flag, xs, t.desc with
-  | Recursive, _::_, App({desc=Var g},ts) ->
+let rec is_bottom_def f xs t =
+  match xs, t.desc with
+  | _::_, App({desc=Var g},ts) ->
       Id.same f g && List.for_all has_no_effect ts
   | _ -> false
 
@@ -876,7 +844,7 @@ let rec list_of_term t =
 
 let rec get_last_definition f t =
   match t.desc with
-  | Let(_, bindings, t2) ->
+  | Let(bindings, t2) ->
       let f,_,_ = List.last bindings in
       get_last_definition (Some f) t2
   | Fun _ -> assert false
@@ -885,7 +853,7 @@ let get_last_definition t = get_last_definition None t
 
 let rec get_body t =
   match t.desc with
-  | Let(_, _, t2) -> get_body t
+  | Let(_, t2) -> get_body t
   | _ -> t
 
 let count_occurrence x t =
@@ -922,9 +890,9 @@ let get_id_map t =
 
 let rec decomp_prog t =
   match t.desc with
-  | Let(flag, bindings, t') ->
+  | Let(bindings, t') ->
       let defs,main = decomp_prog t' in
-      (flag,bindings)::defs, main
+      bindings::defs, main
   | _ -> [], t
 
 let from_fpat_const c =
@@ -1073,6 +1041,6 @@ let col_id t = List.unique @@ col_id.col_term t
 
 let rec is_fail t =
   match t.desc with
-  | Let(_, [_, [], t], _) -> is_fail t
+  | Let([_, [], t], _) -> is_fail t
   | App({desc=Event("fail",_)}, [{desc=Const Unit}]) -> true
   | _ -> false

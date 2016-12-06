@@ -41,10 +41,6 @@ val make_app_raw : term -> term list -> term (** Does not merge arguments *)
 val make_fail : typ -> term
 val make_let : (id * id list * term) list -> term -> term
 val make_lets : (id * id list * term) list -> term -> term
-val make_letrecs : (id * id list * term) list -> term -> term
-val make_letrec : (id * id list * term) list -> term -> term
-val make_let_f : rec_flag -> (id * id list * term) list -> term -> term
-val make_lets_f : (rec_flag * (id * id list * term)) list -> term -> term
 val make_fun : id -> term -> term
 val make_funs : id list -> term -> term
 val make_not : term -> term
@@ -117,10 +113,10 @@ val decomp_some : term -> term option
 val decomp_is_none : term -> term option
 val decomp_get_val : term -> term option
 val decomp_funs : term -> id list * term
-val decomp_lets : term -> (rec_flag * (id * id list * term) list) list * term
+val decomp_lets : term -> (id * id list * term) list list * term
 val decomp_var : term -> id option
 val decomp_bexp : term -> term list
-val decomp_prog : term -> (rec_flag * (id * id list * term) list) list * term
+val decomp_prog : term -> (id * id list * term) list list * term
 val decomp_list : term -> term list option
 val var_of_term : term -> id
 val int_of_term : term -> int
@@ -173,7 +169,7 @@ val var_of_term : term -> id
 val make_term : typ -> term
 val col_same_term : term -> term -> term list
 val col_info_id : term -> id list
-val is_bottom_def : Syntax.rec_flag -> id -> id list -> Syntax.term -> bool
+val is_bottom_def : id -> id list -> Syntax.term -> bool
 val merge_typ : typ -> typ -> typ
 val get_last_definition : term -> id option
 val get_body : term -> term

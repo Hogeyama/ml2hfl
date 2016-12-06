@@ -109,8 +109,7 @@ let get_diff_args_desc (env,f) desc =
       in
       let diff_args = List.flatten @@ List.map (get_diff_args.col2_term (env,f)) ts in
       aux diff_args its
-  | Let(Nonrecursive, bindings, t)
-  | Let(Recursive, ([_] as bindings), t) ->
+  | Let([_] as bindings, t) ->
       let aux (g,xs,t') =
         let all = make_all xs in
         let same_args = get_same_args env g t all in
@@ -119,7 +118,7 @@ let get_diff_args_desc (env,f) desc =
       in
       let diff_args = get_diff_args.col2_term (env,f) t in
       List.flatten (List.map aux bindings) @ diff_args
-  | Let(Recursive, bindings, t) -> raise (Fatal "Not implemented (get_diff_args)")
+  | Let(bindings, t) -> raise (Fatal "Not implemented (get_diff_args)")
   | _ -> get_diff_args.col2_desc_rec (env,f) desc
 
 let () = get_diff_args.col2_desc <- get_diff_args_desc
@@ -167,11 +166,11 @@ let trans = make_trans2 ()
 
 let trans_desc env desc =
   match desc with
-  | Let(_, [f,xs,{desc=Fun _}], t2) -> assert false
-  | Let(flag, [f,xs,t1], t2) ->
+  | Let([f,xs,{desc=Fun _}], t2) -> assert false
+  | Let([f,xs,t1], t2) ->
       let same_args = get_same_args env f t2 @@ make_all xs in
       let same_args' =
-        if flag = Nonrecursive then
+        if is_non_rec [f,xs,t1] then
           same_args
         else
           let rec aux same_args =
@@ -205,7 +204,7 @@ let trans_desc env desc =
                 |> elim_arg f elim_args
                 |> subst_var f f'
       in
-      Let(flag, [f',xs',t1'], t2')
+      Let([f',xs',t1'], t2')
   | _ -> trans.tr2_desc_rec env desc
 
 let () = trans.tr2_desc <- trans_desc

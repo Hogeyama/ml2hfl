@@ -195,7 +195,7 @@ and remove_pair_aux t typ_opt =
       let t2' = root @@ remove_pair_aux t2 None in
       let t3' = root @@ remove_pair_aux t3 None in
       leaf (add_attrs t.attr @@ make_if t1' t2' t3')
-  | Let(flag, bindings, t) ->
+  | Let(bindings, t) ->
       let aux (f,xs,t) =
         let f' = root @@ remove_pair_var f in
         let xs' = List.flatten_map (flatten -| remove_pair_var) xs in
@@ -204,7 +204,7 @@ and remove_pair_aux t typ_opt =
       in
       let bindings' = List.map aux bindings in
       let t' = root @@ remove_pair_aux t None in
-      leaf (make_let_f flag bindings' t')
+      leaf (make_let bindings' t')
   | BinOp(op, t1, t2) ->
       begin
         match op, elim_tattr t1.typ with

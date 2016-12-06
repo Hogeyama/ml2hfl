@@ -212,7 +212,7 @@ let trans_typ ttbb typ =
 
 let trans_term (tt,bb) t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],({desc=App({desc=Var x1},[t11])} as t1)], t) ->
+  | Let([x,[],({desc=App({desc=Var x1},[t11])} as t1)], t) when is_non_rec [x,[],t1] ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let t11' = trans.tr2_term (tt,bb) t11 in
@@ -220,7 +220,7 @@ let trans_term (tt,bb) t =
       let t' = trans.tr2_term (tt,bb') t in
       let tx = inst_var_fun x1' tt bb' t11' in
       make_let [x',[],tx] t'
-  | Let(Nonrecursive, [x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.same x1 x2 ->
+  | Let([x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.same x1 x2 && is_non_rec [x,[],t1] ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
@@ -246,7 +246,7 @@ let trans_term (tt,bb) t =
         | _ -> make_pair (make_var x1') (make_var x1')
       in
       make_let [x',[],t1'] t'
-  | Let(Nonrecursive, [x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) ->
+  | Let([x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when is_non_rec [x,[],t1] ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let x2' = trans.tr2_var (tt,bb) x2 in
@@ -268,7 +268,7 @@ let trans_term (tt,bb) t =
         | _ -> make_pair (make_var x1') (make_var x2')
       in
       make_let [x',[],t1'] t'
-  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t) when List.for_all (Option.is_some -| decomp_var) ts ->
+  | Let([x,[],({desc=Tuple ts} as t1)], t) when List.for_all (Option.is_some -| decomp_var) ts && is_non_rec [x,[],t1] ->
       let xs = List.map (function {desc=Var x} -> x | t -> Format.printf "%a@." Print.term t; assert false) ts in
       let x' =  trans.tr2_var (tt,bb) x in
       let xs' = List.map (trans.tr2_var (tt,bb)) xs in
@@ -291,7 +291,7 @@ let trans_term (tt,bb) t =
         | _ -> make_tuple @@ List.map make_var xs
       in
       make_let [x',[],t1'] t'
-  | Let(Nonrecursive, [x,[],({desc=Proj(i,{desc=Var x1})} as t1)], t) ->
+  | Let([x,[],({desc=Proj(i,{desc=Var x1})} as t1)], t) when is_non_rec [x,[],t1] ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
@@ -319,7 +319,7 @@ let () = trans.tr2_typ <- trans_typ
 
 let rec decomp_simple_let t =
   match t.desc with
-  | Let(Nonrecursive,[x,[],t1],t2) ->
+  | Let([x,[],t1],t2) when is_non_rec [x,[],t1] ->
       let bindings,t2' = decomp_simple_let t2 in
       (x,t1)::bindings, t2'
   | _ -> [], t
@@ -340,14 +340,14 @@ let sort_let_pair_aux x t =
 
 let sort_let_pair_term t =
   match t.desc with
-  | Let(Nonrecursive,[x,[],({desc=Tuple _} as t1)],t2) ->
+  | Let([x,[],({desc=Tuple _} as t1)],t2) when is_non_rec [x,[],t1] ->
       let t2' = sort_let_pair_aux x t2 in
       make_let [x,[],t1] t2'
-  | Let(flag,[f,xs,t1],t2) ->
+  | Let([f,xs,t1],t2) ->
       let t1' = sort_let_pair.tr_term t1 in
       let t2' = sort_let_pair.tr_term t2 in
       let t1'' = List.fold_right sort_let_pair_aux xs t1' in
-      make_let_f flag [f,xs,t1''] t2'
+      make_let [f,xs,t1''] t2'
   | _ -> sort_let_pair.tr_term_rec t
 
 let () = sort_let_pair.tr_term <- sort_let_pair_term
@@ -374,12 +374,12 @@ let rec move_proj_aux x t =
 
 let move_proj_term t =
   match t.desc with
-  | Let(flag,bindings,t2) ->
+  | Let(bindings,t2) ->
       let bindings' = List.map (fun (f,xs,t) -> f, xs, move_proj.tr_term t) bindings in
       let bindings'' = List.map (fun (f,xs,t) -> f, xs, List.fold_right move_proj_aux xs t) bindings' in
       let t2' = move_proj.tr_term t2 in
       let t2'' = List.fold_right (move_proj_aux -| Triple.fst) bindings t2' in
-      make_let_f flag bindings'' t2''
+      make_let bindings'' t2''
   | Fun(x,t1) -> make_fun x @@ move_proj_aux x t1
   | _ -> move_proj.tr_term_rec t
 
@@ -395,7 +395,7 @@ let col_assert_desc desc =
   match desc with
   | If(t1, t2, t3) when same_term t2 unit_term && same_term t3 (make_app fail_term [unit_term]) ->
       [t1]
-  | Let(Nonrecursive, [x,[],t1], t2) ->
+  | Let([x,[],t1], t2) when is_non_rec [x,[],t1] ->
       let ts1 = col_assert.col_term t1 in
       let ts2 = col_assert.col_term t2 in
       let ts2' = List.map (subst x t1) ts2 in
@@ -421,7 +421,7 @@ let col_rand_funs = make_col [] (@@@)
 
 let col_rand_funs_desc desc =
   match desc with
-  | Let(_, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (f,_,t) = if has_rand t then [f] else [] in
       let funs1 = List.flatten_map aux bindings in
       let funs2 = col_rand_funs.col_term_rec t2 in
@@ -509,7 +509,7 @@ let defined fs env = List.for_all (Id.mem -$- env) fs
 
 let add_fun_tuple_term (funs,env) t =
   match t.desc with
-  | Let(flag,[f,xs,t1],t2) ->
+  | Let([f,xs,t1],t2) ->
       let env' = f::env in
       let funs1,funs2 = List.partition (fun fs -> defined fs env') funs in
       let t1' = add_fun_tuple.tr2_term (funs2,env') t1 in
@@ -522,8 +522,8 @@ let add_fun_tuple_term (funs,env) t =
         let defs = (fg, [], make_label ~label:"add_fun_tuple" (InfoString "") @@ make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'
       in
-      make_let_f flag [f,xs,t1'] @@ List.fold_left aux t2' funs1
-  | Let(flag,_,_) -> unsupported "add_fun_tuple (let (rec) ... and ...)"
+      make_let [f,xs,t1'] @@ List.fold_left aux t2' funs1
+  | Let(_,_) -> unsupported "add_fun_tuple (let (rec) ... and ...)"
   | _ -> add_fun_tuple.tr2_term_rec (funs,env) t
 
 let () = add_fun_tuple.tr2_term <- add_fun_tuple_term

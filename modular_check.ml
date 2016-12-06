@@ -23,17 +23,17 @@ let rec to_CEGAR_ref_type typ =
 
 let rec add_id_event t =
   match t.desc with
-  | Let(flag, bindings, t') ->
+  | Let(bindings, t') ->
       let bindings' = List.map (Triple.map_trd @@ make_seq (make_event_unit "id")) bindings in
-      {t with desc=Let(flag, bindings', add_id_event t')}
+      {t with desc=Let(bindings', add_id_event t')}
   | _ -> t
 
 
 let make_fix f xs t =
-  make_letrec [f, xs, t] @@ make_var f
+  make_let [f, xs, t] @@ make_var f
 let decomp_fix t =
   match t.desc with
-  | Let(Recursive, [f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
+  | Let([f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
   | _ -> None
 let is_fix t = decomp_fix t <> None
 
@@ -143,7 +143,7 @@ and eval
               |> append_paths paths'
             with Exception(ans, ce, paths) -> raise (Exception(ans, ce, merge_paths paths' paths))
       end
-  | Let(Nonrecursive, [f,xs,t1], t2) ->
+  | Let([f,xs,t1], t2) when is_non_rec [f,xs,t1] ->
       let ans, ce, paths = eval val_env ce @@ make_funs xs t1 in
       if ans = Fail then
         (ans, ce, paths)
@@ -151,7 +151,7 @@ and eval
         let val_env' = (f, ans)::val_env in
         eval val_env' ce t2
         |> append_paths paths
-  | Let(Recursive, [f,xs,t1], t2) ->
+  | Let([f,xs,t1], t2) ->
       assert (xs <> []);
       let rec val_env' = (f, Closure(val_env', make_funs xs t1))::val_env in
       eval val_env' ce t2
@@ -245,7 +245,7 @@ let complete_ce_set f t ce =
   let let_fun_var = make_col [] (@@@) in
   let let_fun_var_desc desc =
     match desc with
-    | Let(flag,bindings,t) ->
+    | Let(bindings,t) ->
         let aux (f,xs,t) =
           let fs = let_fun_var.col_term t in
           if xs = [] then
@@ -272,7 +272,7 @@ let check prog f typ depth =
     let t' =
       let fs = List.filter_out (Id.same f) @@ take_funs_of_depth fun_env f depth in
       let fun_env' = List.filter (fst |- Id.mem -$- fs) fun_env in
-      make_letrecs (List.map Triple.of_pair_r fun_env') t
+      make_lets (List.map Triple.of_pair_r fun_env') t
     in
     Debug.printf "t': %a@." Print.term t';
     add_context prog f xs t' typ
@@ -285,7 +285,7 @@ let check prog f typ depth =
   in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
-    |> make_letrecs (List.map Triple.of_pair_r fun_env')
+    |> make_lets (List.map Triple.of_pair_r fun_env')
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check -$- TUnit
     |> Trans.map_main (make_seq -$- unit_term) (* ??? *)

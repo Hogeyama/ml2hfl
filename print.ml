@@ -199,17 +199,17 @@ and print_desc attr pri typ fm desc =
           fprintf fm "@[%a@]" (print_term p typ) t3
         end;
       fprintf fm "@]%s" s2
-  | Let(_, [], t) ->
+  | Let([], t) ->
       Format.printf "@.%a@." (print_term 0 typ) t;
       assert false
-  | Let(_, [_, [], {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
+  | Let([_, [], {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[%sassert@ false%s@]" s1 s2
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
+      let s_rec = if is_non_rec bindings then "" else " rec" in
       let b = ref true in
       let print_binding fm (f,xs,t1) =
         let pre =
@@ -428,8 +428,8 @@ let rec print_term' pri fm t =
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%s@[@[if %a@]@ then @[%a@]@ else @[%a@]@]%s"
                 s1 (print_term' p) t1 (print_term' p) t2 (print_term' p) t3 s2
-    | Let(flag, bindings, t2) ->
-        let s_rec = match flag with Nonrecursive -> "" | Recursive -> " rec" in
+    | Let(bindings, t2) ->
+        let s_rec = if is_non_rec bindings then "" else " rec" in
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
         let b = ref true in

@@ -114,7 +114,7 @@ let trans_term env t =
       if false then Format.printf "t2': %a@." Print.term t2';
       if false then Format.printf "t3': %a@." Print.term t3';
       join vs2 vs3, make_if v1 t2' t3'
-  | Let(_, [x,[],t1], t2) when not @@ Id.same x env.target ->
+  | Let([x,[],t1], t2) when not @@ Id.same x env.target ->
       if false then Format.printf "START@.";
       if false then Format.printf "t1: %a@." Print.term t1;
       let vs1,t1' = trans.tr_col2_term env t1 in
@@ -125,7 +125,7 @@ let trans_term env t =
       let _,x' = trans.tr_col2_var env x in
       if false then Format.printf "sx: %a@." Print.id_typ sx;
       join vs1 vs2, make_lets [sx,[],t1'; s',[],make_fst(make_var sx); x',[],make_snd(make_var sx)] t2'
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let aux (g,xs,t1) =
         if xs = [] then unsupported @@ Format.asprintf "fair termination!? %a" Print.id g;
         let _,g' = trans.tr_col2_var env g in
@@ -217,7 +217,7 @@ let trans_term env t =
       let vss,bindingss = List.split_map aux bindings in
       let bindings' = List.flatten bindingss in
       let vs2,t2' = trans.tr_col2_term env t2 in
-      List.fold_left join vs2 vss, make_let_f flag bindings' t2'
+      List.fold_left join vs2 vss, make_let bindings' t2'
   | _ ->
       Debug.printf "%a@." Print.term t;
       unsupported @@ Format.asprintf "Fair termination [%a]" Print.constr t
@@ -227,7 +227,7 @@ let () = trans.tr_col2_term <- trans_term
 
 let rec get_top_fun_typ f t =
   match t.desc with
-  | Let(_, bindings, t1) ->
+  | Let(bindings, t1) ->
       begin
         try
           let _,xs,t = List.find (fun (g,_,_) -> Id.same f g) bindings in

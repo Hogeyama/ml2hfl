@@ -376,7 +376,7 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
       in
       let bindings = List.map aux pats in
       let t = from_expression e in
-      make_let_f flag bindings t
+      make_let bindings t
   | Texp_function(_,[case],Total)
        when (function ({pat_desc=PVar _},t,_) -> t = true_term | _ -> false) @@ from_case case ->
       begin
@@ -508,7 +508,7 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
       let x = Id.new_var TUnit in
       let f = Id.new_var ~name:"while" @@ make_tfun TUnit t2.typ in
       let t2' = make_if t1 (make_seq t2 @@ make_app (make_var f) [unit_term]) unit_term in
-      make_letrec [f, [x], t2'] @@ make_app (make_var f) [unit_term]
+      make_let [f, [x], t2'] @@ make_app (make_var f) [unit_term]
   | Texp_for(x, _, e1, e2, dir, e3) ->
       let t1 = from_expression e1 in
       let t2 = from_expression e2 in
@@ -532,7 +532,7 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
       in
       assert (Flag.check_typ => Type.can_unify t31.typ TBool);
       let t3' = make_if t31 t32 unit_term in
-      make_lets [init,[],t1; last,[],t2] @@ make_letrec [f, [x'], t3'] @@ make_app (make_var f) [make_var init]
+      make_lets [init,[],t1; last,[],t2] @@ make_let [f, [x'], t3'] @@ make_app (make_var f) [make_var init]
   | Texp_send _
   | Texp_new _ -> unsupported "expression (class)"
   | Texp_instvar _ -> unsupported "expression (instvar)"
@@ -599,9 +599,9 @@ let from_use_file ast =
   let env = Compmisc.initial_env () in
   init_exc_env ();
   let aux t = function
-    | Decl_let(flag, defs) ->
+    | Decl_let(_, defs) ->
         let defs' = List.map (fun (f,t1) -> f, [], t1) defs in
-        make_let_f flag defs' t
+        make_let defs' t
     | Decl_type _ -> t
     | Decl_exc _ -> t
   in

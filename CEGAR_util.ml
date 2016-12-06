@@ -151,10 +151,10 @@ let rec make_arg_let t =
         let t2' = make_arg_let t2 in
         let t3' = make_arg_let t3 in
         S.If(t1',t2',t3')
-    | S.Let(flag,bindings,t2) ->
+    | S.Let(bindings,t2) ->
         let bindings' = List.map (fun (f,xs,t) -> f, xs, make_arg_let t) bindings in
         let t2' = make_arg_let t2 in
-        S.Let(flag,bindings',t2')
+        S.Let(bindings',t2')
     | S.BinOp(op, t1, t2) ->
         let t1' = make_arg_let t1 in
         let t2' = make_arg_let t2 in

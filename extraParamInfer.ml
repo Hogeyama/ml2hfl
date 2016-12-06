@@ -73,15 +73,13 @@ let rec insertExparam scope expr =
 	desc = If ((insertExparam scope predicate),
 		   (insertExparam scope thenClause),
 		   (insertExparam scope elseClause))}
-    | Let (flag, bindings, e) ->
+    | Let (bindings, e) ->
       let rec extend sc = function
 	| [] -> sc
 	| (x, [], body) :: bs when (Id.typ x) = TInt -> extend (x :: sc) bs
 	| _ :: bs -> extend sc bs
       in
-      let scope =
-	if flag = Nonrecursive then scope else extend scope bindings
-      in
+      let scope = extend scope bindings in
       let insertExparamBinding (x, args, body) =
 	let insertExparamArgs (sc, ags) = function
 	  | t when Id.typ t = TInt -> (t::sc, ags@[t])
@@ -100,7 +98,7 @@ let rec insertExparam scope expr =
 	({x with Id.typ = transType x.Id.typ}, args, insertExparam scope body)
       in
       { expr with
-	desc = Let (flag, List.map insertExparamBinding bindings, insertExparam (extend scope bindings) e)}
+	desc = Let (List.map insertExparamBinding bindings, insertExparam (extend scope bindings) e)}
     | BinOp (op, expr1, expr2) ->
       { expr with
 	desc = BinOp (op, insertExparam scope expr1, insertExparam scope expr2)}
@@ -110,7 +108,7 @@ let rec insertExparam scope expr =
     | _ -> assert false (* unimplemented *)
 
 let rec removeDummySubstitutions = function
-  | { desc = Let (Recursive, [id, [], {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
+  | { desc = Let ([id, [], {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
   | e -> e
 
 let substituteZero e =
@@ -131,7 +129,7 @@ let addTemplate prog =
   let _ = counter := !counter - 1 in
   let rec dummySubst = function
     | (-1) -> prog
-    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_int 0] (dummySubst (n-1))
+    | n -> make_let [(List.nth !nthCoefficient n), [], make_int 0] (dummySubst (n-1))
 (*    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_var (List.nth !nthCoefficient n)] (tmp (n-1))*)
   in
   begin

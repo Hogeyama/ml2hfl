@@ -21,7 +21,7 @@ and t_cps =
   | FunCPS of typed_ident * term
   | AppCPS of term * term
   | IfCPS of term * term * term
-  | LetCPS of rec_flag * (typed_ident * term) list * term
+  | LetCPS of (typed_ident * term) list * term
   | BinOpCPS of binop * term * term
   | NotCPS of term
   | EventCPS of string
@@ -108,9 +108,8 @@ and print_t_cps fm = function
   | IfCPS(t1, t2, t3) ->
       Format.fprintf fm "@[@[if %a@]@;then @[%a@]@;else @[%a@]@]"
                      print_term t1 print_term t2 print_term t3
-  | LetCPS(flag, bindings, t) ->
-      let is_rec = match flag with Nonrecursive -> false | Recursive -> true in
-      let head = ref (if is_rec then "let rec" else "let") in
+  | LetCPS(bindings, t) ->
+      let head = ref "let rec" in
       let pr fm (f,t) =
         Format.fprintf fm "@[<hov 2>%s %a : %a =@ @[%a@]@]@;"
                        !head Print.id f.id_cps print_typ_cps f.id_typ print_term t;
@@ -262,20 +261,15 @@ let rec infer_effect env t =
       constraints := CGeq(e, ECont) :: !constraints; (* for TRecS *)
       unify typed2.typ_cps typed3.typ_cps;
       {t_orig=t; t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typed2.typ_cps; effect=e}
-  | Let(flag, bindings, t1) ->
+  | Let(bindings, t1) ->
       let make_env (f,_,_) = Id.to_string f, infer_effect_typ (Id.typ f) in
       let env_f = List.map make_env bindings in
       let env' = env_f @@@ env in
-      let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
       let aux (f, xs, t1) =
         let f' = {id_cps=f; id_typ=List.assoc (Id.to_string f) env_f} in
         let t1' = List.fold_right make_fun xs t1 in
-        let typed = infer_effect env'' t1' in
-        let () =
-          match flag with
-            Nonrecursive -> ()
-          | Recursive -> lift_letrec_typ typed
-        in
+        let typed = infer_effect env' t1' in
+        let () = lift_letrec_typ typed in
         unify f'.id_typ typed.typ_cps;
         f', typed
       in
@@ -288,7 +282,7 @@ let rec infer_effect env t =
         e'
       in
       let e = List.fold_right aux bindings' typed.effect in
-      {t_orig=t; t_cps=LetCPS(flag, bindings', typed); typ_cps=typed.typ_cps; effect=e}
+      {t_orig=t; t_cps=LetCPS(bindings', typed); typ_cps=typed.typ_cps; effect=e}
   | BinOp(op, t1, t2) ->
       let typed1 = infer_effect env t1 in
       let typed2 = infer_effect env t2 in
@@ -425,10 +419,10 @@ let rec add_preds_cont_aux k t =
         let _,ts' = List.fold_right aux ts (t1.typ,[]) in
         App(add_preds_cont_aux k t1, ts')
     | If(t1, t2, t3) -> If(add_preds_cont_aux k t1, add_preds_cont_aux k t2, add_preds_cont_aux k t3)
-    | Let(flag, bindings, t2) ->
+    | Let(bindings, t2) ->
         let bindings' = List.map (fun (f,xs,t) -> f, xs, add_preds_cont_aux k t) bindings in
         let t2' = add_preds_cont_aux k t2 in
-        Let(flag, bindings', t2')
+        Let(bindings', t2')
     | BinOp(op, t1, t2) -> BinOp(op, add_preds_cont_aux k t1, add_preds_cont_aux k t2)
     | Not t1 -> Not (add_preds_cont_aux k t1)
     | Event(s,b) -> Event(s,b)
@@ -677,15 +671,15 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
                          (make_app_excep t2.effect t2' (make_var k') (make_var h'))
                          (make_app_excep t3.effect t3' (make_var k') (make_var h')))
                   (make_var h')
-    | LetCPS(flag, bindings, t1), ENone ->
+    | LetCPS(bindings, t1), ENone ->
         let aux (f,t) =
           let f' = trans_var typ_excep f in
           f', [], transform typ_excep (k_post ^ "_" ^ Id.name f') t
         in
         let bindings' = List.map aux bindings in
         let t1' = transform typ_excep k_post t1 in
-        make_let_f flag bindings' t1'
-    | LetCPS(flag, bindings, t1), ECont ->
+        make_let bindings' t1'
+    | LetCPS(bindings, t1), ECont ->
         let r = Id.new_var ~name:"r" @@ trans_typ typ_excep typ_orig typ in
         let k = Id.new_var ~name:("k" ^ k_post) @@ TFun(r,typ_result) in
         let aux (f,t) =
@@ -706,8 +700,8 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
           make_app_cont t_orig.effect (make_var f) (make_fun f' t'')
         in
         let t1'' = List.fold_right2 aux bindings bindings' @@ make_app_cont t1.effect t1' (make_var k) in
-        make_fun k {(make_let_f flag bindings' t1'') with attr=t_orig.attr}
-    | LetCPS(flag, bindings, t1), EExcep ->
+        make_fun k {(make_let bindings' t1'') with attr=t_orig.attr}
+    | LetCPS(bindings, t1), EExcep ->
         let r = Id.new_var ~name:"r" @@ trans_typ typ_excep typ_orig typ in
         let k = Id.new_var ~name:("k" ^ k_post) @@ TFun(r,typ_result) in
         let e = Id.new_var ~name:"e" typ_excep in
@@ -731,7 +725,7 @@ let rec transform typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} =
         in
         make_fun k @@
           make_fun h @@
-            {(make_let_f flag bindings' @@
+            {(make_let bindings' @@
                 List.fold_right2 aux bindings bindings' @@
                   make_app_excep t1.effect t1' (make_var k) (make_var h)) with attr=t_orig.attr}
     | BinOpCPS(op, t1, t2), ENone ->
@@ -886,7 +880,7 @@ let rec col_exn_typ {t_cps=t} =
   | FunCPS(_, t1) -> col_exn_typ t1
   | AppCPS(t1, t2) -> col_exn_typ t1 @ col_exn_typ t2
   | IfCPS(t1, t2, t3) -> col_exn_typ t1 @ col_exn_typ t2 @ col_exn_typ t3
-  | LetCPS(_, bindings, t2) -> List.fold_left (fun acc (_,t) -> col_exn_typ t @ acc) (col_exn_typ t2) bindings
+  | LetCPS(bindings, t2) -> List.fold_left (fun acc (_,t) -> col_exn_typ t @ acc) (col_exn_typ t2) bindings
   | BinOpCPS(_, t1, t2) -> col_exn_typ t1 @ col_exn_typ t2
   | NotCPS t1 -> col_exn_typ t1
   | EventCPS _ -> []
@@ -912,7 +906,7 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; effect=e} =
       assoc_typ_cps f t1 @@@ assoc_typ_cps f t2
   | IfCPS(t1, t2, t3) ->
       assoc_typ_cps f t1 @@@ assoc_typ_cps f t2 @@@ assoc_typ_cps f t3
-  | LetCPS(flag, bindings, t1) ->
+  | LetCPS(bindings, t1) ->
       let aux (g,t) =
         let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
         typs1 @@@ assoc_typ_cps f t
@@ -1076,7 +1070,7 @@ let inline_affine_term (vars,env) t =
             else raise Not_found
           with Not_found -> inline_affine.tr2_term_rec (vars,env) t
         end
-    | Let(flag, bindings, t1) ->
+    | Let(bindings, t1) ->
         let not_rand_int t =
           match t.desc with
           | App({desc=Const(RandValue(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
@@ -1090,7 +1084,7 @@ let inline_affine_term (vars,env) t =
         let vars' = List.map Triple.fst bindings @ vars in
         let env' = List.filter_map (fun (f,xs,t) -> if check f xs t then Some (f,(xs,t)) else None) bindings @ env in
         let bindings' = List.map (fun (f,xs,t) -> f, xs, inline_affine.tr2_term (xs@vars',env') t) bindings in
-        make_let_f flag bindings' @@ inline_affine.tr2_term (vars',env') t1
+        make_let bindings' @@ inline_affine.tr2_term (vars',env') t1
     | Fun(x, t) -> make_fun x @@ inline_affine.tr2_term (x::vars,env) t
     | _ -> inline_affine.tr2_term_rec (vars,env) t
   in

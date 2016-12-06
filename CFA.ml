@@ -13,8 +13,8 @@ let normalize_term t =
   | App(t1, ts) ->
       let aux t1 t2 = {(make_app t1 [t2]) with desc = App(t1, [t2])} in
       List.fold_left aux t1 ts
-  | Let(flag, bindings, t2) ->
-      {t' with desc = Let(flag, List.map (fun (f,xs,t) -> f, [], make_funs xs t) bindings, t2)}
+  | Let(bindings, t2) ->
+      {t' with desc = Let(List.map (fun (f,xs,t) -> f, [], make_funs xs t) bindings, t2)}
   | _ -> t'
 let () = normalize.tr_term <- normalize_term
 let normalize = normalize.tr_term
@@ -61,7 +61,7 @@ let rec update map flow t =
         | _ -> false
       in
       update map flow t1 || update map flow t2 || List.fold_left (fun b t -> b || aux t) false ts1
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let b =
         let aux b (f,xs,t1) =
           assert (xs=[]);

@@ -70,10 +70,10 @@ let rec print fm (Rose_tree.Node(node,ts)) =
   Format.fprintf fm "(@[<hov>%a,@ %a@])" print_node node (List.print print) ts
 
 let make_fix f xs t =
-  make_letrec [f, xs, t] @@ make_var f
+  make_let [f, xs, t] @@ make_var f
 let decomp_fix t =
   match t.desc with
-  | Let(Recursive, [f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
+  | Let([f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
   | _ -> None
 let is_fix t = decomp_fix t <> None
 
@@ -151,7 +151,7 @@ let eta_expand t =
   let ys,_ = decomp_tfun t'.typ in
   let ys' = List.map Id.new_var_id ys in
   match t'.desc with
-  | Let(flag, bindings, t'') -> make_funs (xs@ys') @@ make_let_f flag bindings @@ make_app t'' @@ List.map make_var ys'
+  | Let(bindings, t'') -> make_funs (xs@ys') @@ make_let bindings @@ make_app t'' @@ List.map make_var ys'
   | _ -> make_funs (xs@ys') @@ make_app t' @@ List.map make_var ys'
 
 let make_arg_map var_env val_env ce_env _ xs ts =
@@ -314,9 +314,9 @@ let rec from_term
       in
       let node = {nid; val_env; var_env; ce_env; nlabel = Branch tid} in
       RT.Node(node, children)
-  | Let(flag, [f,[],({desc=Bottom} as t1)], _) ->
+  | Let([f,[],({desc=Bottom} as t1)], _) ->
       from_term cnt fun_env var_env val_env ce_env t1
-  | Let(flag, [f,xs,t1], t2) ->
+  | Let([f,xs,t1], t2) ->
       Debug.printf "  LET@\n";
       Debug.printf "    t: %a@\n" Print.term t;
       assert (xs <> []);
@@ -330,7 +330,6 @@ let rec from_term
   | _ when t.desc = Bottom ->
       let node = {nid; var_env; val_env; ce_env; nlabel = End} in
       RT.Node(node, [])
-  | Let(Nonrecursive, _, _) -> assert false
   | _ ->
       Format.printf "@.t: @[%a@." Print.term t;
       Format.printf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;

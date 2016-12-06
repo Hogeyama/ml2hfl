@@ -67,7 +67,7 @@ let add_proj_info = make_trans ()
 
 let add_proj_info_term t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],({desc=Tuple ts} as t1)], t2) ->
+  | Let([x,[],({desc=Tuple ts} as t1)], t2) when is_non_rec [x,[],t1] ->
       begin
         try
           let ys = List.mapi (fun i t -> match t.desc with Var x -> i,x | _ -> raise Not_found) ts in
@@ -93,11 +93,11 @@ let pair_eta_reduce = make_trans2 ()
 
 let pair_eta_reduce_term env t =
   match t.desc with
-  | Let(Nonrecursive, [x,[],{desc=Proj(0,{desc=Var y})}], t2) ->
+  | Let([x,[],{desc=Proj(0,{desc=Var y})}], t2) ->
       pair_eta_reduce.tr2_term_rec ((x, Some y, None)::env) t
-  | Let(Nonrecursive, [x,[],{desc=Proj(1,{desc=Var y})}], t2) ->
+  | Let([x,[],{desc=Proj(1,{desc=Var y})}], t2) ->
       pair_eta_reduce.tr2_term_rec ((x, None, Some y)::env) t
-  | Let(Nonrecursive, [x,[],{desc=Tuple[{desc=Var y}; {desc=Var z}]}], t2) ->
+  | Let([x,[],{desc=Tuple[{desc=Var y}; {desc=Var z}]}], t2) ->
       begin
         match get_same_pair env y z with
         | None -> pair_eta_reduce.tr2_term_rec env t
@@ -113,7 +113,7 @@ let pair_eta_reduce = pair_eta_reduce.tr2_term []
 let rec make_deep_pair t rhs =
   match t.desc with
   | If(t1,t2,t3) -> make_if t1 (make_deep_pair t2 rhs) (make_deep_pair t3 rhs)
-  | Let(flag,bindings,t) -> make_let_f flag bindings @@ make_deep_pair t rhs
+  | Let(bindings,t) -> make_let bindings @@ make_deep_pair t rhs
   | Label(info, t) -> make_label info (make_deep_pair t rhs)
   | _ -> make_pair t (make_var rhs)
 
@@ -135,11 +135,10 @@ let subst_label_term (map,env) t =
       if Id.mem x @@ get_fv t'
       then t'
       else subst_label.tr2_term (map,env) t'
-  | Let(flag, bindings, t2) ->
+  | Let(bindings, t2) ->
       let env' = List.map Triple.fst bindings @ env in
-      let env'' = match flag with Nonrecursive -> env | Recursive -> env' in
-      let bindings' = List.map (fun (f,xs,t1) -> f, xs, subst_label.tr2_term (map,xs@env'') t1) bindings in
-      make_let_f flag bindings' @@ subst_label.tr2_term (map,env') t2
+      let bindings' = List.map (fun (f,xs,t1) -> f, xs, subst_label.tr2_term (map,xs@env') t1) bindings in
+      make_let bindings' @@ subst_label.tr2_term (map,env') t2
   | Label(InfoIdTerm(x,t1), t2) ->
       let map' =
         if Id.mem_assoc x map
@@ -178,26 +177,19 @@ let trans_typ funargs typ =
 
 let trans_term funargs t =
   match t.desc with
-  | Let(Nonrecursive,[x,[],{desc=App({desc=Var x1}, [{desc=Var x2}])}],t1) when is_higher x2 ->
+  | Let([x,[],{desc=App({desc=Var x1}, [{desc=Var x2}])}] as bindings, t1) when is_higher x2 && is_non_rec bindings ->
       let x' = trans.tr2_var funargs x in
       let x1' = trans.tr2_var funargs x1 in
       let x2' = trans.tr2_var funargs x2 in
       let t1' = trans.tr2_term funargs t1 in
-(*
-Color.printf Color.Yellow "x1: @[<hov 4>%a %a@ %a@." pp_print_typ (Id.typ x1) Color.red "=>" pp_print_typ (Id.typ x1');
-Color.printf Color.Yellow "x2: @[<hov 4>%a %a@ %a@." pp_print_typ (Id.typ x2) Color.red "=>" pp_print_typ (Id.typ x2');
-*)
       let t = make_app (make_var x1') [make_var x2'] in
       let p = Id.new_var ~name:(Id.name x' ^ "_" ^ Id.name x2') t.typ in
       let x2'' = Id.new_var_id x2' in
-(*
-Color.printf Color.Yellow "[%a |-> %a]: @[<hov 4>%a@." Id.print x2' Id.print x2'' pp_print_term t1';
-*)
       let t1'' = subst_all x2' x2'' t1' in
       make_lets [p,  [], t;
                  x', [], make_fst @@ make_var p;
                  x2'', [], make_snd @@ make_var p] t1''
-  | Let(Nonrecursive,[x,[],{desc=App({desc=Var f}, [{desc=Var y}])}],t1) when Id.mem f funargs ->
+  | Let([x,[],{desc=App({desc=Var f}, [{desc=Var y}])}] as bindings ,t1) when Id.mem f funargs && is_non_rec bindings ->
       let x' = trans.tr2_var funargs x in
       let f' = trans.tr2_var funargs f in
       let y' = trans.tr2_var funargs y in
@@ -211,7 +203,7 @@ Color.printf Color.Yellow "[%a |-> %a]: @[<hov 4>%a@." Id.print x2' Id.print x2'
       let x' = trans.tr2_var funargs x in
       let t' = trans.tr2_term funargs' t in
       make_fun x' @@ make_deep_pair t' x'
-  | Let(flag,bindings,t) ->
+  | Let(bindings,t) ->
       let aux (f,xs,t) =
         let f' = trans.tr2_var funargs f in
         let t' = trans.tr2_term funargs @@ List.fold_right make_fun xs t in
@@ -219,7 +211,7 @@ Color.printf Color.Yellow "[%a |-> %a]: @[<hov 4>%a@." Id.print x2' Id.print x2'
       in
       let bindings' = List.map aux bindings in
       let t' = trans.tr2_term funargs t in
-      make_let_f flag bindings' t'
+      make_let bindings' t'
   | Nil
   | Cons _
   | Constr _

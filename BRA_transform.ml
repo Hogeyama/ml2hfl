@@ -20,9 +20,9 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
       match desc with
 	| App (func, args) -> App (ev func, List.map ev args)
 	| If (cond_expr, then_expr, else_expr) -> If (ev cond_expr, ev then_expr, ev else_expr)
-	| Let (flag, bindings, e) ->
+	| Let (bindings, e) ->
 	  let fmap (ident, args, body) = (ident, args, ev body) in
-	  Let (flag, List.map fmap bindings, ev e)
+	  Let (List.map fmap bindings, ev e)
 	| BinOp (op, e1, e2) -> BinOp (op, ev e1, ev e2)
 	| Not e -> Not (ev e)
 	| Fun (f, body) -> Fun (f, ev body)
@@ -69,14 +69,14 @@ and show_desc = function
   | App ({desc=Event("fail", _)}, _) -> "assert false"
   | App (f, args) -> show_term f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_term a)) "" args
   | If (t1, t2, t3) -> "if " ^ show_term t1 ^ " then " ^ show_term t2 ^ " else " ^ show_term t3
-  | Let (_, [], _) -> assert false
-  | Let (rec_flag, b::bs, t) ->
+  | Let ([], _) -> assert false
+  | Let (b::bs, t) ->
     let show_bind (x, args, body) =
       modify_id x
       ^ (List.fold_left (fun acc a -> acc ^ " " ^ modify_id_typ a) "" args)
       ^ "="
       ^ show_term body in
-    (if rec_flag = Nonrecursive then "let " else "let rec ")
+    "let rec "
     ^ show_bind b
     ^ List.fold_left (fun acc x -> acc ^ " and " ^ show_bind x) "" bs
     ^ " in "
@@ -106,8 +106,8 @@ let restore_ids =
     with _ -> orig
   in
   let sub = function
-    | {desc = Let (rec_flag, bindings, cont); typ = t} ->
-      {desc = Let (rec_flag, List.map (fun (f, args, body) -> (trans_id f, List.map trans_id args, body)) bindings, cont); typ = t; attr=[]}
+    | {desc = Let (bindings, cont); typ = t} ->
+      {desc = Let (List.map (fun (f, args, body) -> (trans_id f, List.map trans_id args, body)) bindings, cont); typ = t; attr=[]}
     | {desc = Fun (f, body); typ = t} -> {desc = Fun (trans_id f, body); typ = t; attr=[]}
     | {desc = Var v; typ = t} -> {desc = Var (trans_id v); typ = t; attr=[]}
     | t -> t
@@ -138,7 +138,7 @@ let extract_functions (target_program : term) =
   let ext acc (id, args, body) = if args = [] then acc else {id=id; args=args}::acc in
   let rec iter t =
     match t.desc with
-      | Let (_, bindings, body) -> List.fold_left ext [] bindings @ iter body
+      | Let (bindings, body) -> List.fold_left ext [] bindings @ iter body
       | t -> []
   in
   let extracted = iter target_program in
@@ -147,13 +147,13 @@ let extract_functions (target_program : term) =
 let rec transform_function_definitions f term =
   let sub ((id, args, _) as binding) = if args <> [] then f binding else binding in
   match term with
-    | {desc = Let (rec_flag, bindings, cont)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_function_definitions f cont) }
+    | {desc = Let (bindings, cont)} as t -> { t with desc = Let (List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
 let rec transform_main_expr f term =
   let sub ((id, args, body) as binding) = if args = [] then (id, args, everywhere_expr f body) else binding in
   match term with
-    | {desc = Let (rec_flag, bindings, body)} as t -> { t with desc = Let (rec_flag, List.map sub bindings, transform_main_expr f body) }
+    | {desc = Let (bindings, body)} as t -> { t with desc = Let (List.map sub bindings, transform_main_expr f body) }
     | t -> everywhere_expr f t
 
 (*
@@ -180,7 +180,7 @@ let randomized_application f t =
   in aux f [] t
 
 let rec find_main_function = function
-  | {desc = Let (_, bindings, body)} ->
+  | {desc = Let (bindings, body)} ->
     let rec aux = function
       | [] -> find_main_function body
       | ({Id.name = "main"} as main_func , _, _) :: _ -> Some main_func
@@ -189,7 +189,7 @@ let rec find_main_function = function
   | _ -> None
 
 let remove_unit_wraping = function
-  | {desc = Let (Nonrecursive, [{Id.name="u"}, [], t], {desc = Const Unit; typ = TUnit})} -> t
+  | {desc = Let ([{Id.name="u"}, [], t], {desc = Const Unit; typ = TUnit})} -> t
   | t -> t
 
 let rec lambda_lift t =
@@ -197,10 +197,9 @@ let rec lambda_lift t =
     let (sub_bindings, body') , _ = Lift.lift' ~args body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
   in
   match t with
-    | {desc = Let (rec_flag, bindings, rest)} ->
+    | {desc = Let (bindings, rest)} ->
       let next_bindings = BRA_util.concat_map lift_binding bindings in
-      let next_rec_flag = if rec_flag = Nonrecursive && List.length next_bindings = 1 then Nonrecursive else Recursive in
-      {t with desc = Let (next_rec_flag, next_bindings, lambda_lift rest)}
+      {t with desc = Let (next_bindings, lambda_lift rest)}
     | _ -> t
 
 (* regularization of program form *)
@@ -209,7 +208,7 @@ let rec regularization e =
     | Some ({Id.name = "main"} as f) ->
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f; attr=[]} (Id.typ f) in
       let rec aux = function
-	| {desc = Let (rec_flag, bindings, rest)} as t -> {t with desc = Let (rec_flag, bindings, aux rest)}
+	| {desc = Let (bindings, rest)} as t -> {t with desc = Let (bindings, aux rest)}
 	| {desc = Const Unit} -> main_expr
 	| _ -> assert false
       in
@@ -369,16 +368,11 @@ let to_holed_programs (target_program : term) =
 	else
 	  [(id, args, body')]
     in
-    let update_rec_flag bindings rec_flag =
-      if !Flag.split_callsite && List.length bindings > 1 then
-	Recursive
-      else
-	rec_flag
-    in
+
     { typed with desc = match typed.desc with
-      | Let (rec_flag, bindings, body) ->
+      | Let (bindings, body) ->
 	let bindings' = BRA_util.concat_map sub bindings in
-	Let (update_rec_flag bindings' rec_flag, bindings', body)
+	Let (bindings', body)
       | t -> t
     }
   in

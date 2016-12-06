@@ -44,13 +44,13 @@ let is_external_id f =
   let name = Id.name f in
   String.contains name '.' && is_uppercase name.[0]
 
-let make_init_env cmp fbindings =
+let make_init_env cmp bindings =
   let make f =
     Id.typ f
     |> Trans.inst_tvar_tunit_typ
     |> (if is_external_id f then Ref_type.of_simple else Ref_type.make_weakest)
   in
-  List.flatten_map (snd |- List.map Triple.fst) fbindings
+  List.flatten_map (List.map Triple.fst) bindings
   |> Ref_type.Env.create make
 
 let rec main_loop history c prog cmp f typ depth ce_set =
@@ -120,7 +120,7 @@ let main_loop prog cmp f typ = main_loop [] 0 prog cmp f typ 1 []
 
 let rec last_def_to_fun t =
   match t.desc with
-  | Let(flag, [f,xs,t1], ({desc=Const Unit} as t2)) ->
+  | Let([f,xs,t1], ({desc=Const Unit} as t2)) ->
       let f',xs' =
         if xs = [] then
           let u = Id.new_var ~name:"u" TUnit in
@@ -129,18 +129,18 @@ let rec last_def_to_fun t =
         else
           f, xs
       in
-      let desc = Let(flag, [f',xs',t1], t2) in
+      let desc = Let([f',xs',t1], t2) in
       {t with desc}
-  | Let(flag, _, {desc=Const Unit}) -> unsupported "last_def_to_fun"
-  | Let(flag, defs, t2) ->
+  | Let(_, {desc=Const Unit}) -> unsupported "last_def_to_fun"
+  | Let(defs, t2) ->
       let t2' = last_def_to_fun t2 in
-      {t with desc = Let(flag, defs, t2')}
+      {t with desc = Let(defs, t2')}
   | _ -> assert false
 
 let main _ spec parsed =
   Flag.print_only_if_id := true;
   if spec <> Spec.init then unsupported "Modular.main: spec";
-  let fbindings,body =
+  let bindings,body =
     let pps =
       Preprocess.all spec
       |> Preprocess.before Preprocess.CPS
@@ -157,11 +157,10 @@ let main _ spec parsed =
     |> decomp_prog
   in
   assert (body.desc = Const Unit);
-  Debug.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (snd |- List.map Triple.fst) fbindings;
-  if List.exists (snd |- List.exists (Triple.fst |- is_fun_var |- not)) fbindings then
+  Debug.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (List.map Triple.fst) bindings;
+  if List.exists (List.exists (Triple.fst |- is_fun_var |- not)) bindings then
     unsupported "top-level let-bindings of non-functions";
-  List.iter (fun (flag,bindings) -> if flag=Recursive then assert (List.length bindings=1)) fbindings;
-  let fun_env = List.flatten_map (fun (_,bindings) -> List.map Triple.to_pair_r bindings) fbindings in
+  let fun_env = List.flatten_map (List.map Triple.to_pair_r) bindings in
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
   let cmp =
@@ -169,10 +168,10 @@ let main _ spec parsed =
     Compare.topological ~eq:Id.eq ~dom:(List.map fst fun_env) edges
   in
   let prog =
-    let env_init = make_init_env cmp fbindings in
+    let env_init = make_init_env cmp bindings in
     Debug.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
     let fun_typ_neg_env =
-      List.flatten_map (snd |- List.map Triple.fst) fbindings
+      List.flatten_map (List.map Triple.fst) bindings
       |> Ref_type.NegEnv.create (Ref_type.union -$- [] -| Id.typ)
     in
     let exn_decl =

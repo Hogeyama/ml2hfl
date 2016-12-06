@@ -734,7 +734,7 @@ let normalize = Trans.reduce_fail_unit |- Trans.reconstruct
 let trans_CPS env funs t =
   let t',make_get_rtyp_cps =
     t
-    |> List.fold_right (fun (f,(xs,t1)) t -> add_attr ADoNotInline @@ make_letrec [f,xs,t1] t) env
+    |> List.fold_right (fun (f,(xs,t1)) t -> add_attr ADoNotInline @@ make_let [f,xs,t1] t) env
     |@> Debug.printf "trans_CPS: %a@." Print.term
     |> CPS.trans_as_direct
   in
@@ -755,7 +755,7 @@ let trans_CPS env funs t =
   let env1,env2 =
     let fs = List.map fst env in
     env'
-    |> List.flatten_map (snd |- List.map Triple.to_pair_r)
+    |> List.flatten_map (List.map Triple.to_pair_r)
     |> List.partition (fst |- Id.mem -$- fs)
   in
   Debug.printf "funs: %a@." (List.print Id.print) funs;
@@ -767,7 +767,7 @@ let trans_CPS env funs t =
       Format.printf "REMOVED: %a@." (List.print Id.print) removed;
       assert false
     end;
-  env1, make_letrecs (List.map Triple.of_pair_r env2) t_main, make_get_rtyp
+  env1, make_lets (List.map Triple.of_pair_r env2) t_main, make_get_rtyp
 
 let replace_if_with_bottom = make_trans ()
 let replace_if_with_bottom_term t =
@@ -1091,7 +1091,7 @@ let infer mode prog f typ (ce_set:ce_set) =
   Debug.printf "add_context t: %a@.@." Print.term t;
   let comp_tree =
     Debug.printf "Dom(Fun_env'): %a@.@." (List.print Id.print) @@ List.map fst fun_env';
-    Debug.printf "t with def: %a@.@." Print.term @@ make_letrecs (List.map Triple.of_pair_r fun_env') t;
+    Debug.printf "t with def: %a@.@." Print.term @@ make_lets (List.map Triple.of_pair_r fun_env') t;
     Debug.printf "t: %a@.@." Print.term t;
     CT.from_program fun_env' ce_set t
   in

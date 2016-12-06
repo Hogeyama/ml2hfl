@@ -50,11 +50,10 @@ let get_fv' = make_col2 IdSet.empty IdSet.union
 let get_fv'_term vars t =
   match t.desc with
   | Var x -> if IdSet.mem x vars then IdSet.empty else IdSet.singleton x
-  | Let(flag, bindings, t2) ->
-      let vars_with_fun = List.fold_left (fun vars (f,_,_) -> IdSet.add f vars) vars bindings in
-      let vars' = match flag with Nonrecursive -> vars | Recursive -> vars_with_fun in
+  | Let(bindings, t2) ->
+      let vars' = List.fold_left (fun vars (f,_,_) -> IdSet.add f vars) vars bindings in
       let aux fv (_,xs,t) = fv @@@ get_fv'.col2_term (set_of_list xs @@@ vars') t in
-      let fv_t2 = get_fv'.col2_term vars_with_fun t2 in
+      let fv_t2 = get_fv'.col2_term vars' t2 in
       List.fold_left aux fv_t2 bindings
   | Fun(x,t) -> get_fv'.col2_term (IdSet.add x vars) t
   | Match(t,pats) ->
@@ -99,7 +98,7 @@ let rec lift_aux post xs t =
         let defs2,t2' = lift_aux post xs t2 in
         let defs3,t3' = lift_aux post xs t3 in
         defs1 @ defs2 @ defs3, If(t1',t2',t3')
-    | Let(Nonrecursive,bindings,t2) ->
+    | Let(bindings,t2) when is_non_rec bindings  ->
         let aux (f,ys,t1) =
           let fv = IdSet.inter (get_fv' t1) xs in
           let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
@@ -115,7 +114,7 @@ let rec lift_aux post xs t =
         let subst_f t = List.fold_left2 (fun t f'' (f,_,_) -> subst f f'' t) t fs bindings in
         let defs2,t2' = lift_aux post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
-    | Let(Recursive,bindings,t2) ->
+    | Let(bindings,t2) ->
         let fv = List.fold_left (fun acc (_,_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
         let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
@@ -218,11 +217,11 @@ let rec lift_aux' post xs t =
         let defs2,t2' = lift_aux' post xs t2 in
         let defs3,t3' = lift_aux' post xs t3 in
         defs1 @ defs2 @ defs3, If(t1',t2',t3')
-    | Let(Nonrecursive,[x, [], t1],t2) ->
+    | Let([x, [], t1],t2) when is_non_rec [x,[],t1] ->
         let defs1, t1' = lift_aux' post xs t1 in
 	let defs2, t2' = lift_aux' post (IdSet.add x xs) t2 in
-        defs1 @ defs2, Let(Nonrecursive,[x, [], t1'],t2')
-    | Let(Nonrecursive,bindings,t2) ->
+        defs1 @ defs2, Let([x, [], t1'],t2')
+    | Let(bindings,t2) when is_non_rec bindings ->
         let aux (f,ys,t1) =
           let fv = IdSet.inter (get_fv' t1) xs in
           let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
@@ -238,7 +237,7 @@ let rec lift_aux' post xs t =
         let subst_f t = List.fold_left2 (fun t f'' (f,_,_) -> subst f f'' t) t fs bindings in
         let defs2,t2' = lift_aux' post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
-    | Let(Recursive,bindings,t2) ->
+    | Let(bindings,t2) ->
         let fv = List.fold_left (fun acc (_,_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
         let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in

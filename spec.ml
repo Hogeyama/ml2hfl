@@ -100,7 +100,7 @@ let get_def_vars = make_col [] (@@@)
 
 let get_def_vars_term t =
   match t.desc with
-  | Let(_, defs, t2) ->
+  | Let(defs, t2) ->
       let xs = List.map Triple.fst defs in
       let vars1 = List.rev_flatten_map (Triple.trd |- get_def_vars.col_term) defs in
       let vars2 = get_def_vars.col_term t2 in
