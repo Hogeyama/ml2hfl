@@ -207,7 +207,8 @@ test: opt
 test-web: opt
 	@echo -n "OPTION: "
 	@head -1 option.conf
-	for i in web/src/*ml; \
+	@echo
+	@for i in web/src/*ml; \
 	do \
 	  echo VERIFY $$i; \
 	  ./mochi.opt $$i $(OPTION) 2> /dev/null; \

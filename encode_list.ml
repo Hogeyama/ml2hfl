@@ -101,6 +101,8 @@ let rec get_rtyp_list rtyp typ =
       RT.Tuple (List.map2 (fun (x,rtyp) y -> x, get_rtyp_list rtyp (Id.typ y)) xrtyps ys)
   | RT.ExtArg(x,rtyp1,rtyp2), _ ->
       RT.ExtArg(x, rtyp1, get_rtyp_list rtyp2 typ)
+  | RT.Exn(rtyp1,rtyp2), _ ->
+      RT.Exn(get_rtyp_list rtyp1 typ, rtyp2)
   | _ ->
       Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp Print.typ typ;
       assert false
