@@ -2363,8 +2363,8 @@ let beta_affine_fun_desc desc =
   | Let([f, xs, t1], t2) when xs <> [] && is_non_rec [f,xs,t1]  ->
       let t1' = beta_affine_fun.tr_term t1 in
       begin
-        match t1' with
-        | {desc=App(t0,ts)} ->
+        match t1'.desc with
+        | App(t0,ts) ->
             let size_1 t =
               match t.desc with
               | Const _
@@ -2389,7 +2389,13 @@ let beta_affine_fun_desc desc =
         | _ -> beta_affine_fun.tr_desc_rec desc
       end
   | _ -> beta_affine_fun.tr_desc_rec desc
+let beta_affine_fun_term t =
+  if List.mem ADoNotInline t.attr then
+    {t with desc=beta_affine_fun.tr_desc_rec t.desc}
+  else
+    {t with desc=beta_affine_fun.tr_desc t.desc}
 let () = beta_affine_fun.tr_desc <- beta_affine_fun_desc
+let () = beta_affine_fun.tr_term <- beta_affine_fun_term
 let beta_affine_fun = beta_affine_fun.tr_term -| merge_let_fun
 
 
