@@ -1,7 +1,6 @@
 
 open Util
 
-exception TimeOut
 exception LongInput
 
 let output_csv result =
@@ -401,7 +400,6 @@ let string_of_exception = function
   | Typetexp.Error(loc,env,err) -> "Typetexp.Error"
   | Lexer.Error(err, loc) -> "Lexer.Error"
   | LongInput -> "LongInput"
-  | TimeOut -> "TimeOut"
   | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
   | Fatal s -> "Fatal"
   | e -> Printexc.to_string e
@@ -465,6 +463,42 @@ let timeout_handler _ =
   Format.printf "Verification failed (time out)@.";
   exit 1
 
+let print_error = function
+  | Fpat.RefTypInfer.FailedToRefineTypes ->
+      Format.printf "Verification failed:@.";
+      Format.printf "  MoCHi could not refute an infeasible error path @.";
+      Format.printf "  due to the incompleteness of the refinement type system@."
+  | e when Fpat.FPATConfig.is_fpat_exception e ->
+      Format.printf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
+  | Syntaxerr.Error err ->
+      Format.printf "%a@." Syntaxerr.report_error err
+  | Typecore.Error(loc,env,err) ->
+      Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
+  | Typemod.Error(loc,env,err) ->
+      Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
+  | Env.Error e ->
+      Format.printf "%a@." Env.report_error e
+  | Typetexp.Error(loc,env,err) ->
+      Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
+  | Lexer.Error(err, loc) ->
+      Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
+  | LongInput ->
+      Format.printf "Input is too long@."
+  | CEGAR_syntax.NoProgress ->
+      Format.printf "Unknown. (CEGAR not progress) @."
+  | CEGAR_abst.NotRefined ->
+      Format.printf "Verification failed (new error path not found)@."
+  | Fatal s ->
+      Format.printf "Fatal error: %s@." s
+  | Unsupported s ->
+      Format.printf "Unsupported: %s@." s
+  | Sys_error s ->
+      Format.printf "%s@." s
+  | e when !Flag.debug_module = [] ->
+      Format.printf "Exception: %s@." @@ Printexc.to_string e
+  | e -> raise e
+
+
 let () =
   if !Sys.interactive
   then ()
@@ -492,51 +526,6 @@ let () =
         Format.printf "}@."
     | e when !Flag.exp2 ->
         output_csv (string_of_exception e)
-    | Fpat.RefTypInfer.FailedToRefineTypes ->
+    | e ->
         Main_loop.print_result_delimiter ();
-        Format.printf "Verification failed:@.";
-        Format.printf "  MoCHi could not refute an infeasible error path @.";
-        Format.printf "  due to the incompleteness of the refinement type system@."
-    | e when Fpat.FPATConfig.is_fpat_exception e ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
-    | Syntaxerr.Error err ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "%a@." Syntaxerr.report_error err
-    | Typecore.Error(loc,env,err) ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
-    | Typemod.Error(loc,env,err) ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
-    | Env.Error e ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "%a@." Env.report_error e
-    | Typetexp.Error(loc,env,err) ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
-    | Lexer.Error(err, loc) ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
-    | LongInput ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "Input is too long@."
-    | TimeOut -> assert false
-    | CEGAR_syntax.NoProgress ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "Unknown. (CEGAR not progress) @."
-    | CEGAR_abst.NotRefined ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "Verification failed (new error path not found)@."
-    | Fatal s ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "Fatal error?: %s@." s
-    | Unsupported s ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "Unsupported: %s@." s
-    | Sys_error s ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "%s@." s
-    | e when !Flag.debug_module = [] ->
-        Main_loop.print_result_delimiter ();
-        Format.printf "Exception: %s@." @@ Printexc.to_string e
+        print_error e
