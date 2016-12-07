@@ -503,7 +503,7 @@ let make_template env t =
 
 
 let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.ce_env; CT.nlabel}, children) as ct) =
-  let dbg = 0=0 in
+  let dbg = 0=1 in
   if dbg then Debug.printf "label: %a@." CT.print_nlabel nlabel;
   if dbg then Debug.printf "  Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
   let r =
@@ -886,42 +886,60 @@ let add_merged (p1,p2) merged =
   else
     (p1,p2)::merged
 
+let can_merge (p1,p2) deps =
+  not @@ Dependency.mem (p1,p2) deps &&
+  not @@ Dependency.mem (p2,p1) deps
+
+let merge_same_sol sol map merged deps hcs =
+  let rec loop acc sol map merged deps hcs =
+    match map with
+    | [] -> acc, merged, deps, hcs
+    | (p1,p2)::map' when can_merge (p1,p2) deps ->
+        let merged' = add_merged (p1,p2) merged in
+        let hcs' = List.map (Horn_clause.map @@ replace_id p1 p2) hcs in
+        let deps' = add_dependency (add_dependency deps (p1,p2)) (p2,p1) in
+        loop acc sol map' merged' deps' hcs'
+    | pp::map' -> loop (pp::acc) sol map' merged deps hcs
+  in
+  loop [] sol map merged deps hcs
+
 let solve_merged merge_candidates hcs =
   let dependencies,map = merge_predicate_variables merge_candidates hcs in
   let sbst (p1,p2) map =
     let aux p = if p = p1 then p2 else p in
     List.map (Pair.map aux aux) map
   in
-  let rec aux used last_sol merged deps map hcs =
+  let rec loop used last_sol merged deps map hcs =
     Debug.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
     match map with
     | [] -> last_sol, merged
     | (p1,p2)::map' when p1 = p2 ->
         Debug.printf "MERGED %d@." p1;
-        aux used last_sol merged deps map' hcs
+        loop used last_sol merged deps map' hcs
     | (p1,p2)::map' when Dependency.mem (p1,p2) deps || Dependency.mem (p2,p1) deps ->
         Debug.printf "NOT MERGE %d, %d@." p1 p2;
-        aux used last_sol merged deps map' hcs
+        loop used last_sol merged deps map' hcs
     | (p1,p2)::map' when not (List.mem p1 used && List.mem p2 used) ->
         Debug.printf "MERGE1 %d, %d@." p1 p2;
         let merged' = add_merged (p1,p2) merged in
         let map'' = sbst (p1,p2) map' in
-        aux used last_sol merged' deps map'' hcs
+        loop used last_sol merged' deps map'' hcs
     | (p1,p2)::map' when same_last_sol last_sol p1 p2 ->
+        assert false;
         Debug.printf "MERGE2 %d, %d@." p1 p2;
         let merged' = add_merged (p1,p2) merged in
         let map'' = sbst (p1,p2) map' in
-        aux used last_sol merged' deps map'' hcs
+        loop used last_sol merged' deps map'' hcs
     | (p1,p2)::map' ->
         let hcs' = List.map (Horn_clause.map @@ replace_id p1 p2) hcs in
         incr cnt;
         match solve_option hcs' with
         | exception e ->
-            Format.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps;
+            if 0=1 then Debug.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps;
             raise e
         | None ->
             Debug.printf "CANNOT MERGE %d, %d@." p1 p2;
-            aux used last_sol merged deps map' hcs
+            loop used last_sol merged deps map' hcs
         | Some sol ->
             Debug.printf "MERGE3 %d, %d@." p1 p2;
             let merged' = add_merged (p1,p2) merged in
@@ -929,28 +947,27 @@ let solve_merged merge_candidates hcs =
             let deps' = add_dependency (add_dependency deps (p1,p2)) (p2,p1) in
             if !!Debug.check then save_dep deps' hcs' @@ Format.sprintf "tmp/test%d.dot" !cnt;
             Debug.printf "SOLVED@.";
-            if List.for_all (fun (_,(_,t)) -> t.desc = Const True) sol then
-              sol, merged
-            else
-              let used' = List.remove used p1 in
-              aux used' sol merged' deps' map'' hcs'
+            let map''',merged'',deps'',hcs'' = merge_same_sol sol map'' merged' deps' hcs' in
+            let used' = List.remove used p1 in
+            loop used' sol merged'' deps'' map''' hcs''
   in
-  Debug.printf "init_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements dependencies;
+  if 0=1 then Debug.printf "init_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements dependencies;
   if !!Debug.check then save_dep dependencies hcs "tmp/test.dot";
   match solve_option hcs with
   | None -> None
   | Some sol ->
       let used = HC.get_pred_ids_hcs hcs in
-      let sol',merged = aux used sol [] dependencies map hcs in
+      let map',merged,deps',hcs' = merge_same_sol sol map [] dependencies hcs in
+      let sol',merged' = loop used sol merged deps' map' hcs' in
       Debug.printf "map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) map;
-      Debug.printf "merged: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged;
+      Debug.printf "merged': %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) merged';
       Debug.printf "Dom(sol'): %a@." (List.print Format.pp_print_int) @@ List.map fst sol';
-      let aux' (x,y) =
+      let aux (x,y) =
         try
           Some (x, List.assoc y sol')
         with Not_found -> None
       in
-      Some (List.filter_map aux' merged @ sol')
+      Some (List.filter_map aux merged' @ sol')
 
 let assoc_pred_var p hcs =
   if 0=1 then Format.printf "APV: P_%d@." p;
@@ -994,9 +1011,10 @@ let rec get_merge_candidates_aux typ1 typ2 =
 let get_merge_candidates templates =
   let aux typs =
     match typs with
-    | [] -> []
+    | []
+    | [_] -> []
     | typ::typs' ->
-        if 0=1 then Debug.printf "GMC typs: %a@." (List.print print_template) typs;
+        if 0=0 then Debug.printf "GMC typs: %a@." (List.print print_template) typs;
         List.flatten_map (get_merge_candidates_aux @@ typ) @@ typs'
   in
   templates
@@ -1172,7 +1190,7 @@ let infer mode prog f typ (ce_set:ce_set) =
       Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env'';
       Some env''
 
-let use_ToFalse = false
+let use_ToFalse = true
 
 (* ToNatural => (*ToTrue*) => ToStronger => ToFalse *)
 let next_mode_aux mode =
