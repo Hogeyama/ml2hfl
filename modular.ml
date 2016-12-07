@@ -11,6 +11,7 @@ let time_check = ref 0.
 let time_synthesize = ref 0.
 
 let infer_ind = ref false
+let refine_init = ref true
 
 exception NoProgress
 
@@ -55,6 +56,24 @@ let make_init_env cmp bindings =
   List.flatten_map (List.map Triple.fst) bindings
   |> Ref_type.Env.create make
 
+let refine_init_env prog =
+  let rec loop prog ce_set candidates =
+    match candidates with
+    | [] -> prog, ce_set
+    | (f,typ)::candidates' ->
+        let r = measure_and_add_time time_check (fun () -> Modular_check.check prog f typ 1) in
+        let prog', ce_set'  =
+          match r with
+          | Modular_check.Typable env -> {prog with fun_typ_env=merge_tenv prog.fun_typ_env env}, ce_set
+          | Modular_check.Untypable ce -> prog, normalize_ce_set @@ (f,ce)::ce_set
+        in
+        loop prog' ce_set' candidates'
+  in
+  Ref_type.Env.dom prog.fun_typ_env
+  |> List.filter_out is_external_id
+  |> List.map (fun f -> f, Ref_type.of_simple @@ Id.typ f)
+  |> loop prog []
+
 let rec main_loop_ind history c prog cmp f typ depth ce_set =
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
   if Ref_type.subtype (Ref_type.Env.assoc f env) typ then
@@ -66,7 +85,7 @@ let rec main_loop_ind history c prog cmp f typ depth ce_set =
     Debug.printf "%sTIME: %.3f@." space !!get_time;
     let pr f = MVerbose.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
-    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fun (f,_) -> is_external_id f) env;
+    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- is_external_id) env;
     if false then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
     if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
@@ -181,11 +200,11 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
         main_loop {prog with fun_typ_env=env'} cmp candidate' main typ infer_mode' depth ce_set'
 
 
-let main_loop prog cmp f typ =
+let main_loop prog ce_set cmp f typ =
   if !infer_ind then
-    main_loop_ind [] 0 prog cmp f typ 1 []
+    main_loop_ind [] 0 prog cmp f typ 1 ce_set
   else
-    main_loop prog cmp [f,typ] f typ Modular_infer.init_mode 1 []
+    main_loop prog cmp [f,typ] f typ Modular_infer.init_mode 1 ce_set
 
 let rec last_def_to_fun t =
   match t.desc with
@@ -251,7 +270,13 @@ let main _ spec parsed =
     in
     {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
   in
-  let r, env, neg_env, ce_set = main_loop prog cmp main typ in
+  let prog',ce_set =
+    if !refine_init then
+      refine_init_env prog
+    else
+      prog, []
+  in
+  let r, env, neg_env, ce_set = main_loop prog' ce_set cmp main typ in
   Main_loop.print_result_delimiter ();
   match r with
   | `Typable ->
