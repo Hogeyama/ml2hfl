@@ -13,6 +13,10 @@ type model_checker = TRecS | HorSat | HorSat2 | HorSatP
 
 let use_abst = ref false
 
+(* Experiment option *)
+let output_csv : string option ref = ref None
+let output_json : string option ref = ref None
+
 (* TRecS option *)
 let trecs_param1 = ref 1000
 let trecs_param2 = ref 10
@@ -68,7 +72,6 @@ let ignore_non_termination = ref false
 let fail_as_exception = ref false
 
 
-
 (* print option *)
 let print_source = true
 let print_cps = true
@@ -108,8 +111,6 @@ let args = ref [""] (* command-line options *)
 
 
 (* mode option *)
-let exp = ref false
-let exp2 = ref false
 let ignore_conf = ref false
 let init_trans = ref true
 let just_print_non_CPS_abst = ref false

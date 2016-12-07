@@ -3,29 +3,7 @@ open Util
 
 exception LongInput
 
-let output_csv result =
-  let oc =
-    open_out_gen [Open_append; Open_creat] 0o666 "mochi_exp.csv"
-  in
-  let ocf = Format.formatter_of_out_channel oc in
-  Format.fprintf ocf "@[<v>";
-  Format.fprintf
-    ocf
-    "%s,\"%s\",%d,%f,%f,%f,%f@,"
-    (Filename.chop_extension_if_any @@ Filename.basename !Flag.filename)
-    (String.replace_chars
-       (function '"' -> "\"\"" | c -> String.of_char c)
-       result)
-    !Flag.cegar_loop
-    !Flag.time_abstraction
-    !Flag.time_mc
-    !Flag.time_cegar
-    !Flag.time_parameter_inference;
-  Format.fprintf ocf "@]@?";
-  close_out oc
-
 let print_info_default () =
-  if !Flag.exp2 then output_csv !Flag.result;
   if !Flag.add_closure_exparam && !Flag.result = "terminating" then
     Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
   if !Flag.mode = Flag.Termination && !Flag.result = "terminating" then
@@ -49,26 +27,45 @@ let print_info_default () =
     Format.printf "    exparam: %.3f sec@." !Flag.time_parameter_inference;
   Format.pp_print_flush Format.std_formatter ()
 
-let print_info_exp () =
-  Format.printf "{";
-  Format.printf "\"filename\": %S, " !Flag.filename;
-  Format.printf "\"result\": %S, " !Flag.result;
-  Format.printf "\"cycles\": \"%d\", " !Flag.cegar_loop;
+let output_csv filename =
+  let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
+  let ocf = Format.formatter_of_out_channel oc in
+  Format.fprintf ocf "@[<v>";
+  Format.fprintf
+    ocf
+    "%s,%S,%d,%f,%f,%f,%f@,"
+    (Filename.chop_extension_if_any @@ Filename.basename !Flag.filename)
+    !Flag.result
+    !Flag.cegar_loop
+    !Flag.time_abstraction
+    !Flag.time_mc
+    !Flag.time_cegar
+    !Flag.time_parameter_inference;
+  Format.fprintf ocf "@]@?";
+  close_out oc
+
+let output_json filename =
+  let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
+  let ocf = Format.formatter_of_out_channel oc in
+  Format.fprintf ocf "{";
+  Format.fprintf ocf "\"filename\": %S, " !Flag.filename;
+  Format.fprintf ocf "\"result\": %S, " !Flag.result;
+  Format.fprintf ocf "\"cycles\": \"%d\", " !Flag.cegar_loop;
   if !Flag.mode = Flag.Termination then
     begin
-      Format.printf "\"ranking\": {";
+      Format.fprintf ocf "\"ranking\": {";
       List.iter
         (fun (f_name, (cycles, pred)) ->
-         Format.printf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
+         Format.fprintf ocf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
         !Termination_loop.lrf;
-      Format.printf " \"_\":{} }, "
+      Format.fprintf ocf " \"_\":{} }, "
     end;
-  Format.printf "\"total\": \"%.3f\", " !!get_time;
-  Format.printf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
-  Format.printf "\"mc\": \"%.3f\", " !Flag.time_mc;
-  Format.printf "\"refine\": \"%.3f\", " !Flag.time_cegar;
-  Format.printf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
-  Format.printf "}@."
+  Format.fprintf ocf "\"total\": \"%.3f\", " !!get_time;
+  Format.fprintf ocf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
+  Format.fprintf ocf "\"mc\": \"%.3f\", " !Flag.time_mc;
+  Format.fprintf ocf "\"refine\": \"%.3f\", " !Flag.time_cegar;
+  Format.fprintf ocf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
+  Format.fprintf ocf "}@."
 
 let print_info_modular () =
   Format.printf "#typeChecker: %n@." !Modular.num_tycheck;
@@ -77,9 +74,9 @@ let print_info_modular () =
   Format.printf "  typeSynthesizer: %.3f sec@." !Modular.time_synthesize
 
 let print_info () =
-  if !Flag.exp then
-    print_info_exp ()
-  else if !Flag.modular then
+  Option.iter output_csv !Flag.output_csv;
+  Option.iter output_json !Flag.output_json;
+  if !Flag.modular then
     print_info_modular ()
   else
     print_info_default ()
@@ -162,9 +159,9 @@ let main_termination orig parsed =
     | Termination_loop.FailedToFindLLRF -> false
   in
   if result then
-    (Flag.result := "terminating"; if not !Flag.exp then Format.printf "Terminating!@."; result)
+    (Flag.result := "terminating"; Format.printf "Terminating!@."; result)
   else
-    (Flag.result := "unknown"; if not !Flag.exp then Format.printf "Unknown...@."; result)
+    (Flag.result := "unknown"; Format.printf "Unknown...@."; result)
 
 let main_fair_termination orig spec parsed =
   let result = Fair_termination.run spec parsed in
@@ -180,7 +177,7 @@ let output_randint_refinement_log input_string =
       let basename = Filename.basename !Flag.filename in
       dirname ^ "/refinement/" ^ Filename.change_extension basename "refinement"
     in
-    open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o666 input
+    open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o644 input
   in
   output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
   close_out cout
@@ -226,6 +223,10 @@ let main in_channel =
       Main_loop.run orig [] ~spec parsed
 
 
+let set_exp_filename filename =
+  if Filename.check_suffix filename ".csv" then Flag.output_csv := Some filename
+  else if Filename.check_suffix filename ".json" then Flag.output_json := Some filename
+
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
@@ -243,16 +244,7 @@ let rec arg_spec () =
      "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
      "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
      "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
-     "-exp",
-       Arg.Unit (fun () ->
-                 set_only_result ();
-                 Flag.exp := true),
-       " For experiments";
-     "-exp2",
-       Arg.Unit (fun () ->
-                 set_only_result ();
-                 Flag.exp2 := true),
-       " Experiment mode (output mochi_exp.csv)";
+     "-exp", Arg.String set_exp_filename, "<filename>  Output experimental results to <filename> (Support file types: *.csv, *.json)";
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
@@ -525,15 +517,9 @@ let () =
       Fpat.SMTProver.finalize ();
       print_info ()
     with
-    | e when !Flag.exp ->
-        Format.printf "{";
-        Format.printf "\"filename\": %S, " !Flag.filename;
-        Format.printf "\"result\": %S, " @@ string_of_exception e;
-        Format.printf "\"cycles\": \"(%d)\", " !Flag.cegar_loop;
-        Format.printf "\"total\": \"(%.3f)\"" !!get_time;
-        Format.printf "}@."
-    | e when !Flag.exp2 ->
-        output_csv (string_of_exception e)
     | e ->
+        Flag.result := string_of_exception e;
+        Option.iter output_csv !Flag.output_csv;
+        Option.iter output_json !Flag.output_json;
         Main_loop.print_result_delimiter ();
         print_error e

@@ -20,7 +20,7 @@ let preprocess make_pps ?(fun_list=None) t spec =
     | Some fun_list' -> fun_list'
   in
 
-  if !Flag.exp2 then
+  if false then
     begin
       let oc = open_out @@ Filename.change_extension !Flag.filename "pml" in
       let ocf = Format.formatter_of_out_channel oc in
@@ -254,11 +254,10 @@ let run ?make_pps ?fun_list orig exparam_sol ?(spec=Spec.init) parsed =
   | CEGAR.Safe env ->
       Flag.result := "Safe";
       let env' = trans_env (Term_util.get_top_funs parsed) make_get_rtyp env in
-      if not !Flag.exp && !Flag.mode = Flag.FairTermination => !!Verbose.check then
+      if !Flag.mode = Flag.FairTermination => !!Verbose.check then
         report_safe env' orig set_target';
       true
   | CEGAR.Unsafe(sol,_) ->
       Flag.result := "Unsafe";
-      if not !Flag.exp then
-        report_unsafe main sol set_target;
+      report_unsafe main sol set_target;
       false
