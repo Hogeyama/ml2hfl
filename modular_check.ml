@@ -222,8 +222,9 @@ let add_context prog f xs t typ =
   let etyp = Type(["exn", TVariant (exn_decl@[af,[]])], "exn") in
   let typ_exn = Encode.typ_of Encode.all etyp in
   let make_fail typ =
-    Encode.all @@ make_raise (make_construct af [] etyp) typ
+    Encode.all @@ Trans.replace_fail_with (Raise(make_construct "Assert_failure" [] etyp)) @@ make_fail typ
   in
+  let fail_unit_desc = (make_fail TUnit).desc in
   let t' =
     unit_term
     |> Trans.ref_to_assert ~typ_exn ~make_fail @@ Ref_type.Env.of_list [f,typ]
@@ -240,7 +241,7 @@ let add_context prog f xs t typ =
   in
   let fun_env'' =
     List.map (Pair.map_snd @@ Pair.map_snd @@ normalize false) fun_env' @
-    [f, (xs, normalize false t)]
+    [f, (xs, Trans.replace_fail_with fail_unit_desc @@ normalize false t)]
   in
   if dbg then Debug.printf "ADD_CONTEXT fun_env'': %a@." print_def_env fun_env'';
   t', fun_env''

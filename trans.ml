@@ -2598,18 +2598,17 @@ let add_id t = add_id_if (Fun.const true) t
 let remove_id t = filter_attr (function AId _ -> false | _ -> true) t
 
 
-let replace_fail_with_raise = make_trans2 ()
-let replace_fail_with_raise_desc exn_typ desc =
+let replace_fail_with = make_trans2 ()
+let replace_fail_with_desc desc0 desc =
   match desc with
-  | App({desc=Event("fail", _)}, [{desc=Const Unit}]) -> Raise(make_construct "Assert_failure" [] exn_typ)
-  | _ -> replace_fail_with_raise.tr2_desc_rec exn_typ desc
-let () = replace_fail_with_raise.tr2_desc <- replace_fail_with_raise_desc
-let replace_fail_with_raise t =
-  let exn_typ =
-    Format.printf "WARNING: replace_fail_with_raise@.";
-    TData "exn"
-  in
-  replace_fail_with_raise.tr2_term exn_typ t
+  | App({desc=Event("fail", _)}, [{desc=Const Unit}]) -> desc0
+  | _ -> replace_fail_with.tr2_desc_rec desc0 desc
+let () = replace_fail_with.tr2_desc <- replace_fail_with_desc
+let replace_fail_with desc t =
+  replace_fail_with.tr2_term desc t
+
+
+let replace_fail_with_raise t = unsupported "replace_fail_with_raise"
 
 
 
