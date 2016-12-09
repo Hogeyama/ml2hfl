@@ -30,6 +30,12 @@ and type_template =
   | Inter of typ * type_template list
 
 
+let print_mode fm = function
+  | ToTrue -> Format.fprintf fm "ToTrue"
+  | ToFalse -> Format.fprintf fm "ToFalse"
+  | ToNatural -> Format.fprintf fm "ToNatural"
+  | ToStronger -> Format.fprintf fm "ToStronger"
+
 let rec print_constr fm = function
   | Exp t -> Format.fprintf fm "%a" Print.term t
   | And(c1, c2) -> Format.fprintf fm "@[<hov 3>(%a@ &&@ %a)@]" print_constr c1 print_constr c2
@@ -1096,7 +1102,7 @@ let rec instantiate_any mode pos typ =
       in
       Exn(instantiate_any mode pos typ1, instantiate_any mode' pos typ2)
 
-let infer mode prog f typ (ce_set:ce_set) =
+let infer prog f typ (ce_set:ce_set) =
   let ce_set =
     if 0=1 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x print_ce ce; read_int() <> 0) ce_set
@@ -1135,8 +1141,9 @@ let infer mode prog f typ (ce_set:ce_set) =
     |> get_merge_candidates
   in
   match solve_merged merge_candidates hcs with
-  | None -> None
+  | None -> fun _ -> None
   | Some sol ->
+      fun mode ->
       Debug.printf "TEMPLATES of TOP_FUNS: @[%a@.@." print_tmp_env @@ List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env') templates;
       Debug.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
       let top_funs =
@@ -1190,7 +1197,7 @@ let infer mode prog f typ (ce_set:ce_set) =
       Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env'';
       Some env''
 
-let use_ToFalse = true
+let use_ToFalse = false
 
 (* ToNatural => (*ToTrue*) => ToStronger => ToFalse *)
 let next_mode_aux mode =
