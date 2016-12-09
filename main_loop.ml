@@ -124,9 +124,11 @@ let report_unsafe main ce set_target =
         "Unsafe!"
   in
   Color.printf Color.Bright "%s@.@." s;
-  Option.may (fun (main_fun, arg_num) ->
-              Format.printf "Input for %s:@.  %a@." main_fun
-                            (print_list Format.pp_print_int "; ") (List.take arg_num ce)) main;
+  let pr (main_fun, arg_num) =
+    if arg_num > 0 then
+      Format.printf "Input for %s:@.  %a@." main_fun (print_list Format.pp_print_int "; ") (List.take arg_num ce)
+  in
+  Option.may pr main;
   try
     Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_target)
   with Unsupported s -> Format.printf "@.Unsupported: %s@.@." s

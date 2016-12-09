@@ -72,6 +72,7 @@ let rec eval_print fm rands t =
   | If(t1, t2, t3) ->
       let rands', v = eval_print fm rands t1 in
       let b = bool_of_term v in
+      Format.fprintf fm "@\nif %a then ... ->" Print.term t1;
       Format.fprintf fm "@\nif %b then ... ->" b;
       let t' = if b then t2 else t3 in
       eval_print fm rands' t'
@@ -200,6 +201,7 @@ let rec eval_print fm rands t =
   | Match(t1,[]) -> assert false
   | Raise t ->
       let rands',v = eval_print fm rands t in
+      Format.fprintf fm "@\nraise %a" print_value v;
       raise (RaiseExcep(rands',v))
   | TryWith(t1,t2) ->
       begin
@@ -219,7 +221,11 @@ let rec eval_print fm rands t =
   | Label(InfoString f, t) ->
       let args,t' = take_args t in
       Format.fprintf fm "@\n@[<v 2>%s %a ->" f (print_list print_value " ") args;
-      let r = eval_print fm rands t' in
+      let r =
+        try
+          eval_print fm rands t'
+        with e -> Format.fprintf fm "@]"; raise e
+      in
       Format.fprintf fm "@]";
       r
   | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
