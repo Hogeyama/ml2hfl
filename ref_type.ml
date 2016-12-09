@@ -454,7 +454,7 @@ let rec subtype env typ1 typ2 =
   | Inter(_, typs), _ ->
       List.exists (subtype env -$- typ2) typs || is_top' typ2
   | _, Union(_, typs) ->
-      List.exists (subtype env -$- typ1) typs
+      List.exists (subtype env typ1) typs
   | Tuple xtyps1, Tuple xtyps2 ->
       let aux (env,acc) (x1,typ1) (x2,typ2) =
         make_env x1 typ1 :: env,
