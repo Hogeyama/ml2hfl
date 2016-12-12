@@ -92,7 +92,9 @@ let rec eval_app val_env ce ans1 paths1 ans2 paths2 =
   | _ ->
       assert false
 
-(* ASSUME: Input must be normal form *) (* TODO: remove this assumption *)
+(* ASSUME: Input must be normal form *)
+(* TODO: remove this assumption *)
+(* TODO: refactor about Exception *)
 and eval
       (val_env : (id * answer) list)
       (ce : bool list)
@@ -168,8 +170,10 @@ and eval
             try
               eval val_env ce t1
             with Exception(ans1, ce, paths1) ->
-              let ans2, ce, paths2 = eval val_env ce t2 in
-              eval_app val_env ce ans2 paths2 ans1 paths1
+              try
+                let ans2, ce, paths2 = eval val_env ce t2 in
+                eval_app val_env ce ans2 paths2 ans1 paths1
+              with Exception(ans1', ce1', paths1') -> raise (Exception(ans1', ce1', merge_paths paths1 paths1'))
           end
       | Tuple ts ->
           let rec aux t (anss,ce,paths) =
