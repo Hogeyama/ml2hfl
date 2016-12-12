@@ -98,113 +98,117 @@ and eval
       (ce : bool list)
       (t : term)
   =
-  let dbg = 0=0 && (match t.desc with Const _ | BinOp _ | Not _ | Fun _ | Event _  | Var _  | App(_, []) -> false | _ -> true) in
-  Debug.printf "@[ORIG: %a@\n  @[" Print.term t;
-  let r =
-  if dbg then
-    if true then
-      Debug.printf "Dom(VAL_ENV): %a@\n" (List.print Id.print) @@ List.map fst val_env
-    else
-      Debug.printf "VAL_ENV: %a@\n" print_val_env val_env;
-  if dbg then Debug.printf "CE: %a@\n" (List.print Format.pp_print_bool) ce;
-  match t.desc with
-  | Const _
-  | BinOp _
-  | Not _
-  | Fun _
-  | Event _ -> Closure(val_env, t), ce, []
-  | Var x -> Id.assoc x val_env, ce, []
-  | App(t, []) -> eval val_env ce t
-  | App(t1, ts) ->
-      let ts',t2 = List.decomp_snoc ts in
-      let ans1, ce1, paths1 = eval val_env ce @@ make_app t1 ts' in
-      begin
-        try
-          let ans2, ce2, paths2 = eval val_env ce1 t2 in
-          eval_app val_env ce2 ans1 paths1 ans2 paths2
-        with Exception(ans2, ce2, paths2) -> raise (Exception(ans2, ce2, merge_paths paths1 paths2))
-      end
-  | If(_, t2, t3) ->
-      let label = get_label t in
-      begin
-        match ce with
-        | [] ->
-            assert (label = None);
-            assert false
-        | br::ce' ->
-            let t23 = if br then t2 else t3 in
-            let paths' =
-              match label with
-              | None -> []
-              | Some label -> [label, br]
-            in
-            try
-              eval val_env ce' t23
-              |> append_paths paths'
-            with Exception(ans, ce, paths) -> raise (Exception(ans, ce, merge_paths paths' paths))
-      end
-  | Let([f,xs,t1], t2) when is_non_rec [f,xs,t1] ->
-      let ans, ce, paths = eval val_env ce @@ make_funs xs t1 in
-      if ans = Fail then
-        (ans, ce, paths)
-      else
-        let val_env' = (f, ans)::val_env in
-        begin
-          try
-            eval val_env' ce t2
-            |> append_paths paths
-          with Exception(ans', ce', paths') -> raise (Exception(ans', ce', merge_paths paths paths'))
-        end
-  | Let([f,xs,t1], t2) ->
-      assert (xs <> []);
-      let rec val_env' = (f, Closure(val_env', make_funs xs t1))::val_env in
-      eval val_env' ce t2
-  | Raise t ->
-      let ans, ce', paths' = eval val_env ce t in
-      raise (Exception(ans, ce', paths'))
-  | TryWith(t1, t2) ->
-      begin
-        try
-          eval val_env ce t1
-        with Exception(ans1, ce, paths1) ->
-             let ans2, ce, paths2 = eval val_env ce t2 in
-             eval_app val_env ce ans2 paths2 ans1 paths1
-      end
-  | Tuple ts ->
-      let rec aux t (anss,ce,paths) =
-        match anss with
-        | Fail::_ -> anss, ce, paths
-        | _ ->
-            let ans, ce', paths' = eval val_env ce t in
-            ans::anss, ce', merge_paths paths' paths
-      in
-      let anss, ce', paths' = List.fold_right aux ts ([],ce,[]) in
-      let ans =
-        if List.hd anss = Fail then
-          Fail
+  let dbg = (match t.desc with Const _ | BinOp _ | Not _ | Fun _ | Event _  | Var _  | App(_, []) -> false | _ -> true) in
+  if dbg then Debug.printf "@[ORIG: %a@\n  @[" Print.term t;
+  try
+    let r =
+      if dbg then
+        if true then
+          Debug.printf "Dom(VAL_ENV): %a@\n" (List.print Id.print) @@ List.map fst val_env
         else
-          VTuple anss
-      in
-      if ce' <> ce then unsupported "Modular_check.eval tuple";
-      ans, ce', paths'
-  | Proj(i, t) ->
-      let ans, ce, paths = eval val_env ce t in
-      if ans = Fail then
-        Fail, ce, paths
-      else
-        let ans =
-          match ans with
-          | VTuple anss -> List.nth anss i
-          | _ -> assert false
-        in
-        ans, ce, paths
-  | _ ->
-      Format.printf "@.%a@." Print.term t;
-      unsupported "Modular_check.eval"
-  in
-  if dbg then
-    Debug.printf"@]@\nRETURN: %a, %a@\n@]" Print.term (value_of @@ Triple.fst r) print_ce (Triple.trd r);
-  r
+          Debug.printf "VAL_ENV: %a@\n" print_val_env val_env;
+      if dbg then Debug.printf "CE: %a@\n" (List.print Format.pp_print_bool) ce;
+      match t.desc with
+      | Const _
+      | BinOp _
+      | Not _
+      | Fun _
+      | Event _ -> Closure(val_env, t), ce, []
+      | Var x -> Id.assoc x val_env, ce, []
+      | App(t, []) -> eval val_env ce t
+      | App(t1, ts) ->
+          let ts',t2 = List.decomp_snoc ts in
+          let ans1, ce1, paths1 = eval val_env ce @@ make_app t1 ts' in
+          begin
+            try
+              let ans2, ce2, paths2 = eval val_env ce1 t2 in
+              eval_app val_env ce2 ans1 paths1 ans2 paths2
+            with Exception(ans2, ce2, paths2) -> raise (Exception(ans2, ce2, merge_paths paths1 paths2))
+          end
+      | If(_, t2, t3) ->
+          let label = get_label t in
+          begin
+            match ce with
+            | [] ->
+                assert (label = None);
+                assert false
+            | br::ce' ->
+                let t23 = if br then t2 else t3 in
+                let paths' =
+                  match label with
+                  | None -> []
+                  | Some label -> [label, br]
+                in
+                try
+                  eval val_env ce' t23
+                  |> append_paths paths'
+                with Exception(ans, ce, paths) -> raise (Exception(ans, ce, merge_paths paths' paths))
+          end
+      | Let([f,xs,t1], t2) when is_non_rec [f,xs,t1] ->
+          let ans, ce, paths = eval val_env ce @@ make_funs xs t1 in
+          if ans = Fail then
+            (ans, ce, paths)
+          else
+            let val_env' = (f, ans)::val_env in
+            begin
+              try
+                eval val_env' ce t2
+                |> append_paths paths
+              with Exception(ans', ce', paths') -> raise (Exception(ans', ce', merge_paths paths paths'))
+            end
+      | Let([f,xs,t1], t2) ->
+          assert (xs <> []);
+          let rec val_env' = (f, Closure(val_env', make_funs xs t1))::val_env in
+          eval val_env' ce t2
+      | Raise t ->
+          let ans, ce', paths' = eval val_env ce t in
+          raise (Exception(ans, ce', paths'))
+      | TryWith(t1, t2) ->
+          begin
+            try
+              eval val_env ce t1
+            with Exception(ans1, ce, paths1) ->
+              let ans2, ce, paths2 = eval val_env ce t2 in
+              eval_app val_env ce ans2 paths2 ans1 paths1
+          end
+      | Tuple ts ->
+          let rec aux t (anss,ce,paths) =
+            match anss with
+            | Fail::_ -> anss, ce, paths
+            | _ ->
+                let ans, ce', paths' = eval val_env ce t in
+                ans::anss, ce', merge_paths paths' paths
+          in
+          let anss, ce', paths' = List.fold_right aux ts ([],ce,[]) in
+          let ans =
+            if List.hd anss = Fail then
+              Fail
+            else
+              VTuple anss
+          in
+          if ce' <> ce then unsupported "Modular_check.eval tuple";
+          ans, ce', paths'
+      | Proj(i, t) ->
+          let ans, ce, paths = eval val_env ce t in
+          if ans = Fail then
+            Fail, ce, paths
+          else
+            let ans =
+              match ans with
+              | VTuple anss -> List.nth anss i
+              | _ -> assert false
+            in
+            ans, ce, paths
+      | _ ->
+          Format.printf "@.%a@." Print.term t;
+          unsupported "Modular_check.eval"
+    in
+    if dbg then
+      Debug.printf"@]@\nRETURN: %a, %a@\n@]" Print.term (value_of @@ Triple.fst r) print_ce (Triple.trd r);
+    r
+  with Exception(ans, _, ce) as e when dbg ->
+    Debug.printf"@]@\nEXCEPTION: %a, %a@\n@]" Print.term (value_of ans) print_ce ce;
+    raise  e
 
 type result =
   | Typable of Ref_type.env

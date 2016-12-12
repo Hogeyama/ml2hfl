@@ -847,7 +847,7 @@ let rec get_last_definition f t =
   | Let(bindings, t2) ->
       let f,_,_ = List.last bindings in
       get_last_definition (Some f) t2
-  | Fun _ -> assert false
+  | Fun _ -> None
   | _ -> f
 let get_last_definition t = get_last_definition None t
 

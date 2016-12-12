@@ -1197,19 +1197,22 @@ let infer prog f typ (ce_set:ce_set) =
       Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env'';
       Some env''
 
-let use_ToFalse = false
+let modes = [ToNatural; ToTrue; ToStronger; ToFalse]
 
-(* ToNatural => (*ToTrue*) => ToStronger => ToFalse *)
-let next_mode_aux mode =
-  match mode with
-  | ToNatural -> Some ToStronger
-  | ToTrue -> Some ToStronger
-  | ToStronger when use_ToFalse -> Some ToFalse
-  | ToStronger -> None
-  | ToFalse -> None
-let next_mode mode = Option.get @@ next_mode_aux mode
+let next_mode mode =
+  let rec aux mds =
+    match mds with
+    | []
+    | [_] -> None
+    | m1::m2::_ when m1 = mode -> Some m2
+    | _::mds' -> aux mds'
+  in
+  Option.get @@ aux modes
 
-let init_mode = ToTrue
-let init_mode = ToNatural
+let init_mode = List.hd modes
 
-let is_last_mode mode = None = next_mode_aux mode
+let is_last_mode mode =
+  try
+    ignore @@ next_mode mode;
+    false
+  with Option.No_value -> true

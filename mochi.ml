@@ -238,7 +238,7 @@ let rec arg_spec () =
      "-only-result", Arg.Unit set_only_result, " Show only result";
      "-debug",
       Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module;
-                              List.iter (fun m -> if not @@ List.mem m !Flag.modules then (Format.printf "Module \"%s\" not found" m; exit 1)) !Flag.debug_module),
+                              List.iter (fun m -> if not @@ List.mem m !Flag.modules then (Format.printf "Module \"%s\" is not registered for debug@." m; exit 1)) !Flag.debug_module),
       "<modules>  Set debug flag of modules (comma-separated)";
      "-debug-abst", Arg.Set Flag.debug_abst, " Debugging abstraction";
      "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
@@ -517,7 +517,7 @@ let () =
       Fpat.SMTProver.finalize ();
       print_info ()
     with
-    | e ->
+    | e when !Flag.debug_module <> [] ->
         Flag.result := string_of_exception e;
         Option.iter output_csv !Flag.output_csv;
         Option.iter output_json !Flag.output_json;
