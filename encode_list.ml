@@ -167,8 +167,10 @@ let rec get_match_bind_cond t p =
       let rec aux bind cond i = function
         | [] -> bind, cond
         | p::ps ->
-            let bind',cond' = get_match_bind_cond (make_app (make_snd t) [make_int i]) p in
-            aux (bind'@@@bind) (make_and cond cond') (i+1) ps
+            let t' = make_app (make_snd t) [make_int i] in
+            let x = new_var_of_term t' in
+            let bind',cond' = get_match_bind_cond (make_var x) p in
+            aux ((x,t')::bind'@@@bind) (make_and cond cond') (i+1) ps
       in
       let len = List.length ps in
       let bind, cond = get_match_bind_cond (make_tl len t) p' in
