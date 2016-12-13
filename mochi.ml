@@ -245,13 +245,18 @@ let rec arg_spec () =
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
-     "-option-list", Arg.Unit print_option_and_exit, " Print list of options (for completion)";
-     "-module-list", Arg.Unit (fun _ -> Format.printf "%a" (print_list Format.pp_print_string " ") !Flag.modules; exit 0), " Print list of modules (for completion)";
+     (* completion *)
+     "", Arg.Unit ignore, "Options_for_completion";
+     "-option-list", Arg.Unit print_option_and_exit, " Print list of options";
+     "-module-list", Arg.Unit (fun _ -> Format.printf "%a" (print_list Format.pp_print_string " ") !Flag.modules; exit 0), " Print list of modules";
+     (* preprocessing *)
+     "", Arg.Unit ignore, "Options_for_preprocessing";
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      "-print-as-ocaml", Arg.Set Flag.print_as_ocaml, " Print terms in OCaml syntax";
      "-print-progress", Arg.Set Flag.print_progress, " Print progress (use after -modular/-imodular)";
      (* preprocessing *)
+     "", Arg.Unit ignore, "Options_for_preprocessing";
      "-fail-as-excep", Arg.Set Flag.fail_as_exception, " Treat fail as an exception";
      "-replace-const", Arg.Set Flag.replace_const, " Replace unchanging variables with constants";
      "-no-exparam", Arg.Set Flag.no_exparam, " Do not add extra parameters";
@@ -267,6 +272,7 @@ let rec arg_spec () =
      "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
      "-abst-list-literal", Arg.Set_int Flag.abst_list_literal, " Abstract long list literals";
      (* verifier *)
+     "", Arg.Unit ignore, "Options_for_verifier";
      "-modular",
        Arg.Unit (fun () ->
                  Flag.modular := true;
@@ -283,14 +289,17 @@ let rec arg_spec () =
        " Modular verification (inductive mode)";
      "-verify-ref-typ", Arg.Set Flag.verify_ref_typ, " Verify functions have given refinement types";
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
-     "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists (This option is ignored if -spec is used)";
+     "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists\n(This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.comment_spec, " disable {SPEC} on comments";
      (* CEGAR *)
-     "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs (each program has only one assertion)";
+     "", Arg.Unit ignore, "Options_for_CEGAR";
+     "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs\n(each program has only one assertion)";
      "-disable-predicate-accumulation", Arg.Set Flag.disable_predicate_accumulation, " Disable predicate accumulation";
      (* relatively complete verification *)
+     "", Arg.Unit ignore, "Options_for_relatively_complete_verification";
      "-relative-complete", Arg.Set Flag.relative_complete, " Enable relatively complete verification from the begining";
      (* predicate abstraction *)
+     "", Arg.Unit ignore, "Options_for_predicate_abstraction";
      "-abs-remove-false", Arg.Set Flag.remove_false, " Do not use unsatisfiable predicates in abstraction";
      "-no-enr", Arg.Unit (fun _ -> Flag.expand_non_rec := false; Flag.expand_non_rec_init := false), " Do not expand non-recursive functions";
      "-enr", Arg.Unit (fun _ -> Flag.expand_non_rec := true; Flag.expand_non_rec_init := false),
@@ -300,6 +309,7 @@ let rec arg_spec () =
                       " Never use negative predicates for abstraction";
      "-decomp-pred", Arg.Set Flag.decomp_pred, " Decompose abstraction predicates (e.g., [P1 && P2] ==> [P1, P2])";
      (* higher-order model checking *)
+     "", Arg.Unit ignore, "Options_for_model_checking";
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
      "-bool-church", Arg.Set Flag.church_encode, " Use church-encoding for model checking";
      "-trecs", Arg.Unit (fun () -> Flag.mc:=Flag.TRecS), " Use TRecS as the model checker";
@@ -314,14 +324,17 @@ let rec arg_spec () =
      "-horsatp-bin", Arg.Set_string Flag.horsatp,
                      Format.sprintf "<cmd>  Change horsatp command to <cmd> (default: \"%s\")" !Flag.horsatp;
      (* predicate discovery *)
+     "", Arg.Unit ignore, "Options_for_predicate_discovery";
      "-fpat", Arg.String FpatInterface.parse_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      (* SWT solver *)
+     "", Arg.Unit ignore, "Options_for_SMT_solver";
      "-cvc3-bin", Arg.Set_string Flag.cvc3,
                   Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
      (* fair termination mode *)
+     "", Arg.Unit ignore, "Options_for_fair_termination_mode";
      "-fair-termination", Arg.Unit (fun _ -> Flag.mode := Flag.FairTermination), " Check fair termination";
      "-expand-set-flag", Arg.Set Flag.expand_set_flag, "";
      (* termination mode *)
@@ -351,39 +364,40 @@ let rec arg_spec () =
        Arg.Set Flag.add_closure_exparam,
        " Infer extra ranking parameters for closures for termination verification";
      "-non-termination",
-     Arg.Unit (fun _ ->
-                 Flag.mode := Flag.NonTermination;
-                 Flag.church_encode := true;
-                 Flag.mc := Flag.HorSat),
-     " Check non-termination";
+       Arg.Unit (fun _ ->
+                   Flag.mode := Flag.NonTermination;
+                   Flag.church_encode := true;
+                   Flag.mc := Flag.HorSat),
+       " Check non-termination";
      (* non-termination mode *)
+     "", Arg.Unit ignore, "Options_for_non-termination_mode";
      "-merge-paths",
        Arg.Set Flag.merge_paths_of_same_branch,
-       " (Option for non-termination checking) Merge predicates of paths that have same if-branch information";
+       " Merge predicates of paths that have same if-branch information";
      "-refinement-log",
        Arg.Set Flag.randint_refinement_log,
-       " (Option for non-termination checking) Write refinement types into log file (./refinement/[input file].refinement)";
+       " Write refinement types into log file (./refinement/[input file].refinement)";
      "-no-use-omega",
        Arg.Clear Flag.use_omega,
-       " (Option for non-termination checking) Do not use omega solver for under-approximation";
+       " Do not use omega solver for under-approximation";
      "-use-omega-first",
        Arg.Set Flag.use_omega_first,
-     " (Option for non-termination checking) Preferentially use omega solver for under-approximation (if failed, we then check with z3)";
+       " Preferentially use omega solver for under-approximation\n(if failed, we then check with z3)";
      (* fair non-termination mode *)
+     "", Arg.Unit ignore, "Options_for_fair_non-termination_mode";
      "-fair-non-termination",
-     Arg.Unit (fun _ ->
-       Flag.mode := Flag.FairNonTermination;
-       Flag.church_encode := true;
-       Flag.mc := Flag.HorSatP),
-     " Check fair-non-termination";
+       Arg.Unit (fun _ ->
+         Flag.mode := Flag.FairNonTermination;
+         Flag.church_encode := true;
+         Flag.mc := Flag.HorSatP),
+       " Check fair-non-termination";
      "-expand-ce-iter-init",
-     Arg.Int (fun c ->
-       Flag.expand_ce_iter_init := c),
-     " Set the initial interation count of counterexample expansion for fair-non-termination-mode";
+       Arg.Set_int Flag.expand_ce_iter_init,
+       " Set the initial interaction count of counterexample expansion";
      "-expand-ce-count",
-     Arg.Int (fun c ->
-       Flag.expand_ce_iter_init := c),
-     " Same as -expand-ce-iter-init";
+       Arg.Set_int Flag.expand_ce_iter_init,
+       " Same as -expand-ce-iter-init";
+     "", Arg.Unit ignore, "Other_options";
     ]
 and print_option_and_exit () = print_string @@ String.join " " @@ List.map Triple.fst (arg_spec ()); exit 0
 let arg_spec = arg_spec ()

@@ -563,7 +563,7 @@ module String = struct
       | '|' -> "_bar_"
       | '~' -> "_tilde_"
       | '\'' -> "_prime_"
-      | c -> String.make 1 c
+      | c -> make 1 c
     in
     replace_chars map s
 
@@ -633,6 +633,36 @@ module Combination = struct
     | xs::xxs' ->
         let cmb = take_each xxs' in
         List.flatten_map (fun x -> List.map (List.cons x) cmb) xs
+end
+
+module Arg = struct
+  include Arg
+  let align args =
+    let args' = align args in
+    let aux (s,f,desc) =
+      if s = "" then
+        let s' =
+          desc
+          |> String.trim
+          |> String.map (function '_' -> ' ' | c -> c)
+          |> Format.sprintf "\n  (*** %s ***)"
+        in
+        s', f, " "
+      else
+        let aux c =
+          if c = '\n' then
+            let rec len i =
+              if desc.[i] = ' ' then
+                1 + len (i+1)
+              else 3
+            in
+            "\n" ^ String.make (String.length s + len 0) ' '
+          else
+            String.of_char c
+        in
+        s, f, String.replace_chars aux desc
+    in
+    List.map aux args'
 end
 
 
