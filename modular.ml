@@ -14,6 +14,7 @@ let infer_ind = ref false
 let refine_init = ref false
 let use_neg_env = ref true
 let use_gch_in_check = ref false
+let infer_merge = ref false
 
 exception NoProgress
 
@@ -83,7 +84,7 @@ let check prog f typ depth =
   r
 
 let infer prog f typ ce_set2 =
-  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2)
+  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2) !infer_merge
 
 let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
   let space = String.make (8*List.length history) ' ' in
@@ -214,8 +215,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
         infer_mode
     in
     pr "ce_set':@ %a" print_ce_set @@ List.filter_out (fst |- is_external_id) ce_set';
-    let r = measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog main typ ce_set' infer_mode') in
-    match r with
+    match infer prog main typ ce_set' infer_mode' with
     | None ->
         pr "THERE ARE NO CANDIDATES";
         `Untypable, env, neg_env, ce_set'

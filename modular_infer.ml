@@ -862,9 +862,9 @@ let save_dep deps_cls hcs filename =
   assert (Dependency.subset deps_cls' deps_cls)
 
 
-let merge_predicate_variables candidates hcs =
+let merge_predicate_variables  hcs =
   let dependencies = get_dependencies hcs in
-  dependencies, candidates
+  dependencies
 
 let subst_horn_clause x t (body,head) =
   List.map (subst x t) body, subst x t head
@@ -912,8 +912,8 @@ let merge_same_sol sol map merged deps hcs =
   in
   loop [] sol map merged deps hcs
 
-let solve_merged merge_candidates hcs =
-  let dependencies,map = merge_predicate_variables merge_candidates hcs in
+let solve_merged map hcs =
+  let dependencies = get_dependencies hcs in
   let sbst (p1,p2) map =
     let aux p = if p = p1 then p2 else p in
     List.map (Pair.map aux aux) map
@@ -959,6 +959,7 @@ let solve_merged merge_candidates hcs =
   match solve_option hcs with
   | None -> None
   | Some sol ->
+      let map = [] in
       let used = HC.get_pred_ids_hcs hcs in
       let map',merged,deps',hcs' = merge_same_sol sol map [] dependencies hcs in
       let sol',merged' = loop used sol merged deps' map' hcs' in
@@ -1099,7 +1100,7 @@ let rec instantiate_any mode pos typ =
       in
       Exn(instantiate_any mode pos typ1, instantiate_any mode' pos typ2)
 
-let infer prog f typ (ce_set:ce_set) =
+let infer prog f typ (ce_set:ce_set) merge =
   let ce_set =
     if 0=1 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x print_ce ce; read_int() <> 0) ce_set
@@ -1133,9 +1134,12 @@ let infer prog f typ (ce_set:ce_set) =
     |@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates =
-    templates
-    |> List.filter_out (fun ((f,_),_) -> String.contains (Id.name f) '.')
-    |> get_merge_candidates
+    if merge then
+      templates
+      |> List.filter_out (fun ((f,_),_) -> String.contains (Id.name f) '.')
+      |> get_merge_candidates
+    else
+      []
   in
   match solve_merged merge_candidates hcs with
   | None -> fun _ -> None
