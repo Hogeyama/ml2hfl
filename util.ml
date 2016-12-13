@@ -638,7 +638,6 @@ end
 module Arg = struct
   include Arg
   let align args =
-    let args' = align args in
     let aux (s,f,desc) =
       if s = "" then
         let s' =
@@ -662,7 +661,10 @@ module Arg = struct
         in
         s, f, String.replace_chars aux desc
     in
-    List.map aux args'
+    args
+    |> List.map (fun (s,f,desc) -> if s = "" then s,f," "^desc else s,f,desc)
+    |> align
+    |> List.map aux
 end
 
 
