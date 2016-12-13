@@ -69,13 +69,14 @@ let rec is_bottom' typ =
   match typ with
   | Union(_, []) -> true
   | Base(_, _, {S.desc=S.Const S.False}) -> true
-  | Fun(_, typ1, typ2) -> is_top' typ1 && is_bottom' typ2
+  | Fun(_, typ1, typ2) -> is_top typ1 && is_bottom' typ2
+  | Tuple xtyps -> List.exists (snd |- is_bottom') xtyps
   | _ -> false
 and is_top' typ =
   match typ with
   | Inter(_, []) -> true
   | Base(_, _, {S.desc=S.Const S.True}) -> true
-  | Fun(_, typ1, typ2) -> is_bottom' typ1 && is_top' typ2
+  | Fun(_, typ1, typ2) -> is_bottom' typ1
   | _ -> false
 
 let print_base fm = function
@@ -454,7 +455,7 @@ let rec subtype env typ1 typ2 =
   | Inter(_, typs), _ ->
       List.exists (subtype env -$- typ2) typs || is_top' typ2
   | _, Union(_, typs) ->
-      List.exists (subtype env typ1) typs
+      List.exists (subtype env typ1) typs || is_bottom typ1
   | Tuple xtyps1, Tuple xtyps2 ->
       let aux (env,acc) (x1,typ1) (x2,typ2) =
         make_env x1 typ1 :: env,

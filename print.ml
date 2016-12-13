@@ -39,6 +39,7 @@ and print_id_typ fm x =
 (* priority (low -> high)
    10 : Let, Letrec, If, Match, TryWith
    15 : Fun
+   18 : Seq
    20 : Pair
    30 : Or
    40 : And
@@ -206,6 +207,10 @@ and print_desc attr pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[%sassert@ false%s@]" s1 s2
+  | Let([u,[],t1], t2) when Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
+      let p = 18 in
+      let s1,s2 = paren pri p in
+      fprintf fm "%s@[%a;@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | Let(bindings, t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
