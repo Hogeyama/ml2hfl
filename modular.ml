@@ -12,7 +12,8 @@ let time_synthesize = ref 0.
 
 let infer_ind = ref false
 let refine_init = ref false
-let use_neg_env = ref false
+let use_neg_env = ref true
+let use_gch_in_check = ref false
 
 exception NoProgress
 
@@ -75,6 +76,15 @@ let refine_init_env prog =
   |> List.map (fun f -> f, Ref_type.of_simple @@ Id.typ f)
   |> loop prog []
 
+let check prog f typ depth =
+  if !use_gch_in_check then Fpat.HCCSSolver.link_dyn @@ Fpat.HCCSSolver.of_string_dyn "gch";
+  let r = measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth) in
+  if !use_gch_in_check then Fpat.HCCSSolver.link_dyn @@ Fpat.HCCSSolver.of_string_dyn "it";
+  r
+
+let infer prog f typ ce_set2 =
+  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2)
+
 let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
   let space = String.make (8*List.length history) ' ' in
   let pr f = MVerbose.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
@@ -93,8 +103,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
     if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
     incr num_tycheck;
-    let r = measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth) in
-    match r with
+    match check prog f typ depth with
     | Modular_check.Typable env' ->
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let env'' = merge_tenv env' env in
@@ -122,7 +131,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
           if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- is_external_id) ce_set2;
           let sol =
             match prev_sol with
-            | None -> measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2)
+            | None -> infer prog f typ ce_set2
             | Some sol -> sol
           in
           match sol infer_mode with

@@ -288,8 +288,19 @@ let rec from_term
         | None -> [aux true ce_env; aux false ce_env]
         | Some tid ->
             Debug.printf "    tid: %d@\n" tid;
-            let ce_env1,ce_env2 = List.partition (function (tid',_)::_ -> tid = tid' | _ -> false) ce_env in
-            let then_ce_env,else_ce_env =  List.partition (function (_,b)::_ -> b | _ -> assert false) ce_env1 in
+            let ce_env1,ce_env2 = List.partition (List.mem_assoc tid) ce_env in
+            let then_ce_env,else_ce_env =
+              let peek ce = List.assoc tid ce in
+              let pop ce = List.remove_assoc tid ce in
+              let aux (t_acc,e_acc) ce =
+                let ce' = pop ce in
+                if peek ce then
+                  ce'::t_acc,e_acc
+                else
+                  t_acc, ce'::e_acc
+              in
+              List.fold_left aux ([],[]) ce_env1
+            in
             let child1 =
               if then_ce_env = [] then
                 if is_fail t3 then
@@ -297,8 +308,7 @@ let rec from_term
                 else
                   []
               else
-                let then_ce_env' = List.map List.tl then_ce_env in
-                [aux true (then_ce_env'@ce_env2)]
+                [aux true (then_ce_env@ce_env2)]
             in
             let child2 =
               if else_ce_env = [] then
@@ -307,8 +317,7 @@ let rec from_term
                 else
                   []
               else
-                let else_ce_env' = List.map List.tl else_ce_env in
-                [aux false (else_ce_env'@ce_env2)]
+                [aux false (else_ce_env@ce_env2)]
             in
             child1 @ child2
       in

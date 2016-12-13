@@ -759,14 +759,17 @@ let trans_CPS env funs t =
   in
   let make_get_rtyp = make_get_rtyp_cps -| make_get_rtyp_pair in
   let env1,env2 =
-    let fs = List.map fst env in
     env'
     |> List.flatten_map (List.map Triple.to_pair_r)
-    |> List.partition (fst |- Id.mem -$- fs)
+    |> List.partition (fst |- Id.mem_assoc -$- env)
   in
   Debug.printf "funs: %a@." (List.print Id.print) funs;
-  Debug.printf "env1: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env1;
-  Debug.printf "env2: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env2;
+  if false then
+    (Debug.printf "env1: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env1;
+     Debug.printf "env2: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env2)
+  else
+    (Debug.printf "Dom(env1): %a@." (List.print Id.print) @@ List.map fst env1;
+     Debug.printf "Dom(env2): %a@." (List.print Id.print) @@ List.map fst env2);
   if not @@ List.for_all (Id.mem_assoc -$- env1) funs then
     begin
       let removed = List.filter_out (Id.mem_assoc -$- env1) funs in
@@ -927,12 +930,6 @@ let solve_merged merge_candidates hcs =
         loop used last_sol merged deps map' hcs
     | (p1,p2)::map' when not (List.mem p1 used && List.mem p2 used) ->
         Debug.printf "MERGE1 %d, %d@." p1 p2;
-        let merged' = add_merged (p1,p2) merged in
-        let map'' = sbst (p1,p2) map' in
-        loop used last_sol merged' deps map'' hcs
-    | (p1,p2)::map' when same_last_sol last_sol p1 p2 ->
-        assert false;
-        Debug.printf "MERGE2 %d, %d@." p1 p2;
         let merged' = add_merged (p1,p2) merged in
         let map'' = sbst (p1,p2) map' in
         loop used last_sol merged' deps map'' hcs
@@ -1132,7 +1129,7 @@ let infer prog f typ (ce_set:ce_set) =
     |> HC.of_pair_list
     |@> Debug.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!Debug.check&> check_arity
-    |> HC.inline need
+    |*> HC.inline need
     |@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates =
@@ -1143,7 +1140,6 @@ let infer prog f typ (ce_set:ce_set) =
   match solve_merged merge_candidates hcs with
   | None -> fun _ -> None
   | Some sol ->
-      fun mode ->
       Debug.printf "TEMPLATES of TOP_FUNS: @[%a@.@." print_tmp_env @@ List.filter (fun ((f,_),_) -> Id.mem_assoc f fun_env') templates;
       Debug.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
       let top_funs =
@@ -1153,6 +1149,7 @@ let infer prog f typ (ce_set:ce_set) =
         |> List.filter_out (Id.same f)
       in
       Debug.printf "TOP_FUNS[%a]: %a@.@." Id.print f (List.print Id.print) top_funs;
+      fun mode ->
       let env' =
         let aux ((g,_),tmp) =
           if Id.mem g top_funs then
@@ -1171,9 +1168,10 @@ let infer prog f typ (ce_set:ce_set) =
             Debug.printf "  typ: %a@." Ref_type.print typ;
             Debug.printf "  typ': %a@." Ref_type.print typ';
             make_get_rtyp (fun y -> assert (Id.same y x); typ') x
+            |@> Debug.printf "  rtyp: %a@." Ref_type.print
             |> instantiate_any mode true
+            |@> Debug.printf "  [%a] typ_: %a@." print_mode mode Ref_type.print
           in
-          Debug.printf "  typ_: %a@." Ref_type.print typ_;
           x', typ_
         in
         env'
@@ -1182,7 +1180,6 @@ let infer prog f typ (ce_set:ce_set) =
         |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
         |> List.remove_lower (fun (x,typ) (x',typ') -> Id.same x x' && Ref_type.equiv typ typ')
         |> List.filter_out (fun (g,typ') -> Id.same f g && Ref_type.subtype typ typ')
-        |*> List.map (Pair.map_snd @@ Ref_type.map_pred widen)
         |> Ref_type.Env.of_list
       in
       let env'' =
@@ -1194,8 +1191,27 @@ let infer prog f typ (ce_set:ce_set) =
           let env'' = List.flatten_map (fun (x,typ) -> List.map (fun typ' -> x, typ') @@ Ref_type.split_inter typ) env'' in
           Ref_type.Env.of_list env''
       in
-      Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env'';
-      Some env''
+      let env_unused =
+        let aux f =
+          if Id.mem_assoc f env' then
+            None
+          else
+            match mode with
+            | ToTrue
+            | ToNatural -> Some (f, Ref_type.of_simple @@ Id.typ f)
+            | _ -> Some (f, Ref_type.make_strongest @@ Id.typ f)
+        in
+        env
+        |> Ref_type.Env.dom
+        |> List.takewhile (not -| Id.same f)
+        |> List.filter_map aux
+        |> Ref_type.Env.of_list
+      in
+      Debug.printf "env_unused: %a@.@." Ref_type.Env.print env_unused;
+      Debug.printf "env'': %a@.@." Ref_type.Env.print env'';
+      let env''' = Ref_type.Env.merge env_unused env'' in
+      Debug.printf "Modular_infer.infer: %a@.@." Ref_type.Env.print env''';
+      Some env'''
 
 let modes = [ToNatural; ToTrue; ToStronger; ToFalse]
 
