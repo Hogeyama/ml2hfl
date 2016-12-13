@@ -250,6 +250,7 @@ let rec arg_spec () =
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      "-print-as-ocaml", Arg.Set Flag.print_as_ocaml, " Print terms in OCaml syntax";
+     "-print-progress", Arg.Set Flag.print_progress, " Print progress (use after -modular/-imodular)";
      (* preprocessing *)
      "-fail-as-excep", Arg.Set Flag.fail_as_exception, " Treat fail as an exception";
      "-replace-const", Arg.Set Flag.replace_const, " Replace unchanging variables with constants";
