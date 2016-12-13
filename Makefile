@@ -27,7 +27,7 @@ top: $(NAME).top
 
 ifdef GIT
 main: COMMIT
-COMMIT: depend .git/index $(FPAT_LIB)
+COMMIT: depend .git/logs/HEAD $(FPAT_LIB)
 	@echo make COMMIT
 	@rm -f COMMIT
 	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
