@@ -236,10 +236,7 @@ let rec arg_spec () =
      "<dir>  Add <dir> to the list of include directories";
      "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
      "-only-result", Arg.Unit set_only_result, " Show only result";
-     "-debug",
-      Arg.String (fun mods -> Flag.debug_module := String.nsplit mods "," @ !Flag.debug_module;
-                              List.iter (fun m -> if not @@ List.mem m !Flag.modules then (Format.printf "Module \"%s\" is not registered for debug@." m; exit 1)) !Flag.debug_module),
-      "<modules>  Set debug flag of modules (comma-separated)";
+     "-debug", Arg.String set_debug_modules, "<modules>  Set debug flag of modules (comma-separated)";
      "-debug-abst", Arg.Set Flag.debug_abst, " Debugging abstraction";
      "-color", Arg.Set Flag.color, " Turn on syntax highlighting";
      "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";

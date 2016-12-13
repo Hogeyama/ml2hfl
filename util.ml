@@ -783,3 +783,13 @@ let rec transitive_closure ?(eq=(=)) edges =
 let make_debug_check s =
   Flag.modules := s::!Flag.modules;
   fun () -> List.mem s !Flag.debug_module
+
+let set_debug_modules mods =
+  let modules = String.nsplit mods "," in
+  let check m =
+    if not @@ List.mem m !Flag.modules then
+      (Format.printf "Module \"%s\" is not registered for debug@." m;
+       exit 1)
+  in
+  List.iter check modules;
+  Flag.debug_module := modules @ !Flag.debug_module
