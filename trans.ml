@@ -2711,3 +2711,17 @@ let eta_reduce_desc desc =
   | _ -> desc'
 let () = eta_reduce.tr_desc <- eta_reduce_desc
 let eta_reduce = eta_reduce.tr_term
+
+
+
+let rename_bound_module = make_trans ()
+let rename_bound_module_var x =
+  if Id.in_module x && Id.id x > 0 then
+    Id.name x
+    |> String.map (function '.' -> '_' | c -> c)
+    |> (^) "_"
+    |> Id.set_name x
+  else
+    x
+let () = rename_bound_module.tr_var <- rename_bound_module_var
+let rename_bound_module = rename_bound_module.tr_term

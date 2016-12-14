@@ -5,7 +5,8 @@ let omega = ref Environment.omega
 let trecs = ref Environment.trecs
 let cvc3 = ref Environment.cvc3
 
-let filename = ref ""
+let filenames : string list ref = ref []
+let mainfile () = List.hd !filenames
 let spec_file = ref ""
 
 type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination

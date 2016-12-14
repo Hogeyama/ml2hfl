@@ -373,7 +373,7 @@ let check abst prog spec =
           match HorSatPInterface.check (abst',spec) with
           | HorSatPInterface.Satisfied -> Safe []
           | HorSatPInterface.Unsatisfied ->
-             let fname = Filename.change_extension !Flag.filename "error_hors" in
+             let fname = Filename.change_extension !!Flag.mainfile "error_hors" in
              let rules = HorSatPInterface.read_HORS_file fname in
              Unsafe (CEFairNonTerm rules)
         end

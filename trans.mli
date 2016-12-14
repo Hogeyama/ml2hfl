@@ -75,6 +75,7 @@ val flatten_tuple : term -> term
 val decomp_pair_eq : term -> term
 val eta_normal : term -> term
 val direct_from_CPS : term -> term
+val rename_bound_module : term -> term
 
 (** {6 Simplification, Inlining, Reduction} *)
 val simplify_match : term -> term

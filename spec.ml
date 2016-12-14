@@ -177,14 +177,14 @@ let read parser lexer =
     begin
       if !Flag.use_spec && !Flag.spec_file = ""
       then
-        let spec = Filename.change_extension !Flag.filename "spec" in
+        let spec = Filename.change_extension !!Flag.mainfile "spec" in
         if Sys.file_exists spec then Flag.spec_file := spec
     end;
     parse parser lexer !Flag.spec_file
   in
   let spec2 =
-    if !Flag.comment_spec && Sys.file_exists !Flag.filename
-    then parse_comment parser lexer !Flag.filename
+    if !Flag.comment_spec && Sys.file_exists !!Flag.mainfile
+    then parse_comment parser lexer !!Flag.mainfile
     else init
   in
   if spec2 <> init then Flag.use_filter := true;

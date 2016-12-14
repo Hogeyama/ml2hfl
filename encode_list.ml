@@ -145,6 +145,7 @@ let abst_list_typ post typ =
       TTuple[l; Id.new_var @@ pureTFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
   | _ -> abst_list.tr2_typ_rec post typ
 
+(* "t" must have no side-effects *)
 let rec get_match_bind_cond t p =
   match p.pat_desc with
   | PAny -> [], true_term
@@ -154,7 +155,8 @@ let rec get_match_bind_cond t p =
       (abst_list.tr2_var "" x, t)::bind, cond
   | PConst {desc=Const Unit} -> [], true_term
   | PConst t' when t'.desc = randint_unit_term.desc -> [], randbool_unit_term (* just for -base-to-int *)
-  | PConst t' -> [], make_eq t t'
+  | PConst t' -> [], (try make_eq t t' with _ ->
+                        assert false)
   | PNil -> [], make_leq (make_fst t) (make_int 0)
   | PCons _ ->
       let rec decomp = function

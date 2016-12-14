@@ -209,14 +209,24 @@ let sign_to_letters s =
 
 let from_ident_aux name binding_time typ =
   let name = sign_to_letters name in
-  let name = if name.[0] = '_' then "x" ^ name else name in
-    Id.make binding_time name typ
+  let name = if name.[0] = '_' then "u" ^ name else name in
+  Id.make binding_time name typ
 
 let from_ident x typ =
   from_ident_aux (Ident.name x) (Ident.binding_time x) typ
 
-let from_ident_path path typ =
-  from_ident_aux (Path.name path) (Path.binding_time path) typ
+let from_ident_path id_env path typ =
+  let name = Path.name path in
+  try
+    Id.set_typ (List.find (Id.name |- (=) name) id_env) typ
+  with Not_found ->
+    let binding_time =
+      if is_uppercase name.[0] then
+        0
+      else
+        Path.binding_time path
+    in
+    from_ident_aux name binding_time typ
 
 
 let get_constr_name desc typ env =
@@ -225,58 +235,6 @@ let get_constr_name desc typ env =
 let get_label_name label env =
   label.lbl_name
 
-(*
-let from_type_kind tenv type_kind =
-  match type_kind with
-  | Type_abstract -> KAbstract
-  | Type_variant decls ->
-      let aux {cd_id;cd_args} =
-        Ident.name cd_id, List.map (from_type_expr tenv) cd_args
-      in
-      KVariant(List.map aux decls)
-  | Type_record(decls,_) ->
-      let aux {ld_id;ld_mutable;ld_type} =
-        Ident.name ld_id, (from_mutable_flag ld_mutable, from_type_expr tenv ld_type)
-      in
-      KRecord (List.map aux decls)
-  | Type_open -> KOpen
-
-let rec from_type_declaration tenv decl =
-  let venv = List.map (fun typ -> typ.Types.id, TVar (ref None)) decl.type_params in
-  let params = List.map snd venv in
-  let kind = from_type_kind tenv decl.type_kind in
-  params, kind
-
-
-let rec add_type_env env typ =
-  if !!debug then Format.printf "add_type_env: %a@." Printtyp.type_expr typ;
-  match (Ctype.repr typ).Types.desc with
-  | Tvar _ -> ()
-  | Tarrow(_,typ1,typ2,_) -> add_type_env env typ1; add_type_env env typ2
-  | Ttuple typs -> List.iter (add_type_env env) typs
-  | Tconstr(path,typs,_) when Path.name path = "list" -> List.iter (add_type_env env) typs
-  | Tconstr(path,typs,_) when Path.name path = "Pervasives.ref" -> List.iter (add_type_env env) typs
-  | Tconstr(path,typs,_) when Path.name path = "option" -> List.iter (add_type_env env) typs
-  | Tconstr(path,typs,_) when List.mem_assoc (Path.name path) prim_typs -> List.iter (add_type_env env) typs
-  | Tconstr(path,typs,_) ->
-      if !!debug then Format.printf "  add_type_env: %a@." Printtyp.type_expr typ;
-      let ({type_kind} as typ_decl) = Env.find_type path env in
-      if type_kind <> Type_abstract then
-        let typ_name = Path.name path in
-        if !!debug then Format.printf "  typ_name: %s@." typ_name;
-        from_type_kind env type_kind
-        |> Type_decl.from_type_kind
-        |> Type_decl.add_typ_decl typ_name
-  | Tobject _ -> unsupported "Tobject"
-  | Tfield _ -> unsupported "Tfield"
-  | Tnil -> unsupported "Tnil"
-  | Tlink _ -> unsupported "Tlink"
-  | Tsubst _ ->  unsupported "Tsubst"
-  | Tvariant _ -> unsupported "Tvariant"
-  | Tunivar _ -> unsupported "Tunivar"
-  | Tpoly _ -> unsupported "Tpoly"
-  | Tpackage _ -> unsupported "Tpackage"
- *)
 
 let add_exc_env cstr_desc env =
   match cstr_desc.cstr_res.Types.desc with
@@ -349,24 +307,24 @@ let from_constant = function
   | Const_nativeint n -> Nativeint n
 
 
-let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
+let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   let typ' = from_type_expr env typ in
   match exp_desc with
   | Texp_ident(path, _, _) ->
-      make_var @@ from_ident_path path typ'
+      make_var @@ from_ident_path id_env path typ'
   | Texp_constant c ->
       {desc = Const (from_constant c); typ = typ'; attr=[]}
   | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
        when (function {pat_desc=PVar _} -> false | _ -> true) (from_pattern vb_pat) ->
       let p' = from_pattern vb_pat in
-      let t1 = from_expression vb_expr in
-      let t2 = from_expression e2 in
+      let t1 = from_expression id_env vb_expr in
+      let t2 = from_expression id_env e2 in
       make_single_match t1 p' t2
   | Texp_let(rec_flag, pats, e) ->
       let flag = from_rec_flag rec_flag in
       let aux {vb_pat;vb_expr} =
         let p' = from_pattern vb_pat in
-        let e' = from_expression vb_expr in
+        let e' = from_expression id_env vb_expr in
         match p'.pat_desc with
         | PVar x -> x, [], e'
         | _ ->
@@ -375,12 +333,12 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
             else unsupported "Only variables are allowed as left-hand side of 'let ... and ...'"
       in
       let bindings = List.map aux pats in
-      let t = from_expression e in
+      let t = from_expression id_env e in
       make_let bindings t
   | Texp_function(_,[case],Total)
-       when (function ({pat_desc=PVar _},t,_) -> t = true_term | _ -> false) @@ from_case case ->
+       when (function ({pat_desc=PVar _},t,_) -> t = true_term | _ -> false) @@ from_case id_env case ->
       begin
-        match from_case case with
+        match from_case id_env case with
         | ({pat_desc=PVar x}, _, e) -> make_fun x e
         | _ -> assert false
       end
@@ -404,7 +362,7 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
             x', typ2
         | _ -> assert false
       in
-      let pats' = List.map from_case pats in
+      let pats' = List.map (from_case id_env) pats in
       let pats'' =
         match totality with
         | Total -> pats'
@@ -418,16 +376,16 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
         | _ -> make_fun x @@ make_match (make_var x) pats''
       end
   | Texp_apply(e, es) ->
-      let t = from_expression e in
+      let t = from_expression id_env e in
       let aux = function
         | _, None -> unsupported "expression (optional)"
-        | _, Some e -> from_expression e
+        | _, Some e -> from_expression id_env e
       in
       let ts = List.map aux es in
       conv_primitive_app t ts typ'
   | Texp_match(e,pats,[],tp) ->
-      let t = from_expression e in
-      let pats' = List.map from_case pats in
+      let t = from_expression id_env e in
+      let pats' = List.map (from_case id_env) pats in
       let pats'' =
         match tp with
         | Total -> pats'
@@ -438,11 +396,11 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   | Texp_try(e,pats) ->
       let typ_excep = !!make_exc_typ in
       let x = Id.new_var ~name:"e" typ_excep in
-      let pats' = List.map from_case pats in
+      let pats' = List.map (from_case id_env) pats in
       let pats'' = pats' @ [make_pany typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
-      {desc=TryWith(from_expression e, make_fun x (make_match (make_var x) pats'')); typ=typ'; attr=[]}
+      {desc=TryWith(from_expression id_env e, make_fun x (make_match (make_var x) pats'')); typ=typ'; attr=[]}
   | Texp_tuple es ->
-      {desc=Tuple(List.map from_expression es); typ=typ'; attr=[]}
+      {desc=Tuple(List.map (from_expression id_env) es); typ=typ'; attr=[]}
   | Texp_construct(_,desc,es) ->
       let desc =
         match get_constr_name desc typ env, es with
@@ -450,21 +408,21 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
         | "true",[] -> Const True
         | "false",[] -> Const False
         | "[]",[] -> Nil
-        | "::",[e1;e2] -> Cons(from_expression e1, from_expression e2)
+        | "::",[e1;e2] -> Cons(from_expression id_env e1, from_expression id_env e2)
         | "None",[] -> TNone
-        | "Some",[e] -> TSome (from_expression e)
+        | "Some",[e] -> TSome (from_expression id_env e)
         | "Format",_ -> Const (String "%some format%")
         | name,es ->
             add_exc_env desc env;
             Debug.printf "CONSTR: %s@." name;
             Debug.printf "   typ: %a@." Printtyp.type_expr typ;
-            Constr(name, List.map from_expression es)
+            Constr(name, List.map (from_expression id_env) es)
       in
       {desc=desc; typ=typ'; attr=[]}
   | Texp_variant _ -> unsupported "expression (variant)"
   | Texp_record(fields, None) ->
       let fields' = List.sort ~cmp:(fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
-      let aux (_,label,e) = get_label_name label env, from_expression e in
+      let aux (_,label,e) = get_label_name label env, from_expression id_env e in
       let fields'' = List.map aux fields' in
       {desc=Record fields''; typ=typ'; attr=[]}
   | Texp_record(fields, Some init) ->
@@ -475,44 +433,44 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
           let name = get_label_name lbl env in
           try
             let _,_,e = List.find (fun (_,lbl',_) -> lbl = lbl') fields in
-            name, from_expression e
+            name, from_expression id_env e
           with Not_found ->
             name, {desc=Field(make_var r,name); typ=from_type_expr env lbl.lbl_arg; attr=[]}
         in
         List.map aux labels
       in
-      make_let [r, [], from_expression init] {desc=Record fields';typ=typ'; attr=[]}
+      make_let [r, [], from_expression id_env init] {desc=Record fields';typ=typ'; attr=[]}
   | Texp_field(e,_,label) ->
-      let t = from_expression e in
+      let t = from_expression id_env e in
       {desc=Field(t, get_label_name label env); typ=typ'; attr=make_attr[t]}
   | Texp_setfield(e1,_,label,e2) ->
-      {desc=SetField(from_expression e1, get_label_name label env, from_expression e2); typ=typ'; attr=[]}
+      {desc=SetField(from_expression id_env e1, get_label_name label env, from_expression id_env e2); typ=typ'; attr=[]}
   | Texp_array es ->
       let typ'' = array_typ typ' in
-      let ts = List.map from_expression es in
+      let ts = List.map (from_expression id_env) es in
       let array_of_list = make_var @@ Id.new_var ~name:"Array.of_list" @@ make_tfun (make_tlist typ'') typ' in
       make_app array_of_list [List.fold_right make_cons ts (make_nil typ'')]
   | Texp_ifthenelse(e1,e2,e3) ->
-      let t1 = from_expression e1 in
-      let t2 = from_expression e2 in
+      let t1 = from_expression id_env e1 in
+      let t2 = from_expression id_env e2 in
       let t3 =
         match e3 with
         | None -> unit_term
-        | Some e3 -> from_expression e3
+        | Some e3 -> from_expression id_env e3
       in
       make_if t1 t2 t3
-  | Texp_sequence(e1,e2) -> make_seq (from_expression e1) (from_expression e2)
+  | Texp_sequence(e1,e2) -> make_seq (from_expression id_env e1) (from_expression id_env e2)
   | Texp_while(e1,e2) ->
-      let t1 = from_expression e1 in
-      let t2 = from_expression e2 in
+      let t1 = from_expression id_env e1 in
+      let t2 = from_expression id_env e2 in
       let x = Id.new_var TUnit in
       let f = Id.new_var ~name:"while" @@ make_tfun TUnit t2.typ in
       let t2' = make_if t1 (make_seq t2 @@ make_app (make_var f) [unit_term]) unit_term in
       make_let [f, [x], t2'] @@ make_app (make_var f) [unit_term]
   | Texp_for(x, _, e1, e2, dir, e3) ->
-      let t1 = from_expression e1 in
-      let t2 = from_expression e2 in
-      let t3 = from_expression e3 in
+      let t1 = from_expression id_env e1 in
+      let t2 = from_expression id_env e2 in
+      let t3 = from_expression id_env e3 in
       let x' = from_ident x TInt in
       let f = Id.new_var ~name:"for" (TFun(Id.new_var ~name:"i" TInt, t3.typ)) in
       let init = Id.new_var ~name:"init" TInt in
@@ -540,7 +498,7 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   | Texp_override _ -> unsupported "expression (override)"
   | Texp_letmodule _ -> unsupported "expression (module)"
   | Texp_assert e ->
-      let t = from_expression e in
+      let t = from_expression id_env e in
       if t.desc = Const False
       then make_fail typ'
       else make_assert t
@@ -550,62 +508,88 @@ let rec from_expression {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   | Texp_unreachable -> unsupported "Texp_unreachable"
   | Texp_extension_constructor _ -> unsupported "Texp_extension_constructor"
 
-and from_case {c_lhs;c_guard;c_rhs} =
+and from_case id_env {c_lhs;c_guard;c_rhs} =
   from_pattern c_lhs,
-  Option.map_default from_expression true_term c_guard,
-  from_expression c_rhs
+  Option.map_default (from_expression id_env) true_term c_guard,
+  from_expression id_env c_rhs
 
 
 let from_exception_declaration env = List.map (from_type_expr env)
 
 
-let rec from_module_binding mb =
+let rec from_module_binding id_env mb =
   match mb.mb_expr.mod_desc with
   | Tmod_structure struc ->
-      from_structure struc
+      let id_env', decls = from_structure id_env struc in
+      let prefix = Ident.name mb.mb_id ^ "." in
+      let map =
+        let aux = function
+          | Decl_let(_, defs) -> List.map fst defs
+          | _ -> []
+        in
+        let fs = List.flatten_map aux decls in
+        List.map (fun f -> f, Id.add_name_before prefix f) fs
+      in
+      let decls' =
+        let rename decl =
+          match decl with
+          | Decl_let(flag, defs) ->
+              let aux (f,t) =
+                Id.assoc f map, List.fold_right (Fun.uncurry subst_var) map t
+              in
+              Decl_let(flag, List.map aux defs)
+          | _ -> decl
+        in
+        List.map rename decls
+      in
+      let id_env'' = List.map snd map @ id_env' in
+      id_env'', decls'
   | _ -> unsupported "module"
 
-and from_str_item str_item =
+and from_str_item id_env str_item =
   match str_item.str_desc with
   | Tstr_eval(e,_) ->
-      let t = from_expression e in
-      [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
+      let t = from_expression id_env e in
+      [], [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
   | Tstr_value(rec_flag,pats) ->
       let flag = from_rec_flag rec_flag in
       let aux {vb_pat;vb_expr} =
         let p = from_pattern vb_pat in
-        let e = from_expression vb_expr in
+        let e = from_expression id_env vb_expr in
         match p.pat_desc, flag with
         | PVar x, _ -> x, e
         | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
         | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
       in
-      [Decl_let(flag, List.map aux pats)]
-  | Tstr_primitive _ -> []
-  | Tstr_type _ -> []
+      [], [Decl_let(flag, List.map aux pats)]
+  | Tstr_primitive _ -> [], []
+  | Tstr_type _ -> [], []
   | Tstr_typext _ -> unsupported "typext"
-  | Tstr_exception _ -> []
+  | Tstr_exception _ -> [], []
   | Tstr_module mb ->
-      from_module_binding mb
+      from_module_binding id_env mb
   | Tstr_recmodule _
   | Tstr_modtype _ ->
       unsupported "module"
-  | Tstr_open _ -> []
+  | Tstr_open _ -> [], []
   | Tstr_class _
   | Tstr_class_type _ -> unsupported "class"
-  | Tstr_include _ -> unsupported "include"
-  | Tstr_attribute _ -> []
+  | Tstr_include _ -> [], []
+  | Tstr_attribute _ -> [], []
 
-and from_structure struc =
-      Format.printf "%a@." Printtyped.implementation struc;
-  List.rev_map_flatten from_str_item struc.str_items
+and from_structure id_env struc =
+  let aux (id_env,decls) str_item =
+    let id_env',decls' = from_str_item id_env str_item in
+    id_env', decls' @@@ decls
+  in
+  List.fold_left aux (id_env,[]) struc.str_items
 
-let from_top_level_phrase (env,defs) = function
+let from_top_level_phrase (tenv,id_env,decls) = function
   | Parsetree.Ptop_dir _ -> unsupported "toplevel_directive"
   | Parsetree.Ptop_def struc ->
-      let struc',_,env' = Typemod.type_structure env struc Location.none in
-      env', from_structure struc' @@@ defs
-
+      let struc',_,tenv' = Typemod.type_structure tenv struc Location.none in
+      let id_env',decls' = from_structure id_env struc' in
+      tenv', id_env', decls' @@@ decls
 
 let from_use_file ast =
   let env = Compmisc.initial_env () in
@@ -618,8 +602,9 @@ let from_use_file ast =
     | Decl_exc _ -> t
   in
   ast
-  |> List.fold_left from_top_level_phrase (env,[])
-  |> snd
+  |> List.fold_left from_top_level_phrase (env,[],[])
+  |> Triple.trd
   |> List.fold_left aux unit_term
   |> Trans.merge_let_fun
   |> subst_data_type_term "exn" !!make_exc_typ
+  |> Trans.rename_bound_module

@@ -49,8 +49,8 @@ let cegar prog0 labeled is_cp ce_tree prog =
     Format.fprintf ppf "%a |= %a" Fpat.TypEnv.pr_compact env Fpat.Formula.pr fml in
   let log_file =
     if !Flag.randint_refinement_log then
-      let dirname = Filename.dirname !Flag.filename in
-      let basename = Filename.basename !Flag.filename in
+      let dirname = Filename.dirname !!Flag.mainfile in
+      let basename = Filename.basename !!Flag.mainfile in
       dirname ^ "/refinement/" ^ Filename.change_extension basename "refinement"
     else ""
   in

@@ -34,7 +34,7 @@ let output_csv filename =
   Format.fprintf
     ocf
     "%s,%S,%d,%f,%f,%f,%f@,"
-    (Filename.chop_extension_if_any @@ Filename.basename !Flag.filename)
+    (Filename.chop_extension_if_any @@ Filename.basename !!Flag.mainfile)
     !Flag.result
     !Flag.cegar_loop
     !Flag.time_abstraction
@@ -48,7 +48,7 @@ let output_json filename =
   let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
   let ocf = Format.formatter_of_out_channel oc in
   Format.fprintf ocf "{";
-  Format.fprintf ocf "\"filename\": %S, " !Flag.filename;
+  Format.fprintf ocf "\"filename\": %S, " !!Flag.mainfile;
   Format.fprintf ocf "\"result\": %S, " !Flag.result;
   Format.fprintf ocf "\"cycles\": \"%d\", " !Flag.cegar_loop;
   if !Flag.mode = Flag.Termination then
@@ -173,8 +173,8 @@ let main_fair_termination orig spec parsed =
 let output_randint_refinement_log input_string =
   let cout =
     let input =
-      let dirname = Filename.dirname !Flag.filename in
-      let basename = Filename.basename !Flag.filename in
+      let dirname = Filename.dirname !!Flag.mainfile in
+      let basename = Filename.basename !!Flag.mainfile in
       dirname ^ "/refinement/" ^ Filename.change_extension basename "refinement"
     in
     open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o644 input
@@ -195,7 +195,7 @@ let main in_channel =
   in
   let lb = Lexing.from_string input_string in
   lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename !Flag.filename;
+    {Lexing.pos_fname = Filename.basename !!Flag.mainfile;
      Lexing.pos_lnum = 1;
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
@@ -417,9 +417,7 @@ let string_of_exception = function
   | e -> Printexc.to_string e
 
 let set_file name =
-  if !Flag.filename <> "" (* case of "./mochi.opt file1 file2" *)
-  then (Arg.usage arg_spec usage; exit 1);
-  Flag.filename := name
+  Flag.filenames := name :: !Flag.filenames
 
 let read_option_conf () =
   try
@@ -436,16 +434,46 @@ let read_option_conf () =
   | Sys_error _
   | End_of_file -> ()
 
+let merge_input_files files =
+  let s = String.create Flag.max_input_size in
+  let filename = Filename.change_extension (List.hd files) "mml" in
+  let cout = open_out filename in
+  let ocf = Format.formatter_of_out_channel cout in
+  let append file =
+    let cin = open_in file in
+    let len = my_input cin s 0 Flag.max_input_size in
+    if len = Flag.max_input_size then raise LongInput;
+    let s' = String.sub s 0 len in
+    let module_name =
+      file
+      |> Filename.basename
+      |> Filename.chop_extension_if_any
+      |> String.capitalize
+    in
+    Format.fprintf ocf "module %s = struct@." module_name;
+    Format.fprintf ocf "# 1 \"%s\"@." file;
+    output_substring cout s' 0 len;
+    Format.fprintf ocf "end@."
+  in
+  List.rev_iter append files;
+  filename
+
 let parse_arg () =
   Arg.parse arg_spec set_file usage;
   Flag.args := Array.to_list Sys.argv;
   if not !Flag.ignore_conf then read_option_conf ();
-  Flag.input_cegar := String.ends_with !Flag.filename ".cegar";
-  match !Flag.filename with
-  | "" | "-" -> Flag.filename := "stdin"; stdin
+  Flag.input_cegar := String.ends_with !!Flag.mainfile ".cegar";
+  match !Flag.filenames with
+  | [] | ["-"] -> Flag.filenames := ["stdin"]; stdin
   | _ ->
-      Config.load_path := Filename.dirname !Flag.filename :: !Config.load_path;
-      open_in !Flag.filename
+      let filename =
+        match !Flag.filenames with
+        | [] -> assert false
+        | [file] -> file
+        | files -> merge_input_files files
+      in
+      Config.load_path := Filename.dirname !!Flag.mainfile :: !Config.load_path;
+      open_in filename
 
 
 (* called before parsing options *)
@@ -455,7 +483,7 @@ let fpat_init1 () =
 (* called after parsing options *)
 let fpat_init2 () =
   let open Fpat in
-  Global.target_filename := !Flag.filename;
+  Global.target_filename := !!Flag.mainfile;
   SMTProver.cvc3_command := !Flag.cvc3;
   SMTProver.initialize ()
 
@@ -529,7 +557,7 @@ let () =
       Fpat.SMTProver.finalize ();
       print_info ()
     with
-    | e when !Flag.debug_module <> [] ->
+    | e when !Flag.debug_module = [] ->
         Flag.result := string_of_exception e;
         Option.iter output_csv !Flag.output_csv;
         Option.iter output_json !Flag.output_json;

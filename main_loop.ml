@@ -22,7 +22,7 @@ let preprocess make_pps ?(fun_list=None) t spec =
 
   if false then
     begin
-      let oc = open_out @@ Filename.change_extension !Flag.filename "pml" in
+      let oc = open_out @@ Filename.change_extension !!Flag.mainfile "pml" in
       let ocf = Format.formatter_of_out_channel oc in
       Format.fprintf ocf "%a@." Print.term_typ t;
       close_out oc
@@ -68,10 +68,10 @@ let preprocess make_pps ?(fun_list=None) t spec =
 let write_annot env orig =
   env
   |> List.map (Pair.map_fst Id.name)
-  |> WriteAnnot.f !Flag.filename orig
+  |> WriteAnnot.f !!Flag.mainfile orig
 
 let report_safe env orig t0 =
-  if !Flag.write_annot then write_annot env orig;
+  if !Flag.write_annot && List.length !Flag.filenames = 1 then write_annot env orig;
 
   let s =
     match !Flag.mode with

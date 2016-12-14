@@ -103,19 +103,6 @@ let abst_recdata_typ typ =
       |> flatten_recdata_typ
       |> collect_leaf
       |> abst_recdata_leaves
-  (*
-  | TData(s,true) when Type_decl.is_record s ->
-      if Type_decl.is_mutable s
-      then unsupported "Mutable records"
-      else
-        let sftyps =
-          match Type_decl.assoc s with
-          | Type_decl.TKRecord sftyps -> sftyps
-          | _ -> assert false
-        in
-        make_ttuple @@ List.map (abst_recdata.tr_typ -| snd -| snd) sftyps
-  | TData(s,true) -> assert false
- *)
   | TApp(TOption, [typ]) -> opt_typ (abst_recdata.tr_typ typ)
   | _ -> abst_recdata.tr_typ_rec typ
 
@@ -155,9 +142,10 @@ let rec abst_recdata_pat p =
         let f = Id.new_var typ in
         let ppcbs = List.map (Pair.add_right abst_recdata_pat) ps in
         let ground_types = get_ground_types p.pat_typ in
+        Debug.printf "ground_types: %a@." (List.print Print.typ) ground_types;
         let binds =
           let make_bind i (p,(p',_,_)) =
-            let t =
+            let t' =
               if List.mem ~eq:Type.same_shape p.pat_typ ground_types then
                 let rec find c = function
                   | [] -> assert false
@@ -172,7 +160,7 @@ let rec abst_recdata_pat p =
                   make_fun path @@
                     make_app (make_snd @@ make_var f) [make_cons (make_int i) (make_var path)]
             in
-            t, p'
+            t', p'
           in
           List.mapi make_bind ppcbs
         in
@@ -188,12 +176,12 @@ let rec abst_recdata_pat p =
           in
           let cond0 =
             let t = make_app (make_snd @@ make_var f) [make_nil TInt] in
-            Debug.printf "ground_types: %a@." (List.print Print.typ) ground_types;
             let t' = if ground_types = [] then t else make_proj 0 t in
             make_eq t' (abst_label p.pat_typ c)
           in
-          List.fold_left make_and true_term (cond0 :: conds')
+          make_ands (cond0 :: conds')
         in
+        Debug.printf "cond: %a@." Print.term cond;
         let bind = binds @ List.flatten_map (fun (_,(_,_,bind)) -> bind) ppcbs in
         PVar f, cond, bind
     | PNil -> PNil, true_term, []

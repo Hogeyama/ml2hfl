@@ -582,7 +582,7 @@ let from_top_level_phrase (env,defs) = function
         | Tstr_exception _ -> []
         | Tstr_module _
         | Tstr_recmodule _
-        | Tstr_modtype _ -> unsupported "module"
+        | Tstr_modtype _ -> unsupported "module (use OCaml 4.03)"
         | Tstr_open _ -> []
         | Tstr_class _
         | Tstr_class_type _ -> unsupported "class"

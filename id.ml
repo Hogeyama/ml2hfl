@@ -72,3 +72,6 @@ let print fm x =
   Format.fprintf fm "@[%s@]" s'
 
 let map_typ f x = {x with typ = f x.typ}
+
+let in_module x =
+  String.contains x.name '.' && is_uppercase x.name.[0]

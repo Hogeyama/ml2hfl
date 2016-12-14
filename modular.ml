@@ -46,9 +46,7 @@ let report_unsafe neg_env ce_set =
 
 
 
-let is_external_id f =
-  let name = Id.name f in
-  String.contains name '.' && is_uppercase name.[0]
+let is_external_id f = Id.in_module f
 
 let make_init_env cmp bindings =
   let make f =

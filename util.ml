@@ -299,6 +299,11 @@ module List = struct
     | x::xs',y::ys',z::zs' -> f x y z :: map3 f xs' ys' zs'
     | _ -> invalid_arg "List.map3"
 
+  let rec rev_iter f xs =
+    match xs with
+    | [] -> ()
+    | x::xs' -> rev_iter f xs'; f x
+
   let rec rev_filter_map acc f xs =
     match xs with
     | [] -> acc
