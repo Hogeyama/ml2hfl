@@ -86,7 +86,7 @@ let report_safe env orig t0 =
       let map =
         List.map
           (fun (x, t) ->
-           Id.make (-1) (Fpat.Idnt.string_of x) Type.TInt,
+           Id.make (-1) (Fpat.Idnt.string_of x) [] Type.TInt,
            CEGAR_trans.trans_inv_term @@ FpatInterface.inv_term @@ t)
           !Fpat.RefTypInfer.prev_sol
       in

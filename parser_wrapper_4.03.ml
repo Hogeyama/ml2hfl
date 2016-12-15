@@ -207,26 +207,26 @@ let sign_to_letters s =
   then "op" ^ String.join "" @@ List.map map @@ String.explode s
   else s
 
-let from_ident_aux name binding_time typ =
+let from_ident_aux name binding_time attr typ =
   let name = sign_to_letters name in
   let name = if name.[0] = '_' then "u" ^ name else name in
-  Id.make binding_time name typ
+  Id.make binding_time name attr typ
 
 let from_ident x typ =
-  from_ident_aux (Ident.name x) (Ident.binding_time x) typ
+  from_ident_aux (Ident.name x) (Ident.binding_time x) [] typ
 
 let from_ident_path id_env path typ =
   let name = Path.name path in
   try
     Id.set_typ (List.find (Id.name |- (=) name) id_env) typ
   with Not_found ->
-    let binding_time =
+    let binding_time,attr =
       if is_uppercase name.[0] then
-        0
+        0, [Id.External]
       else
-        Path.binding_time path
+        Path.binding_time path, []
     in
-    from_ident_aux name binding_time typ
+    from_ident_aux name binding_time attr typ
 
 
 let get_constr_name desc typ env =

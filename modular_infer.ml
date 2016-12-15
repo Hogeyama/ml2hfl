@@ -685,7 +685,7 @@ let solve_option hcs =
   try Some (solve hcs) with
   | Fpat.HCCSSolver.Unknown -> None
 
-let any_var = Id.make (-1) "any" TBool
+let any_var = Id.make (-1) "any" [] TBool
 
 let rec apply_sol mode sol x vars tmp =
   let dbg = 0=0 in

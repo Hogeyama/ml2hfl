@@ -102,7 +102,8 @@ let restore_ids =
       let i = String.rindex name_ '_' in
       let name = String.sub name_ 0 i in
       let id = int_of_string (String.sub name_ (i+1) (String.length name_ - i - 1)) in
-      {Id.name = name; Id.id = id; Id.typ = typ}
+      let attr = [] in
+      Id.make id name attr typ
     with _ -> orig
   in
   let sub = function

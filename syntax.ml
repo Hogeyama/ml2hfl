@@ -109,13 +109,13 @@ let attr t = t.attr
 
 module Id = struct
   include Id
-  let new_var ?name typ =
+  let new_var ?name ?attr typ =
     let name =
       match name with
       | None -> Type.var_name_of typ
       | Some name -> name
     in
-    make (new_int()) name typ
+    make (new_int()) name (Option.default [] attr) typ
 end
 
 
@@ -1439,10 +1439,8 @@ let () = occur.col2_typ <- occur_typ
 let occur = occur.col2_typ
 
 
-let coeff_suffix = "_COEF"
-let make_extra_coeff ?(name="c") ?(typ=TInt) () = Id.new_var ~name:(name^coeff_suffix) TInt
-let is_extra_coeff_name s = Str.string_match (Str.regexp @@ Format.sprintf ".*%s.*" coeff_suffix) s 0
-let is_extra_coeff = is_extra_coeff_name -| Id.name
+let make_extra_coeff ?(name="c") ?(typ=TInt) () = Id.new_var ~name:name ~attr:[Id.Coefficient] typ
+let is_extra_coeff = List.mem Id.Coefficient -| Id.attr
 
 
 

@@ -223,5 +223,4 @@ val get_fv : ?cmp:(id -> id -> bool) -> term -> id list
 val is_non_rec : (id * id list * term) list -> bool
 
 val make_extra_coeff : ?name:string -> ?typ:typ -> unit -> id
-val is_extra_coeff_name : string -> bool
 val is_extra_coeff : id -> bool

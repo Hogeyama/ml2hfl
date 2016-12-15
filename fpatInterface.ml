@@ -83,7 +83,7 @@ let conv_const c =
       assert false
 
 let conv_var x =
-  if Fpat.RefTypInfer.is_parameter x || S.is_extra_coeff_name x then
+  if Fpat.RefTypInfer.is_parameter x || is_extra_coeff_name x then
     Fpat.Idnt.mk_coeff x
   else
     Fpat.Idnt.make x
@@ -437,7 +437,7 @@ let infer_with_ext
     env
 
 
-(** move the following codes to another file *)
+(** TODO: move the following codes to another file *)
 
 let gen_id =
   let cnt = ref 0 in
@@ -465,7 +465,7 @@ let rec trans_type typ =
          xs)
   in
   List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
-and trans_id x = Id.make x.Id.id x.Id.name (trans_type x.Id.typ)
+and trans_id x = Id.map_typ trans_type x
 
 let of_desc t = assert false (* @todo translate FPAT term to Syntax.term *)
 

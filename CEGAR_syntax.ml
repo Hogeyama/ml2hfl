@@ -86,6 +86,9 @@ and info =
 
 let init_info = {attr=[]; exparam_orig=None; non_rec=[]; orig_fun_list=[]; inlined=[]; fairness=None}
 
+let coeff_suffix = "_COEF"
+let is_extra_coeff_name s = Str.string_match (Str.regexp @@ Format.sprintf ".*%s.*" coeff_suffix) s 0
+
 let prefix_randint = "#randint"
 let make_randint_name n = Format.sprintf "%s_%d" prefix_randint n
 let decomp_randint_name s =

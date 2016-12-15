@@ -20,8 +20,8 @@ let typ_event_cps =
   TFun(u, TFun(k, typ_result))
 let typ_exn = TData "exn"
 
-let dummy_var = Id.make (-1) "" TInt
-let abst_var = Id.make (-1) "v" typ_unknown
+let dummy_var = Id.make (-1) "" [] TInt
+let abst_var = Id.make (-1) "v" [] typ_unknown
 let abst_var_int = Id.set_typ abst_var TInt
 let abst_var_bool = Id.set_typ abst_var TBool
 
@@ -283,8 +283,8 @@ let make_eq_dec t1 t2 =
   k1 @@ k2 @@ make t1' t2'
 
 let make_length_var typ =
-  let x = Id.make (-1) "l" typ in
-  Id.make (-1) "length" (TFun(x, TInt))
+  let x = Id.make (-1) "l" [] typ in
+  Id.make (-1) "length" [] (TFun(x, TInt))
 
 let make_length t =
   {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}

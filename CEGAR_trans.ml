@@ -81,7 +81,11 @@ let add_neg_preds_renv env =
 
 let nil_pred _ = []
 
-let trans_var x = Id.to_string x
+let trans_var x =
+  if List.mem Id.Coefficient @@ Id.attr x then
+    Id.to_string x ^ coeff_suffix
+  else
+    Id.to_string x
 let trans_inv_var s = Id.from_string s Type.typ_unknown
 
 let id_prog prog =

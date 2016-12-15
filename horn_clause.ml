@@ -10,12 +10,12 @@ type pred_var = int
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let pred_var = Id.make (-1) "v" TInt
+let pred_var = Id.make (-1) "v" [] TInt
 let pred_var_term = make_var pred_var
 let make_pred_var p ts =
   let typs = List.map Syntax.typ ts in
   let typ = List.fold_right make_tfun typs TBool in
-  Id.make p "P" typ
+  Id.make p "P" [] typ
 let is_pred_var x = Id.name x = "P"
 let get_pred_id x = Id.id x
 let get_pred_id_of_term t =
