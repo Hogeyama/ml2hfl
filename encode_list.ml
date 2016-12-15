@@ -145,6 +145,16 @@ let abst_list_typ post typ =
       TTuple[l; Id.new_var @@ pureTFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
   | _ -> abst_list.tr2_typ_rec post typ
 
+let print_bind fm bind =
+  Format.fprintf fm "@[[";
+  List.iter (fun (x,t) -> Format.fprintf fm "%a := %a;@ " Id.print x Print.term t) bind;
+  Format.fprintf fm "]@]"
+
+let add_bind bind t =
+  Debug.printf "add_bind bind: %a@." print_bind bind;
+  Debug.printf "add_bind t: %a@." Print.term t;
+  List.fold_left (fun t' (x,t) -> if Id.mem x @@ get_fv t' then make_let [x,[],t] t' else t') t bind
+
 (* "t" must have no side-effects *)
 let rec get_match_bind_cond t p =
   match p.pat_desc with
@@ -152,11 +162,11 @@ let rec get_match_bind_cond t p =
   | PVar x -> [abst_list.tr2_var "" x, t], true_term
   | PAlias(p,x) ->
       let bind,cond = get_match_bind_cond t p in
-      (abst_list.tr2_var "" x, t)::bind, cond
+      let bind' = (abst_list.tr2_var "" x, t)::bind in
+      bind', add_bind bind' cond
   | PConst {desc=Const Unit} -> [], true_term
   | PConst t' when t'.desc = randint_unit_term.desc -> [], randbool_unit_term (* just for -base-to-int *)
-  | PConst t' -> [], (try make_eq t t' with _ ->
-                        assert false)
+  | PConst t' -> [],  make_eq t t'
   | PNil -> [], make_leq (make_fst t) (make_int 0)
   | PCons _ ->
       let rec decomp = function
@@ -172,7 +182,7 @@ let rec get_match_bind_cond t p =
             let t' = make_app (make_snd t) [make_int i] in
             let x = new_var_of_term t' in
             let bind',cond' = get_match_bind_cond (make_var x) p in
-            aux ((x,t')::bind'@@@bind) (make_and cond cond') (i+1) ps
+            aux (bind'@@@[x,t']@@@bind) (make_and cond @@ add_bind [x,t'] cond') (i+1) ps
       in
       let len = List.length ps in
       let bind, cond = get_match_bind_cond (make_tl len t) p' in
@@ -188,11 +198,6 @@ let rec get_match_bind_cond t p =
       let cond2' = List.fold_right2 (fun (x1,_) (x2,_) -> subst_var x2 x1) bind1 bind2 cond2 in
       bind1, make_or cond1 cond2'
   | _ -> Format.printf "get_match_bind_cond: %a@." Print.pattern p; assert false
-
-let print_bind fm bind =
-  Format.fprintf fm "@[[";
-  List.iter (fun (x,t) -> Format.fprintf fm "%a := %a;@ " Id.print x Print.term t) bind;
-  Format.fprintf fm "]@]"
 
 let rec make_rand typ =
   match typ with
@@ -259,23 +264,16 @@ let abst_list_term post t =
   | Constr(s,ts) -> assert false
   | Match(t1,pats) ->
       let x,bindx =
-        let x = Id.new_var ~name:"xs" (abst_list.tr2_typ post t1.typ) in
+        let x = Id.new_var ~name:"xs" @@ abst_list.tr2_typ post t1.typ in
         x, fun t -> make_let [x, [], abst_list.tr2_term post t1] t
       in
       let aux (p,cond,t2) t3 =
-        let add_bind bind t = List.fold_left (fun t' (x,t) -> make_let [x, [], t] t') t bind in
-        let bind,cond' = get_match_bind_cond (make_var x) p in
-        Debug.printf "@[bind:%a,@ %a@." print_bind bind Print.term cond;
-        let t_cond,bind' =
-          if cond = true_term
-          then cond, bind
-          else
-            let cond' = Trans.alpha_rename @@ add_bind bind (abst_list.tr2_term post cond) in
-            cond', bind
-        in
-        Debug.printf "@[bind':%a,@ %a@." print_bind bind' Print.term t_cond;
+        let cond' = abst_list.tr2_term post cond in
+        let bind,cond2 = get_match_bind_cond (make_var x) p in
+        let cond'' = add_bind bind cond' in
+        let t_cond = make_and cond2 cond'' in (* The order of cond2 and cond'' is matter *)
         let t2' = abst_list.tr2_term post t2 in
-        make_if (make_and cond' t_cond) (add_bind bind' t2') t3
+        make_if t_cond (add_bind bind t2') t3
       in
       let t_pats = List.fold_right aux pats (make_bottom @@ abst_list.tr2_typ post t.typ) in
       bindx t_pats

@@ -1,10 +1,11 @@
-
 open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
 module MC = ModelCheck
+
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type result =
   | Safe of (var * CEGAR_ref_type.t) list
@@ -183,7 +184,7 @@ let rec loop prog0 is_cp ces =
 
 
 let run prog =
-  if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
+  if !!Debug.check then ignore @@ Typing.infer prog;
   let prog =
     match !Flag.mode with
     | Flag.NonTermination
