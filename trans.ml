@@ -2716,7 +2716,7 @@ let eta_reduce = eta_reduce.tr_term
 
 let rename_bound_module = make_trans ()
 let rename_bound_module_var x =
-  if Id.in_module x && Id.id x > 0 then
+  if Id.is_external x then
     Id.map_name (String.map (function '.' -> '_' | c -> c)) x
   else
     x

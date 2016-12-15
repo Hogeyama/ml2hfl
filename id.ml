@@ -34,7 +34,7 @@ let to_string x =
     else
       name x ^ "_" ^ string_of_int n
   in
-  if s<>"" && s.[0] = '@' then
+  if s <> "" && s.[0] = '@' then
     "$" ^ String.sub s 1 (String.length s - 1) ^ "$"
   else
     s
@@ -81,5 +81,4 @@ let print fm x =
 let map_name f x = {x with name = f x.name}
 let map_typ f x = {x with typ = f x.typ}
 
-let in_module x =
-  String.contains x.name '.' && is_uppercase x.name.[0]
+let is_external x = List.mem External x.attr

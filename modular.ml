@@ -46,13 +46,11 @@ let report_unsafe neg_env ce_set =
 
 
 
-let is_external_id f = Id.in_module f
-
 let make_init_env cmp bindings =
   let make f =
     Id.typ f
     |> Trans.inst_tvar_tunit_typ
-    |> (if is_external_id f then Ref_type.of_simple else Ref_type.make_weakest)
+    |> (if Id.is_external f then Ref_type.of_simple else Ref_type.make_weakest)
   in
   List.flatten_map (List.map Triple.fst) bindings
   |> Ref_type.Env.create make
@@ -71,7 +69,7 @@ let refine_init_env prog =
         loop prog' ce_set' candidates'
   in
   Ref_type.Env.dom prog.fun_typ_env
-  |> List.filter_out is_external_id
+  |> List.filter_out Id.is_external
   |> List.map (fun f -> f, Ref_type.of_simple @@ Id.typ f)
   |> loop prog []
 
@@ -97,7 +95,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
   else
     let () = Debug.printf "%sTIME: %.3f@." space !!get_time in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
-    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- is_external_id) env;
+    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- Id.is_external) env;
     if !use_neg_env then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
     if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
@@ -127,7 +125,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
     | Modular_check.Untypable ce ->
         pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let rec refine_loop infer_mode neg_env ce_set2 prev_sol =
-          if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- is_external_id) ce_set2;
+          if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- Id.is_external) ce_set2;
           let sol =
             match prev_sol with
             | None -> infer prog f typ ce_set2
@@ -144,7 +142,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
                   candidate
                   |> Ref_type.Env.to_list
                   |> List.filter_out (fst |- Id.same f)
-                  |> List.filter_out (fst |- is_external_id)
+                  |> List.filter_out (fst |- Id.is_external)
                   |> List.sort ~cmp:(Compare.on ~cmp fst)
                 in
                 pr "%a{%a,%d}%t CANDIDATES:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.of_list candidate';
@@ -183,7 +181,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
         check env ce_set candidates'
  *)
     | (f,typ)::candidates' ->
-        pr "env:@ %a" Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- is_external_id) env;
+        pr "env:@ %a" Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- Id.is_external) env;
         pr "%a :? %a" Id.print f Ref_type.print typ;
         incr num_tycheck;
         let prog' = {prog with fun_typ_env=env} in
@@ -212,7 +210,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
       else
         infer_mode
     in
-    pr "ce_set':@ %a" print_ce_set @@ List.filter_out (fst |- is_external_id) ce_set';
+    pr "ce_set':@ %a" print_ce_set @@ List.filter_out (fst |- Id.is_external) ce_set';
     match infer prog main typ ce_set' infer_mode' with
     | None ->
         pr "THERE ARE NO CANDIDATES";
@@ -222,7 +220,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
           candidate
           |> Ref_type.Env.to_list
           |> List.filter_out (fst |- Id.same main)
-          |> List.filter_out (fst |- is_external_id)
+          |> List.filter_out (fst |- Id.is_external)
           |> List.sort ~cmp:(Compare.on ~cmp fst)
           |*> List.flatten_map (fun (g,typ) -> List.map (Pair.pair g) @@ Ref_type.decomp_inter typ)
           |> List.snoc -$- (main,typ)
