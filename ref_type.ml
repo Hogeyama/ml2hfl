@@ -390,8 +390,7 @@ let is_valid = FpatInterface.is_valid -| conv
 let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
 
 let rec simplify_pred t =
-  if true
-  then
+  if true then
     try
       if not @@ is_sat t then
         U.false_term
@@ -585,7 +584,7 @@ and simplify typ =
   | Inter(styp, []) -> Inter(styp, [])
   | Inter(styp, typs) ->
       let _Inter' styp typs =
-        if List.for_all (function Tuple _ -> true | _ -> false) typs then
+        if typs <> [] && List.for_all (function Tuple _ -> true | _ -> false) typs then
           let xtypss = List.map (function Tuple xs -> xs | _ -> assert false) typs in
           let xs,typss =
             match xtypss with

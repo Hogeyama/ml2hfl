@@ -167,11 +167,9 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
   let rec check env ce_set candidates =
     match candidates with
     | [] -> env, ce_set
-(*
     | (f,typ)::candidates' when Ref_type.subtype (Ref_type.Env.assoc f env) typ ->
         pr "TYPABLE (skip): %a :@ %a@." Id.print f Ref_type.print typ;
         check env ce_set candidates'
- *)
     | (f,typ)::candidates' ->
         pr "env:@ %a" Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- Id.is_external) env;
         pr "%a :? %a" Id.print f Ref_type.print typ;

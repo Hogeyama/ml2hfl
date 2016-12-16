@@ -942,10 +942,13 @@ let assoc_typ_cps f typed =
 
 let rec uncps_ref_type sol typ_exn rtyp e etyp =
   let dbg = 0=0 in
-  Debug.printf "rtyp:%a@." RT.print rtyp;
-  Debug.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
-  Debug.printf "e:%a@." print_effect e;
-  Debug.printf "etyp:%a@.@." (print_typ_cps sol) etyp;
+  let pr () =
+    Debug.printf "rtyp:%a@." RT.print rtyp;
+    Debug.printf "ST(rtyp):%a@." Print.typ @@ RT.to_simple rtyp;
+    Debug.printf "e:%a@." print_effect e;
+    Debug.printf "etyp:%a@.@." (print_typ_cps sol) etyp
+  in
+  pr ();
   match rtyp, e, etyp with
   | RT.Inter(styp, rtyps), e, _ ->
       if dbg then Debug.printf "%s@.@." __LOC__;
@@ -1018,9 +1021,32 @@ let rec uncps_ref_type sol typ_exn rtyp e etyp =
       RT.top styp
   | _, _, TBaseCPS styp when RT.is_bottom' rtyp ->
       RT.bottom styp
+(*
   | RT.Fun(x, RT.Inter(_,[rtyp]), rtyp'), _, _ -> uncps_ref_type sol typ_exn (RT.Fun(x, rtyp, rtyp')) e etyp
   | RT.Fun(x, RT.Inter(styp,rtyp::rtyps), rtyp'), _, _ when List.exists (Ref_type.equiv rtyp) rtyps -> uncps_ref_type sol typ_exn (RT.Fun(x, RT.Inter(styp,rtyps), rtyp')) e etyp
-  | RT.Fun(x, RT.Inter(styp,rtyp::rtyps), rtyp'), _, _ -> assert false
+  | RT.Fun(x, RT.Inter(styp,(RT.Tuple _::_ as rtyps)), rtyp'), _, _ ->
+      assert false;
+      let xtypss = List.map (function RT.Tuple xtyps -> xtyps | _ -> assert false) rtyps in
+      let xs,typss =
+        match xtypss with
+        | [] -> assert false
+        | xtyps::ytypss ->
+            let xs = List.map fst xtyps in
+            let rename ytyps =
+              List.fold_right2 (fun x (y,typ) acc -> let sbst = RT.subst_var x y in sbst typ :: List.map sbst acc) xs ytyps []
+            in
+            xs, List.map snd xtyps :: List.map rename ytypss
+      in
+      let typss' = List.transpose typss in
+      let styp = RT.to_simple @@ List.hd rtyps in
+      let rtyp'' = RT.Tuple (List.map2 (fun x typs -> x, RT.Inter(styp, typs)) xs typss') in
+      uncps_ref_type sol typ_exn rtyp'' e etyp
+*)
+  | RT.Fun(x, RT.Inter(styp,[]), rtyp'), _, _ ->
+      assert false
+  | RT.Fun(x, RT.Inter(styp,rtyps), rtyp'), _, _ ->
+      let rtyps = List.map (fun rtyp -> uncps_ref_type sol typ_exn (RT.Fun(x, rtyp, rtyp')) e etyp) rtyps in
+      RT.Union(RT.to_simple @@ List.hd rtyps, rtyps)
   | _ -> assert false
 
 let infer_effect env t =
