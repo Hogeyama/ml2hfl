@@ -72,7 +72,6 @@ let rec eval_print fm rands t =
   | If(t1, t2, t3) ->
       let rands', v = eval_print fm rands t1 in
       let b = bool_of_term v in
-      Format.fprintf fm "@\nif %a then ... ->" Print.term t1;
       Format.fprintf fm "@\nif %b then ... ->" b;
       let t' = if b then t2 else t3 in
       eval_print fm rands' t'
