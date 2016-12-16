@@ -75,6 +75,7 @@ val decomp_pair_eq : term -> term
 val eta_normal : term -> term
 val direct_from_CPS : term -> term
 val rename_bound_module : term -> term
+val name_read_int : term -> term
 
 (** {6 Simplification, Inlining, Reduction} *)
 val simplify_match : term -> term

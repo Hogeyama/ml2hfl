@@ -2723,3 +2723,19 @@ let rename_bound_module_var x =
     x
 let () = rename_bound_module.tr_var <- rename_bound_module_var
 let rename_bound_module = rename_bound_module.tr_term
+
+
+let name_read_int = make_trans ()
+let name_read_int_term t =
+  let desc' =
+    match t.desc with
+    | Let([x,[],{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings, t) ->
+        Let(bindings, name_read_int.tr_term t)
+    | App({desc=Const(RandValue(TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
+        let x = Id.new_var ~name:"r" TInt in
+        (make_let [x,[],t] @@ make_var x).desc
+    | _ -> name_read_int.tr_desc_rec t.desc
+  in
+  {t with desc=desc'}
+let () = name_read_int.tr_term <- name_read_int_term
+let name_read_int = name_read_int.tr_term

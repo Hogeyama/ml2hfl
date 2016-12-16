@@ -1122,7 +1122,11 @@ let pr s t = pr2 s Print.term_typ t
 let trans t =
   pr "INPUT" t;
   let env = initial_env () in
-  let t = Trans.short_circuit_eval t in
+  let t =
+    t
+    |> Trans.short_circuit_eval
+    |> Trans.name_read_int (* for disproving termination *)
+  in
   let typ_excep = Option.default typ_unknown @@ find_exn_typ t in
   if typ_excep <> typ_unknown && order typ_excep > 0 then unsupported "higher-order exceptions";
   let typ_exn = infer_effect_typ env typ_excep in
