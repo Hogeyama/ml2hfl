@@ -34,7 +34,7 @@ let add_exc_env name typs =
       ()
   else
     exc_env := (name,typs) :: !exc_env
-let make_exc_typ () =
+let exc_typ () =
   Type(["exn", TVariant !exc_env], "exn")
 
 
@@ -49,48 +49,6 @@ let prim_typs =
    "Pervasives.in_channel", TUnit
 *)]
 
-let conv_primitive_app t ts typ =
-  match t.desc,ts with
-  | Var {Id.name="List.length"}, [t1] -> make_length t1
-  | Var {Id.name="Pervasives.@@"}, [t1;t2] -> make_app t1 [t2]
-  | Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
-  | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
-  | Var {Id.name="Pervasives.<"}, [t1;t2] -> make_lt t1 t2
-  | Var {Id.name="Pervasives.>"}, [t1;t2] -> make_gt t1 t2
-  | Var {Id.name="Pervasives.<="}, [t1;t2] -> make_leq t1 t2
-  | Var {Id.name="Pervasives.>="}, [t1;t2] -> make_geq t1 t2
-  | Var {Id.name="Pervasives.&&"}, [t1;t2] -> make_and t1 t2
-  | Var {Id.name="Pervasives.||"}, [t1;t2] -> make_or t1 t2
-  | Var {Id.name="Pervasives.+"}, [t1;t2] -> make_add t1 t2
-  | Var {Id.name="Pervasives.-"}, [t1;t2] -> make_sub t1 t2
-  | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
-  | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
-  | Var {Id.name="Pervasives.not"}, [t] -> make_not t
-  | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
-  | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
-  | Var {Id.name="Pervasives.raise"}, [t] -> make_raise t typ
-  | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
-  | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] ->
-      let attr =
-        if !Flag.mode = Flag.NonTermination || !Flag.mode = Flag.FairNonTermination then
-          AAbst_under::randint_term.attr
-        else
-          randint_term.attr in
-      make_app {randint_term with attr} [unit_term]
-  | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
-  | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
-  | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
-  | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
-  | Var {Id.name="Random.int"}, [t] ->
-      let x = Id.new_var ~name:"n" TInt in
-      make_let [x, [], randint_unit_term] @@
-        make_assume
-          (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
-          (make_var x)
-  | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
-  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_event_unit "close"
-  | Var {Id.name="event"}, [{desc=Const(String s)}] -> make_event_unit s
-  | _ -> make_app t ts
 
 let venv = ref []
 
@@ -236,7 +194,7 @@ let get_label_name label env =
   label.lbl_name
 
 
-let add_exc_env cstr_desc env =
+let add_exc_env_from_constr cstr_desc env =
   match cstr_desc.cstr_res.Types.desc with
   | Tconstr(path,_,_) ->
       if Path.name path = "exn" then
@@ -273,7 +231,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
         PCons(from_pattern p1, from_pattern p2)
     | Tpat_construct(_, cstr_desc, ps) ->
         let name = get_constr_name cstr_desc typ env in
-        add_exc_env cstr_desc env;
+        add_exc_env_from_constr cstr_desc env;
         PConstruct(name, List.map from_pattern ps)
     | Tpat_variant _ -> unsupported "pattern match (variant)"
     | Tpat_record(pats,_) ->
@@ -285,6 +243,61 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     | Tpat_lazy _ -> unsupported "pattern match (lazy)"
   in
   {pat_desc=desc; pat_typ=typ'}
+
+
+
+let conv_primitive_app t ts typ =
+  match t.desc,ts with
+  | Var {Id.name="List.length"}, [t1] -> make_length t1
+  | Var {Id.name="Pervasives.@@"}, [t1;t2] -> make_app t1 [t2]
+  | Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
+  | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
+  | Var {Id.name="Pervasives.<"}, [t1;t2] -> make_lt t1 t2
+  | Var {Id.name="Pervasives.>"}, [t1;t2] -> make_gt t1 t2
+  | Var {Id.name="Pervasives.<="}, [t1;t2] -> make_leq t1 t2
+  | Var {Id.name="Pervasives.>="}, [t1;t2] -> make_geq t1 t2
+  | Var {Id.name="Pervasives.&&"}, [t1;t2] -> make_and t1 t2
+  | Var {Id.name="Pervasives.||"}, [t1;t2] -> make_or t1 t2
+  | Var {Id.name="Pervasives.+"}, [t1;t2] -> make_add t1 t2
+  | Var {Id.name="Pervasives.-"}, [t1;t2] -> make_sub t1 t2
+  | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
+  | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
+  | Var {Id.name="Pervasives.not"}, [t] -> make_not t
+  | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
+  | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
+  | Var {Id.name="Pervasives.raise"}, [t] -> make_raise t typ
+  | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
+  | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] ->
+      let attr =
+        if !Flag.mode = Flag.NonTermination || !Flag.mode = Flag.FairNonTermination then
+          AAbst_under::randint_term.attr
+        else
+          randint_term.attr in
+      make_app {randint_term with attr} [unit_term]
+  | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
+  | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
+  | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
+  | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
+  | Var {Id.name="Random.int"}, [t] ->
+      let x = Id.new_var ~name:"n" TInt in
+      make_let [x, [], randint_unit_term] @@
+        make_assume
+          (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
+          (make_var x)
+  | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
+  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_event_unit "close"
+  | Var {Id.name="Pervasives.invalid_arg"}, [{desc=Const(String s)}] ->
+      let c = "Invalid_argument" ^ "." ^ s in
+      add_exc_env c [];
+      make_raise (make_construct c [] !!exc_typ) typ
+  | Var {Id.name="Pervasives.failwith"}, [{desc=Const(String s)}] ->
+      let c = "Failure" ^ "." ^ s in
+      add_exc_env c [];
+      make_raise (make_construct c [] !!exc_typ) typ
+  | Var {Id.name="Pervasives.invalid_arg"}, [_] ->
+      unsupported "Pervasives.invalid_arg with non-constant"
+  | Var {Id.name="event"}, [{desc=Const(String s)}] -> make_event_unit s
+  | _ -> make_app t ts
 
 
 
@@ -394,7 +407,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
       make_match t pats''
   | Texp_match(e,pats,_,tp) -> unsupported "Texp_match (exception)"
   | Texp_try(e,pats) ->
-      let typ_excep = !!make_exc_typ in
+      let typ_excep = !!exc_typ in
       let x = Id.new_var ~name:"e" typ_excep in
       let pats' = List.map (from_case id_env) pats in
       let pats'' = pats' @ [make_pany typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
@@ -413,7 +426,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
         | "Some",[e] -> TSome (from_expression id_env e)
         | "Format",_ -> Const (String "%some format%")
         | name,es ->
-            add_exc_env desc env;
+            add_exc_env_from_constr desc env;
             Debug.printf "CONSTR: %s@." name;
             Debug.printf "   typ: %a@." Printtyp.type_expr typ;
             Constr(name, List.map (from_expression id_env) es)
@@ -448,7 +461,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
   | Texp_array es ->
       let typ'' = array_typ typ' in
       let ts = List.map (from_expression id_env) es in
-      let array_of_list = make_var @@ Id.new_var ~name:"Array.of_list" @@ make_tfun (make_tlist typ'') typ' in
+      let array_of_list = make_var @@ Id.new_var ~name:"Array.of_list" ~attr:[Id.External] @@ make_tfun (make_tlist typ'') typ' in
       make_app array_of_list [List.fold_right make_cons ts (make_nil typ'')]
   | Texp_ifthenelse(e1,e2,e3) ->
       let t1 = from_expression id_env e1 in
@@ -606,5 +619,5 @@ let from_use_file ast =
   |> Triple.trd
   |> List.fold_left aux unit_term
   |> Trans.merge_let_fun
-  |> subst_data_type_term "exn" !!make_exc_typ
+  |> subst_data_type_term "exn" !!exc_typ
   |> Trans.rename_bound_module

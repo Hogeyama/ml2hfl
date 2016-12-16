@@ -136,12 +136,12 @@ let all spec : t list =
     Encode_variant,
       (Fun.const true,
        map_trans Encode.variant);
-    Encode_recdata,
-      (Fun.const true,
-       map_trans Encode.recdata);
     Replace_base_with_int,
       (Fun.const !Flag.base_to_int,
        map_trans Trans.replace_base_with_int);
+    Encode_recdata,
+      (Fun.const true,
+       map_trans Encode.recdata);
     Encode_list,
       (Fun.const true,
        Encode.list -| last_t);

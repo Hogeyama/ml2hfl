@@ -82,3 +82,4 @@ let map_name f x = {x with name = f x.name}
 let map_typ f x = {x with typ = f x.typ}
 
 let is_external x = List.mem External x.attr
+let is_coefficient x = List.mem Coefficient x.attr

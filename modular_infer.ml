@@ -1136,7 +1136,7 @@ let infer prog f typ (ce_set:ce_set) merge =
   let merge_candidates =
     if merge then
       templates
-      |> List.filter_out (fun ((f,_),_) -> String.contains (Id.name f) '.')
+      |> List.filter_out (Id.is_external -| fst -| fst)
       |> get_merge_candidates
     else
       []

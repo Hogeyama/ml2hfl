@@ -50,8 +50,8 @@ val contract : t -> t
 
 (** {6 Converter} *)
 val of_simple : Syntax.typ -> t
+val to_simple_base : base -> 'a Type.t
 val to_simple : t -> Syntax.typ
-val to_abst_typ_base : base -> 'a Type.t
 val to_abst_typ : t -> Syntax.typ
 
 

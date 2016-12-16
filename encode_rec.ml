@@ -236,6 +236,7 @@ let abst_recdata_term t =
   | Constr(c,ts) ->
       let ts' = List.map abst_recdata.tr_term ts in
       let ground_types = get_ground_types t.typ in
+      Debug.printf "ground_types: %a@." (List.print Print.typ) ground_types;
       let make_return label typ t =
         let head = Option.default (make_int 0) label in
         match ground_types with

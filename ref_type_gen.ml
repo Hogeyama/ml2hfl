@@ -218,6 +218,12 @@ and generate typ_exn make_fail genv cenv typ =
               genv', cenv', t
           | Inter(styp,typs) ->
               List.fold_right wrap typs (genv,cenv,v)
+          | Exn(typ1,typ2) ->
+              let genv',cenv',t1 = wrap typ1 (genv,cenv,v) in
+              let e = Id.new_var ~name:"e" @@ Option.get typ_exn in
+              let genv'',cenv'',t2 = wrap typ2 (genv',cenv',U.make_var e) in
+              let handler = U.make_fun e t2 in
+              genv'', cenv'', U.make_trywith_simple t1 handler
           | _ ->
               Format.printf "%a@." print typ;
               unsupported "Ref_type_gen.wrap"

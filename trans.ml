@@ -1292,9 +1292,8 @@ let make_ext_funs ?(fvs=[]) env t =
   if dbg then Format.printf "MEF fv: %a@." (List.print Id.print) @@ get_fv t';
   let funs =
     get_fv t'
-    |> List.filter_out (Fpat.RefTypInfer.is_parameter -| Id.name)
-    |> List.filter_out is_extra_coeff
-    |*> List.filter (fun x -> Id.id x > 0)
+    |> List.filter Id.is_external
+    |> List.filter_out Id.is_coefficient
     |> List.filter_out (Ref_type.Env.mem_assoc -$- env)
     |> List.filter_out (Id.mem -$- fvs)
   in

@@ -246,7 +246,11 @@ ref_base:
 
 ref_simple:
 | ref_base { ref_base $1 }
-| LBRACE id COLON ref_base BAR exp RBRACE { RT.Base($4, $2, $6) }
+| LBRACE id COLON ref_base BAR exp RBRACE
+  {
+    let x = Id.set_typ $2 @@ RT.to_simple_base $4 in
+    RT.Base($4, x, subst_var $2 x $6)
+  }
 | LPAREN ref_typ RPAREN { $2 }
 | ref_simple LIST { RT.List(dummy_var,true_term,dummy_var,true_term,$1) }
 | index_ref ref_simple length_ref LIST
@@ -269,7 +273,12 @@ index_ref:
   }
 
 length_ref:
-| BAR id BAR { Id.new_var ~name:(Id.name $2) TInt, true_term }
+| BAR id BAR
+  {
+    let x = $2 in
+    let x' = Id.new_var ~name:(Id.name x) TInt in
+    x', true_term
+  }
 | BAR id COLON exp BAR
   {
     let x = $2 in

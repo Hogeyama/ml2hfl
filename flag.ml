@@ -159,7 +159,7 @@ let break_expansion_ref = ref false
 
 (* modular verification option *)
 module Modular = struct
-  let use_ref_typ_gen_method_in_esop2017 = ref true
+  let use_ref_typ_gen_method_in_esop2017 = ref false
   let infer_ind = ref false
   let refine_init = ref false
   let use_neg_env = ref true

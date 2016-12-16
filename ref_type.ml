@@ -278,12 +278,16 @@ let rec of_simple typ =
       unsupported "Ref_type.of_simple"
 
 
+let to_simple_base b =
+  match b with
+  | Unit -> T.TUnit
+  | Bool -> T.TBool
+  | Int -> T.TInt
+  | Abst s -> T.TData s
+
 let rec to_simple typ =
   match typ with
-  | Base(Unit, _, _) -> T.TUnit
-  | Base(Bool, _, _) -> T.TBool
-  | Base(Int, _, _) -> T.TInt
-  | Base(Abst s, _, _) -> T.TData s
+  | Base(b, _, _) -> to_simple_base b
   | Fun(x,typ1,typ2) -> T.TFun(Id.new_var @@ to_simple typ1, to_simple typ2)
   | Tuple xtyps -> T.TTuple (List.map (Id.new_var -| to_simple -| snd) xtyps)
   | Inter(typ, _) -> typ
@@ -292,21 +296,14 @@ let rec to_simple typ =
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple typ
   | Exn(typ1, _) -> to_simple typ1
 
-let to_abst_typ_base b =
-  match b with
-  | Unit -> T.TUnit
-  | Bool -> T.TBool
-  | Int -> T.TInt
-  | Abst s -> T.TData s
-
 let rec to_abst_typ typ =
   let r =
   match typ with
   | Base(b, x, t) when t = U.true_term ->
-      to_abst_typ_base b
+      to_simple_base b
   | Base(b, x, t) ->
       let x' = Id.new_var_id x in
-      let typ' = to_abst_typ_base b in
+      let typ' = to_simple_base b in
       let ps = Term_util.decomp_bexp @@ U.subst_var x x' t in
       T.TAttr([T.TAPred(x', ps)], typ')
   | Fun(x,typ1,typ2) ->

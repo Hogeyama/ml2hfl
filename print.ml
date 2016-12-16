@@ -28,7 +28,7 @@ and print_ids typ fm xs =
 (*
   and print_id fm x = fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
  *)
-and print_id = Id.print
+and print_id fm x = Id.print fm x
 
 and print_id_typ fm x =
   if !Flag.print_as_ocaml then
