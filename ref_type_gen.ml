@@ -171,6 +171,56 @@ and generate typ_exn make_fail genv cenv typ =
           List.fold_left aux p typs
         in
         generate typ_exn make_fail genv cenv @@ Base(base, x, p')
+    | Inter(styp, ((Fun(_,atyp,rtyp))::_ as typs)) when !Flag.Modular.use_ref_typ_gen_method_in_esop2017 ->
+        Flag.fail_as_exception := true;
+        let rec wrap typ (genv,cenv,v) =
+          match typ with
+          | Base(base,x,p) ->
+              genv, cenv, U.make_assume (U.subst x v p) v
+          | Fun(x,typ1,typ2) ->
+              let f = U.new_var_of_term v in
+              let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x typ1 in
+              let t_app = U.make_app (U.make_var f) [U.make_var x] in
+              let r = U.new_var_of_term t_app in
+              let genv'',cenv'',t_wrap = wrap typ2 (genv', cenv', U.make_var r) in
+              let genv''',cenv''',t_gen = generate typ_exn make_fail genv'' cenv'' typ2 in
+              let handler = U.make_fun (Id.new_var ~name:"u" @@ Option.get typ_exn) t_gen in
+              genv''',
+              cenv''',
+              U.make_fun x @@
+                U.make_let [f,[],v] @@
+                  U.make_if
+                    (U.make_or U.randbool_unit_term t_check)
+                    (U.make_trywith_simple (U.make_let [r,[],t_app] t_wrap) handler)
+                    t_app
+          | Tuple xtyps ->
+              let xttyps =
+                let aux i (x,typ) =
+                  let t = U.make_proj i v in
+                  let x' = Id.set_typ x t.S.typ in
+                  x', t, typ
+                in
+                List.mapi aux xtyps
+              in
+              let genv',cenv',ts =
+                let aux (x,_,typ) (genv,cenv,ts) =
+                  let genv',cenv',t = wrap typ (genv, cenv, U.make_var x) in
+                  genv',cenv',t::ts
+                in
+                List.fold_right aux xttyps (genv,cenv,[])
+              in
+              let t =
+                List.fold_right (fun (x,t,_) -> U.make_let [x,[],t]) xttyps (U.make_tuple ts)
+              in
+              genv', cenv', t
+          | _ -> unsupported "Ref_type_gen.wrap"
+        in
+        let v0 =
+          let arg_styp = to_simple atyp in
+          let ret_styp = to_simple rtyp in
+          U.make_fun (Id.new_var ~name:"u" arg_styp) @@ make_fail ret_styp
+        in
+        List.fold_right wrap typs (genv,cenv,v0)
     | Inter(_, ((Fun _)::_ as typs)) ->
         Flag.fail_as_exception := true;
         let bss = Combination.take_each @@ List.map (Fun.const [true;false]) typs in
