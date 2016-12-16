@@ -278,14 +278,14 @@ let rec arg_spec () =
                  Flag.modular := true;
                  Flag.print_modular_progress := !Flag.print_progress;
                  Flag.print_progress := false;
-                 Modular.infer_ind := false),
+                 Flag.Modular.infer_ind := false),
        " Modular verification";
      "-imodular",
        Arg.Unit (fun () ->
                  Flag.modular := true;
                  Flag.print_modular_progress := !Flag.print_progress;
                  Flag.print_progress := false;
-                 Modular.infer_ind := true),
+                 Flag.Modular.infer_ind := true),
        " Modular verification (inductive mode)";
      "-verify-ref-typ", Arg.Set Flag.verify_ref_typ, " Verify functions have given refinement types";
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";

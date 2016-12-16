@@ -49,7 +49,10 @@ let rec check t typ =
             check t (Id.typ x);
             aux (ts,typ)
         | [_], typ when typ = typ_event -> ()
-        | _ -> assert false
+        | _ ->
+            Format.printf "ts: %a@." (List.print Print.term) ts;
+            Format.printf "typ: %a@." Print.typ typ;
+            assert false
       in
       let typ'' = List.fold_right (fun t typ -> TFun(Id.new_var t.typ, typ)) ts typ' in
       aux (ts, t.typ);

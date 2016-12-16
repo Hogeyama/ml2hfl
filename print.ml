@@ -236,7 +236,10 @@ and print_desc attr pri typ fm desc =
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 8 in
       let s1,s2 = paren pri p in
-      fprintf fm "%srand_bool@ ()%s" s1 s2
+      if !Flag.print_as_ocaml then
+        fprintf fm "%sRandom.bool@ ()%s" s1 s2
+      else
+        fprintf fm "%srand_bool@ ()%s" s1 s2
   | BinOp(Mult, {desc=Const (Int -1)}, {desc=Var x}) ->
       let p = 70 in
       let s1,s2 = paren pri p in

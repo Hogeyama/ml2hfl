@@ -10,11 +10,6 @@ let num_tycheck = ref 0
 let time_check = ref 0.
 let time_synthesize = ref 0.
 
-let infer_ind = ref false
-let refine_init = ref false
-let use_neg_env = ref true
-let use_gch_in_check = ref false
-let infer_merge = ref false
 
 exception NoProgress
 
@@ -74,13 +69,10 @@ let refine_init_env prog =
   |> loop prog []
 
 let check prog f typ depth =
-  if !use_gch_in_check then Fpat.HCCSSolver.link_dyn @@ Fpat.HCCSSolver.of_string_dyn "gch";
-  let r = measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth) in
-  if !use_gch_in_check then Fpat.HCCSSolver.link_dyn @@ Fpat.HCCSSolver.of_string_dyn "it";
-  r
+  measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth)
 
 let infer prog f typ ce_set2 =
-  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2) !infer_merge
+  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2) !Flag.Modular.infer_merge
 
 let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
   let space = String.make (8*List.length history) ' ' in
@@ -89,14 +81,14 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
   if Ref_type.subtype (Ref_type.Env.assoc f env) typ then
     (pr " TYPABLE (skip): %a :@ %a@." Id.print f Ref_type.print typ;
      `Typable, env, neg_env, ce_set)
-  else if !use_neg_env && Ref_type.suptype (Ref_type.NegEnv.assoc f neg_env) typ then
+  else if !Flag.Modular.use_neg_env && Ref_type.suptype (Ref_type.NegEnv.assoc f neg_env) typ then
     (pr " UNTYPABLE (skip): %a :@ %a@." Id.print f Ref_type.print typ;
      `Untypable, env, neg_env, ce_set)
   else
     let () = Debug.printf "%sTIME: %.3f@." space !!get_time in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
     pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- Id.is_external) env;
-    if !use_neg_env then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
+    if !Flag.Modular.use_neg_env then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
     if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
     incr num_tycheck;
@@ -131,7 +123,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
             | None -> infer prog f typ ce_set2
             | Some sol -> sol
           in
-          match sol infer_mode with
+          match measure_and_add_time time_synthesize (fun () -> sol infer_mode) with
           | None ->
               pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
               let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
@@ -230,7 +222,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
 
 
 let main_loop prog ce_set cmp dep f typ =
-  if !infer_ind then
+  if !Flag.Modular.infer_ind then
     main_loop_ind [] 0 prog cmp dep f typ 1 ce_set
   else
     main_loop prog cmp [f,typ] f typ Modular_infer.init_mode 1 ce_set
@@ -301,7 +293,7 @@ let main _ spec parsed =
     {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}
   in
   let prog',ce_set =
-    if !refine_init then
+    if !Flag.Modular.refine_init then
       refine_init_env prog
     else
       prog, []

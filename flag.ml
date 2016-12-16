@@ -156,3 +156,12 @@ let fair_term_loop_count = ref 0
 (* fair-non-termination-mode option *)
 let expand_ce_iter_init = ref 5
 let break_expansion_ref = ref false
+
+(* modular verification option *)
+module Modular = struct
+  let use_ref_typ_gen_method_in_esop2017 = ref true
+  let infer_ind = ref false
+  let refine_init = ref false
+  let use_neg_env = ref true
+  let infer_merge = ref false
+end

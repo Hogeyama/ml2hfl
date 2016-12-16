@@ -217,6 +217,7 @@ let rec loop make_pps ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_
     let result = CEGAR.run prog' in
     result, make_get_rtyp, set_target'
   with e ->
+    if !!Debug.check then Printexc.print_backtrace stdout;
     improve_precision e;
     loop make_pps ~fun_list exparam_sol ~spec parsed set_target
 

@@ -133,9 +133,6 @@ let all spec : t list =
     Add_preds,
       (Fun.const (spec.Spec.abst_env <> []),
        fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
-    Replace_fail_with_raise,
-      (Fun.const !Flag.fail_as_exception,
-       map_trans Trans.replace_fail_with_raise);
     Encode_variant,
       (Fun.const true,
        map_trans Encode.variant);

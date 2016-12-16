@@ -41,6 +41,7 @@ val make_app_raw : term -> term list -> term (** Does not merge arguments *)
 val make_fail : typ -> term
 val make_let : (id * id list * term) list -> term -> term
 val make_lets : (id * id list * term) list -> term -> term
+val make_let' : term -> (term -> term) -> term
 val make_fun : id -> term -> term
 val make_funs : id list -> term -> term
 val make_not : term -> term
@@ -107,6 +108,7 @@ val make_length : term -> term
 val new_var_of_term : term -> id
 
 
+
 (** {6 Term destructor} *)
 val is_none : term -> bool
 val decomp_some : term -> term option
@@ -157,7 +159,6 @@ val max_pat_num : term -> int
 val is_value : term -> bool
 val is_simple_aexp : term -> bool
 val is_simple_bexp : term -> bool
-val depends : term -> id -> bool
 val is_poly_typ : typ -> bool
 val is_id_unique : term -> bool
 val occur : id -> typ -> bool

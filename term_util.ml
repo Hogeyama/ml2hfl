@@ -720,8 +720,11 @@ let rec var_name_of_term t =
 
 let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
-let depends t x = Id.mem x @@ get_fv t
 
+
+let make_let' t1 make_t2 =
+  let x = new_var_of_term t1 in
+  make_let [x,[],t1] @@ make_t2 @@ make_var x
 
 
 let col_same_term = make_col2 [] (@@@)

@@ -2351,7 +2351,8 @@ let null_tuple_to_unit = null_tuple_to_unit.tr_term
 let beta_full_app = make_trans2 ()
 let beta_full_app_desc (f,xs,t) desc =
   match desc with
-  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts -> (subst_map (List.combine xs ts) t).desc
+  | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts ->
+      (subst_map (List.combine xs ts) t).desc
   | _ -> beta_full_app.tr2_desc_rec (f,xs,t) desc
 let () = beta_full_app.tr2_desc <- beta_full_app_desc
 let beta_full_app = beta_full_app.tr2_term
@@ -2371,20 +2372,23 @@ let beta_affine_fun_desc desc =
               | Var _ -> true
               | _ -> false
             in
-            let used = List.Set.inter xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
+            let used = List.Set.inter ~eq:Id.eq xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
             let not_rand_int t = (* for non-termination *)
               match t.desc with
               | App({desc=Const(RandValue(TInt,_))}, _) -> false
               | _ -> true
             in
-            if List.for_all size_1 ts && used = List.unique used && not_rand_int t1
+            if List.for_all size_1 ts && used = List.unique ~cmp:Id.eq used && not_rand_int t1 && count_occurrence f t2 <= 1
             then
-              let t2' = beta_affine_fun.tr_term t2 in
-              let t2'' = beta_full_app (f, xs, t1') t2' in
-              let t2''' = beta_affine_fun.tr_term t2'' in
-              if Id.mem f @@ get_fv t2'''
-              then Let([f, xs, t1'], t2''')
-              else t2'''.desc
+              let t2' =
+                t2
+                |> beta_affine_fun.tr_term
+                |> beta_full_app (f, xs, t1')
+                |> beta_affine_fun.tr_term
+              in
+              if Id.mem f @@ get_fv t2'
+              then Let([f, xs, t1'], t2')
+              else t2'.desc
             else beta_affine_fun.tr_desc_rec desc
         | _ -> beta_affine_fun.tr_desc_rec desc
       end
@@ -2606,9 +2610,6 @@ let replace_fail_with_desc desc0 desc =
 let () = replace_fail_with.tr2_desc <- replace_fail_with_desc
 let replace_fail_with desc t =
   replace_fail_with.tr2_term desc t
-
-
-let replace_fail_with_raise t = unsupported "replace_fail_with_raise"
 
 
 
