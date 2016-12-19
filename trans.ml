@@ -2365,19 +2365,24 @@ let beta_affine_fun_desc desc =
       begin
         match t1'.desc with
         | App(t0,ts) ->
+(*
             let size_1 t =
               match t.desc with
               | Const _
               | Var _ -> true
               | _ -> false
             in
+ *)
             let used = List.Set.inter ~eq:Id.eq xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
             let not_rand_int t = (* for non-termination *)
               match t.desc with
               | App({desc=Const(RandValue(TInt,_))}, _) -> false
               | _ -> true
             in
-            if List.for_all size_1 ts && used = List.unique ~cmp:Id.eq used && not_rand_int t1 && count_occurrence f t2 <= 1
+            if (*List.for_all size_1 ts &&*)
+               used = List.unique ~cmp:Id.eq used &&
+               not_rand_int t1 &&
+               count_occurrence f t2 <= 1
             then
               let t2' =
                 t2
@@ -2738,3 +2743,19 @@ let name_read_int_term t =
   {t with desc=desc'}
 let () = name_read_int.tr_term <- name_read_int_term
 let name_read_int = name_read_int.tr_term
+
+
+let reduce_size_by_beta = make_trans ()
+let reduce_size_by_beta_term t =
+  let desc' =
+    match t.desc with
+    | Let([x,[],{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings, t) ->
+        Let(bindings, reduce_size_by_beta.tr_term t)
+    | App({desc=Const(RandValue(TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
+        let x = Id.new_var ~name:"r" TInt in
+        (make_let [x,[],t] @@ make_var x).desc
+    | _ -> reduce_size_by_beta.tr_desc_rec t.desc
+  in
+  {t with desc=desc'}
+let () = reduce_size_by_beta.tr_term <- reduce_size_by_beta_term
+let reduce_size_by_beta = reduce_size_by_beta.tr_term

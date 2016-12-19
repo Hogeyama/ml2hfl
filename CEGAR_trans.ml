@@ -559,20 +559,23 @@ let trans_prog ?(spec=[]) t =
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
   let env' = uniq_env env in
   let attr = if is_cps then [ACPS] else [] in
-  let prog = {env=env'; defs=defs''; main; info={init_info with attr}} in
-  pr2 "PROG_A" prog;
-  let prog = event_of_temp prog in
-  pr2 "PROG_B" prog;
-  let prog = eta_expand prog in
-  pr2 "PROG_C" prog;
-  let prog = pop_main prog in
-  pr2 "PROG_D" prog;
-  let prog = assign_id_to_rand prog in
-  pr2 "PROG_E" prog;
-  let prog = remove_id_event prog in
-  pr2 "PROG_E" prog;
-  let prog,map,rmap = id_prog prog in
-  pr2 "PROG_F" prog;
+  let prog,map,rmap =
+    {env=env'; defs=defs''; main; info={init_info with attr}}
+    |@> pr2 "PROG_A"
+    |> event_of_temp
+    |@> pr2 "PROG_B"
+    |> eta_expand
+    |@> pr2 "PROG_C"
+    |> pop_main
+    |@> pr2 "PROG_D"
+    |> assign_id_to_rand
+    |@> pr2 "PROG_E"
+    |> remove_id_event
+    |@> pr2 "PROG_F"
+    |> elim_same_arg
+    |@> pr2 "PROG_G"
+    |> id_prog
+  in
   let rrmap = List.map Pair.swap rmap in
   let make_get_rtyp get_rtyp f = trans_ref_type @@ get_rtyp @@ Id.assoc f rrmap in
   prog,map,rmap,make_get_rtyp

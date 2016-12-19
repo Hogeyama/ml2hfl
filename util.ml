@@ -319,6 +319,7 @@ module List = struct
   let filter_mapi f xs = filter_map Fun.id @@ List.mapi f xs
 
   let filter_out f xs = filter (not -| f) xs
+  let filteri f xs = filter_map Fun.id @@ List.mapi (fun i x -> if f i x then Some x else None) xs
 
   let rev_split xs = fold_left (fun (acc1,acc2) (x,y) -> x::acc1, y::acc2) ([],[]) xs
   let split_map f = rev_split -| rev_map f

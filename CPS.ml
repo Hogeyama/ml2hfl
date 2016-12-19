@@ -1078,7 +1078,7 @@ let exists_let_desc desc =
 let () = exists_let.col_desc <- exists_let_desc
 let exists_let = exists_let.col_term
 
-
+(*
 let inline_affine = make_trans2 ()
 
 let inline_affine_term (vars,env) t =
@@ -1120,7 +1120,7 @@ let inline_affine t =
   |> inline_affine.tr2_term ([],[])
   |> Trans.elim_unused_let
   |> Trans.inline_var_const
-
+ *)
 
 let has_typ_result =
   let has_typ_result = make_col false (||) in
@@ -1185,7 +1185,7 @@ let trans t =
     |> Trans.beta_reduce
     |@> pr "beta reduce"
     |@> Type_check.check -$- typ_result
-    |> inline_affine
+    |> Trans.beta_affine_fun
     |@> pr "inline affine functions"
     |@> Type_check.check -$- typ_result
     |> Trans.expand_let_val

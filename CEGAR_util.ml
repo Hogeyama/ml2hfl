@@ -769,3 +769,124 @@ let rec merge_similar_paths l =
 
 let inlined_functions {info} =
   List.unique @@ List.map fst @@ info.non_rec
+
+
+let rec col_app t =
+  match t with
+  | Const _ -> []
+  | Var _ -> []
+  | App _ ->
+      let hd,ts = decomp_app t in
+      let apps = List.flatten_map col_app ts in
+      begin
+        match hd with
+        | Var f -> (f,ts)::apps
+        | _ -> apps
+      end
+  | Let _ -> unsupported "col_app"
+  | Fun _ -> unsupported "col_app"
+
+
+(* only remove trivially the same arguments *)
+let elim_same_arg prog =
+  let find_same_arg defs =
+    let apps = List.flatten_map (fun (_,_,cond,_,t) -> assert (col_app cond = []); col_app t) defs in
+    let candidates =
+      let aux f i t1 j t2 =
+        if i < j && t1 = t2 then
+          Some(f, i, j)
+        else
+          None
+      in
+      List.flatten_map (fun (f,ts) -> List.flatten_mapi (fun i t1 -> List.filter_mapi (aux f i t1) ts) ts) apps
+    in
+    let check f i j (g,ts) = f = g => (List.length ts > j && List.nth ts i = List.nth ts j) in
+    List.filter (fun (f,i,j) -> List.for_all (check f i j) apps) candidates
+  in
+  let same_args = List.unique @@ find_same_arg prog.defs in
+  let rec elim_arg (f,j) t =
+    match t with
+    | Const _ -> t
+    | Var _ -> t
+    | App _ ->
+        let hd,ts = decomp_app t in
+        let ts' = List.map (elim_arg (f,j)) ts in
+        if hd = Var f then
+          make_app hd @@ List.filteri (fun i _ -> i <> j) ts'
+        else
+          make_app hd ts'
+    | Let _ -> unsupported "col_app"
+    | Fun _ -> unsupported "col_app"
+  in
+  let elim_arg_def defs (f,i,j) =
+    let elim (g,xs,cond,e,t) =
+      if g = f then
+        let x = List.nth xs i in
+        let y = List.nth xs j in
+        let xs' = List.filter_out ((=) y) xs in
+        let cond' = subst x (Var y) cond in
+        let t' = elim_arg (f,j) @@ subst y (Var x) t in
+        g, xs', cond', e, t'
+      else
+        let t' = elim_arg (f,j) t in
+        g, xs, cond, e, t'
+    in
+    List.map elim defs
+  in
+  let rec elim_args_def defs same_args =
+    match same_args with
+    | [] -> defs
+    | (f,i,j)::same_args' ->
+        let defs' = elim_arg_def defs (f,i,j) in
+        let same_args'' =
+          let pred k = if k > j then k - 1 else k in
+          List.map (fun (g,i',j') -> if f = g then f, pred i', pred j' else g, i', j') same_args'
+        in
+        elim_args_def defs' same_args''
+  in
+  let rec subst_arg_typ_aux j x typ =
+    match typ with
+    | TBase _ -> assert false
+    | TAbs _ -> unsupported "elim_arg_typ"
+    | TApp _ -> unsupported "elim_arg_typ"
+    | TFun(typ1, typ2) ->
+        if j = 0 then
+          typ2 x
+        else
+          TFun(typ1, subst_arg_typ_aux (j-1) x -| typ2)
+  in
+  let rec subst_arg_typ i j typ =
+    match typ with
+    | TBase _ -> assert false
+    | TAbs _ -> unsupported "elim_arg_typ"
+    | TApp _ -> unsupported "elim_arg_typ"
+    | TFun(typ1, typ2) ->
+        if i = 0 then
+          TFun(typ1, fun x -> subst_arg_typ_aux (j-1) x @@ typ2 x)
+        else
+          TFun(typ1, subst_arg_typ (i-1) (j-1) -| typ2)
+  in
+  let elim_arg_env env (f,i,j) =
+    let elim (g,typ) =
+      if g = f then
+        let typ' = subst_arg_typ i j typ in
+        g, typ'
+      else
+        g, typ
+    in
+    List.map elim env
+  in
+  let rec elim_args_env env same_args =
+    match same_args with
+    | [] -> env
+    | (f,i,j)::same_args' ->
+        let env' = elim_arg_env env (f,i,j) in
+        let same_args'' =
+          let pred k = if k > j then k - 1 else k in
+          List.map (fun (g,i',j') -> if f = g then f, pred i', pred j' else g, i', j') same_args'
+        in
+        elim_args_env env' same_args''
+  in
+  let defs' = elim_args_def prog.defs same_args in
+  let env' = elim_args_env prog.env same_args in
+  {prog with defs=defs'; env=env'}

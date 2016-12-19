@@ -41,7 +41,7 @@ val make_app_raw : term -> term list -> term (** Does not merge arguments *)
 val make_fail : typ -> term
 val make_let : (id * id list * term) list -> term -> term
 val make_lets : (id * id list * term) list -> term -> term
-val make_let' : term -> (term -> term) -> term
+val make_let' : term -> (id -> term) -> term
 val make_fun : id -> term -> term
 val make_funs : id list -> term -> term
 val make_not : term -> term
