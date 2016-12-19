@@ -304,7 +304,12 @@ let rec to_abst_typ typ =
   | Base(b, x, t) ->
       let x' = Id.new_var_id x in
       let typ' = to_simple_base b in
-      let ps = Term_util.decomp_bexp @@ U.subst_var x x' t in
+      let ps =
+        if !Flag.decomp_pred then
+          Term_util.decomp_bexp @@ U.subst_var x x' t
+        else
+          [U.subst_var x x' t]
+      in
       T.TAttr([T.TAPred(x', ps)], typ')
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ1 in
