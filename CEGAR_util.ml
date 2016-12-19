@@ -792,7 +792,12 @@ let rec col_app t =
 (* only remove trivially the same arguments *)
 let elim_same_arg prog =
   let find_same_arg defs =
-    let apps = List.flatten_map (fun (_,_,cond,_,t) -> assert (col_app cond = []); col_app t) defs in
+    let fs = List.map (fun (f,_,_,_,_) -> f) defs in
+    let apps =
+      defs
+      |> List.flatten_map (fun (_,_,cond,_,t) -> assert (col_app cond = []); col_app t)
+      |> List.filter (fun (f,_) -> List.mem f fs)
+    in
     let candidates =
       let aux f i t1 j t2 =
         if i < j && t1 = t2 then
@@ -839,6 +844,7 @@ let elim_same_arg prog =
   let rec elim_args_def defs same_args =
     match same_args with
     | [] -> defs
+    | (f,i,j)::same_args' when i = j -> elim_args_def defs same_args'
     | (f,i,j)::same_args' ->
         let defs' = elim_arg_def defs (f,i,j) in
         let same_args'' =
@@ -882,6 +888,7 @@ let elim_same_arg prog =
   let rec elim_args_env env same_args =
     match same_args with
     | [] -> env
+    | (f,i,j)::same_args' when i = j -> elim_args_env env same_args'
     | (f,i,j)::same_args' ->
         let env' = elim_arg_env env (f,i,j) in
         let same_args'' =
