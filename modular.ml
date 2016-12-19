@@ -42,13 +42,25 @@ let report_unsafe neg_env ce_set =
 
 
 let make_init_env cmp bindings =
-  let make f =
+  let rec replace_with_top n typ =
+    if n = 0 then
+      typ
+    else
+      match typ with
+      | Ref_type.Fun(x,typ1,typ2) -> Ref_type.Fun(x, Ref_type.top @@ Ref_type.to_simple typ1, replace_with_top (n-1) typ2)
+      | _ -> assert false
+  in
+  let make (f,xs,_) =
+    f,
     Id.typ f
     |> Trans.inst_tvar_tunit_typ
     |> (if Id.is_external f then Ref_type.of_simple else Ref_type.make_weakest)
+    |> replace_with_top (List.length xs - 1)
   in
-  List.flatten_map (List.map Triple.fst) bindings
-  |> Ref_type.Env.create make
+  bindings
+  |> List.flatten
+  |> List.map make
+  |> Ref_type.Env.of_list
 
 let refine_init_env prog =
   let rec loop prog ce_set candidates =
@@ -67,6 +79,16 @@ let refine_init_env prog =
   |> List.filter_out Id.is_external
   |> List.map (fun f -> f, Ref_type.of_simple @@ Id.typ f)
   |> loop prog []
+
+let non_terminating_typ typ =
+  let open Ref_type in
+  let rec aux typ =
+    match typ with
+    | Fun(x,typ1,typ2) -> Fun(x, typ1, aux typ2)
+    | Base(b,x,_) -> Base(b, x, false_term)
+    | _ -> assert false
+  in
+  aux @@ of_simple @@ to_simple typ
 
 let check prog f typ depth =
   measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth)
@@ -116,14 +138,14 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
         `Untypable, env, neg_env', ce_set'
     | Modular_check.Untypable ce ->
         pr "%a{%a,%d}%t UNTYPABLE:@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
-        let rec refine_loop infer_mode neg_env ce_set2 prev_sol =
+        let rec refine_loop neg_env ce_set2 prev_sol =
           if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- Id.is_external) ce_set2;
           let sol =
             match prev_sol with
             | None -> infer prog f typ ce_set2
             | Some sol -> sol
           in
-          match measure_and_add_time time_synthesize (fun () -> sol infer_mode) with
+          match measure_and_add_time time_synthesize (fun () -> sol Modular_infer.init_mode) with
           | None ->
               pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
               let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
@@ -145,20 +167,27 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
                 if not @@ Ref_type.Env.eq env' env then
                   main_loop_ind history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep f typ depth ce_set3
                 else if not @@ List.Set.eq ce_set3 ce_set2 then
-                  refine_loop Modular_infer.init_mode neg_env' ce_set3 None
-                else(* if not @@ Modular_infer.is_last_mode infer_mode then*)
+                  refine_loop neg_env' ce_set3 None
+                else if not @@ Modular_infer.is_last_mode mode then
                   let mode' = Modular_infer.next_mode mode in
                   MVerbose.printf "%schange infer_mode %a => %a@." space Modular_infer.print_mode mode Modular_infer.print_mode mode';
                   infer_mode_loop mode' @@ Option.get @@ sol mode'(*
                 else if true then
                   (MVerbose.printf "%sdepth := %d@." space (depth+1);
-                   main_loop_ind history (c+1) prog cmp dep f typ (depth+1) ce_set3)
+                   main_loop_ind history (c+1) prog cmp dep f typ (depth+1) ce_set3)*)
                 else
-                  raise NoProgress*)
+                  raise NoProgress
+(*
+                  let typ' = non_terminating_typ typ in
+                  ignore @@ read_line();
+                  let _, env'', neg_env'', ce_set4 = main_loop_ind history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep f typ' depth ce_set3 in
+                  ignore @@ read_line();
+                  main_loop_ind history (c+1) {prog with fun_typ_env=env''; fun_typ_neg_env=neg_env''} cmp dep f typ depth ce_set4
+ *)
               in
               infer_mode_loop Modular_infer.init_mode candidate
         in
-        refine_loop Modular_infer.init_mode neg_env (normalize_ce_set @@ (f,ce)::ce_set) None
+        refine_loop neg_env (normalize_ce_set @@ (f,ce)::ce_set) None
 
 let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
@@ -244,23 +273,55 @@ let rec last_def_to_fun t =
       {t with desc = Let(defs, t2')}
   | _ -> assert false
 
+let assert_to_fun t =
+  let rec loop t =
+    match t.desc with
+    | Let([u,[],t1], t2) when Id.typ u = TUnit ->
+        let u' = Id.new_var ~name:"u" TUnit in
+        let f = Id.new_var @@ TFun(u', TUnit) in
+        let t1',t2' =
+          match loop t2 with
+          | `Unit, _ -> t1, t2
+          | `Lifted, _ -> t, unit_term
+          | `Other, _ -> unsupported "top-level let-bindings of non-functions"
+        in
+        `Lifted, make_let [f,[u],t1'] t2'
+    | Let(bindings, t) ->
+        `Other, make_let bindings @@ snd @@ loop t
+    | Const Unit -> `Unit, t
+    | _ -> assert false
+  in
+  snd @@ loop t
+
 let main _ spec parsed =
   Flag.print_only_if_id := true;
+  (*
   if spec <> Spec.init then unsupported "Modular.main: spec";
+   *)
   let bindings,body =
     let pps =
       Preprocess.all spec
       |> Preprocess.before Preprocess.CPS
       |> Preprocess.filter_out [Preprocess.Beta_reduce_trivial]
     in
+    let ref_env =
+      Spec.get_ref_env spec parsed
+      |@> Verbose.printf "%a@." Spec.print_ref_env
+      |> Ref_type.Env.of_list
+    in
+    let pr s = Debug.printf "### %s:@.  %a@.@." s in
     parsed
-    |@> Debug.printf "PARSED: %a@.@." Print.term'
+    |@> pr "PARSED" Print.term
+    |> Trans.ref_to_assert ref_env
+    |@> pr "REF_TO_ASSERT" Print.term
+    |> assert_to_fun
+    |@> pr "ASSERT_TO_FUN" Print.term
     |> Preprocess.run pps
     |> Preprocess.last_t
     |> last_def_to_fun
-    |@> Debug.printf "INITIALIZED: %a@.@." Print.term_typ
+    |@> pr "INITIALIZED" Print.term_typ
     |> normalize true
-    |@> Debug.printf "NORMALIZED: %a@.@." Print.term
+    |@> pr "NORMALIZED" Print.term
     |> decomp_prog
   in
   assert (body.desc = Const Unit);
