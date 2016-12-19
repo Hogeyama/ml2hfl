@@ -2351,7 +2351,7 @@ let beta_full_app = make_trans2 ()
 let beta_full_app_desc (f,xs,t) desc =
   match desc with
   | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts ->
-      (subst_map (List.combine xs ts) t).desc
+      (List.fold_left2 (fun t' x t -> subst_with_rename ~check:true x t t') t xs ts).desc
   | _ -> beta_full_app.tr2_desc_rec (f,xs,t) desc
 let () = beta_full_app.tr2_desc <- beta_full_app_desc
 let beta_full_app = beta_full_app.tr2_term
