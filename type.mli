@@ -67,7 +67,7 @@ val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
 val get_free_data_name : 'a t -> string list
 val array_typ : 'a t -> 'a t
-
+val get_pred : 'a t -> ('a t Id.t * 'a list) list
 
 (** {6 Type constructor} *)
 val _TFun : 'a t Id.t -> 'a t -> 'a t

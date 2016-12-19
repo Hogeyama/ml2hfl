@@ -477,3 +477,10 @@ let rec is_mutable_record typ =
       List.exists (fun (_,(f,_)) -> f = Mutable) fields
   | Type(decls, s) -> is_mutable_record @@ List.assoc s decls
   | _ -> invalid_arg "is_mutable_record"
+
+
+let get_pred typ =
+  match typ with
+  | TAttr(attrs, _) ->
+      List.filter_map (function TAPred(x,ps) -> Some (x,ps) | _ -> None) attrs
+  | _ -> []

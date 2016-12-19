@@ -2,6 +2,8 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+
 type ext_path_part = Positive | Negative | Do_not_Care
 type ext_path = ext_path_part list
 
@@ -824,7 +826,8 @@ let elim_same_arg prog =
         let x = List.nth xs i in
         let y = List.nth xs j in
         let xs' = List.filter_out ((=) y) xs in
-        let cond' = subst x (Var y) cond in
+        Debug.printf "elim[%d,%d]: %s@." i j y;
+        let cond' = subst y (Var x) cond in
         let t' = elim_arg (f,j) @@ subst y (Var x) t in
         g, xs', cond', e, t'
       else
@@ -887,6 +890,7 @@ let elim_same_arg prog =
         in
         elim_args_env env' same_args''
   in
+  Debug.printf "same_args: %a@." (List.print @@ fun fm (f,i,j) -> Format.fprintf fm "%s,%d,%d" f i j) same_args;
   let defs' = elim_args_def prog.defs same_args in
   let env' = elim_args_env prog.env same_args in
   {prog with defs=defs'; env=env'}
