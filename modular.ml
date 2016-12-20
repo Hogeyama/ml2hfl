@@ -301,7 +301,9 @@ let main _ spec parsed =
   match r with
   | `Typable ->
       report_safe env;
+      Flag.result := "Safe";
       true
   | `Untypable ->
       report_unsafe neg_env ce_set;
+      Flag.result := "Unsafe";
       false

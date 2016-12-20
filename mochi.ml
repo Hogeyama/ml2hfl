@@ -30,45 +30,50 @@ let print_info_default () =
 let output_csv filename =
   let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
   let ocf = Format.formatter_of_out_channel oc in
-  Format.fprintf ocf "@[<v>";
-  Format.fprintf
-    ocf
-    "%s,%S,%d,%f,%f,%f,%f@,"
-    (Filename.chop_extension_if_any @@ Filename.basename !!Flag.mainfile)
-    !Flag.result
-    !Flag.cegar_loop
-    !Flag.time_abstraction
-    !Flag.time_mc
-    !Flag.time_cegar
-    !Flag.time_parameter_inference;
-  Format.fprintf ocf "@]@?";
+  let pr fmt = Format.fprintf ocf fmt in
+  let pr_mod fmt = if !Flag.modular then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
+  pr "%s," @@ Filename.chop_extension_if_any @@ Filename.basename !!Flag.mainfile;
+  pr "%S," !Flag.result;
+  pr "%d," !Flag.cegar_loop;
+  pr "%f," !!get_time;
+  pr "%f," !Flag.time_abstraction;
+  pr "%f," !Flag.time_mc;
+  pr "%f," !Flag.time_cegar;
+  pr "%f," !Flag.time_parameter_inference;
+  pr_mod "%n," !Modular.num_tycheck;
+  pr_mod "%f," !Modular.time_check;
+  pr_mod "%f," !Modular.time_synthesize;
+  pr "0@.";
   close_out oc
 
 let output_json filename =
   let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
   let ocf = Format.formatter_of_out_channel oc in
-  Format.fprintf ocf "{";
-  Format.fprintf ocf "\"filename\": %S, " !!Flag.mainfile;
-  Format.fprintf ocf "\"result\": %S, " !Flag.result;
-  Format.fprintf ocf "\"cycles\": \"%d\", " !Flag.cegar_loop;
-  if !Flag.mode = Flag.Termination then
-    begin
-      Format.fprintf ocf "\"ranking\": {";
-      List.iter
-        (fun (f_name, (cycles, pred)) ->
-         Format.fprintf ocf "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
-        !Termination_loop.lrf;
-      Format.fprintf ocf " \"_\":{} }, "
-    end;
-  Format.fprintf ocf "\"total\": \"%.3f\", " !!get_time;
-  Format.fprintf ocf "\"abst\": \"%.3f\", " !Flag.time_abstraction;
-  Format.fprintf ocf "\"mc\": \"%.3f\", " !Flag.time_mc;
-  Format.fprintf ocf "\"refine\": \"%.3f\", " !Flag.time_cegar;
-  Format.fprintf ocf "\"exparam\": \"%.3f\"" !Flag.time_parameter_inference;
-  Format.fprintf ocf "}@."
+  let pr fmt = Format.fprintf ocf fmt in
+  let pr_ter fmt = if !Flag.mode = Flag.Termination then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
+  let pr_mod fmt = if !Flag.modular then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
+  pr "{";
+  pr "\"filename\": %S, " !!Flag.mainfile;
+  pr "\"result\": %S, " !Flag.result;
+  pr "\"cycles\": \"%d\", " !Flag.cegar_loop;
+  pr_ter "\"ranking\": {";
+  List.iter
+    (fun (f_name, (cycles, pred)) ->
+     pr_ter "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
+    !Termination_loop.lrf;
+  pr_ter " \"_\":{} }, ";
+  pr "\"total\": \"%.3f\", " !!get_time;
+  pr "\"abst\": \"%.3f\", " !Flag.time_abstraction;
+  pr "\"mc\": \"%.3f\", " !Flag.time_mc;
+  pr "\"refine\": \"%.3f\", " !Flag.time_cegar;
+  pr "\"exparam\": \"%.3f\", " !Flag.time_parameter_inference;
+  pr_mod "\"#typeChecker\": \"%d\", " !Modular.num_tycheck;
+  pr_mod "\"typeChecker\": \"%.3f\", " !Modular.time_check;
+  pr_mod "\"typeSynthesizer\": \"%.3f\", " !Modular.time_synthesize;
+  pr "\"dummy\": \"0\"}@."
 
 let print_info_modular () =
-  Format.printf "#typeChecker: %n@." !Modular.num_tycheck;
+  Format.printf "#typeChecker: %d@." !Modular.num_tycheck;
   Format.printf "total: %.3f sec@." !!get_time;
   Format.printf "  typeChecker: %.3f sec@." !Modular.time_check;
   Format.printf "  typeSynthesizer: %.3f sec@." !Modular.time_synthesize

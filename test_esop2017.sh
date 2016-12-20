@@ -8,7 +8,11 @@ else
     LIMIT=$1
 fi
 
-OPTION="-fpat '-wp-max 2' -no-exparam -bool-init-empty -only-result -base-to-int -abst-list-literal 2 -imodular -ignore-conf"
+DATE=$(date +%Y%m%d%H%M%S)
+JSON=exp_log/$DATE.json
+CSV=exp_log/$DATE.csv
+
+OPTION="-fpat '-wp-max 2' -no-exparam -bool-init-empty -only-result -base-to-int -abst-list-literal 2 -imodular -ignore-conf -exp $JSON -exp $CSV"
 
 cat COMMIT
 echo Timeout: $LIMIT
