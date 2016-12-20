@@ -299,7 +299,7 @@ let rec to_simple typ =
 let rec to_abst_typ typ =
   let r =
   match typ with
-  | Base(b, x, t) when t = U.true_term ->
+  | Base(b, x, {S.desc=S.Const _}) ->
       to_simple_base b
   | Base(b, x, t) ->
       let x' = Id.new_var_id x in

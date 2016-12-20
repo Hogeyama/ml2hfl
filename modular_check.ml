@@ -296,9 +296,20 @@ let check prog f typ depth =
   let make_pps spec =
     Preprocess.and_after Preprocess.CPS @@ Preprocess.all spec
   in
+  let add_preds =
+    let map =
+      env
+      |> Ref_type.Env.to_list
+      |> List.cons (f, typ)
+      |> List.map (Pair.map_snd Ref_type.to_abst_typ)
+    in
+    Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
+    Trans.merge_bound_var_typ map
+  in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
     |> make_lets (List.map Triple.of_pair_r fun_env')
+    |> add_preds
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check -$- TUnit
     |> Trans.map_main (make_seq -$- unit_term) (* ??? *)
