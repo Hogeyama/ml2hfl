@@ -137,10 +137,15 @@ let rec remove_pair_typ = function
   | TApp(TList, typs) -> leaf (TList (root (remove_pair_typ typ)))
  *)
   | TData s -> leaf (TData s)
-  | TAttr([TAPred(y, ps)], TTuple[x; {Id.typ}]) ->
+  | TAttr(_, TTuple[x; {Id.typ}]) as typ0 when get_pred typ0 <> [] ->
+      let y,ps =
+        let preds = get_pred typ0 in
+        let y,ps = List.hd preds in
+        y, ps @ List.flatten_map (fun (z,ps) -> List.map (subst_var z y) ps) @@ List.tl preds
+      in
       begin
-        match typ with (* Function types cannot have predicates *)
-        | TFun _ ->
+        match typ with
+        | TFun _ -> (* Function types cannot have predicates *)
             let x1 = Id.new_var_id x in
             let x2 = Id.new_var typ in
             let ps' = List.map (subst y @@ make_pair (make_var x1) (make_var x2)) ps in
@@ -152,7 +157,12 @@ let rec remove_pair_typ = function
             let typ' = add_tapred y' ps' typ in
             remove_pair_typ @@ TTuple [x; Id.new_var typ']
       end
-  | TAttr([TAPred(x,ps)], typ) ->
+  | TAttr(_, typ) as typ0 when get_pred typ0 <> [] ->
+      let x,ps =
+        let preds = get_pred typ0 in
+        let y,ps = List.hd preds in
+        y, ps @ List.flatten_map (fun (z,ps) -> List.map (subst_var z y) ps) @@ List.tl preds
+      in
       let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ (Id.typ x) with

@@ -123,21 +123,21 @@ let const_attr = [ANotFail; ATerminate; ADeterministic]
 
 
 type trans =
-  {mutable tr_term:      term    -> term;
-   mutable tr_term_rec:  term    -> term;
-   mutable tr_desc:      desc          -> desc;
-   mutable tr_desc_rec:  desc          -> desc;
-   mutable tr_typ:       typ           -> typ;
-   mutable tr_typ_rec:   typ           -> typ;
-   mutable tr_var:       id            -> id;
-   mutable tr_var_rec:   id            -> id;
+  {mutable tr_term:      term -> term;
+   mutable tr_term_rec:  term -> term;
+   mutable tr_desc:      desc -> desc;
+   mutable tr_desc_rec:  desc -> desc;
+   mutable tr_typ:       typ -> typ;
+   mutable tr_typ_rec:   typ -> typ;
+   mutable tr_var:       id -> id;
+   mutable tr_var_rec:   id -> id;
    mutable tr_pat:       pattern -> pattern;
    mutable tr_pat_rec:   pattern -> pattern;
-   mutable tr_info:      info          -> info;
-   mutable tr_info_rec:  info          -> info;
-   mutable tr_const:     const         -> const;
-   mutable tr_const_rec: const         -> const;
-   mutable tr_attr:      attr list     -> attr list}
+   mutable tr_info:      info -> info;
+   mutable tr_info_rec:  info -> info;
+   mutable tr_const:     const -> const;
+   mutable tr_const_rec: const -> const;
+   mutable tr_attr:      attr list -> attr list}
 
 let trans_typ trans = function
   | TUnit -> TUnit

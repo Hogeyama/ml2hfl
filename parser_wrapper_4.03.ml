@@ -571,6 +571,8 @@ and from_str_item id_env str_item =
         let e = from_expression id_env vb_expr in
         match p.pat_desc, flag with
         | PVar x, _ -> x, e
+        | PConst {desc=Const Unit}, _ -> Id.new_var ~name:"u" TUnit, e
+        | PAny, _ -> new_var_of_term e, e
         | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
         | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
       in

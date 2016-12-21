@@ -636,7 +636,7 @@ let rec make_strongest typ =
       unsupported "Ref_type.make_strongest"
 
 and make_weakest typ =
-  match typ with
+  match T.elim_tattr typ with
   | T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
   | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
   | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
