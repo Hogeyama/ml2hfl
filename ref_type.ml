@@ -76,7 +76,7 @@ and is_top' typ =
   match typ with
   | Inter(_, []) -> true
   | Base(_, _, {S.desc=S.Const S.True}) -> true
-  | Fun(_, typ1, typ2) -> is_bottom' typ1
+  | Fun(_, typ1, typ2) -> is_bottom typ1
   | _ -> false
 
 let print_base fm = function
@@ -480,9 +480,9 @@ let rec subtype env typ1 typ2 =
   in
   if 0=0 then
     begin
-      Debug.printf "typ1: %a@." print typ1;
-      Debug.printf "typ2: %a@." print typ2;
-      Debug.printf "r: %b@." r
+      Debug.printf "  sub typ1: %a@." print typ1;
+      Debug.printf "  sub typ2: %a@." print typ2;
+      Debug.printf "  sub r: %b@." r
     end;
   r
 
@@ -519,8 +519,11 @@ let rec simplify_typs constr sub styp is_zero make_zero and_or typs =
   Debug.printf "ST@.";
   let typs' =
     typs
+    |@> Debug.printf "ST1: @[%a@." (List.print print)
     |> List.map simplify
+    |@> Debug.printf "ST2: @[%a@." (List.print print)
     |> remove_subtype ~sub
+    |@> Debug.printf "ST3: @[%a@." (List.print print)
     |*> List.unique ~cmp:same
     |> constr styp
     |> flatten
@@ -650,18 +653,13 @@ and make_weakest typ =
       Format.printf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"
 
+
 let inter styp typs = simplify @@ Inter(styp, typs)
 let union styp typs = simplify @@ Union(styp, typs)
 
 
 let decomp_funs_and_classify typs =
-  let typs' =
-    let decomp = function
-      | Fun(y, typ1, typ2) -> y, typ1, typ2
-      | _ -> assert false
-    in
-    List.map decomp typs
-  in
+  let typs' = List.map (Option.get -| decomp_fun) typs in
   List.classify ~eq:(fun (_,typ1,_) (_,typ2,_) -> same typ1 typ2) typs'
 let merge constr typs =
   let x,typ1,_ = List.hd typs in

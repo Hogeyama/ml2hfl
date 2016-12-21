@@ -50,11 +50,16 @@ let make_init_env cmp bindings =
       | Ref_type.Fun(x,typ1,typ2) -> Ref_type.Fun(x, Ref_type.top @@ Ref_type.to_simple typ1, replace_with_top (n-1) typ2)
       | _ -> assert false
   in
+  let rec to_weak typ =
+    match typ with
+    | TFun(x,typ2) -> Ref_type.Fun(x, Ref_type.bottom @@ Id.typ x, to_weak typ2)
+    | _ -> Ref_type.of_simple typ
+  in
   let make (f,xs,_) =
     f,
     Id.typ f
     |> Trans.inst_tvar_tunit_typ
-    |> (if Id.is_external f then Ref_type.of_simple else Ref_type.make_weakest)
+    |> (if Id.is_external f then Ref_type.of_simple else to_weak)
     |> replace_with_top (List.length xs - 1)
   in
   bindings

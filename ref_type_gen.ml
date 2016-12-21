@@ -160,7 +160,7 @@ and generate typ_exn make_fail genv cenv typ =
           List.fold_right aux typs (genv,cenv,[])
         in
         genv', cenv', U.make_lets (List.map2 (fun x t -> x,[],t) xs' ts) @@ U.make_tuple @@ List.map U.make_var xs'
-    | Inter(styp, []) -> generate typ_exn make_fail genv cenv @@ make_weakest styp
+    | Inter(styp, []) -> genv, cenv, make_fail styp
     | Inter(_, [typ]) -> generate typ_exn make_fail genv cenv typ
     | Inter(_, Base(base,x,p)::typs) ->
         let p' =
