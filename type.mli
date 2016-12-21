@@ -51,7 +51,7 @@ val to_id_string : 'a t -> string
 val order : 'a t -> int
 val arity : 'a t -> int
 val var_name_of : 'a t -> string
-val add_tapred : 'a t Id.t -> 'a list -> 'a t -> 'a t
+
 
 (** {6 destructor} *)
 val tuple_num : 'a t -> int option
@@ -67,7 +67,7 @@ val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
 val get_free_data_name : 'a t -> string list
 val array_typ : 'a t -> 'a t
-val get_pred : 'a t -> ('a t Id.t * 'a list) list
+
 
 (** {6 Type constructor} *)
 val _TFun : 'a t Id.t -> 'a t -> 'a t

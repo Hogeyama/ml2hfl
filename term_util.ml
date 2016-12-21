@@ -481,6 +481,26 @@ let subst_var x y t = subst x (make_var y) t
 
 
 
+let get_tapred typ =
+  match typ with
+  | TAttr(attrs, _) ->
+      Option.of_list @@ List.filter_map (function TAPred(x,ps) -> Some (x,ps) | _ -> None) attrs
+  | _ -> None
+
+let add_tapred x ps typ =
+  let attrs',typ' =
+    match get_tapred typ, typ with
+    | None, _ -> [TAPred(x,ps)], typ
+    | Some(x',ps'), TAttr(attrs, typ') ->
+        let attrs' = List.filter (function TAPred _ -> false | _ -> true) attrs in
+        let ps' = (List.map (subst_var x' x) ps') @ ps in
+        TAPred(x,ps')::attrs', typ'
+    | _ -> assert false
+  in
+  _TAttr attrs' typ'
+
+
+
 let max_pat_num = make_col 0 max
 
 let max_pat_num_term t =

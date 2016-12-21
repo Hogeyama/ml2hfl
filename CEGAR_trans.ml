@@ -168,7 +168,8 @@ and trans_typ = function
       let typ2 = trans_typ typ in
       TFun(typ1, fun _ -> typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
-  | Type.TAttr([Type.TAPred(x,ps)], typ) ->
+  | Type.TAttr(_, typ) as typ0 when Term_util.get_tapred typ0 <> None ->
+      let x,ps = Option.get @@ Term_util.get_tapred typ0 in
       begin
         let x' = trans_var x in
         let ps' = List.map (snd -| trans_term "" [] []) ps in

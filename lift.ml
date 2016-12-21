@@ -36,7 +36,11 @@ module Id' = struct
   (* TODO: fix for dependencies on predicates *)
   let compare x y =
     let dbg = 0=1 in
-    let count_pred = List.flatten_map (snd |- List.flatten_map get_fv) -| get_pred -| Id.typ in
+    let count_pred x =
+      match get_tapred @@ Id.typ x with
+      | None -> 0
+      | Some(_,ps) -> List.length ps
+    in
     let aux z =
       not @@ is_base_typ @@ Id.typ z,
       count_pred z,

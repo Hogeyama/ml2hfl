@@ -310,7 +310,7 @@ let rec to_abst_typ typ =
         else
           [U.subst_var x x' t]
       in
-      T.TAttr([T.TAPred(x', ps)], typ')
+      U.add_tapred x' ps typ'
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ typ1 in
       let typ2' = to_abst_typ @@ subst_var x x' typ2 in
@@ -334,7 +334,7 @@ let rec to_abst_typ typ =
         if p_len = U.true_term then
           Id.typ x'
         else
-          T.TAttr([T.TAPred(x', [U.subst x (U.make_length @@ U.make_var x') p_len])], Id.typ x')
+          U.add_tapred x' [U.subst x (U.make_length @@ U.make_var x') p_len] @@ Id.typ x'
   | Exn(typ1, _) -> to_abst_typ typ1
   in
   Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;

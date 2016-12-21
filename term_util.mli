@@ -192,3 +192,5 @@ val unfold_data_type : typ -> typ
 val fold_data_type : typ -> typ
 val find_exn_typ : term -> typ option
 val col_typ_var : term -> typ option ref list
+val add_tapred : id -> term list -> typ -> typ
+val get_tapred : typ -> (id * term list) option
