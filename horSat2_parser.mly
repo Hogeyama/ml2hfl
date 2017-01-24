@@ -58,9 +58,8 @@ counterexample_apt:
   { HorSat_syntax.leaf () }
 
 output:
-| SATTYP env SATISFIED EOF { Satisfied $2 }
-| SATTYP env UNSATISFIED THE_SIZE_OF_TYPING INT A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $7 }
-| SATTYP env UNSATISFIED A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $5 }
+| SATISFIED EOF { Satisfied [] }
+| UNSATISFIED A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $3 }
 
 id:
   IDENT
