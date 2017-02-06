@@ -27,16 +27,14 @@ and nid = int
 and var_env = (id * id list) list
 and val_env = (id * value) list
 and ce_env = (label * bool) list list
-and value = Closure of var_env * val_env * ce_env option * term
+and value = Closure of var_env * val_env * term
 
 
 
 let rec pr_bind depth fm (x,vl) =
-  let Closure(var_env,val_env,ce_env,t) = vl in
+  let Closure(var_env,val_env,t) = vl in
   if depth <= 0 then
-    match ce_env with
-    | None -> Format.fprintf fm "%a := @[[...]%a@]" Id.print x Print.term t
-    | Some ce_env -> Format.fprintf fm "%a := @[%a[...]%a@]" Id.print x (List.print print_ce) ce_env Print.term t
+    Format.fprintf fm "%a := @[[...]%a@]" Id.print x Print.term t
   else
     Format.fprintf fm "%a := @[%a%a@]" Id.print x (pr_env (depth-1)) val_env Print.term t
 and pr_env depth fm env = List.print (pr_bind depth) fm env
@@ -59,7 +57,7 @@ and print_nlabel fm nlabel =
   | Spawn(f,g) -> Format.fprintf fm "Spawn %a as %a" Id.print f Id.print g
   | Fail -> Format.fprintf fm "Fail"
   | End -> Format.fprintf fm "End"
-and print_value fm (Closure(var_env,val_env,ce_env,t)) =
+and print_value fm (Closure(var_env,val_env,t)) =
   Format.fprintf fm "Value %a" Print.term t
 and print_node fm {nid;var_env;val_env;ce_env;nlabel} =
   if false then
@@ -100,10 +98,9 @@ let rename_tid_if_term map t =
 let () = rename_tid_if.tr2_term <- rename_tid_if_term
 let rename_tid_if = rename_tid_if.tr2_term
 
-let term_of_value (Closure(_,_,_,t)) = t
-let var_env_of_value (Closure(env,_,_,_)) = env
-let val_env_of_value (Closure(_,env,_,_)) = env
-let ce_env_of_value (Closure(_,_,env,_)) = env
+let term_of_value (Closure(_,_,t)) = t
+let var_env_of_value (Closure(env,_,_)) = env
+let val_env_of_value (Closure(_,env,_)) = env
 
 let is_fail t =
   match t.desc with
@@ -134,17 +131,15 @@ let rec is_value fun_env val_env t =
       List.for_all (is_value fun_env val_env) ts
   | _ -> false
 
-let assoc_fun f var_env val_env ce_env =
-  let Closure(var_env_f, val_env_f, ce_env_f, t) = Id.assoc f val_env in
+let assoc_fun f var_env val_env =
+  let Closure(var_env_f, val_env_f, t) = Id.assoc f val_env in
   let ys,t' = decomp_funs t in
   let ys' = List.map Id.new_var_id ys in
   Debug.printf "    ALPHA: %a => %a@\n" (List.print Id.print) ys (List.print Id.print) ys';
   let t'' = List.fold_right2 subst_var ys ys' t' in
-  var_env_f, val_env_f, ce_env_f, (ys', t'')
+  var_env_f, val_env_f, (ys', t'')
 
 let ends = RT.exists (fun {nlabel} -> nlabel = Fail || nlabel = End)
-
-let value_of var_env val_env ce_env t = Closure(var_env, val_env, ce_env, t)
 
 let eta_expand t =
   let xs,t' = decomp_funs t in
@@ -154,14 +149,14 @@ let eta_expand t =
   | Let(bindings, t'') -> make_funs (xs@ys') @@ make_let bindings @@ make_app t'' @@ List.map make_var ys'
   | _ -> make_funs (xs@ys') @@ make_app t' @@ List.map make_var ys'
 
-let make_arg_map var_env val_env ce_env _ xs ts =
-  let value_of' t = value_of var_env val_env ce_env @@ eta_expand t in
-  List.combine xs @@ List.map value_of' ts
+let make_arg_map var_env val_env _ xs ts =
+  let value_of t = Closure(var_env, val_env, eta_expand t) in
+  List.combine xs @@ List.map value_of ts
 
 let filter_extend extend = List.filter_out (fun (_,n) -> n <= 0) extend
 
 
-let global = true
+let global = false
 
 
 (* 't' must be a CPS term *)
@@ -197,6 +192,7 @@ let rec from_term
         col_id t_f
         |> List.map (fun x -> x, make_new_tid ())
       in
+      Debug.printf "tid_map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) tid_map;
       let ce_env' =
         let ce_env_f' = List.map (List.map (fun (n,t) -> List.assoc_default n n tid_map, t)) ce_env_f in
         ce_env_f' @ ce_env
@@ -209,7 +205,7 @@ let rec from_term
           |> rename_tid_if tid_map
         in
         let var_env_f' = [f', []] in
-        let rec val_env_f' = [f', Closure(var_env_f', val_env_f', None, t_f')] in
+        let rec val_env_f' = [f', Closure(var_env_f', val_env_f', t_f')] in
         val_env_f' @ val_env
       in
       let t' = make_app (make_var f') ts in
@@ -221,10 +217,10 @@ let rec from_term
         let ce_env = ce_env' in
         let nid = Counter.gen cnt in
         Debug.printf "  APP1: %a@\n" Print.term t;
-        let var_env_f,val_env_f,_,(ys,t_f) = assoc_fun f var_env val_env ce_env in
+        let var_env_f,val_env_f,(ys,t_f) = assoc_fun f var_env val_env in
         Debug.printf "    APP1 (ys -> t_f): %a, %d@\n" Print.term (make_funs ys t_f) (List.length ts);
         Debug.printf "    APP1 var_env_f: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env_f;
-        let arg_map = make_arg_map var_env val_env (Some ce_env) f ys ts in
+        let arg_map = make_arg_map var_env val_env f ys ts in
         Debug.printf "    APP1 arg_map: %a@\n" pr_env arg_map;
         let val_env' = List.rev arg_map @ val_env_f in
         Debug.printf "    APP1 val_env': %a@\n" pr_env val_env';
@@ -240,18 +236,10 @@ let rec from_term
       RT.Node(node, [child])
   | App({desc=Var f}, ts) when Id.mem_assoc f val_env ->
       Debug.printf "  APP1: %a@\n" Print.term t;
-      let var_env_f,val_env_f,ce_env_f,(ys,t_f) = assoc_fun f var_env val_env ce_env in
+      let var_env_f,val_env_f,(ys,t_f) = assoc_fun f var_env val_env in
       Debug.printf "    APP1 (ys -> t_f): %a, %d@\n" Print.term (make_funs ys t_f) (List.length ts);
       Debug.printf "    APP1 var_env_f: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env_f;
-      let arg_ce_env =
-        let xs = List.Set.inter ~eq:Id.eq (List.map fst val_env_f) (List.map fst val_env) in
-        let ys = List.map fst fun_env in
-        if List.Set.subset ~eq:(fun x y -> Id.name x = Id.name y) xs ys then
-          Some ce_env
-        else
-          None
-      in
-      let arg_map = make_arg_map var_env val_env arg_ce_env f ys ts in
+      let arg_map = make_arg_map var_env val_env f ys ts in
       Debug.printf "    APP1 arg_map: %a@\n" pr_env arg_map;
       let val_env' = List.rev arg_map @ val_env_f in
       Debug.printf "    APP1 val_env': %a@\n" pr_env val_env';
@@ -261,12 +249,7 @@ let rec from_term
       Debug.printf "    APP1 var_env': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env';
       let node = {nid; var_env; val_env; ce_env; nlabel = App(f, arg_map)} in
       assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
-      let ce_env' =
-        if global then
-          ce_env
-        else
-          Option.default ce_env ce_env_f
-      in
+      let ce_env' = ce_env in
       RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env' t_f])
   | App({desc=Fun _; typ} as t1, ts) ->
       let f = Id.new_var typ in
@@ -330,7 +313,7 @@ let rec from_term
       Debug.printf "    t: %a@\n" Print.term t;
       assert (xs <> []);
       let var_env' = (f, List.map fst val_env)::var_env in
-      let rec val_env' = (f, Closure(var_env', val_env', None, make_funs xs @@ eta_expand t1))::val_env in
+      let rec val_env' = (f, Closure(var_env', val_env', make_funs xs @@ eta_expand t1))::val_env in
       let node = {nid; var_env; val_env; ce_env; nlabel = Let(f, make_funs xs t1)} in
       RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env t2])
   | _ when is_fail t ->

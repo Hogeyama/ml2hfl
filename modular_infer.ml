@@ -418,7 +418,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       pr "  Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
       let typ =
         let head =
-          let aux' (pargs,k) (x,CT.Closure(_,_,_,t)) =
+          let aux' (pargs,k) (x,CT.Closure(_,_,t)) =
             pr "  pargs,t: %a, %a@." (List.print Print.term) pargs Print.term t;
             let tmp1 =
               if is_base_typ t.typ then
@@ -472,12 +472,12 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       in
       let arg_templates' =
         if dbg then Debug.printf "  var_env(%a): %a@." Id.print f (List.print Id.print) @@ Id.assoc f var_env;
-        let CT.Closure(var_env_f,val_env_f,ce_env_f,t_f) = Id.assoc f val_env in
+        let CT.Closure(var_env_f,val_env_f,t_f) = Id.assoc f val_env in
         if dbg then Debug.printf "  t_f[%a]: %a@." Id.print f Print.term t_f;
         if dbg then Debug.printf "  Dom(var_env_f)[%a]: %a@." Id.print f (List.print Id.print) @@ List.map fst var_env_f;
         if dbg then Debug.printf "  Dom(val_env_f)[%a]: %a@." Id.print f (List.print Id.print) @@ List.map fst val_env_f;
         let vars = Id.assoc f var_env in
-        let CT.Closure(var_env_f,_,_,_) = Id.assoc f val_env in
+        let CT.Closure(var_env_f,_,_) = Id.assoc f val_env in
         let aux y typ =
           if Id.mem_assoc y var_env_f then
             typ
@@ -521,7 +521,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
       let asm =
         let var_env', val_env', ce_env' =
           try
-            let CT.Closure(var_env, val_env, ce_env, _) = Id.assoc f val_env in
+            let CT.Closure(var_env, val_env, _) = Id.assoc f val_env in
             var_env, val_env, ce_env
           with Not_found -> assert false
         in
@@ -533,7 +533,7 @@ let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.va
         asm1 @ asm2
       in
       let constr1 =
-        let aux (env,acc) (_, CT.Closure(var_env,val_env,ce_env,t)) =
+        let aux (env,acc) (_, CT.Closure(var_env,val_env,t)) =
           let constr =
             if is_base_typ t.typ then
               let typ1 = Singleton t in
