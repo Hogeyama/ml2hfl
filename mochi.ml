@@ -254,12 +254,13 @@ let rec arg_spec () =
      "", Arg.Unit ignore, "Options_for_completion";
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options";
      "-module-list", Arg.Unit (fun _ -> Format.printf "%a" (print_list Format.pp_print_string " ") !Flag.modules; exit 0), " Print list of modules";
-     (* preprocessing *)
-     "", Arg.Unit ignore, "Options_for_preprocessing";
+     (* printing *)
+     "", Arg.Unit ignore, "Options_for_printing";
      "-print-abst-types", Arg.Set Flag.print_abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.just_print_non_CPS_abst := true; Flag.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
      "-print-as-ocaml", Arg.Set Flag.print_as_ocaml, " Print terms in OCaml syntax";
      "-print-progress", Arg.Set Flag.print_progress, " Print progress (use after -modular/-imodular)";
+     "-print-unused-arg", Arg.Set Flag.print_unused_arg, " Print unused arguments";
      (* preprocessing *)
      "", Arg.Unit ignore, "Options_for_preprocessing";
      "-fail-as-excep", Arg.Set Flag.fail_as_exception, " Treat fail as an exception";

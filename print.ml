@@ -154,9 +154,24 @@ and print_desc attr pri typ fm desc =
         in
         decomp {desc; typ=typ_unknown; attr=[]}
       in
+      let fv = get_fv t in
+      let xs' =
+        if !Flag.print_unused_arg then
+          xs
+        else
+          let aux x =
+            if Id.mem x fv then
+              x
+            else if Id.typ x = TUnit then
+              Id.make 0 "()" [] TUnit
+            else
+              Id.make 0 "_" [] @@ Id.typ x
+          in
+          List.map aux xs
+      in
       let p = 15 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids typ) xs (print_term 0 typ) t s2
+      fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids typ) xs' (print_term 0 typ) t s2
   | App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}]) when !Flag.print_as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
@@ -223,7 +238,22 @@ and print_desc attr pri typ fm desc =
           else
             "and"
         in
-        fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs (print_term 0 typ) t1;
+        let fv = get_fv t1 in
+        let xs' =
+          if !Flag.print_unused_arg then
+            xs
+          else
+            let aux x =
+              if Id.mem x fv then
+                x
+              else if Id.typ x = TUnit then
+                Id.make 0 "()" [] TUnit
+              else
+                Id.make 0 "_" [] @@ Id.typ x
+            in
+            List.map aux xs
+        in
+        fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs' (print_term 0 typ) t1;
         b := false
       in
       let print_bindings bs = print_list print_binding "@ " ~last:true bs in
