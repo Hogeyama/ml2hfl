@@ -98,8 +98,8 @@ let non_terminating_typ typ =
 let check prog f typ depth =
   measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth)
 
-let infer prog f typ ce_set2 =
-  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2) !Flag.Modular.infer_merge
+let infer prog f typ ce_set2 depth =
+  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
 
 let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
   let space = String.make (8*List.length history) ' ' in
@@ -147,7 +147,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
           if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- Id.is_external) ce_set2;
           let sol =
             match prev_sol with
-            | None -> infer prog f typ ce_set2
+            | None -> infer prog f typ ce_set2 depth
             | Some sol -> sol
           in
           match measure_and_add_time time_synthesize (fun () -> sol Modular_infer.init_mode) with
@@ -176,10 +176,10 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
                 else if not @@ Modular_infer.is_last_mode mode then
                   let mode' = Modular_infer.next_mode mode in
                   MVerbose.printf "%schange infer_mode %a => %a@." space Modular_infer.print_mode mode Modular_infer.print_mode mode';
-                  infer_mode_loop mode' @@ Option.get @@ sol mode'(*
+                  infer_mode_loop mode' @@ Option.get @@ sol mode'
                 else if true then
                   (MVerbose.printf "%sdepth := %d@." space (depth+1);
-                   main_loop_ind history (c+1) prog cmp dep f typ (depth+1) ce_set3)*)
+                   main_loop_ind history (c+1) prog cmp dep f typ (depth+1) ce_set3)
                 else
                   raise NoProgress
 (*
@@ -235,7 +235,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
         infer_mode
     in
     pr "ce_set':@ %a" print_ce_set @@ List.filter_out (fst |- Id.is_external) ce_set';
-    match infer prog main typ ce_set' infer_mode' with
+    match infer prog main typ ce_set' depth infer_mode' with
     | None ->
         pr "THERE ARE NO CANDIDATES";
         `Untypable, env, neg_env, ce_set'

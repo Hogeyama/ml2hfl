@@ -1100,7 +1100,7 @@ let rec instantiate_any mode pos typ =
       in
       Exn(instantiate_any mode pos typ1, instantiate_any mode' pos typ2)
 
-let infer prog f typ (ce_set:ce_set) merge =
+let infer prog f typ (ce_set:ce_set) depth merge =
   let ce_set =
     if 0=1 then
       List.filter (fun (x,ce) -> Format.printf "%a, %a@.?: @?" Id.print x print_ce ce; read_int() <> 0) ce_set
@@ -1115,7 +1115,7 @@ let infer prog f typ (ce_set:ce_set) merge =
     Debug.printf "Dom(Fun_env'): %a@.@." (List.print Id.print) @@ List.map fst fun_env';
     Debug.printf "t with def: %a@.@." Print.term @@ make_lets (List.map Triple.of_pair_r fun_env') t;
     Debug.printf "t: %a@.@." Print.term t;
-    CT.from_program fun_env' ce_set t
+    CT.from_program fun_env' ce_set depth t
   in
   let templates = make_template env comp_tree in
   Debug.printf "TEMPLATES: @[%a@.@." print_tmp_env templates;
