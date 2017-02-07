@@ -26,7 +26,7 @@ and node =
 and nid = int
 and var_env = (id * id list) list
 and val_env = (id * value) list
-and ce_env = (label * bool) list list
+and ce_env = ce list
 and value = Closure of var_env * val_env * term
 
 
