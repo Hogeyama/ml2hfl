@@ -204,7 +204,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         ed', make_ref t
     | TApp(TArray, [typ]) ->
         let ed',t = define_randvalue "" ed @@ make_tlist typ in
-        ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
+        ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" ~attr:[Id.External] @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
     | TData s -> (env, defs), make_randvalue_unit typ
     | TVariant labels ->
         let u = Id.new_var TUnit in
@@ -1284,24 +1284,24 @@ let make_ext_fun_def f =
   f, xs', make_let defs' t'
 
 let make_ext_funs ?(fvs=[]) env t =
-  let dbg = 0=1 in
   let typ_exn = find_exn_typ t in
   let t' = remove_defs (Ref_type.Env.dom env) t in
-  if dbg then Format.printf "MEF t': %a@." Print.term t';
-  if dbg then Format.printf "MEF env: %a@." Ref_type.Env.print env;
-  if dbg then Format.printf "MEF fv: %a@." (List.print Id.print) @@ get_fv t';
+  Debug.printf "MEF t': %a@." Print.term t';
+  Debug.printf "MEF env: %a@." Ref_type.Env.print env;
+  let fv = get_fv ~cmp:(fun x y -> Id.same x y && Type.can_unify (Id.typ x) (Id.typ y)) t' in
+  Debug.printf "MEF fv: %a@." (List.print Id.print) fv;
   let funs =
-    get_fv t'
+    fv
     |> List.filter Id.is_external
     |> List.filter_out Id.is_coefficient
     |> List.filter_out (Ref_type.Env.mem_assoc -$- env)
     |> List.filter_out (Id.mem -$- fvs)
   in
-  if dbg then Format.printf "MEF: %a@." (List.print Print.id_typ) funs;
+  Debug.printf "MEF: %a@." (List.print Print.id_typ) funs;
   if List.exists (is_poly_typ -| Id.typ) funs then
     unsupported "Trans.make_ext_funs (polymorphic functions)";
   let map,t'' = rename_ext_funs funs t' in
-  if dbg then Format.printf "MEF t'': %a@." Print.term' t'';
+  Debug.printf "MEF t'': %a@." Print.term' t'';
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
     let aux (genv,cenv,defs) (f,typ) =
@@ -1312,7 +1312,7 @@ let make_ext_funs ?(fvs=[]) env t =
     List.fold_left aux ([],[],[]) @@ Ref_type.Env.to_list env
   in
   let defs = List.map snd (genv @ cenv) in
-  if dbg then Format.printf "MEF t'': %a@." Print.term' t'';
+  Debug.printf "MEF t'': %a@." Print.term' t'';
   make_lets defs @@ make_lets defs2 @@ make_lets defs1 t''
 
 

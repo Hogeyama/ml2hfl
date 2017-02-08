@@ -97,6 +97,9 @@ let all spec : t list =
     Replace_const,
       (Fun.const !Flag.replace_const,
        map_trans CFA.replace_const);
+    Copy_poly,
+      (Fun.const true,
+       Trans.copy_poly_funs -| last_t);
     Encode_mutable_record,
       (Fun.const true,
        map_trans Encode.mutable_record);
@@ -106,9 +109,6 @@ let all spec : t list =
     Encode_array,
       (Fun.const true,
        map_trans Encode.array);
-    Copy_poly,
-      (Fun.const true,
-       Trans.copy_poly_funs -| last_t);
     Abst_ref,
       (Fun.const true,
        map_trans Encode.abst_ref);

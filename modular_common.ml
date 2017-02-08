@@ -60,6 +60,7 @@ let normalize add_id t =
         |- Trans.elim_unused_let ~leave_last:true)
   |> Trans.add_id_if (function {desc=If _} -> add_id | _ -> false)
   |> snd
+  |> Trans.alpha_rename
 
 (* `used_by f prog` returns top-level functions used (directly/indirectly) by f *)
 let used_by f prog =

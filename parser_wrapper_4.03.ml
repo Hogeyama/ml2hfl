@@ -485,7 +485,11 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
       let t2 = from_expression id_env e2 in
       let t3 = from_expression id_env e3 in
       let x' = from_ident x TInt in
-      let f = Id.new_var ~name:"for" (TFun(Id.new_var ~name:"i" TInt, t3.typ)) in
+      if Type.can_unify t3.typ TUnit then
+        Type.unify t3.typ TUnit
+      else
+        unsupported "The body of a for-expression must have type unit";
+      let f = Id.new_var ~name:"for" (TFun(Id.new_var ~name:"i" TInt, TUnit)) in
       let init = Id.new_var ~name:"init" TInt in
       let last = Id.new_var ~name:"last" TInt in
       let t31 =
