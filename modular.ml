@@ -288,7 +288,7 @@ let assert_to_fun t =
           match loop t2 with
           | `Unit, _ -> t1, t2
           | `Lifted, _ -> t, unit_term
-          | `Other, _ -> unsupported "top-level let-bindings of non-functions"
+          | `Other, _ -> unsupported @@ Format.asprintf "top-level let-bindings of non-functions: %a" Print.term t1
         in
         `Lifted, make_let [f,[u],t1'] t2'
     | Let(bindings, t) ->
@@ -297,6 +297,56 @@ let assert_to_fun t =
     | _ -> assert false
   in
   snd @@ loop t
+
+let rec top_to_local_aux (f,xs,t1) t =
+  match t.desc with
+  | Let([main,ys,t2], {desc=Const Unit}) ->
+      let t2' = make_let [f,xs,t1] t2 in
+      let desc = Let([main,ys,t2'], unit_term) in
+      {t with desc}
+  | Let(bindings, t2) ->
+      let used,bindings' =
+        let aux (g,ys,t3) =
+          if Id.mem f @@ get_fv t3 then
+            let typ = TFun(f, Id.typ g) in
+            let g' = Id.set_typ g typ in
+            Some(g, g'), (g', f::ys, t3)
+          else
+            None, (g,ys,t3)
+        in
+        List.split_map aux bindings
+      in
+      let used' = List.filter_map Fun.id used in
+      let sbst_all t =
+        let sbst (g,g') t = subst g (make_app (make_var g') [make_var f]) t in
+        List.fold_right sbst used' t
+      in
+      let bindings'' = List.map (Triple.map_trd sbst_all) bindings' in
+      let t2' =
+        t2
+        |> sbst_all
+        |> top_to_local_aux (f,xs,t1)
+      in
+      let desc = Let(bindings'', t2') in
+      {t with desc}
+  | _ ->
+      assert (not @@ Id.mem f @@ get_fv t);
+      t
+
+let rec top_to_local t =
+  match t.desc with
+  | Let([f,xs,t1 as binding], t2) when xs @ fst (decomp_funs t1) = [] ->
+      let t2' = top_to_local_aux binding t2 in
+      top_to_local t2'
+  | Let([binding], t2) ->
+      let desc = Let([binding], top_to_local t2) in
+      {t with desc}
+  | Let(bindings, {desc=Const Unit}) ->
+      unsupported "Modular.top_to_local (let ... and)"
+  | Const Unit -> t
+  | _ ->
+      Format.printf "%a@." Print.term t;
+      assert false
 
 let main _ spec parsed =
   Flag.print_only_if_id := true;
@@ -321,6 +371,9 @@ let main _ spec parsed =
     |@> pr "REF_TO_ASSERT" Print.term
     |> assert_to_fun
     |@> pr "ASSERT_TO_FUN" Print.term
+    |> top_to_local
+    |> Trans.alpha_rename
+    |@> pr "TOP_TO_LOCAL" Print.term
     |> Preprocess.run pps
     |> Preprocess.last_t
     |> last_def_to_fun
@@ -331,8 +384,9 @@ let main _ spec parsed =
   in
   assert (body.desc = Const Unit);
   Debug.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (List.map Triple.fst) bindings;
-  if List.exists (List.exists (Triple.fst |- is_fun_var |- not)) bindings then
-    unsupported "top-level let-bindings of non-functions";
+  let non_fun = List.flatten_map (List.filter (Triple.fst |- is_fun_var |- not)) bindings in
+  if non_fun <> [] then
+    unsupported @@ Format.asprintf "top-level let-bindings of non-functions %a" (List.print Id.print) @@ List.map Triple.fst non_fun;
   let fun_env = List.flatten_map (List.map Triple.to_pair_r) bindings in
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
