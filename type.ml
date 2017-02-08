@@ -212,7 +212,7 @@ let rec can_unify typ1 typ2 =
   | TFuns(x::xs, typ1), typ2 -> can_unify (TFun(x, TFuns(xs, typ1))) typ2
   | typ1, TFuns(x::xs, typ2) -> can_unify typ1 (TFun(x, TFuns(xs, typ2)))
   | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
-  | TApp(c1, typs1), TApp(c2, typs2) -> List.for_all2 can_unify typs1 typs2
+  | TApp(c1, typs1), TApp(c2, typs2) -> c1 = c2 && List.for_all2 can_unify typs1 typs2
   | TTuple xs1, TTuple xs2 ->
       List.length xs1 = List.length xs2 &&
       List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2
