@@ -115,7 +115,9 @@ let rec check t typ =
       check t t.typ
   | Record fields, TRecord tfields ->
       List.iter (fun (s,t) -> check t @@ snd @@ List.assoc s tfields) fields
-  | Record fields, typ -> assert false
+  | Record fields, Type(decls, name) ->
+      let typ = List.assoc name decls in
+      check {t with typ} typ
   | Field(t,s), typ ->
       begin
         match t.typ with

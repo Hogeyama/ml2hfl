@@ -368,14 +368,13 @@ let main _ spec parsed =
     parsed
     |@> pr "PARSED" Print.term
     |> Trans.ref_to_assert ref_env
-    |@> pr "REF_TO_ASSERT" Print.term
-    |> assert_to_fun
-    |@> pr "ASSERT_TO_FUN" Print.term
-    |> top_to_local
-    |> Trans.alpha_rename
-    |@> pr "TOP_TO_LOCAL" Print.term
+    |@> pr "REF_TO_ASSERT" Print.term_typ
+    |*> assert_to_fun
+    |*@> pr "ASSERT_TO_FUN" Print.term_typ
     |> Preprocess.run pps
     |> Preprocess.last_t
+    |> top_to_local
+    |@> pr "TOP_TO_LOCAL" Print.term_typ
     |> last_def_to_fun
     |@> pr "INITIALIZED" Print.term_typ
     |> normalize true

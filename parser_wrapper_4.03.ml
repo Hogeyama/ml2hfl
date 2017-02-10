@@ -188,7 +188,10 @@ let from_ident_path id_env path typ =
 
 
 let get_constr_name desc typ env =
-  desc.cstr_name
+  match desc.cstr_tag with
+  | Cstr_constant _ -> desc.cstr_name
+  | Cstr_block _ -> desc.cstr_name
+  | Cstr_extension(path, b) -> Path.name path
 
 let get_label_name label env =
   label.lbl_name

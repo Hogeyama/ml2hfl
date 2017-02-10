@@ -1779,7 +1779,7 @@ let inline_simple_exp = inline_simple_exp.tr_term
 
 let replace_base_with_int = make_trans ()
 
-let base_types = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"]
+let base_types = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"; "Format.format"; "Format.formatter"]
 let is_base_typ s = List.mem s base_types
 
 let replace_base_with_int_desc desc =
