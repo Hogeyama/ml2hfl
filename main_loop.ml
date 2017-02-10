@@ -20,14 +20,6 @@ let preprocess make_pps ?(fun_list=None) t spec =
     | Some fun_list' -> fun_list'
   in
 
-  if false then
-    begin
-      let oc = open_out @@ Filename.change_extension !!Flag.mainfile "pml" in
-      let ocf = Format.formatter_of_out_channel oc in
-      Format.fprintf ocf "%a@." Print.term_typ t;
-      close_out oc
-    end;
-
   let prog,map,_,make_get_rtyp_trans = CEGAR_trans.trans_prog (*~spec:abst_cegar_env*) t in
   let abst_cegar_env =
     Spec.get_abst_cegar_env spec prog

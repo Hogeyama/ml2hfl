@@ -250,6 +250,7 @@ let rec arg_spec () =
      "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
+     "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options";
@@ -423,7 +424,15 @@ let string_of_exception = function
   | e -> Printexc.to_string e
 
 let set_file name =
-  Flag.filenames := name :: !Flag.filenames
+  let name' =
+    match !Flag.pp with
+    | None -> name
+    | Some pp ->
+        let name' = Filename.change_extension name "pml" in
+        ignore @@ Sys.command @@ (Format.sprintf "%s %s -o '%s'" pp name name' |@> Format.printf "RUN: %s@.");
+        name'
+  in
+  Flag.filenames := name' :: !Flag.filenames
 
 let read_option_conf () =
   try
