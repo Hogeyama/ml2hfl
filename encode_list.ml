@@ -519,11 +519,12 @@ let trans t =
   |@> Type_check.check -$- t.typ
   |*> Trans.remove_top_por
   |*@> pr "remove_top_por"
-  |@> Type_check.check -$- t.typ
+  |*@> Type_check.check -$- t.typ
   |> abst_list_literal
   |@> pr "abst_list_literal"
+  |@> Type_check.check -$- t.typ
   |> tr
-  |@> Type_check.check -$- t.typ -| fst
+  |@> (fun t -> Type_check.check t t.typ) -| fst
   |@> pr "trans" -| fst
   |> Pair.map_fst Trans.inst_randval
   |@> pr "inst_randval" -| fst
@@ -531,7 +532,7 @@ let trans t =
   |@> pr "eta_tuple" -| fst
   |*> Pair.map_fst Trans.simplify_if_cond
   |*@> pr "simplify_if" -| fst
-  |@> Type_check.check -$- t.typ -| fst
+  |*@> (fun t -> Type_check.check t t.typ) -| fst
 
 let trans_typ typ =
   if !Flag.encode_list_opt then

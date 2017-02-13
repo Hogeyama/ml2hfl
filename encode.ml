@@ -4,6 +4,8 @@ open Term_util
 open Type
 
 
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+
 
 let encode_mutable_record = make_trans ()
 
@@ -207,19 +209,31 @@ let recdata = Encode_rec.trans
 let list = Encode_list.trans
 
 
+let pr s t =
+  Debug.printf "##[Encode] %s: %a@." s Print.term_typ t
 
-let all =
-  mutable_record
-  |- record
-  |- variant
-  |- list |- fst
-  |- recdata
-  |- array
-  |- abst_ref
+let all t =
+  t
+  |@> pr "INPUT"
+  |> mutable_record
+  |@> pr "MUTABLE_RECORD"
+  |> record
+  |@> pr "RECORD"
+  |> variant
+  |@> pr "VARIANT"
+  |> recdata
+  |@> pr "RECDATA"
+  |> (list |- fst)
+  |@> pr "LIST"
+  |> array
+  |@> pr "ARRAY"
+  |> abst_ref
+  |@> pr "ABST_REF"
 
 
 let typ_of f typ =
-  Id.new_var typ
+  typ
+  |> Id.new_var
   |> make_var
   |> f
   |> Syntax.typ

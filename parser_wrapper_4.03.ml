@@ -448,7 +448,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
         let aux lbl =
           let name = get_label_name lbl env in
           try
-            let _,_,e = List.find (fun (_,lbl',_) -> lbl = lbl') fields in
+            let _,_,e = List.find (fun (_,lbl',_) -> lbl.lbl_name = lbl'.lbl_name) fields in
             name, from_expression id_env e
           with Not_found ->
             name, {desc=Field(make_var r,name); typ=from_type_expr env lbl.lbl_arg; attr=[]}

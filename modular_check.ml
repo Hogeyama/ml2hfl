@@ -230,7 +230,7 @@ let add_context prog f xs t typ =
   let etyp = Type(["exn", TVariant (exn_decl@[af,[]])], "exn") in
   let typ_exn = Encode.typ_of Encode.all etyp in
   let make_fail typ =
-    Encode.all @@ Trans.replace_fail_with (Raise(make_construct "Assert_failure" [] etyp)) @@ make_fail typ
+    Encode.all @@ Trans.replace_fail_with (Raise(make_construct af [] etyp)) @@ make_fail typ
   in
   let fail_unit_desc = (make_fail TUnit).desc in
   let t' =
