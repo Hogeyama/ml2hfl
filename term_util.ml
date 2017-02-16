@@ -334,6 +334,14 @@ let decomp_get_val t =
   | Proj(1, t) -> Some t
   | _ -> None
 
+let is_randint_unit t = t.desc = randint_unit_term.desc
+let is_randbool_unit t =
+  match t.desc with
+  | BinOp((Eq|Leq|Geq|Lt|Gt), t, {desc=Const _})
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, t) -> is_randint_unit t
+  | _ -> false
+
+
 
 (*** AUXILIARY FUNCTIONS ***)
 

@@ -35,7 +35,10 @@ let report_safe env =
   Format.printf "Refinement types: %a@.@." Ref_type.Env.print env
 
 let report_unsafe neg_env ce_set =
-  Format.printf "Unsafe!@.@.";
+  if !Flag.use_abst then
+    Format.printf "Unknown (because of abstraction options)@.@."
+  else
+    Format.printf "Unsafe!@.@.";
   Format.printf "Negative refinement types: %a@.@." Ref_type.NegEnv.print neg_env;
   Format.printf "Modular counterexamples: %a@.@." print_ce_set ce_set
 

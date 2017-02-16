@@ -1661,7 +1661,7 @@ let elim_unused_let = make_trans2 ()
 
 let elim_unused_let_term (leave,cbv) t =
   let has_no_effect t =
-    if false
+    if true
     then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
     else has_no_effect t
   in

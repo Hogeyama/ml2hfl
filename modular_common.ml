@@ -39,6 +39,28 @@ let rec is_atom t =
   | BinOp(_, t1, t2) -> is_atom t1 && is_atom t2
   | _ -> false
 
+
+let rec is_simple_term t =
+  match t.desc with
+  | Const _ -> true
+  | Var _ -> true
+  | Tuple ts -> List.for_all is_simple_term ts
+  | _ -> is_randint_unit t || is_randbool_unit t
+
+let inline_simple_fun = make_trans2 ()
+let inline_simple_fun_desc env desc =
+  match desc with
+  | Let(bindings, t) ->
+      let bindings' = List.map (Triple.map_trd @@ inline_simple_fun.tr2_term env) bindings in
+      let env' = List.filter (fun (_,xs,t) -> xs <> [] && is_simple_term t) bindings' @ env in
+      Let(bindings', inline_simple_fun.tr2_term env' t)
+  | App({desc=Var f}, ts) when List.exists (fun (g,xs,_) -> Id.same g f && List.length xs = List.length ts) env && List.for_all is_simple_term ts ->
+      let _,xs,t = List.find (Triple.fst |- Id.same f) env in
+      (List.fold_right2 subst xs ts t).desc
+  | _ -> inline_simple_fun.tr2_desc_rec env desc
+let () = inline_simple_fun.tr2_desc <- inline_simple_fun_desc
+let inline_simple_fun t = inline_simple_fun.tr2_term [] t
+
 let normalize add_id t =
   t
   |@> Debug.printf "NORMALIZE0: %a@.@." Print.term
@@ -52,12 +74,15 @@ let normalize add_id t =
   |@> Debug.printf "NORMALIZE4: %a@.@." Print.term
   |> Trans.remove_no_effect_trywith
   |@> Debug.printf "NORMALIZE5: %a@.@." Print.term
+  |> inline_simple_fun
+  |@> Debug.printf "NORMALIZE6: %a@.@." Print.term
   |> fixed_point ~eq:same_term
        (Trans.inline_var
         |- Trans.inline_simple_exp
         |- Trans.bool_eta_reduce
         |- Trans.reconstruct
         |- Trans.elim_unused_let ~leave_last:true)
+  |@> Debug.printf "NORMALIZE7: %a@.@." Print.term
   |> Trans.add_id_if (function {desc=If _} -> add_id | _ -> false)
   |> snd
   |> Trans.alpha_rename
