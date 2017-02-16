@@ -101,7 +101,7 @@ let check prog f typ depth =
 let infer prog f typ ce_set2 depth =
   measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
 
-let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
+let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
   let space = String.make (8*List.length history) ' ' in
   let pr f = MVerbose.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
@@ -119,7 +119,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
     if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
     incr num_tycheck;
-    match check prog f typ depth with
+    match check prog f typ cdepth with
     | Modular_check.Typable env' ->
         pr "%a{%a,%d}%t TYPABLE: %a :@ %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let env'' = merge_tenv env' env in
@@ -136,7 +136,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
           Ref_type.NegEnv.map aux neg_env
         in
         `Typable, env'', neg_env', ce_set
-    | Modular_check.Untypable ce when is_closed f fun_def_env depth ->
+    | Modular_check.Untypable ce when is_closed f fun_def_env cdepth ->
         pr "%a{%a,%d}%t UNTYPABLE (closed):@ %a : %a@." Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
         let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
         let ce_set' = normalize_ce_set @@ (f,ce)::ce_set in
@@ -147,7 +147,7 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
           if true then pr "%a{%a,%d}%t ce_set2:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set @@ List.filter_out (fst |- Id.is_external) ce_set2;
           let sol =
             match prev_sol with
-            | None -> infer prog f typ ce_set2 depth
+            | None -> infer prog f typ ce_set2 idepth
             | Some sol -> sol
           in
           match measure_and_add_time time_synthesize (fun () -> sol Modular_infer.init_mode) with
@@ -166,11 +166,11 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
                 in
                 pr "%a{%a,%d}%t CANDIDATES:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.of_list candidate';
                 let aux (r,env',neg_env',ce_set4) (g,typ') =
-                  main_loop_ind ((f,typ)::history) 0 {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep g typ' depth ce_set4
+                  main_loop_ind ((f,typ)::history) 0 {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep g typ' cdepth idepth ce_set4
                 in
                 let _,env',neg_env',ce_set3 = List.fold_left aux (`Typable, env, neg_env, ce_set2) candidate' in
                 if not @@ Ref_type.Env.eq env' env then
-                  main_loop_ind history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep f typ depth ce_set3
+                  main_loop_ind history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep f typ cdepth idepth ce_set3
                 else if not @@ List.Set.eq ce_set3 ce_set2 then
                   refine_loop neg_env' ce_set3 None
                 else if not @@ Modular_infer.is_last_mode mode then
@@ -178,8 +178,8 @@ let rec main_loop_ind history c prog cmp dep f typ depth ce_set =
                   MVerbose.printf "%schange infer_mode %a => %a@." space Modular_infer.print_mode mode Modular_infer.print_mode mode';
                   infer_mode_loop mode' @@ Option.get @@ sol mode'
                 else if true then
-                  (MVerbose.printf "%sdepth := %d@." space (depth+1);
-                   main_loop_ind history (c+1) prog cmp dep f typ (depth+1) ce_set3)
+                  (MVerbose.printf "%sdepth := %d@." space (idepth+1);
+                   main_loop_ind history (c+1) prog cmp dep f typ cdepth (idepth+1) ce_set3)
                 else
                   raise NoProgress
 (*
@@ -255,7 +255,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
 
 let main_loop prog ce_set cmp dep f typ =
   if !Flag.Modular.infer_ind then
-    main_loop_ind [] 0 prog cmp dep f typ 1 ce_set
+    main_loop_ind [] 0 prog cmp dep f typ 1 1 ce_set
   else
     main_loop prog cmp [f,typ] f typ Modular_infer.init_mode 1 ce_set
 
