@@ -2759,3 +2759,41 @@ let reduce_size_by_beta_term t =
   {t with desc=desc'}
 let () = reduce_size_by_beta.tr_term <- reduce_size_by_beta_term
 let reduce_size_by_beta = reduce_size_by_beta.tr_term
+
+
+let ignore_exn_arg = make_trans2 ()
+let ignore_exn_arg_typ decl typ =
+  match typ with
+  | Type(["exn", TVariant labels], "exn") ->
+      let labels' = List.map (Pair.map_snd @@ Fun.const []) labels in
+      if List.exists (snd |- (<>) []) labels then Flag.use_abst := true;
+      Type(["exn", TVariant labels'], "exn")
+  | Type(_, "exn") -> unsupported "type \"exn\""
+  | _ -> ignore_exn_arg.tr2_typ_rec decl typ
+let ignore_exn_arg_term decl t =
+  let typ' = ignore_exn_arg_typ decl t.typ in
+  let desc' =
+    match t.desc, t.typ with
+    | Constr(s,ts), Type(_, "exn") ->
+        if ts <> [] then Flag.use_abst := true;
+        Constr(s,[])
+    | _ -> ignore_exn_arg.tr2_desc_rec decl t.desc
+  in
+  {t with desc=desc'; typ=typ'}
+let ignore_exn_arg_pat decl p =
+  match p.pat_desc with
+  | PConstruct(c, ts) when List.mem_assoc c decl ->
+      if ts <> [] then Flag.use_abst := true;
+      let pat_desc = PConstruct(c, []) in
+      let pat_typ = ignore_exn_arg_typ decl p.pat_typ in
+      {pat_desc; pat_typ}
+  | _ -> ignore_exn_arg.tr2_pat_rec decl p
+let () = ignore_exn_arg.tr2_term <- ignore_exn_arg_term
+let () = ignore_exn_arg.tr2_pat <- ignore_exn_arg_pat
+let () = ignore_exn_arg.tr2_typ <- ignore_exn_arg_typ
+let ignore_exn_arg t =
+  match find_exn_typ t with
+  | None -> t
+  | Some(Type(["exn", TVariant decl], "exn")) ->
+      ignore_exn_arg.tr2_term decl t
+  | Some _ -> assert false

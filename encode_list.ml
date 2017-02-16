@@ -283,10 +283,13 @@ let () = abst_list.tr2_term <- abst_list_term
 let () = abst_list.tr2_typ <- abst_list_typ
 
 let trans t =
-  let t' = abst_list.tr2_term "" t in
-  Debug.printf "abst_list::@. @[%a@.@." Print.term_typ t';
-  let t' = Trans.inline_var_const t' in
-  Debug.printf "abst_list::@. @[%a@.@." Print.term_typ t';
+  let t' =
+    t
+    |> abst_list.tr2_term ""
+    |@> Debug.printf "abst_list::@. @[%a@.@." Print.term_typ
+    |> Trans.inline_var_const
+    |@> Debug.printf "abst_list::@. @[%a@.@." Print.term_typ
+  in
   let typ = abst_list.tr2_typ "" t.typ in
   Type_check.check t' typ;
   t', make_get_rtyp_list_of t
@@ -512,6 +515,7 @@ let trans t =
       trans
   in
   t
+  |@> Type_check.check -$- t.typ
   |> inst_list_eq
   |@> pr "inst_list_eq"
   |> subst_matched_var

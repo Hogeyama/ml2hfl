@@ -56,7 +56,11 @@ let flatten_recdata_typ typ =
 let rec collect_leaf_aux typ =
   match typ with
   | Type _ -> invalid_arg "collect_leaf_aux"
-  | TData _ -> []
+  | TData s ->
+      if List.mem s Type.primitives then
+        [TData s]
+      else
+        []
   | TTuple [x] -> collect_leaf_aux @@ Id.typ x
   | TVariant labels -> List.flatten_map (snd |- List.flatten_map collect_leaf_aux) labels
   | TRecord fields -> List.flatten_map (snd |- snd |- collect_leaf_aux) fields
@@ -103,6 +107,7 @@ let abst_recdata_typ typ =
       |> flatten_recdata_typ
       |> collect_leaf
       |> abst_recdata_leaves
+  | TData s when not @@ List.mem s Type.primitives -> TInt
   | TApp(TOption, [typ]) -> opt_typ (abst_recdata.tr_typ typ)
   | _ -> abst_recdata.tr_typ_rec typ
 

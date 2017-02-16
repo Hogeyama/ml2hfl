@@ -204,7 +204,7 @@ let trans_const trans = function
   | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
 
 let trans_desc trans = function
-  | Const c -> Const c
+  | Const c -> Const(trans.tr_const c)
   | Var y -> Var (trans.tr_var y)
   | Fun(y, t) -> Fun(trans.tr_var y, trans.tr_term t)
   | App(t1, ts) -> App(trans.tr_term t1, List.map trans.tr_term ts)
@@ -363,7 +363,7 @@ let trans2_gen_const tr env = function
   | RandValue(typ,b) -> RandValue(tr.tr2_typ env typ, b)
 
 let trans2_gen_desc tr env = function
-  | Const c -> Const c
+  | Const c -> Const(tr.tr2_const env c)
   | Var y -> Var (tr.tr2_var env y)
   | Fun(y, t) -> Fun(tr.tr2_var env y, tr.tr2_term env t)
   | App(t1, ts) -> App(tr.tr2_term env t1, List.map (tr.tr2_term env) ts)
@@ -517,7 +517,7 @@ let col_const col c =
   | _ -> col.col_empty
 
 let col_desc col = function
-  | Const c -> col.col_empty
+  | Const c -> col.col_const c
   | Var y -> col.col_var y
   | Fun(y, t) -> col.col_app (col.col_var y) (col.col_term t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) (col.col_term t1) ts
@@ -682,7 +682,7 @@ let col2_const col env c =
   | _ -> col.col2_empty
 
 let col2_desc col env = function
-  | Const c -> col.col2_empty
+  | Const c -> col.col2_const env c
   | Var y -> col.col2_var env y
   | Fun(y, t) -> col.col2_app (col.col2_var env y) (col.col2_term env t)
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) (col.col2_term env t1) ts
@@ -923,7 +923,9 @@ let tr_col2_const tc env c =
   | _ -> tc.tr_col2_empty, c
 
 let tr_col2_desc tc env = function
-  | Const c -> tc.tr_col2_empty, Const c
+  | Const c ->
+      let acc,c' = tc.tr_col2_const env c in
+      acc, Const c'
   | Var y ->
       let acc,y' = tc.tr_col2_var env y in
       acc, Var y'
@@ -1224,7 +1226,9 @@ let fold_tr_const fld env c =
   | _ -> env, c
 
 let fold_tr_desc fld env = function
-  | Const c -> env, Const c
+  | Const c ->
+      let env',c' = fld.fold_tr_const env c in
+      env', Const c'
   | Var y ->
       let env',y' = fld.fold_tr_var env y in
       env', Var y'

@@ -176,31 +176,35 @@ let rec position c typ =
   | Type([s, typ], s') -> assert (s = s'); position c typ
   | _ -> invalid_arg "position"
 
-let encode_variant = make_trans ()
-let encode_variant_typ typ =
+let encode_simple_variant = make_trans ()
+let encode_simple_variant_typ typ =
   if is_simple_variant typ then
     TInt
   else
-    encode_variant.tr_typ_rec typ
+    encode_simple_variant.tr_typ_rec typ
 
-let encode_variant_pat p =
+let encode_simple_variant_pat p =
   match p.pat_desc with
   | PConstruct(c, ts) when is_simple_variant p.pat_typ ->
       assert (ts = []);
       make_pconst (make_int @@ position c p.pat_typ)
-  | _ -> encode_variant.tr_pat_rec p
+  | PConstruct(c, ts) ->
+      Format.printf "p: %a@." Print.pattern p;
+      Format.printf "typ: %a@." Print.typ p.pat_typ;
+      assert false
+  | _ -> encode_simple_variant.tr_pat_rec p
 
-let encode_variant_term t =
+let encode_simple_variant_term t =
   match t.desc with
   | Constr(c, ts) when is_simple_variant t.typ ->
       assert (ts = []);
       make_int @@ position c t.typ
-  | _ -> encode_variant.tr_term_rec t
+  | _ -> encode_simple_variant.tr_term_rec t
 
-let () = encode_variant.tr_term <- encode_variant_term
-let () = encode_variant.tr_pat <- encode_variant_pat
-let () = encode_variant.tr_typ <- encode_variant_typ
-let variant = encode_variant.tr_term
+let () = encode_simple_variant.tr_term <- encode_simple_variant_term
+let () = encode_simple_variant.tr_pat <- encode_simple_variant_pat
+let () = encode_simple_variant.tr_typ <- encode_simple_variant_typ
+let simple_variant = encode_simple_variant.tr_term
 
 
 
@@ -219,8 +223,10 @@ let all t =
   |@> pr "MUTABLE_RECORD"
   |> record
   |@> pr "RECORD"
-  |> variant
-  |@> pr "VARIANT"
+  |&!Flag.ignore_exn_arg&> Trans.ignore_exn_arg
+  |@!Flag.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
+  |> simple_variant
+  |@> pr "SIMPLE_VARIANT"
   |> recdata
   |@> pr "RECDATA"
   |> (list |- fst)

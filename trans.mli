@@ -55,6 +55,7 @@ val remove_id : term -> term
 val replace_fail_with : desc -> term -> term
 val remove_defs : id list -> term -> term
 val subst_let_xy : term -> term
+val ignore_exn_arg : term -> term
 
 
 (** {6 Normalization} *)

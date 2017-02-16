@@ -72,6 +72,7 @@ let verify_ref_typ = ref false
 let ignore_non_termination = ref false
 let fail_as_exception = ref false
 let pp : string option ref = ref None
+let ignore_exn_arg = ref false
 
 
 (* print option *)

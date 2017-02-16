@@ -422,6 +422,7 @@ let rec order typ =
   | TUnit -> 0
   | TBool -> 0
   | TInt -> 0
+  | TData _ -> 0
   | TVar{contents=None} -> assert false
   | TVar{contents=Some typ} -> order typ
   | TFun(x,typ) -> max (order (Id.typ x) + 1) (order typ)
@@ -477,3 +478,6 @@ let rec is_mutable_record typ =
       List.exists (fun (_,(f,_)) -> f = Mutable) fields
   | Type(decls, s) -> is_mutable_record @@ List.assoc s decls
   | _ -> invalid_arg "is_mutable_record"
+
+
+let primitives = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"; "Format.format"; "Format.formatter"]

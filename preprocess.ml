@@ -19,7 +19,8 @@ type preprocess_label =
   | Decomp_pair_eq
   | Add_preds
   | Replace_fail_with_raise
-  | Encode_variant
+  | Ignore_excep_arg
+  | Encode_simple_variant
   | Encode_recdata
   | Replace_base_with_int
   | Encode_list
@@ -57,7 +58,8 @@ let string_of_label = function
   | Decomp_pair_eq -> "Decomp_pair_eq"
   | Add_preds -> "Add_preds"
   | Replace_fail_with_raise -> "Replace_fali_with_raise"
-  | Encode_variant -> "Encode_variant"
+  | Ignore_excep_arg -> "Ignore_excep_arg"
+  | Encode_simple_variant -> "Encode_simple_variant"
   | Encode_recdata -> "Encode_recdata"
   | Replace_base_with_int -> "Replace_base_with_int"
   | Encode_list -> "Encode_list"
@@ -133,9 +135,12 @@ let all spec : t list =
     Add_preds,
       (Fun.const (spec.Spec.abst_env <> []),
        fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
-    Encode_variant,
+    Ignore_excep_arg,
+      (Fun.const !Flag.ignore_exn_arg,
+       map_trans Trans.ignore_exn_arg);
+    Encode_simple_variant,
       (Fun.const true,
-       map_trans Encode.variant);
+       map_trans Encode.simple_variant);
     Replace_base_with_int,
       (Fun.const !Flag.base_to_int,
        map_trans Trans.replace_base_with_int);

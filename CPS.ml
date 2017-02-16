@@ -157,10 +157,9 @@ let rec unify env typ1 typ2 =
   | TTupleCPS typs1, TTupleCPS typs2 ->
       List.iter2 (unify env) typs1 typs2
   | _ ->
-(*
       Format.printf "Bug?@.typ1: %a@.typ2: %a@."
-                    (print_typ_cps sol) typ1 (print_typ_cps sol) typ2;
- *)
+                    (print_typ_cps (fun _ -> ENone)) typ1
+                    (print_typ_cps (fun _ -> ENone)) typ2;
       assert false
 
 let rec typ_of_etyp etyp =

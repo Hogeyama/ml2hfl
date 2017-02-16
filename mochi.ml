@@ -251,6 +251,11 @@ let rec arg_spec () =
      "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
+     (* abstraction *)
+     "", Arg.Unit ignore, "Options_for_abstraction";
+     "-ignore-exn-arg", Arg.Set Flag.ignore_exn_arg, " Ignore exception arguments";
+     "-abst-list-literal", Arg.Set_int Flag.abst_list_literal, " Abstract long list literals";
+     "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options";
@@ -276,8 +281,6 @@ let rec arg_spec () =
      "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling), " Toggle tupling";
      "-elim-same-arg", Arg.Set Flag.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.base_to_int, " Replace primitive base types with int";
-     "-ignore-non-termination", Arg.Set Flag.ignore_non_termination, " Ignore non-termination";
-     "-abst-list-literal", Arg.Set_int Flag.abst_list_literal, " Abstract long list literals";
      (* verifier *)
      "", Arg.Unit ignore, "Options_for_verifier";
      "-modular",
