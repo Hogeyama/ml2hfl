@@ -280,7 +280,9 @@ let to_tfuns_desc (env,sol) desc =
         (f', xs', sbst @@ to_tfuns.tr2_term (env,sol) t)::bindings', sbst t'
       in
       let bindings',t' = List.fold_right aux bindings @@ ([], to_tfuns.tr2_term (env,sol) t) in
-      Let(bindings', t')
+      let map = List.map2 (fun (f,_,_) (f',_,_) -> f, f') bindings bindings' in
+      let bindings'' = List.map (Triple.map_trd @@ List.fold_right (Fun.uncurry subst_var) map) bindings' in
+      Let(bindings'', t')
   | _ -> to_tfuns.tr2_desc_rec (env,sol) desc
 
 let () = to_tfuns.tr2_desc <- to_tfuns_desc
