@@ -9,7 +9,6 @@ let lower = ['a'-'z' '_']
 let upper = ['A'-'Z']
 
 rule header = parse
-| "saturated typing" { SATTYP }
 | "The property is satisfied." { SATISFIED }
 | "The property is NOT satisfied." { UNSATISFIED }
 | '\n' { Lexing.new_line lexbuf; header lexbuf }

@@ -35,9 +35,9 @@ open HorSat_syntax
 %%
 
 output_apt:
-| SATTYP env SATISFIED EOF { Satisfied $2 }
-| SATTYP env UNSATISFIED THE_SIZE_OF_TYPING INT A_COUNTEREXAMPLE_IS counterexample_apt EOF { UnsatisfiedAPT $7 }
-| SATTYP env UNSATISFIED A_COUNTEREXAMPLE_IS counterexample_apt EOF { UnsatisfiedAPT $5 }
+| SATISFIED EOF { Satisfied [] }
+| UNSATISFIED THE_SIZE_OF_TYPING INT A_COUNTEREXAMPLE_IS counterexample_apt EOF { UnsatisfiedAPT $5 }
+| UNSATISFIED A_COUNTEREXAMPLE_IS counterexample_apt EOF { UnsatisfiedAPT $3 }
 
 counterexample_apt:
 | LPAREN counterexample_apt RPAREN
@@ -56,9 +56,9 @@ counterexample_apt:
   { HorSat_syntax.leaf () }
 
 output:
-| SATTYP env SATISFIED EOF { Satisfied $2 }
-| SATTYP env UNSATISFIED THE_SIZE_OF_TYPING INT A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $7 }
-| SATTYP env UNSATISFIED A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $5 }
+| SATISFIED EOF { Satisfied [] }
+| UNSATISFIED THE_SIZE_OF_TYPING INT A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $5 }
+| UNSATISFIED A_COUNTEREXAMPLE_IS counterexample EOF { Unsatisfied $3 }
 
 id:
   IDENT
