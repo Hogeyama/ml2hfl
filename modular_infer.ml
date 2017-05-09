@@ -778,13 +778,6 @@ let trans_CPS env funs t =
     end;
   env1, make_lets (List.map Triple.of_pair_r env2) t_main, make_get_rtyp
 
-let replace_if_with_bottom = make_trans ()
-let replace_if_with_bottom_term t =
-  match t.desc with
-  | If _ -> make_bottom t.typ
-  | _ -> replace_if_with_bottom.tr_term_rec t
-let () = replace_if_with_bottom.tr_term <- replace_if_with_bottom_term
-let replace_if_with_bottom = replace_if_with_bottom.tr_term
 
 let add_context for_infer prog f typ =
   let dbg = 0=0 in

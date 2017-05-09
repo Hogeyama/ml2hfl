@@ -54,6 +54,7 @@ val var_name_of : 'a t -> string
 val primitives : string list
 
 (** {6 destructor} *)
+
 val tuple_num : 'a t -> int option
 val proj_typ : int -> 'a t -> 'a t
 val fst_typ : 'a t -> 'a t
@@ -70,6 +71,7 @@ val array_typ : 'a t -> 'a t
 
 
 (** {6 Type constructor} *)
+
 val _TFun : 'a t Id.t -> 'a t -> 'a t
 val _TAttr : 'a attr list -> 'a t -> 'a t
 val pureTFun : ('a t Id.t * 'a t) -> 'a t
