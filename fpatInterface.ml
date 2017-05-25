@@ -253,7 +253,7 @@ let conv_fdef typs (f, args, guard, events, body) =
       List.fold_right
         (fun e t ->
           let t' =
-            if List.mem !Flag.mode  [Flag.FairTermination; Flag.FairNonTermination] then
+            if e <> Event "fail" && List.mem !Flag.mode  [Flag.FairTermination; Flag.FairNonTermination] then
               t
             else
               Fpat.Term.mk_const Fpat.Const.Unit in
