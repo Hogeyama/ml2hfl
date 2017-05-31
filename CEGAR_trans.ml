@@ -573,8 +573,8 @@ let trans_prog ?(spec=[]) t =
     |@> pr2 "PROG_E"
     |> remove_id_event
     |@> pr2 "PROG_F"
-    |> elim_same_arg
-    |@> pr2 "PROG_G"
+    |*> elim_same_arg (** BUGGY *)
+    |*@> pr2 "PROG_G"
     |> id_prog
   in
   let rrmap = List.map Pair.swap rmap in
