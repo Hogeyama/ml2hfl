@@ -4,7 +4,7 @@ val merge_typ : typ -> typ -> typ
 
 val add_neg_preds_renv : env -> env
 
-val trans_var : 'a Id.t -> string
+val trans_var : Syntax.id -> string
 val trans_inv_var : string -> 'a Type.t Id.t
 val trans_inv_term : t -> Syntax.term
 val trans_typ : Syntax.typ -> typ

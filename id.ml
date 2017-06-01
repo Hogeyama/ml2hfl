@@ -62,6 +62,12 @@ let mem x xs = List.mem ~eq x xs
 let assoc x xs = List.assoc ~eq x xs
 let mem_assoc x xs = List.mem_assoc ~eq x xs
 
+let map_name f x = {x with name = f x.name}
+let map_typ f x = {x with typ = f x.typ}
+
+let is_external x = List.mem External x.attr
+let is_coefficient x = List.mem Coefficient x.attr
+
 let print fm x =
   let s =
     if !Flag.web then
@@ -76,10 +82,10 @@ let print fm x =
     else
       s
   in
-  Format.fprintf fm "@[%s@]" s'
-
-let map_name f x = {x with name = f x.name}
-let map_typ f x = {x with typ = f x.typ}
-
-let is_external x = List.mem External x.attr
-let is_coefficient x = List.mem Coefficient x.attr
+  let s'' =
+    if is_coefficient x then
+      "#" ^ s'
+    else
+      s'
+  in
+  Format.fprintf fm "@[%s@]" s''
