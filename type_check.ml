@@ -132,10 +132,10 @@ let rec check t typ =
         | TRecord tfields ->
             let f,typ' = List.assoc s tfields in
             assert (f = Mutable);
-            check t1 typ'
+            check t2 typ'
         | _ -> assert false
       end;
-      check t2 t2.typ
+      check t1 t1.typ
   | Nil, TApp(TList, _) -> ()
   | Cons(t1,t2), TApp(TList, [typ']) ->
       check t1 typ';
