@@ -179,7 +179,7 @@ let from_ident_path id_env path typ =
     Id.set_typ (List.find (Id.name |- (=) name) id_env) typ
   with Not_found ->
     let binding_time,attr =
-      if is_uppercase name.[0] then
+      if Char.is_uppercase name.[0] then
         0, [Id.External]
       else
         Path.binding_time path, []
@@ -437,7 +437,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
       {desc=desc; typ=typ'; attr=[]}
   | Texp_variant _ -> unsupported "expression (variant)"
   | Texp_record(fields, None) ->
-      let fields' = List.sort ~cmp:(fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
+      let fields' = List.sort (fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
       let aux (_,label,e) = get_label_name label env, from_expression id_env e in
       let fields'' = List.map aux fields' in
       {desc=Record fields''; typ=typ'; attr=[]}

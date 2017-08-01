@@ -144,7 +144,7 @@ let inline need hcs =
     hcs
     |> List.filter_map (fun {head} -> decomp_pred_app head)
     |> List.map fst
-    |> List.sort ~cmp:Id.compare
+    |> List.sort Id.compare
     |> aux []
   in
   let check_can_inline head ids =

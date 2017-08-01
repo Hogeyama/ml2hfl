@@ -524,7 +524,7 @@ let rec simplify_typs constr sub styp is_zero make_zero and_or typs =
     |@> Debug.printf "ST2: @[%a@." (List.print print)
     |> remove_subtype ~sub
     |@> Debug.printf "ST3: @[%a@." (List.print print)
-    |*> List.unique ~cmp:same
+    |*> List.unique ~eq:same
     |> constr styp
     |> flatten
     |> decomp

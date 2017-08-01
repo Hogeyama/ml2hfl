@@ -97,7 +97,7 @@ let used_by f prog =
         let xs,t = Id.assoc f prog.fun_def_env in
         aux (f::acc) (List.Set.diff ~eq:Id.eq (get_fv t) (f::xs) @ rest')
   in
-  let fs = List.unique ~cmp:Id.eq @@ aux [] [f] in
+  let fs = List.unique ~eq:Id.eq @@ aux [] [f] in
   if Id.mem f @@ get_fv @@ snd @@ Id.assoc f prog.fun_def_env then
     fs
   else
@@ -119,7 +119,7 @@ let take_funs_of_depth env f depth =
       let fs' =
         fs
         |> List.flatten_map (fun g -> let xs,t = Id.assoc g env in List.Set.diff ~eq:Id.eq (get_fv t) (g::xs))
-        |> List.unique ~cmp:Id.eq
+        |> List.unique ~eq:Id.eq
       in
       aux (fs@acc) fs' (depth-1)
   in

@@ -1,6 +1,3 @@
-exception Fatal of string
-exception Unsupported of string
-
 module Verbose = Debug.Make(struct let check () = !Flag.print_progress end)
 module MVerbose = Debug.Make(struct let check () = !Flag.print_modular_progress end)
 
@@ -11,8 +8,13 @@ let is_only_result () =
   not !Flag.print_progress &&
   not !Flag.print_modular_progress
 
+exception Fatal of string
+exception Unsupported of string
+
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
+
+let warning s = Format.eprintf "%s@\n" s
 
 let (!!) f = f ()
 let (-|) f g x = f (g x)
@@ -35,6 +37,7 @@ let (&>) f x = f x
 let (-$-) f x y = f y x
 (* "f -$- x" = "fun y -> f y x" *)
 (* "(-$-) (/) x" = "fun y -> y / x" *)
+let (!?) x = Lazy.force x
 
 let (=>) b1 b2 = not b1 || b2
 
@@ -70,6 +73,7 @@ module Pair = struct
   let fst = fst
   let snd = snd
   let pair x y = x, y
+  let copy x = x, x
   let pair_rev x y = y, x
   let swap (x,y) = y, x
   let make f g x = f x, g x
@@ -166,11 +170,21 @@ module Fun = struct
 end
 
 module Option = struct
-  include Option
+  include BatOption
+
+  exception No_value
 
   let some x = Some x
   let iter = may
   let apply = map
+
+  let (>>=) = bind
+  let return = some
+
+  let get x =
+    match x with
+    | None -> raise No_value
+    | Some x -> x
 
   let make check x =
     if check x
@@ -213,7 +227,7 @@ module Option = struct
 end
 
 module List = struct
-  include ExtList.List
+  include BatList
 
   let singleton x = [x]
   let cons x xs = x::xs
@@ -259,7 +273,7 @@ module List = struct
   let rev_flatten_map = rev_map_flatten
   let flatten_map f xs = rev @@ rev_map_flatten f xs
   let flatten_mapi f xs = List.flatten @@ List.mapi f xs
-  let rev_flatten xs = rev_map_flatten Std.identity xs
+  let rev_flatten xs = rev_map_flatten Fun.id xs
   let concat_map = flatten_map
 
   let rec tabulate n f rev_acc =
@@ -315,7 +329,7 @@ module List = struct
         in
         rev_filter_map acc' f xs'
   let rev_filter_map f xs = rev_filter_map [] f xs
-  let filter_map2 f xs ys = rev_filter_map Std.identity @@ rev_map2 f xs ys
+  let filter_map2 f xs ys = rev_filter_map Fun.id @@ rev_map2 f xs ys
   let filter_mapi f xs = filter_map Fun.id @@ List.mapi f xs
 
   let filter_out f xs = filter (not -| f) xs
@@ -487,7 +501,7 @@ let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
         let rev_acc' = r::rev_acc in
         loop eq edges2 roots'' xs' rev_acc'
   in
-  let xs = List.unique ~cmp:eq @@ List.flatten_map Pair.to_list edges in
+  let xs = List.unique ~eq @@ List.flatten_map Pair.to_list edges in
   let roots = List.filter (fun x -> not @@ List.exists (snd |- eq x) edges) xs in
   loop eq edges roots xs []
 
@@ -498,7 +512,7 @@ module Compare = struct
     let map =
       let dom' =
         match dom with
-        | None -> List.unique ~cmp:eq @@ List.flatten_map Pair.to_list edges
+        | None -> List.unique ~eq @@ List.flatten_map Pair.to_list edges
         | Some dom' -> dom'
       in
       let no_edge = List.filter_out (fun x -> List.exists (fun (y,z) -> eq x y || eq x z) edges) dom' in
@@ -510,12 +524,14 @@ module Compare = struct
     on (List.assoc ~eq -$- map)
 end
 
-module Array = ExtArray.Array
+module Array = BatArray
 
-module Hashtbl = ExtHashtbl.Hashtbl
+module Hashtbl = BatHashtbl
+
+module Char = BatChar
 
 module String = struct
-  include ExtString.String
+  include BatString
 
   let split_nth s n =
     sub s 0 n, sub s n (length s - n)
@@ -523,7 +539,7 @@ module String = struct
   let rsplit s sep =
     match nsplit s sep with
     | [] -> assert false
-    | [s] -> raise ExtString.Invalid_string
+    | [s] -> invalid_arg "rsplit"
     | subs -> Pair.map_fst (join sep) @@ List.decomp_snoc subs
 
   let fold_left f s str =
@@ -573,6 +589,36 @@ module String = struct
     in
     replace_chars map s
 
+  let split_blanc s =
+    let quots = ['\''; '\"'] in
+    let rec parse quot acc cs =
+      match quot, acc, cs with
+      | None,   [], [] -> []
+      | None,   _,  [] -> [of_list acc]
+      | None,   _,  c::cs' when List.mem c quots -> parse (Some c) acc cs'
+      | None,   [], c::cs' when Char.is_whitespace c -> parse None acc cs'
+      | None,   _,  c::cs' when Char.is_whitespace c -> of_list acc :: parse None [] cs'
+      | None,   _,  c::cs' -> parse None (acc@[c]) cs'
+      | Some q, _,  [] -> invalid_arg "String.split_blanc"
+      | Some q, _,  c::cs' when List.mem c quots ->
+          if c = q then
+            parse None acc cs'
+          else
+            parse quot (acc@[c]) cs'
+      | Some q, _,  c::cs' -> parse quot (acc@[c]) cs'
+    in
+    parse None [] @@ to_list s
+
+  let escape_for_sh s =
+    let s' = Format.sprintf "%S" s in
+    if List.exists Char.is_whitespace @@ to_list s then
+      s'
+    else if contains s '\'' then
+      s'
+    else if String.length s' > String.length s + 2 then
+      s'
+    else
+      s
 end
 
 module Math = struct
@@ -588,10 +634,30 @@ module Filename = struct
   let chop_extension_if_any filename =
     try
       chop_extension filename
-    with Invalid_argument "Filename.chop_extension" -> filename
+    with Invalid_argument _ -> filename
 
   let change_extension filename ext =
     chop_extension_if_any filename ^ "." ^ ext
+end
+
+module IO = struct
+  module CPS = struct
+    let open_in file k =
+      let cin = open_in file in
+      let r = k cin in
+      close_in cin;
+      r
+
+    let open_out file k =
+      let cout = open_out file in
+      let r = k cout in
+      close_out cout;
+      r
+  end
+
+  let input_all = BatPervasives.input_all
+  let input_file = BatPervasives.input_file
+  let output_file = BatPervasives.output_file
 end
 
 module Ref = struct
@@ -671,62 +737,93 @@ module Arg = struct
     |> List.map (fun (s,f,desc) -> if s = "" then s,f," "^desc else s,f,desc)
     |> align
     |> List.map aux
+
+  let filter_out_desc args =
+    List.filter_out (fun (s,_,_) -> s.[0] = '\n') args
+end
+
+module Marshal = struct
+  include BatMarshal
+
+  let to_file file x =
+    let cout = open_out file in
+    Marshal.to_channel cout x [];
+    close_out cout
+
+  let from_file file default =
+    if Sys.file_exists file then
+      IO.CPS.open_in file Marshal.from_channel
+    else
+      default
 end
 
 
-let is_uppercase c = 'A' <= c && c <= 'Z'
+module Unix = struct
+  include Unix
+  module CPS = struct
+    let open_process cmd k =
+      let cin,cout = open_process cmd in
+      let r = k cin cout in
+      let _st = close_process (cin, cout) in
+      r
+
+    let open_process_in cmd k =
+      let cin = open_process_in cmd in
+      let r = k cin in
+      let _st = close_process_in cin in
+      r
+  end
+end
 
 
-let get_time () =
-  let open Unix in
-  let tm = times() in
-  tm.tms_utime +. tm.tms_cutime
+module Time = struct
+  let get () =
+    let open Unix in
+    let tm = times() in
+    tm.tms_utime +. tm.tms_cutime
 
-let add_time tmp t = t := !t +. get_time () -. tmp
+  let add tmp t = t := !t +. get () -. tmp
 
-let measure_time f =
-  let tmp = get_time () in
-  let r = f () in
-  get_time () -. tmp, r
+  let measure f =
+    let tmp = get () in
+    let r = f () in
+    get () -. tmp, r
 
-let measure_and_add_time t f =
-  let time,r = measure_time f in
-  t := !t +. time;
-  r
+  let measure_and_add t f =
+    let time,r = measure f in
+    t := !t +. time;
+    r
 
-
-let print_err s =
-  Format.fprintf Format.err_formatter "%s" s
-let print_time () =
-  Format.fprintf Format.err_formatter "%f\n" @@ get_time ()
-
-
-(* graph *)
-let save_as_dot filename vertices edges =
-  let oc = open_out filename in
-  let ocf = Format.formatter_of_out_channel oc in
-  Format.fprintf ocf "@[<v>digraph flow {@ ";
-  List.iter
-    (fun (vertex, attribute) ->
-      Format.fprintf ocf "  \"%s\" %s@ " vertex attribute)
-    vertices;
-  List.iter
-    (fun (vertex1, vertex2, attribute) ->
-      Format.fprintf ocf "  \"%s\" -> \"%s\" %s@ " vertex1 vertex2 attribute)
-    edges;
-  Format.fprintf ocf "}@]@?";
-  close_out oc
+  let string_of_tm {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
+    Format.sprintf "%04d/%02d/%02d %02d:%02d:%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec
+end
 
 
-let rec my_input ic s ofs len acc =
-  if len = 0
-  then acc
-  else
-    let r = input ic s ofs len in
-    if r > 0
-    then my_input ic s (ofs+r) (len-r) (acc+r)
-    else acc
-let my_input ic s ofs len = my_input ic s ofs len 0
+module Exception = struct
+  let not_raise f x =
+    try
+      ignore @@ f x; true
+    with _ -> false
+  let finally = BatPervasives.finally
+end
+
+
+module CommandLine = struct
+  let confirm ?(default=true) ?(yes=false) s =
+    let yn = if default then "[Y/n]" else "[y/N]" in
+    let rec aux () =
+      Format.printf "%s %s @?" s yn;
+      if yes then
+        (Format.printf "y@?"; true)
+      else
+        match read_line() with
+        | "" -> default
+        | "y" -> true
+        | "n" -> false
+        | _ -> aux ()
+    in
+    aux ()
+end
 
 
 (* This function uses '\b' *)
@@ -739,61 +836,19 @@ let print_begin_end ?(fm=Format.std_formatter) =
     |@> Format.fprintf fm "@]\b\b%a@\n" post
 
 
-(* TODO: support escaping *)
-(* TODO: fix for quotations *)
-let split_spaces ?(spaces=[' ';'\t';'\n']) s =
-  let quotations = ['"'; '\''] in
-  let rec chop_spaces s =
-    if s <> "" && List.mem s.[0] spaces
-    then chop_spaces @@ String.lchop s
-    else s
-  in
-  let rec take quot acc_rev s =
-    if s = ""
-    then
-      begin
-        if Option.is_some quot then invalid_arg "split_spaces";
-        String.implode @@ List.rev acc_rev, ""
-      end
-    else
-      if quot = None && List.mem s.[0] (spaces@quotations)
-         || Option.is_some quot && s.[0] = Option.get quot
-      then
-        String.implode @@ List.rev acc_rev, String.lchop s
-      else
-        take quot (s.[0]::acc_rev) @@ String.lchop s
-  in
-  let rec aux acc_rev s =
-    if s = ""
-    then List.rev acc_rev
-    else
-      let s' = chop_spaces s in
-      let s'',quot =
-        if List.mem s'.[0] quotations
-        then String.lchop s', Some s'.[0]
-        else s', None
-      in
-      let s''',s_rest = take quot [] s'' in
-      let acc_rev' = if s''' = "" then acc_rev else s'''::acc_rev in
-      aux acc_rev' s_rest
-  in
-  aux [] s
+let make_debug_check s =
+  Flag.modules := s::!Flag.modules;
+  fun () -> List.mem s !Flag.debug_module
 
-let save_to_file file x =
-  let cout = open_out file in
-  Marshal.to_channel cout x [];
-  close_out cout
-
-let load_from_file file default =
-  if Sys.file_exists file
-  then
-    let cin = open_in file in
-    let x = Marshal.from_channel cin in
-    close_in cin;
-    x
-  else
-    default
-
+let set_debug_modules mods =
+  let modules = String.nsplit mods "," in
+  let check m =
+    if not @@ List.mem m !Flag.modules then
+      (Format.printf "Module \"%s\" is not registered for debug@." m;
+       exit 1)
+  in
+  List.iter check modules;
+  Flag.debug_module := modules @ !Flag.debug_module
 
 let rec fixed_point ?(eq=(=)) ?(max= -1) f init =
   let x = f init in
@@ -818,16 +873,19 @@ let rec transitive_closure ?(eq=(=)) edges =
   in
   fixed_point ~eq:(List.Set.eq ~eq:eq') f edges
 
-let make_debug_check s =
-  Flag.modules := s::!Flag.modules;
-  fun () -> List.mem s !Flag.debug_module
 
-let set_debug_modules mods =
-  let modules = String.nsplit mods "," in
-  let check m =
-    if not @@ List.mem m !Flag.modules then
-      (Format.printf "Module \"%s\" is not registered for debug@." m;
-       exit 1)
-  in
-  List.iter check modules;
-  Flag.debug_module := modules @ !Flag.debug_module
+(* graph *)
+let save_as_dot filename vertices edges =
+  let oc = open_out filename in
+  let ocf = Format.formatter_of_out_channel oc in
+  Format.fprintf ocf "@[<v>digraph flow {@ ";
+  List.iter
+    (fun (vertex, attribute) ->
+      Format.fprintf ocf "  \"%s\" %s@ " vertex attribute)
+    vertices;
+  List.iter
+    (fun (vertex1, vertex2, attribute) ->
+      Format.fprintf ocf "  \"%s\" -> \"%s\" %s@ " vertex1 vertex2 attribute)
+    edges;
+  Format.fprintf ocf "}@]@?";
+  close_out oc

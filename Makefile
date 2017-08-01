@@ -2,7 +2,7 @@ include Makefile.config
 
 .PHONY: main all byte opt top clean doc test
 
-PACKAGES = fpat,str,unix,extlib,compiler-libs.common
+PACKAGES = fpat,str,unix,batteries,compiler-libs.common
 
 MOCHI_BIN_DIR = mochi_bin
 
@@ -186,7 +186,7 @@ clean:
 	rm -rf $(MOCHI_BIN_DIR)/bin $(MOCHI_BIN_DIR)/lib $(MOCHI_BIN_DIR)/stdlib
 
 clean-test:
-	rm */*.trecs_out */*.horsat_out */*.hors */*.annot */*.dot */*.pml
+	rm -f */*.trecs_out */*.horsat_out */*.hors */*.annot */*.dot */*.pml
 
 
 ################################################################################

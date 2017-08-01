@@ -276,7 +276,7 @@ let inst_randval t =
       |> List.flatten_map (fun (f,fv) -> List.map (fun g -> g, f) fv)
     in
     let cmp = Compare.topological ~eq:Id.eq ~dom:(List.map Triple.fst defs) edges in
-    List.sort ~cmp:(Compare.on ~cmp Triple.fst) defs
+    List.sort (Compare.on ~cmp Triple.fst) defs
   in
   make_lets defs' t'
 
@@ -665,7 +665,7 @@ let normalize_binop_exp op t1 t2 =
       in
       compare (aux x2) (aux x1)
     in
-    List.sort ~cmp:compare (xns1 @@@ (neg xns2))
+    List.sort compare (xns1 @@@ (neg xns2))
   in
   let rec aux = function
     | [] -> []
@@ -1288,7 +1288,7 @@ let make_ext_funs ?(fvs=[]) env t =
   let t' = remove_defs (Ref_type.Env.dom env) t in
   Debug.printf "MEF t': %a@." Print.term t';
   Debug.printf "MEF env: %a@." Ref_type.Env.print env;
-  let fv = get_fv ~cmp:(fun x y -> Id.same x y && Type.can_unify (Id.typ x) (Id.typ y)) t' in
+  let fv = get_fv ~eq:(fun x y -> Id.same x y && Type.can_unify (Id.typ x) (Id.typ y)) t' in
   Debug.printf "MEF fv: %a@." (List.print Id.print) fv;
   let funs =
     fv
@@ -2373,14 +2373,14 @@ let beta_affine_fun_desc desc =
               | _ -> false
             in
  *)
-            let used = List.Set.inter ~eq:Id.eq xs @@ get_fv ~cmp:(fun _ _ -> false) t1' in
+            let used = List.Set.inter ~eq:Id.eq xs @@ get_fv ~eq:(fun _ _ -> false) t1' in
             let not_rand_int t = (* for non-termination *)
               match t.desc with
               | App({desc=Const(RandValue(TInt,_))}, _) -> false
               | _ -> true
             in
             if (*List.for_all size_1 ts &&*)
-               used = List.unique ~cmp:Id.eq used &&
+               used = List.unique ~eq:Id.eq used &&
                not_rand_int t1 &&
                count_occurrence f t2 <= 1
             then
@@ -2721,7 +2721,7 @@ let eta_reduce = eta_reduce.tr_term
 
 let rename_bound_module = make_trans ()
 let rename_bound_module_var x =
-  if not @@ Id.is_external x && is_uppercase (Id.name x).[0] then
+  if not @@ Id.is_external x && Char.is_uppercase (Id.name x).[0] then
     Id.map_name (String.map (function '.' -> '_' | c -> c)) x
   else
     x

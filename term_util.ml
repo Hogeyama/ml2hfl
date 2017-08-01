@@ -888,7 +888,7 @@ let rec get_body t =
   | _ -> t
 
 let count_occurrence x t =
-  List.length @@ List.filter (Id.same x) @@ get_fv ~cmp:(fun _ _ -> false) t
+  List.length @@ List.filter (Id.same x) @@ get_fv ~eq:(fun _ _ -> false) t
 
 let add_attr attr t = {t with attr=attr::t.attr}
 let add_attrs attrs t = List.fold_right add_attr attrs t
@@ -1059,7 +1059,7 @@ let col_typ_var_typ typ =
   | _ -> col_typ_var.col_typ_rec typ
 let () = col_typ_var.col_typ <- col_typ_var_typ
 let col_typ_var t =
-  List.unique ~cmp:(==) @@ col_typ_var.col_term t
+  List.unique ~eq:(==) @@ col_typ_var.col_term t
 
 
 

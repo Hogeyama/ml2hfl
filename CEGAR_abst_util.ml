@@ -196,7 +196,7 @@ let make_arg_let prog =
 
 
 let has_branch {defs} =
-  let fs = List.sort @@ List.map (fun (f,_,_,_,_) -> f) defs in
+  let fs = List.sort compare @@ List.map (fun (f,_,_,_,_) -> f) defs in
   let rec aux fs =
     match fs with
     | [] -> []

@@ -132,7 +132,7 @@ let abstract orig_fun_list prog =
 
 let abstract orig_fun_list force ?(top_funs=[]) prog =
   let labeled,abst =
-    measure_and_add_time
+    Time.measure_and_add
       Flag.time_abstraction
       (fun () ->
          if !Flag.print_progress

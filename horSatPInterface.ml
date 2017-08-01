@@ -77,7 +77,7 @@ let make_apt events (a, b) =
   let default_sym = [Br_A; Br_E; L 0; L 1; End; Tt; Ff] in
   let syms  = [Ev a; Ev b] @ events @ default_sym in
   let states = [q0; q1; q2] in
-  let omega = List.sort [(q0, 0); (q1, 1); (q2, 2)] in
+  let omega = List.sort compare [(q0, 0); (q1, 1); (q2, 2)] in
   let delta =
     List.map
       (fun state ->
@@ -87,7 +87,7 @@ let make_apt events (a, b) =
           syms
       )
       states in
-  let delta' = List.sort (List.flatten delta) in
+  let delta' = List.sort compare (List.flatten delta) in
   delta', omega
 
 (** make APT from streett fairness constraints *)

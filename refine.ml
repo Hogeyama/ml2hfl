@@ -66,11 +66,11 @@ let rec add_pred n path typ =
 
 
 let refine labeled is_cp prefix ces ext_ces prog =
-  let tmp = get_time () in
+  let tmp = Time.get () in
   let post () =
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    add_time tmp Flag.time_cegar
+    Time.add tmp Flag.time_cegar
   in
   try
     if !Flag.print_progress then
@@ -106,7 +106,7 @@ let refine labeled is_cp prefix ces ext_ces prog =
     raise e
 
 let refine_with_ext labeled is_cp prefix ces ext_ces prog =
-  let tmp = get_time () in
+  let tmp = Time.get () in
   try
     if !Flag.print_progress then
       Color.printf
@@ -127,12 +127,12 @@ let refine_with_ext labeled is_cp prefix ces ext_ces prog =
     if !Flag.print_progress then Format.printf "DONE!@.@.";
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    add_time tmp Flag.time_cegar;
+    Time.add tmp Flag.time_cegar;
     map, {prog with env}
   with e ->
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    add_time tmp Flag.time_cegar;
+    Time.add tmp Flag.time_cegar;
     raise e
 
 exception PostCondition of (Fpat.Idnt.t * Fpat.Type.t) list * Fpat.Formula.t * Fpat.Formula.t
@@ -147,7 +147,7 @@ let print_list fm = function
     Format.fprintf fm "[%d%s]@." x (iter xs)
 
 let refine_rank_fun ce ex_ce prog =
-  let tmp = get_time () in
+  let tmp = Time.get () in
   try
     (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
       Format.printf "    %a@." (print_prog_typ' [] []) { env=env; defs=defs; main=main };*)
@@ -180,5 +180,5 @@ let refine_rank_fun ce ex_ce prog =
   with e ->
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    add_time tmp Flag.time_cegar;
+    Time.add tmp Flag.time_cegar;
     raise e

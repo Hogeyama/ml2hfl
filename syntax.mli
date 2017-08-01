@@ -219,7 +219,7 @@ val make_fold_tr : unit -> 'a fold_tr
 
 val occur : id -> typ -> bool
 val get_vars_pat : pattern -> id list
-val get_fv : ?cmp:(id -> id -> bool) -> term -> id list
+val get_fv : ?eq:(id -> id -> bool) -> term -> id list
 val is_non_rec : (id * id list * term) list -> bool
 
 val make_extra_coeff : ?name:string -> ?typ:typ -> unit -> id

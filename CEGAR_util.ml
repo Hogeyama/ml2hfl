@@ -81,8 +81,8 @@ let rec pop_main {env;defs;main;info} =
   let compare_fun f g = compare (g = main, f) (f = main, g) in
   let compare_def (f,_,_,_,_) (g,_,_,_,_) = compare_fun f g in
   let compare_env (f,_) (g,_) = compare_fun f g in
-  let env' = List.sort ~cmp:compare_env env in
-  let defs' = List.sort ~cmp:compare_def defs in
+  let env' = List.sort compare_env env in
+  let defs' = List.sort compare_def defs in
   {env=env'; defs=defs'; main; info}
 
 
@@ -433,7 +433,7 @@ let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
           in
           compare (aux x2) (aux x1)
         in
-        List.sort ~cmp:compare (xns1 @@@ neg xns2)
+        List.sort compare (xns1 @@@ neg xns2)
       in
       let d = List.fold_left (fun d (_,n) -> Math.gcd d (abs n)) 0 xns in
       if d = 0

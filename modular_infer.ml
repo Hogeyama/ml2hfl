@@ -196,7 +196,7 @@ let rec expand_type templates typ =
       templates
       |> List.filter (Id.eq x -| fst -| fst)
       |> List.map (fun ((x,nid),typ) -> pr "  VAR[%a]: typ: %a@." Id.print x print_template typ; nid,typ)
-      |> List.sort
+      |> List.sort compare
       |> List.hd
       |> snd
       |@> pr "  VAR[%a]: typ: %a@." Id.print x print_template
@@ -427,7 +427,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
                 templates
                 |> List.filter (Id.eq x -| fst -| fst)
                 |> List.map (Pair.map_fst fst)
-                |> List.sort
+                |> List.sort compare
                 |> List.map snd
                 |> List.map elim_papp
                 |> _Inter t.typ
@@ -635,7 +635,7 @@ let solve hcs =
   let vars =
     hcs
     |> List.flatten_map (fun {HC.body;HC.head} -> List.flatten_map pvars body @ pvars head)
-    |> List.unique ~cmp:Id.eq
+    |> List.unique ~eq:Id.eq
     |@dbg&> Debug.printf "vars: %a@." (List.print Id.print)
   in
   let sol =

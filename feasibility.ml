@@ -22,7 +22,7 @@ let get_solution env t =
     |> List.map (Pair.map Fpat.Idnt.string_of Fpat.IntTerm.int_of)
   in
   let sol' = List.map (fun (x,_) -> x, List.assoc_default 0 x sol) env in
-  List.map snd @@ List.sort sol'
+  List.map snd @@ List.sort compare sol'
 
 let init_cont ce sat n constr env _ = assert (!Flag.mode <> Flag.FairNonTermination => (ce=[])); constr, n, env
 
@@ -126,7 +126,7 @@ let rec get_prefix ce n =
 
 let check ce {defs; main} =
   if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
-  let time_tmp = get_time () in
+  let time_tmp = Time.get () in
   if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop;
   if false then Format.printf "ce:	  %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
@@ -142,13 +142,13 @@ let check ce {defs; main} =
     else Infeasible prefix
   in
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
-  add_time time_tmp Flag.time_cegar;
+  Time.add time_tmp Flag.time_cegar;
   result
 
 let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   (* List.iter (fun (n, bs) -> Format.printf "C.E.: %d: %a@." n (print_list Format.pp_print_bool ",") bs) ext_ce; *)
   if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
-  let time_tmp = get_time () in
+  let time_tmp = Time.get () in
   if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop;
   if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
@@ -172,7 +172,7 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   if !Flag.print_progress then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;
   if !Flag.print_progress then Color.printf Color.Green "Randint constraint: %a@." CEGAR_print.term !rand_precond_ref;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
-  add_time time_tmp Flag.time_cegar;
+  Time.add time_tmp Flag.time_cegar;
   result
 
 

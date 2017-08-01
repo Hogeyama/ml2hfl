@@ -97,6 +97,7 @@ let print_abst_typ = ref false
 let print_as_ocaml = ref false
 let print_only_if_id = ref false
 let print_unused_arg = ref false
+let print_result = ref true
 
 let web = ref false
 
@@ -110,7 +111,6 @@ let result = ref ""
 
 let cegar_loop = ref 1
 let time_limit = ref 0
-let max_input_size = 65536
 let args = ref [""] (* command-line options *)
 
 

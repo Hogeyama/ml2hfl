@@ -153,7 +153,7 @@ val get_argtyps : typ -> typ list
 val get_top_funs : term -> id list
 val get_top_rec_funs : term -> id list
 val get_vars_pat : pattern -> id list
-val get_fv : ?cmp:(id -> id -> bool) -> term -> id list
+val get_fv : ?eq:(id -> id -> bool) -> term -> id list
 val arg_num : typ -> int
 val subst_rev : term -> id -> term -> term
 val replace_term : term -> term -> term -> term

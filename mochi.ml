@@ -1,8 +1,6 @@
 
 open Util
 
-exception LongInput
-
 let print_info_default () =
   if !Flag.add_closure_exparam && !Flag.result = "terminating" then
     Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
@@ -19,7 +17,7 @@ let print_info_default () =
   if !Flag.mode = Flag.FairTermination
   then Format.printf "cycles: %d@." !Flag.fair_term_loop_count;
   Format.printf "CEGAR-cycles: %d@." !Flag.cegar_loop;
-  Format.printf "total: %.3f sec@." !!get_time;
+  Format.printf "total: %.3f sec@." !!Time.get;
   Format.printf "  abst: %.3f sec@." !Flag.time_abstraction;
   Format.printf "  mc: %.3f sec@." !Flag.time_mc;
   Format.printf "  refine: %.3f sec@." !Flag.time_cegar;
@@ -35,7 +33,7 @@ let output_csv filename =
   pr "%s," @@ Filename.chop_extension_if_any @@ Filename.basename !!Flag.mainfile;
   pr "%S," !Flag.result;
   pr "%d," !Flag.cegar_loop;
-  pr "%f," !!get_time;
+  pr "%f," !!Time.get;
   pr "%f," !Flag.time_abstraction;
   pr "%f," !Flag.time_mc;
   pr "%f," !Flag.time_cegar;
@@ -47,44 +45,53 @@ let output_csv filename =
   close_out oc
 
 let output_json filename =
-  let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
+  let oc =
+    if filename = "-" then
+      stdout
+    else
+      open_out_gen [Open_append; Open_creat] 0o644 filename
+  in
   let ocf = Format.formatter_of_out_channel oc in
   let pr fmt = Format.fprintf ocf fmt in
   let pr_ter fmt = if !Flag.mode = Flag.Termination then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
   let pr_mod fmt = if !Flag.modular then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
-  pr "{";
-  pr "\"filename\": %S, " !!Flag.mainfile;
-  pr "\"result\": %S, " !Flag.result;
-  pr "\"cycles\": \"%d\", " !Flag.cegar_loop;
-  pr_ter "\"ranking\": {";
+  pr "{filename: %S" !!Flag.mainfile;
+  pr ", result: %S" !Flag.result;
+  pr ", cycles: %d" !Flag.cegar_loop;
+  pr_ter ", ranking: {";
   List.iter
     (fun (f_name, (cycles, pred)) ->
-     pr_ter "\"%s\": {\"function\": \"%a\", \"inferCycles\": \"%d\"}, " f_name BRA_types.pr_ranking_function pred cycles)
+     pr_ter ", %S: {function: \"%a\", inferCycles: %d}" f_name BRA_types.pr_ranking_function pred cycles)
     !Termination_loop.lrf;
-  pr_ter " \"_\":{} }, ";
-  pr "\"total\": \"%.3f\", " !!get_time;
-  pr "\"abst\": \"%.3f\", " !Flag.time_abstraction;
-  pr "\"mc\": \"%.3f\", " !Flag.time_mc;
-  pr "\"refine\": \"%.3f\", " !Flag.time_cegar;
-  pr "\"exparam\": \"%.3f\", " !Flag.time_parameter_inference;
-  pr_mod "\"#typeChecker\": \"%d\", " !Modular.num_tycheck;
-  pr_mod "\"typeChecker\": \"%.3f\", " !Modular.time_check;
-  pr_mod "\"typeSynthesizer\": \"%.3f\", " !Modular.time_synthesize;
-  pr "\"dummy\": \"0\"}@."
+  pr_ter "\"_\":{} }";
+  pr ", total: %f" !!Time.get;
+  pr ", abst: %f" !Flag.time_abstraction;
+  pr ", mc: %f" !Flag.time_mc;
+  pr ", refine: %f" !Flag.time_cegar;
+  if !Flag.relative_complete then
+    pr ", exparam: %f" !Flag.time_parameter_inference;
+  pr_mod ", #typeChecker: %d" !Modular.num_tycheck;
+  pr_mod ", typeChecker: %f" !Modular.time_check;
+  pr_mod ", typeSynthesizer: %f" !Modular.time_synthesize;
+  pr "}@."
 
 let print_info_modular () =
   Format.printf "#typeChecker: %d@." !Modular.num_tycheck;
-  Format.printf "total: %.3f sec@." !!get_time;
+  Format.printf "total: %.3f sec@." !!Time.get;
   Format.printf "  typeChecker: %.3f sec@." !Modular.time_check;
   Format.printf "  typeSynthesizer: %.3f sec@." !Modular.time_synthesize
 
-let print_info () =
+let output_exp () =
   Option.iter output_csv !Flag.output_csv;
-  Option.iter output_json !Flag.output_json;
-  if !Flag.modular then
-    print_info_modular ()
-  else
-    print_info_default ()
+  Option.iter output_json !Flag.output_json
+
+let print_info () =
+  output_exp ();
+  if !Flag.print_result then
+    if !Flag.modular then
+      print_info_modular ()
+    else
+      print_info_default ()
 
 
 let get_commit_hash () =
@@ -101,22 +108,38 @@ let get_commit_hash () =
   with Sys_error _ | End_of_file -> "", None
 
 
-let print_env cmd =
+let print_env cmd json =
   let mochi,fpat = get_commit_hash () in
   let trecs_version = TrecsInterface.version () in
   let horsat_version = HorSatInterface.version () in
   let horsat2_version = HorSat2Interface.version () in
   let horsatp_version = HorSatPInterface.version () in
-  Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
-  if mochi <> "" then Format.printf "  Build: %s@." mochi;
-  Option.iter (Format.printf "  FPAT version: %s@.") fpat;
-  Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
-  Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;
-  Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2_version;
-  Option.iter (Format.printf "  HorSatP version: %s@.") horsatp_version;
-  Format.printf "  OCaml version: %s@." Sys.ocaml_version;
-  let args = List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s) !Flag.args in
-  if cmd then Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ") args
+  if json then
+    try
+      if mochi = "" then exit 1;
+      Format.printf "{Build:%S," @@ String.sub mochi 0 (String.index mochi ' ');
+      Format.printf "FPAT:%S," @@ Option.get fpat;
+      Format.printf "TRecS:%S," @@ Option.get trecs_version;
+      Format.printf "HorSat:%S," @@ Option.get horsat_version;
+      Format.printf "HorSat2:%S," @@ Option.get horsat2_version;
+      Format.printf "HorSatP:%S," @@ Option.get horsatp_version;
+      Format.printf "OCaml:%S}" Sys.ocaml_version;
+    with Option.No_value -> exit 1
+  else
+    begin
+      Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
+      if mochi <> "" then Format.printf "  Build: %s@." mochi;
+      Option.iter (Format.printf "  FPAT version: %s@.") fpat;
+      Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
+      Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;
+      Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2_version;
+      Option.iter (Format.printf "  HorSatP version: %s@.") horsatp_version;
+      Format.printf "  OCaml version: %s@." Sys.ocaml_version;
+      if cmd then
+        !Flag.args
+        |> List.map (fun s -> if String.contains s ' ' then Format.sprintf "'%s'" s else s)
+        |> Format.printf "  Command: %a@.@." (print_list Format.pp_print_string " ")
+    end
 
 
 
@@ -188,15 +211,12 @@ let output_randint_refinement_log input_string =
   close_out cout
 
 
-let main in_channel =
+let main cin =
   let input_string =
-    let s = String.create Flag.max_input_size in
-    let n = my_input in_channel s 0 Flag.max_input_size in
-    if n = Flag.max_input_size then raise LongInput;
-    let s' = String.sub s 0 n in
+    let s = IO.input_all cin in
     if !Flag.mode = Flag.FairTermination || !Flag.mode = Flag.FairNonTermination
-    then Fair_termination_util.add_event s'
-    else s'
+    then Fair_termination_util.add_event s
+    else s
   in
   let lb = Lexing.from_string input_string in
   lb.Lexing.lex_curr_p <-
@@ -229,8 +249,18 @@ let main in_channel =
 
 
 let set_exp_filename filename =
-  if Filename.check_suffix filename ".csv" then Flag.output_csv := Some filename
-  else if Filename.check_suffix filename ".json" then Flag.output_json := Some filename
+  if Filename.check_suffix filename ".csv" then
+    Flag.output_csv := Some filename
+  else if Filename.check_suffix filename ".json" then
+    Flag.output_json := Some filename
+  else if filename = "-" then
+    begin
+      set_only_result ();
+      Flag.print_result := false;
+      Flag.output_json := Some filename
+    end
+  else
+    unsupported "Experimental results file type"
 
 let usage =
   "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
@@ -247,8 +277,10 @@ let rec arg_spec () =
      "-color-always", Arg.Set Flag.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
      "-ignore-conf", Arg.Set Flag.ignore_conf, " Ignore option.conf";
      "-exp", Arg.String set_exp_filename, "<filename>  Output experimental results to <filename> (Support file types: *.csv, *.json)";
-     "-v", Arg.Unit (fun () -> print_env false; exit 0), " Print the version shortly";
-     "-version", Arg.Unit (fun () -> print_env false; exit 0), " Print the version";
+     "-exp-json", Arg.Unit (fun () -> set_exp_filename "-"), " Output experimental results to starndard output as JSON";
+     "-v", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version shortly";
+     "-env", Arg.Unit (fun () -> print_env false true; exit 0), " Print the version and the environment as JSON";
+     "-version", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      (* abstraction *)
@@ -409,7 +441,13 @@ let rec arg_spec () =
        " Same as -expand-ce-iter-init";
      "", Arg.Unit ignore, "Other_options";
     ]
-and print_option_and_exit () = print_string @@ String.join " " @@ List.map Triple.fst (arg_spec ()); exit 0
+and print_option_and_exit () =
+  !!arg_spec
+  |> Arg.filter_out_desc
+  |> List.map Triple.fst
+  |> String.join " "
+  |> print_string;
+  exit 0
 let arg_spec = arg_spec ()
 
 let string_of_exception = function
@@ -421,7 +459,6 @@ let string_of_exception = function
   | Env.Error e -> "Env.Error"
   | Typetexp.Error(loc,env,err) -> "Typetexp.Error"
   | Lexer.Error(err, loc) -> "Lexer.Error"
-  | LongInput -> "LongInput"
   | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
   | Fatal s -> "Fatal"
   | e -> Printexc.to_string e
@@ -439,10 +476,10 @@ let set_file name =
 
 let read_option_conf () =
   try
-    let cin = open_in "option.conf" in
-    let s = input_line cin in
-    close_in cin;
-    let args = split_spaces s in
+    let args =
+      IO.CPS.open_in "option.conf" @@
+        (input_line |- String.split_blanc)
+    in
     Arg.current := 0;
     Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) arg_spec set_file usage;
     Flag.args := !Flag.args @ args
@@ -453,15 +490,12 @@ let read_option_conf () =
   | End_of_file -> ()
 
 let merge_input_files files =
-  let s = String.create Flag.max_input_size in
   let filename = Filename.change_extension (List.hd files) "mml" in
   let cout = open_out filename in
   let ocf = Format.formatter_of_out_channel cout in
   let append file =
     let cin = open_in file in
-    let len = my_input cin s 0 Flag.max_input_size in
-    if len = Flag.max_input_size then raise LongInput;
-    let s' = String.sub s 0 len in
+    let s = IO.input_all cin in
     let module_name =
       file
       |> Filename.basename
@@ -470,7 +504,7 @@ let merge_input_files files =
     in
     Format.fprintf ocf "module %s = struct@." module_name;
     Format.fprintf ocf "# 1 \"%s\"@." file;
-    output_substring cout s' 0 len;
+    output_string cout s;
     Format.fprintf ocf "end@."
   in
   List.rev_iter append files;
@@ -480,19 +514,21 @@ let parse_arg () =
   Arg.parse arg_spec set_file usage;
   Flag.args := Array.to_list Sys.argv;
   if not !Flag.ignore_conf then read_option_conf ();
+  let cin =
+    match !Flag.filenames with
+    | [] | ["-"] -> Flag.filenames := ["stdin.ml"]; stdin
+    | _ ->
+        let filename =
+          match !Flag.filenames with
+          | [] -> assert false
+          | [file] -> file
+          | files -> merge_input_files files
+        in
+        Config.load_path := Filename.dirname !!Flag.mainfile :: !Config.load_path;
+        open_in filename
+  in
   Flag.input_cegar := String.ends_with !!Flag.mainfile ".cegar";
-  match !Flag.filenames with
-  | [] | ["-"] -> Flag.filenames := ["stdin"]; stdin
-  | _ ->
-      let filename =
-        match !Flag.filenames with
-        | [] -> assert false
-        | [file] -> file
-        | files -> merge_input_files files
-      in
-      Config.load_path := Filename.dirname !!Flag.mainfile :: !Config.load_path;
-      open_in filename
-
+  cin
 
 (* called before parsing options *)
 let fpat_init1 () =
@@ -517,8 +553,13 @@ let init_after_parse_arg () =
     Flag.church_encode := true
 
 let timeout_handler _ =
-  Main_loop.print_result_delimiter ();
-  Format.printf "Verification failed (time out)@.";
+  Flag.result := "TimeOut";
+  output_exp ();
+  if !Flag.print_result then
+    begin
+      Main_loop.print_result_delimiter ();
+      Format.printf "Verification failed (time out)@."
+    end;
   exit 1
 
 let print_error = function
@@ -540,8 +581,6 @@ let print_error = function
       Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
   | Lexer.Error(err, loc) ->
       Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
-  | LongInput ->
-      Format.printf "Input is too long@."
   | CEGAR_syntax.NoProgress ->
       Format.printf "Unknown. (CEGAR not progress) @."
   | CEGAR_abst.NotRefined ->
@@ -568,7 +607,7 @@ let () =
       fpat_init2 ();
       Sys.set_signal Sys.sigalrm (Sys.Signal_handle timeout_handler);
       Color.init ();
-      if not !!is_only_result then print_env true;
+      if not !!is_only_result then print_env true false;
       init_after_parse_arg ();
       check_env ();
       if main cin then decr Flag.cegar_loop;

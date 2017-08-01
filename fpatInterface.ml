@@ -470,7 +470,7 @@ and trans_id x = Id.map_typ trans_type x
 let of_desc t = assert false (* @todo translate FPAT term to Syntax.term *)
 
 let insert_extra_param t =
-  let tmp = get_time() in
+  let tmp = Time.get() in
   Fpat.RefTypInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
@@ -678,11 +678,11 @@ let insert_extra_param t =
     {t with Syntax.desc}
   in
   let res = aux [] [] [] t in
-  let _ = add_time tmp Flag.time_parameter_inference in
+  let _ = Time.add tmp Flag.time_parameter_inference in
   res
 
 let instantiate_param prog =
-  let tmp = get_time() in
+  let tmp = Time.get() in
   let typs = prog.CEGAR_syntax.env in
   let fdefs = prog.CEGAR_syntax.defs in
   let main = prog.CEGAR_syntax.main in
@@ -706,7 +706,7 @@ let instantiate_param prog =
       fdefs,
     main
   in
-  add_time tmp Flag.time_parameter_inference;
+  Time.add tmp Flag.time_parameter_inference;
   res
 
 
@@ -770,7 +770,7 @@ let trans_ext (renv : (int * CEGAR_syntax.env) list) (map : (int * (CEGAR_syntax
 
 
 let parse_arg arg =
-  let args = Array.of_list @@ "FPAT" :: split_spaces arg in
+  let args = Array.of_list @@ "FPAT" :: Util.String.split_blanc arg in
   let usage = "Options for FPAT are:" in
   try
     Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore usage

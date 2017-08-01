@@ -63,7 +63,7 @@ let rec trans_id x = String.sign_to_letters x
 
 let rec trans_term br = function
   | Const c -> trans_const c
-  | Var x when is_uppercase x.[0] -> HS.PTapp(HS.NT (trans_id x), [])
+  | Var x when Char.is_uppercase x.[0] -> HS.PTapp(HS.NT (trans_id x), [])
   | Var x -> HS.PTapp (HS.Name (trans_id x), [])
   | App(Const (Label n), t) -> HS.PTapp(HS.Name ("l" ^ string_of_int n), [trans_term br t])
   | App(App(App(Const If, Const (Rand(TBool,_))), t2), t3) ->
@@ -228,7 +228,7 @@ let make_apt_spec labels =
     ::(0,"br_forall", APT_And([APT_State(1, 0); APT_State(2, 0)]))
     ::(0,"br_exists", APT_Or([APT_State(1, 0); APT_State(2, 0)]))::make_label_spec labels
   in
-  List.sort spec
+  List.sort compare spec
 
 let make_arity_map labels =
   let init = [("br_forall", 2); ("br_exists", 2); ("event_fail", 1); ("unit", 0); ("tt", 1); ("ff", 1); ("l0", 1); ("l1", 1)] in

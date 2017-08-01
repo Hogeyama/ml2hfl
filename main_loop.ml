@@ -251,9 +251,11 @@ let run ?make_pps ?fun_list orig exparam_sol ?(spec=Spec.init) parsed =
       Flag.result := "Safe";
       let env' = trans_env (Term_util.get_top_funs parsed) make_get_rtyp env in
       if !Flag.mode = Flag.FairTermination => !!Verbose.check then
-        report_safe env' orig set_target';
+        if !Flag.print_result then
+          report_safe env' orig set_target';
       true
   | CEGAR.Unsafe(sol,_) ->
       Flag.result := "Unsafe";
-      report_unsafe main sol set_target;
+      if !Flag.print_result then
+        report_unsafe main sol set_target;
       false

@@ -308,7 +308,7 @@ let preprocess_cps prog =
   |& !Flag.church_encode&> church_encode
 
 let check abst prog spec =
-  let tmp = get_time () in
+  let tmp = Time.get () in
   if !Flag.print_progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
   let abst' =
@@ -380,6 +380,6 @@ let check abst prog spec =
     | Flag.HorSatP, _ ->
        assert false
   in
-  add_time tmp Flag.time_mc;
+  Time.add tmp Flag.time_mc;
   if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
   result

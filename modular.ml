@@ -75,7 +75,7 @@ let refine_init_env prog =
     match candidates with
     | [] -> prog, ce_set
     | (f,typ)::candidates' ->
-        let r = measure_and_add_time time_check (fun () -> Modular_check.check prog f typ 1) in
+        let r = Time.measure_and_add time_check (fun () -> Modular_check.check prog f typ 1) in
         let prog', ce_set'  =
           match r with
           | Modular_check.Typable env -> {prog with fun_typ_env=merge_tenv prog.fun_typ_env env}, ce_set
@@ -99,10 +99,10 @@ let non_terminating_typ typ =
   aux @@ of_simple @@ to_simple typ
 
 let check prog f typ depth =
-  measure_and_add_time time_check (fun () -> Modular_check.check prog f typ depth)
+  Time.measure_and_add time_check (fun () -> Modular_check.check prog f typ depth)
 
 let infer prog f typ ce_set2 depth =
-  measure_and_add_time time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
+  Time.measure_and_add time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
 
 let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
   let space = String.make (8*List.length history) ' ' in
@@ -115,7 +115,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
     (pr " UNTYPABLE (skip): %a :@ %a@." Id.print f Ref_type.print typ;
      `Untypable, env, neg_env, ce_set)
   else
-    let () = Debug.printf "%sTIME: %.3f@." space !!get_time in
+    let () = Debug.printf "%sTIME: %.3f@." space !!Time.get in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
     pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- Id.is_external) env;
     if !Flag.Modular.use_neg_env then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
@@ -153,7 +153,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
             | None -> infer prog f typ ce_set2 idepth
             | Some sol -> sol
           in
-          match measure_and_add_time time_synthesize (fun () -> sol Modular_infer.init_mode) with
+          match Time.measure_and_add time_synthesize (fun () -> sol Modular_infer.init_mode) with
           | None ->
               pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
               let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
@@ -165,7 +165,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
                   |> Ref_type.Env.to_list
                   |> List.filter_out (fst |- Id.same f)
                   |> List.filter_out (fst |- Id.is_external)
-                  |> List.sort ~cmp:(Compare.on ~cmp fst)
+                  |> List.sort (Compare.on ~cmp fst)
                 in
                 pr "%a{%a,%d}%t CANDIDATES:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.of_list candidate';
                 let aux (r,env',neg_env',ce_set4) (g,typ') =
@@ -200,7 +200,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
 let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
   let pr f = MVerbose.printf ("%a@[<hov 2>#[MAIN_LOOP]%t " ^^ f ^^ "@.") Color.set Color.Red Color.reset in
-  Debug.printf "TIME: %.3f@." !!get_time;
+  Debug.printf "TIME: %.3f@." !!Time.get;
   let rec check env ce_set candidates =
     match candidates with
     | [] -> env, ce_set
@@ -212,7 +212,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
         pr "%a :? %a" Id.print f Ref_type.print typ;
         incr num_tycheck;
         let prog' = {prog with fun_typ_env=env} in
-        let r = measure_and_add_time time_check (fun () -> Modular_check.check prog' f typ depth) in
+        let r = Time.measure_and_add time_check (fun () -> Modular_check.check prog' f typ depth) in
         match r with
         | Modular_check.Typable env' ->
             pr "TYPABLE: %a :@ %a@." Id.print f Ref_type.print typ;
@@ -248,7 +248,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
           |> Ref_type.Env.to_list
           |> List.filter_out (fst |- Id.same main)
           |> List.filter_out (fst |- Id.is_external)
-          |> List.sort ~cmp:(Compare.on ~cmp fst)
+          |> List.sort (Compare.on ~cmp fst)
           |*> List.flatten_map (fun (g,typ) -> List.map (Pair.pair g) @@ Ref_type.decomp_inter typ)
           |> List.snoc -$- (main,typ)
         in

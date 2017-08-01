@@ -41,7 +41,7 @@ let trans_id x =
 
 let rec trans_term = function
   | Const c -> trans_const c
-  | Var x when is_uppercase x.[0] -> TS.PTapp(TS.NT (trans_id x), [])
+  | Var x when Char.is_uppercase x.[0] -> TS.PTapp(TS.NT (trans_id x), [])
   | Var x -> TS.PTapp (TS.Name (trans_id x), [])
   | App(Const (Label n), t) -> TS.PTapp(TS.Name ("l" ^ string_of_int n), [trans_term t])
   | App(App(App(Const If, Const (Rand(TBool,_))), t2), t3) ->
@@ -196,4 +196,4 @@ let make_spec n : spec =
     | Flag.NonTermination
     | Flag.FairNonTermination -> assert false
   in
-  List.sort spec
+  List.sort compare spec

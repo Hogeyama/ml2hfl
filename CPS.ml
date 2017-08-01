@@ -1049,9 +1049,9 @@ let rec uncps_ref_type sol typ_exn rtyp e etyp =
   | _ -> assert false
 
 let infer_effect env t =
-  let cmp x y = Id.same x y && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
-  let ext_funs = get_fv ~cmp t in
-  if List.length ext_funs <> List.length (List.unique ~cmp:Id.same ext_funs) then
+  let eq x y = Id.same x y && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
+  let ext_funs = get_fv ~eq t in
+  if List.length ext_funs <> List.length (List.unique ~eq:Id.eq ext_funs) then
     begin
       List.iter (fun x -> Format.printf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
       unsupported "polymorphic use of external functions";

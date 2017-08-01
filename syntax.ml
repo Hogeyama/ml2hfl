@@ -1421,8 +1421,8 @@ let get_fv_term vars t =
 let () = get_fv.col2_typ <- Fun.const @@ Fun.const []
 let () = get_fv.col2_term <- get_fv_term
 let () = get_fv.col2_typ <- get_fv_typ
-let get_fv ?(cmp=Id.same) t =
-  List.unique ~cmp @@ get_fv.col2_term [] t
+let get_fv ?(eq=Id.same) t =
+  List.unique ~eq @@ get_fv.col2_term [] t
 
 
 
