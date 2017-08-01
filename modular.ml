@@ -422,10 +422,12 @@ let main _ spec parsed =
   Main_loop.print_result_delimiter ();
   match r with
   | `Typable ->
-      report_safe env;
+      if !Flag.print_result then
+        report_safe env;
       Flag.result := "Safe";
       true
   | `Untypable ->
-      report_unsafe neg_env ce_set;
+      if !Flag.print_result then
+        report_unsafe neg_env ce_set;
       Flag.result := "Unsafe";
       false

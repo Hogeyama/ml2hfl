@@ -662,7 +662,7 @@ let solve hcs =
       | _ when typ = Fpat.Type.mk_bool -> Type.TBool
       | _ when typ = Fpat.Type.mk_unit -> Type.TUnit
       | _ ->
-          Format.printf "%a@." Fpat.Type.pr typ;
+          Format.eprintf "%a@." Fpat.Type.pr typ;
           assert false
     in
     let aux p =

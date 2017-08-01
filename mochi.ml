@@ -70,7 +70,7 @@ let output_json filename =
   pr ", refine: %f" !Flag.time_cegar;
   if !Flag.relative_complete then
     pr ", exparam: %f" !Flag.time_parameter_inference;
-  pr_mod ", #typeChecker: %d" !Modular.num_tycheck;
+  pr_mod ", \"#typeChecker\": %d" !Modular.num_tycheck;
   pr_mod ", typeChecker: %f" !Modular.time_check;
   pr_mod ", typeSynthesizer: %f" !Modular.time_synthesize;
   pr "}@."
@@ -619,4 +619,4 @@ let () =
         Option.iter output_csv !Flag.output_csv;
         Option.iter output_json !Flag.output_json;
         Main_loop.print_result_delimiter ();
-        print_error e
+        if not !!is_only_result then print_error e
