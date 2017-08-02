@@ -140,7 +140,8 @@ let rec verifyFile_aux cmd filename =
   output_string oc default;
   close_out oc;
   let cmd = Format.sprintf "%s %s > %s" cmd filename result_file in
-  ignore @@ Sys.command cmd;
+  let r = Sys.command cmd in
+  if r = 128+9 then timeout();
   let ic = open_in result_file in
   let lb = Lexing.from_channel ic in
   lb.Lexing.lex_curr_p <-

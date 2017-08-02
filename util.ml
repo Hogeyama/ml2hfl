@@ -10,9 +10,11 @@ let is_only_result () =
 
 exception Fatal of string
 exception Unsupported of string
+exception TimeOut
 
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
+let timeout () = raise TimeOut
 
 let warning s = Format.eprintf "%s@\n" s
 

@@ -461,6 +461,7 @@ let string_of_exception = function
   | Lexer.Error(err, loc) -> "Lexer.Error"
   | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
   | Fatal s -> "Fatal"
+  | TimeOut -> "TimeOut"
   | e -> Printexc.to_string e
 
 let set_file name =
@@ -552,15 +553,7 @@ let init_after_parse_arg () =
   if !Flag.mc <> Flag.TRecS then
     Flag.church_encode := true
 
-let timeout_handler _ =
-  Flag.result := "TimeOut";
-  output_exp ();
-  if !Flag.print_result then
-    begin
-      Main_loop.print_result_delimiter ();
-      Format.printf "Verification failed (time out)@."
-    end;
-  exit 1
+let timeout_handler _ = raise TimeOut
 
 let print_error = function
   | Fpat.RefTypInfer.FailedToRefineTypes ->
@@ -591,6 +584,8 @@ let print_error = function
       Format.printf "Unsupported: %s@." s
   | Sys_error s ->
       Format.printf "%s@." s
+  | TimeOut ->
+      Format.printf "Verification failed (time out)@."
   | e when !Flag.debug_module = [] ->
       Format.printf "Exception: %s@." @@ Printexc.to_string e
   | e -> raise e
@@ -605,7 +600,7 @@ let () =
       let cin = parse_arg () in
       ignore @@ Unix.alarm !Flag.time_limit;
       fpat_init2 ();
-      Sys.set_signal Sys.sigalrm (Sys.Signal_handle timeout_handler);
+      Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
       Color.init ();
       if not !!is_only_result then print_env true false;
       init_after_parse_arg ();
