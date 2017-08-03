@@ -11,10 +11,12 @@ let is_only_result () =
 exception Fatal of string
 exception Unsupported of string
 exception TimeOut
+exception Killed
 
 let fatal s = raise (Fatal s)
 let unsupported s = raise (Unsupported s)
 let timeout () = raise TimeOut
+let killed () = raise Killed
 
 let warning s = Format.eprintf "%s@\n" s
 
@@ -778,35 +780,35 @@ module Unix = struct
 end
 
 
-module Time = struct
-  let get () =
-    let open Unix in
-    let tm = times() in
-    tm.tms_utime +. tm.tms_cutime
-
-  let add tmp t = t := !t +. get () -. tmp
-
-  let measure f =
-    let tmp = get () in
-    let r = f () in
-    get () -. tmp, r
-
-  let measure_and_add t f =
-    let time,r = measure f in
-    t := !t +. time;
-    r
-
-  let string_of_tm {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
-    Format.sprintf "%04d/%02d/%02d %02d:%02d:%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec
-end
-
-
 module Exception = struct
   let not_raise f x =
     try
       ignore @@ f x; true
     with _ -> false
   let finally = BatPervasives.finally
+end
+
+
+module Time = struct
+  let get () =
+    let open Unix in
+    let tm = times() in
+    tm.tms_utime +. tm.tms_cutime
+
+  let add tmp t = t := !t +. !!get -. tmp
+
+  let measure f =
+    let tmp = !!get in
+    let r = !!f in
+    !!get -. tmp, r
+
+  let measure_and_add t f =
+    let tmp = !!get in
+    let fend () = t := !t +. (!!get -. tmp) in
+    Exception.finally fend f ()
+
+  let string_of_tm {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
+    Format.sprintf "%04d/%02d/%02d %02d:%02d:%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec
 end
 
 

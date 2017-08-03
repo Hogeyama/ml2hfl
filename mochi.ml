@@ -462,6 +462,7 @@ let string_of_exception = function
   | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
   | Fatal s -> "Fatal"
   | TimeOut -> "TimeOut"
+  | Killed -> "Killed"
   | e -> Printexc.to_string e
 
 let set_file name =
