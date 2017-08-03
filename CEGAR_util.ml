@@ -279,10 +279,17 @@ let get_const_typ env = function
       List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs typ
 
 
+exception Type_not_found of var
+let type_not_found x = raise (Type_not_found x)
 
 let rec get_typ env = function
   | Const c -> get_const_typ env c
-  | Var x -> List.assoc x env
+  | Var x ->
+      begin
+        try
+          List.assoc x env
+        with Not_found -> type_not_found x
+      end
   | App(Const (Label _), t) -> get_typ env t
   | App(Const (Rand(TInt, _)), t) ->
       begin

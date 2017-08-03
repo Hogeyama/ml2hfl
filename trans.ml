@@ -1673,7 +1673,7 @@ let elim_unused_let_term (leave,cbv) t =
     | Let(bindings, t) when not flag ->
         let t' = elim_unused_let.tr2_term (leave,cbv) t in
         let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
-        let fv = get_fv t' in
+        let fv = List.flatten_map (get_fv -| Triple.trd) bindings @ get_fv t' in
         let used (f,xs,t) =
           Id.mem f (leave@fv) ||
           cbv && not @@ has_no_effect @@ List.fold_right make_fun xs t
