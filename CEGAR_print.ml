@@ -104,6 +104,7 @@ and print_const fm = function
   | Add -> Format.fprintf fm "+"
   | Sub -> Format.fprintf fm "-"
   | Mul -> Format.fprintf fm "*"
+  | Div -> Format.fprintf fm "/"
   | Tuple n -> Format.fprintf fm "(%d)" n
   | Proj(n,i) -> Format.fprintf fm "#(%d/%d)" i n
   | If -> Format.fprintf fm "if"
@@ -123,7 +124,7 @@ and print_term fm = function
   | Var x -> print_var fm x
   | App(App(App(Const If, Const (Rand _ as randb)), Const True), Const False) ->
       print_const fm randb
-  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
+  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Div|Or|And) as op), t1), t2) ->
       Format.fprintf fm "@[(%a@ %a@ %a)@]" print_term t1 print_const op print_term t2
   | App _ as t ->
       let t,ts = decomp_app t in
@@ -304,6 +305,7 @@ and print_const_ML fm = function
   | Add -> Format.fprintf fm "(+)"
   | Sub -> Format.fprintf fm "(-)"
   | Mul -> Format.fprintf fm "(*)"
+  | Div -> Format.fprintf fm "(/)"
   | Tuple 0 -> Format.fprintf fm "()"
   | Tuple 1 -> ()
   | Tuple n -> Format.fprintf fm "(%d)" n
@@ -391,6 +393,7 @@ and print_const_as_tree fm = function
   | Add -> Format.fprintf fm "Add"
   | Sub -> Format.fprintf fm "Sub"
   | Mul -> Format.fprintf fm "Mult"
+  | Div -> Format.fprintf fm "Div"
   | Tuple n -> assert false
   | Proj _ -> assert false
   | If -> Format.fprintf fm "If"
@@ -464,7 +467,7 @@ and print_term' limit fm t =
   | Var x -> print_var fm x
   | App(App(App(Const If, Const (Rand _ as r)), Const True), Const False) ->
       print_const fm r
-  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Or|And) as op), t1), t2) ->
+  | App(App(Const ((EqInt|EqBool|CmpPoly _|Lt|Gt|Leq|Geq|Add|Sub|Mul|Div|Or|And) as op), t1), t2) ->
       Format.fprintf fm "(@[%a@ %a@ %a@])" (print_term' limit) t1 print_const op (print_term' limit) t2
   | App _ as t ->
       let t,ts = decomp_app t in

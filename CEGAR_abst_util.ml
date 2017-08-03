@@ -144,7 +144,7 @@ let rec is_base_term env = function
               TBase _ -> true
             | _ -> false
         end
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|CmpPoly _|Add|Sub|Mul),t1),t2) ->
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|CmpPoly _|Add|Sub|Mul|Div),t1),t2) ->
       assert (is_base_term env t1);
       assert (is_base_term env t2);
       true

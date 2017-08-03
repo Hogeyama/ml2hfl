@@ -52,6 +52,7 @@ val make_ors : term list -> term
 val make_add : term -> term -> term
 val make_sub : term -> term -> term
 val make_mul : term -> term -> term
+val make_div : term -> term -> term
 val make_neg : term -> term
 val make_if : term -> term -> term -> term
 val make_br : term -> term -> term

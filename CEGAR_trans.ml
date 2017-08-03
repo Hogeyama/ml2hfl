@@ -121,6 +121,8 @@ let rec trans_inv_term = function
       Term_util.make_sub (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const Mul, t1), t2) ->
       Term_util.make_mul (trans_inv_term t1) (trans_inv_term t2)
+  | App(App(Const Div, t1), t2) ->
+      Term_util.make_div (trans_inv_term t1) (trans_inv_term t2)
   | App(App(Const (CmpPoly _ as c), t1), t2) -> Format.printf "%a@." CEGAR_print.const c; assert false
   | t -> Format.printf "%a@." CEGAR_print.term t; assert false
 
@@ -193,6 +195,7 @@ and trans_binop = function
   | S.Add -> Const Add
   | S.Sub -> Const Sub
   | S.Mult -> Const Mul
+  | S.Div -> Const Div
 
 and trans_const c typ =
   match c with
@@ -386,7 +389,8 @@ let rec is_CPS_value env = function
   | App(App(Const Geq, t1), t2)
   | App(App(Const Add, t1), t2)
   | App(App(Const Sub, t1), t2)
-  | App(App(Const Mul, t1), t2) -> is_CPS_value env t1 && is_CPS_value env t2
+  | App(App(Const Mul, t1), t2)
+  | App(App(Const Div, t1), t2) -> is_CPS_value env t1 && is_CPS_value env t2
   | App(Const Not, t) -> is_CPS_value env t
   | App _ as t ->
       let t1,ts = decomp_app t in
@@ -752,7 +756,7 @@ let rec trans_ce_aux labeled ce acc defs rand_num t k =
   | App(Const Not, t) ->
       trans_ce_aux labeled ce acc defs rand_num t (fun ce acc rand_num t ->
       k ce acc rand_num (make_app (Const Not) [t]))
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul|Div as op),t1),t2) ->
       trans_ce_aux labeled ce acc defs rand_num t1 (fun ce acc rand_num t1 ->
       trans_ce_aux labeled ce acc defs rand_num t2 (fun ce acc rand_num t2 ->
       k ce acc rand_num (make_app (Const op) [t1;t2])))

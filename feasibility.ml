@@ -66,7 +66,7 @@ let rec check_aux pr ce sat n constr env defs t k =
   | App(Const Not, t) ->
       check_aux pr ce sat n constr env defs t (fun ce sat n constr env t ->
       k ce sat n constr env (make_app (Const Not) [t]))
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul|Div as op),t1),t2) ->
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       k ce sat n constr env (make_app (Const op) [t1;t2])))
@@ -200,7 +200,7 @@ let rec trans_ce ce ce_br env defs t k =
   | Const (Rand(TInt,_)) -> assert false
   | Const c -> k ce ce_br env (Const c)
   | Var x -> k ce ce_br env (Var x)
-  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul as op),t1),t2) ->
+  | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul|Div as op),t1),t2) ->
       trans_ce ce ce_br env defs t1 (fun ce ce_br env t1 ->
       trans_ce ce ce_br env defs t2 (fun ce ce_br env t2 ->
       k ce ce_br env (make_app (Const op) [t1;t2])))

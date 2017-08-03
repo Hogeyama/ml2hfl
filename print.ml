@@ -46,7 +46,7 @@ and print_id_typ fm x =
    50 : Eq, Lt, Gt, Leq, Geq
    60 : Cons
    65 : Add, Sub
-   70 : Mult
+   70 : Mult, Div
    80 : Raise, App, Not, Ref, SetRef
    90 : Deref
  *)
@@ -64,6 +64,7 @@ and print_binop fm = function
   | Add -> fprintf fm "+"
   | Sub -> fprintf fm "-"
   | Mult -> fprintf fm "*"
+  | Div -> fprintf fm "/"
 
 and print_termlist pri typ fm ts =
   if !Flag.web then
@@ -275,7 +276,7 @@ and print_desc attr pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[-%a@]%s" s1 print_id x s2
   | BinOp(op, t1, t2) ->
-      let p = match op with Mult -> 70 | Add|Sub -> 65 | And -> 40 | Or -> 30 | _ -> 50 in
+      let p = match op with Mult|Div -> 70 | Add|Sub -> 65 | And -> 40 | Or -> 30 | _ -> 50 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ %a@ %a@]%s" s1 (print_term p typ) t1 print_binop op (print_term p typ) t2 s2
   | Not t ->
@@ -485,7 +486,7 @@ let rec print_term' pri fm t =
                          s1 print_bindings bindings (print_term' p) t2 s2
         end
     | BinOp(op, t1, t2) ->
-        let p = match op with Add|Sub|Mult -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
+        let p = match op with Add|Sub|Mult|Div -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
         let s1,s2 = paren pri p in
         fprintf fm "%s%a %a %a%s" s1 (print_term' p) t1 print_binop op (print_term' p) t2 s2
     | Not t ->

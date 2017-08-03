@@ -3,7 +3,7 @@ open Util
 open Type
 
 type label = Read | Write | Close
-type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult
+type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
 
 type typ = term Type.t
 and id = typ Id.t

@@ -66,6 +66,7 @@ let conv_const c =
   | Add -> Fpat.Const.Add Fpat.Type.mk_int
   | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
+  | Div -> Fpat.Const.Div Fpat.Type.mk_int
   | Char c -> Fpat.Const.Int (int_of_char c)
   | String s -> Fpat.Const.String s
   | Float r -> Fpat.Const.Real r
@@ -150,6 +151,7 @@ let rec of_term t =
         | S.Add -> Fpat.Const.Add Fpat.Type.mk_int
         | S.Sub -> Fpat.Const.Sub Fpat.Type.mk_int
         | S.Mult -> Fpat.Const.Mul Fpat.Type.mk_int
+        | S.Div -> Fpat.Const.Div Fpat.Type.mk_int
       in
       Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_term t1; of_term t2]
   | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
@@ -196,6 +198,7 @@ let inv_const c =
   | Fpat.Const.Add ty when Fpat.Type.is_int ty -> Add
   | Fpat.Const.Sub ty when Fpat.Type.is_int ty -> Sub
   | Fpat.Const.Mul ty when Fpat.Type.is_int ty -> Mul
+  | Fpat.Const.Div ty when Fpat.Type.is_int ty -> Div
   | Fpat.Const.Eq ty when Fpat.Type.is_ext ty ->
      Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"="))
   | Fpat.Const.Neq ty when Fpat.Type.is_ext ty ->

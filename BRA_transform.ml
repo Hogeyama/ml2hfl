@@ -95,6 +95,7 @@ and show_binop = function
   | Add -> "+"
   | Sub -> "-"
   | Mult -> "*"
+  | Div -> "/"
 
 let restore_ids =
   let trans_id ({Id.name = name_; Id.typ = typ} as orig) =

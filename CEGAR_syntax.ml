@@ -44,6 +44,7 @@ type const =
   | Add
   | Sub
   | Mul
+  | Div
   | Tuple of int
   | Proj of int * int (* Proj(n,i): 0 <= i < n *)
   | If (* for abstraction and model-checking *)
@@ -200,6 +201,7 @@ let make_eq_bool t1 t2 =
 let make_add t1 t2 = make_app (Const Add) [t1; t2]
 let make_sub t1 t2 = make_app (Const Sub) [t1; t2]
 let make_mul t1 t2 = make_app (Const Mul) [t1; t2]
+let make_div t1 t2 = make_app (Const Div) [t1; t2]
 let make_label n t = make_app (Const (Label n)) [t]
 let make_proj n i t = make_app (Const (Proj(n,i))) [t]
 let make_tuple ts = make_app (Const (Tuple (List.length ts))) ts

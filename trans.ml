@@ -594,6 +594,8 @@ let rec eval t =
         (eval t).desc
     | BinOp(Mult, {desc=Const (Int 1)}, t) ->
         (eval t).desc
+    | BinOp(Div, t, {desc=Const (Int 1)}) ->
+        (eval t).desc
     | BinOp(Sub, t1, t2) ->
         (eval (make_add (eval t1) (eval (make_mul (make_int (-1)) t2)))).desc
     | BinOp(Mult, {desc=Const (Int n)}, {desc=BinOp(Mult, {desc=Const (Int m)}, t)}) ->
@@ -1878,6 +1880,7 @@ let rec eval_aexp t =
         | Add -> (+)
         | Sub -> (-)
         | Mult -> ( * )
+        | Div -> (/)
         | _ -> invalid_arg "eval_aexp"
       in
       f (eval_aexp t1) (eval_aexp t2)

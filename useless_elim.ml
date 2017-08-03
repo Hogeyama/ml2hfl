@@ -329,7 +329,7 @@ let rec constraints_term env_orig env t typ =
       Const (Unit|Int _|True|False|Rand(TBool,_)) -> [TBase, typ]
     | Const _ -> assert false
     | Var x -> reduce_constraint (List.assoc x env) typ
-    | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul), t1), t2) ->
+    | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul|Div), t1), t2) ->
         (TBase,typ) :: constraints_term env_orig env t1 TBase @@@
                              constraints_term env_orig env t2 TBase
     | App(App(App(Const If, t1), t2), t3) ->

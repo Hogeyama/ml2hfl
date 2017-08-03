@@ -263,6 +263,9 @@ let get_const_typ env = function
   | Mul -> TFun(TBase(TInt,nil), fun x ->
                 TFun(TBase(TInt,nil), fun y ->
                      TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
+  | Div -> TFun(TBase(TInt,nil), fun x ->
+                TFun(TBase(TInt,nil), fun y ->
+                     TBase(TInt,fun r -> [make_eq_int r (make_div x y)])))
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If -> assert false
@@ -419,6 +422,8 @@ let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
               | false, false ->
                   [None, reduce xns1 + reduce xns2]
             end
+        | App(App(Const Div, t1), t2) ->
+            raise NonLinear
         | _ ->
             unsupported @@ Format.asprintf "CEGAR_util.normalize_bool_term: %a" CEGAR_print.term @@ make_app op [t1;t2]
       in

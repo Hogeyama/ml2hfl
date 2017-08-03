@@ -99,7 +99,7 @@ let rec check t typ =
   | BinOp((And|Or),t1,t2), TBool ->
       check t1 TBool;
       check t2 TBool
-  | BinOp((Add|Sub|Mult),t1,t2), TInt ->
+  | BinOp((Add|Sub|Mult|Div),t1,t2), TInt ->
       check t1 TInt;
       check t2 TInt
   | Not t, TBool ->

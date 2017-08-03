@@ -118,6 +118,7 @@ let get_typ_const = function
   | Add -> TFun(TInt,TFun(TInt,TInt))
   | Sub -> TFun(TInt,TFun(TInt,TInt))
   | Mul -> TFun(TInt,TFun(TInt,TInt))
+  | Div -> TFun(TInt,TFun(TInt,TInt))
   | Int _ -> TInt
   | If ->
       let typ = new_tvar () in

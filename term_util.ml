@@ -158,6 +158,7 @@ let make_ors ts = List.fold_right make_or ts false_term
 let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+let make_div t1 t2 = {desc=BinOp(Div, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_neg t = make_sub (make_int 0) t
 let make_if_ t1 t2 t3 =
   assert (Flag.check_typ => Type.can_unify t1.typ TBool);
@@ -950,6 +951,7 @@ let decomp_binop t =
       | Fpat.Const.Add _ -> Some make_add
       | Fpat.Const.Sub _ -> Some make_sub
       | Fpat.Const.Mul _ -> Some make_mul
+      | Fpat.Const.Div _ -> Some make_div
       | Fpat.Const.Neq _ -> Some (fun x y -> make_not @@ make_eq x y)
       | _ -> None
       end

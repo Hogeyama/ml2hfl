@@ -108,6 +108,7 @@ let rec eval_print fm rands t =
         | Add -> make_int (n1 + n2)
         | Sub -> make_int (n1 - n2)
         | Mult -> make_int (n1 * n2)
+        | Div -> make_int (n1 / n2)
         | _ -> assert false
       in
       rands'', v
