@@ -94,29 +94,16 @@ let print_info () =
       print_info_default ()
 
 
-let get_commit_hash () =
-  try
-    let cin = open_in "COMMIT" in
-    let mochi = input_line cin in
-    let fpat =
-      try
-        Some (input_line cin)
-      with End_of_file -> None
-    in
-    close_in cin;
-    mochi, fpat
-  with Sys_error _ | End_of_file -> "", None
-
-
 let print_env cmd json =
-  let mochi,fpat = get_commit_hash () in
+  let mochi = Revision.mochi in
+  let fpat = Revision.fpat in
   let trecs_version = TrecsInterface.version () in
   let horsat_version = HorSatInterface.version () in
   let horsat2_version = HorSat2Interface.version () in
   let horsatp_version = HorSatPInterface.version () in
   if json then
     try
-      if mochi = "" then exit 1;
+      let mochi = Option.get mochi in
       Format.printf "{Build:%S," @@ String.sub mochi 0 (String.index mochi ' ');
       Format.printf "FPAT:%S," @@ Option.get fpat;
       Format.printf "TRecS:%S," @@ Option.get trecs_version;
@@ -128,7 +115,7 @@ let print_env cmd json =
   else
     begin
       Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
-      if mochi <> "" then Format.printf "  Build: %s@." mochi;
+      Option.iter (Format.printf "  Build: %s@.") mochi;
       Option.iter (Format.printf "  FPAT version: %s@.") fpat;
       Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
       Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;

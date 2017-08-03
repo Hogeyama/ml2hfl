@@ -25,18 +25,30 @@ opt: $(NAME).opt
 top: $(NAME).top
 
 
+main: revision.ml
+revision.ml: .git/logs/HEAD $(FPAT_LIB) Makefile Makefile.config
+	@echo make revision.ml
+	@rm -f $@
 ifdef GIT
-main: COMMIT
-COMMIT: depend .git/logs/HEAD $(FPAT_LIB)
-	@echo make COMMIT
-	@rm -f COMMIT
-	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ > COMMIT; fi
-	@echo -n `$(GIT) rev-parse --short HEAD` >> COMMIT
-	@echo -n ' (' >> COMMIT
-	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n 'after ' >> COMMIT; fi
-	@$(GIT) log --date=iso --pretty=format:"%ad" -1 >> COMMIT
-	@echo ')' >> COMMIT
-	@-(if [ -e $(FPAT_SRC_DIR) ]; then cd $(FPAT_SRC_DIR); echo `$(GIT) rev-parse --short HEAD`; fi) >> COMMIT
+	@echo -n 'let mochi = Some "' >> $@
+	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ >> $@; fi
+	@echo -n `$(GIT) rev-parse --short HEAD` >> $@
+	@echo -n ' (' >> $@
+	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n "after " >> $@; fi
+	@$(GIT) log --date=iso --pretty=format:"%ad" -1 >> $@
+	@echo -n ')' >> $@
+	@echo '"' >> $@
+	@(if [ -e $(FPAT_SRC_DIR) ]; then \
+		cd $(FPAT_SRC_DIR); \
+		echo -n 'let fpat = Some "'; \
+		echo -n `$(GIT) rev-parse --short HEAD`; \
+		echo '"'; \
+	else \
+		echo 'let fpat = None'; \
+	fi) >> $@
+else
+	@echo "let mochi = None" >> $@
+	@echo "let fpat = None" >> $@
 endif
 
 
@@ -56,23 +68,24 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	CEGAR_abst_util.mli
 CMI = $(MLI:.mli=.cmi)
 
-CMO = environment.cmo flag.cmo debug.cmo util.cmo ext.cmo color.cmo	\
-	tree.cmo rose_tree.cmo id.cmo type.cmo syntax.cmo print.cmo	\
-	term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo	\
-	typing.cmo type_check.cmo CEGAR_ref_type.cmo CEGAR_util.cmo	\
-	fpatInterface.cmo ref_type.cmo ref_type_gen.cmo trans.cmo	\
-	CFA.cmo uncurry.cmo lift.cmo fair_termination_util.cmo		\
-	CEGAR_lift.cmo slicer.cmo useless_elim.cmo inter_type.cmo	\
-	type_trans.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo			\
-	parser_wrapper.cmo encode_list.cmo encode_rec.cmo encode.cmo	\
-	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
-	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\
-	CEGAR_lexer.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
-	trecs_syntax.cmo trecs_parser.cmo trecs_lexer.cmo		\
-	trecsInterface.cmo horSat_syntax.cmo horSat_parser.cmo		\
-	horSat_lexer.cmo horSatInterface.cmo horSat2_parser.cmo		\
-	horSat2_lexer.cmo horSat2Interface.cmo feasibility.cmo		\
-	refine.cmo CEGAR_non_term.cmo HORS_syntax.cmo HORS_lexer.cmo	\
+CMO = revision.cmo environment.cmo flag.cmo debug.cmo util.cmo		\
+	ext.cmo color.cmo tree.cmo rose_tree.cmo id.cmo type.cmo	\
+	syntax.cmo print.cmo term_util.cmo CEGAR_type.cmo		\
+	CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_check.cmo	\
+	CEGAR_ref_type.cmo CEGAR_util.cmo fpatInterface.cmo		\
+	ref_type.cmo ref_type_gen.cmo trans.cmo CFA.cmo uncurry.cmo	\
+	lift.cmo fair_termination_util.cmo CEGAR_lift.cmo slicer.cmo	\
+	useless_elim.cmo inter_type.cmo type_trans.cmo CPS.cmo		\
+	curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo encode_list.cmo	\
+	encode_rec.cmo encode.cmo omegaInterface.cmo			\
+	CEGAR_abst_util.cmo CEGAR_trans.cmo CEGAR_abst_CPS.cmo		\
+	CEGAR_abst.cmo CEGAR_parser.cmo CEGAR_lexer.cmo spec.cmo	\
+	spec_parser.cmo spec_lexer.cmo trecs_syntax.cmo			\
+	trecs_parser.cmo trecs_lexer.cmo trecsInterface.cmo		\
+	horSat_syntax.cmo horSat_parser.cmo horSat_lexer.cmo		\
+	horSatInterface.cmo horSat2_parser.cmo horSat2_lexer.cmo	\
+	horSat2Interface.cmo feasibility.cmo refine.cmo			\
+	CEGAR_non_term.cmo HORS_syntax.cmo HORS_lexer.cmo		\
 	HORS_parser.cmo horSatPInterface.cmo CEGAR_fair_non_term.cmo	\
 	ModelCheck.cmo CEGAR.cmo writeAnnot.cmo tupling.cmo		\
 	ref_trans.cmo ret_fun.cmo BRA_types.cmo BRA_util.cmo		\
