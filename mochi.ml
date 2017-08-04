@@ -503,9 +503,14 @@ let parse_arg () =
   Arg.parse arg_spec set_file usage;
   Flag.args := Array.to_list Sys.argv;
   if not !Flag.ignore_conf then read_option_conf ();
-  let cin =
+  let filename =
     match !Flag.filenames with
-    | [] | ["-"] -> Flag.filenames := ["stdin.ml"]; stdin
+    | []
+    | ["-"] ->
+        let filename = "stdin.ml" in
+        Flag.filenames := [filename];
+        IO.output_file filename (IO.input_all stdin);
+        filename
     | _ ->
         let filename =
           match !Flag.filenames with
@@ -514,8 +519,9 @@ let parse_arg () =
           | files -> merge_input_files files
         in
         Config.load_path := Filename.dirname !!Flag.mainfile :: !Config.load_path;
-        open_in filename
+        filename
   in
+  let cin = open_in filename in
   Flag.input_cegar := String.ends_with !!Flag.mainfile ".cegar";
   cin
 
