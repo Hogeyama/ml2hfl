@@ -605,6 +605,8 @@ let () =
     with
     | e when !Flag.debug_module = [] ->
         Flag.result := string_of_exception e;
+        Format.print_flush ();
+        flush_all ();
         Option.iter output_csv !Flag.output_csv;
         Option.iter output_json !Flag.output_json;
         Main_loop.print_result_delimiter ();
