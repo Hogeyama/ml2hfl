@@ -36,6 +36,7 @@ rule token = parse
 | '+' { PLUS }
 | '-' { MINUS }
 | '*' { TIMES }
+| '/' { DIV }
 | "inline" { INLINE }
 | "inlinef" { INLINEF }
 | "unit" { TUNIT }

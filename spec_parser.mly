@@ -59,6 +59,7 @@ let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %token PLUS
 %token MINUS
 %token TIMES
+%token DIV
 %token BAR
 %token TYPE
 %token VAL
@@ -81,7 +82,7 @@ let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
 %nonassoc NOT
 %nonassoc EQUAL LTHAN GTHAN LEQ GEQ
 %left PLUS MINUS
-%left TIMES
+%left TIMES DIV
 %left LIST
 
 
@@ -126,6 +127,8 @@ exp:
   { make_sub $1 $3 }
 | exp TIMES exp
   { make_mul $1 $3 }
+| exp DIV exp
+  { make_div $1 $3 }
 | NOT exp
   { make_not $2 }
 | id id /* for length */
