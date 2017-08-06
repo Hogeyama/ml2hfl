@@ -38,7 +38,7 @@ let add_randint_precondition map_randint_to_preds ext_ce rand_precond r = functi
     let _rand_var = FpatInterface.conv_var r in
     match ext_ce with
     | (m, bs)::ext_ce' when m=n ->
-       Format.printf "add_randint %d %d@." (List.length abst_preds) (List.length bs);
+       Verbose.printf "add_randint %d %d@." (List.length abst_preds) (List.length bs);
        let asm_cond = List.fold_left2 (fun acc p b -> make_and (if b then p else make_not p) acc) (Const True) abst_preds bs in
        make_and rand_precond asm_cond, ext_ce'
     | _ -> assert false

@@ -363,7 +363,7 @@ let check abst prog spec =
          match spec with
          | Fairness x -> x
          | Other -> assert false in
-       Format.printf "\nFAIRNESS: %a@." Fair_termination_util.print_fairness fairness;
+       Verbose.printf "\nFAIRNESS: %a@." Fair_termination_util.print_fairness fairness;
        let randint_labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
        let events = List.map (fun s -> "event_" ^ s) @@ gather_events prog.defs in
        let labels = events @ randint_labels in

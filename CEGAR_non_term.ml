@@ -31,8 +31,8 @@ let error_trace tr =
 
 let cegar prog0 labeled is_cp ce_tree prog =
   let (cexs, ext_cexs) = error_trace ce_tree in
-  Format.printf "cexs: %a@." (List.print (List.print Format.pp_print_int)) cexs;
-  Format.printf "ext_cexs: %a@." (List.print (List.print (fun fm (a, bs)-> Format.fprintf fm "(%a, %a)" Format.pp_print_int a (List.print Format.pp_print_bool) bs))) @@ ext_cexs;
+  Verbose.printf "cexs: %a@." (List.print (List.print Format.pp_print_int)) cexs;
+  Verbose.printf "ext_cexs: %a@." (List.print (List.print (fun fm (a, bs)-> Format.fprintf fm "(%a, %a)" Format.pp_print_int a (List.print Format.pp_print_bool) bs))) @@ ext_cexs;
   let map_randint_to_preds = make_map_randint_to_preds prog0 in
   let renv = get_renv prog in
   let path_counter = ref 0 in

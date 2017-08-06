@@ -254,7 +254,7 @@ let trans target fairness t =
 
 let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   if !Flag.add_closure_exparam
-  then Format.printf "EXPARAM: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol;
+  then Verbose.printf "EXPARAM: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol;
   let ps = List.map Id.new_var_id prev_vars in
   let xs = List.map Id.new_var_id arg_vars in
   (*
@@ -304,7 +304,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
       List.iter (Debug.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
       let rank_funs'' = rank_funs' @ rank_funs in
-      if !Flag.print_progress then Format.printf "DONE!@.@.";
+      Verbose.printf "DONE!@.@.";
       main_loop rank_var rank_funs'' prev_vars arg_vars exparam_sol'' spcs' spcWithExparams' preds_info' t
 
 
@@ -320,7 +320,7 @@ let pr ?(check_typ=Some TUnit) s t =
 
 let rec run spec t =
   let {Spec.fairness} = spec in
-  Format.printf "FAIRNESS: %a@.@." print_fairness fairness;
+  Verbose.printf "FAIRNESS: %a@.@." print_fairness fairness;
   let t' =
     t
     |> Trans.copy_poly_funs

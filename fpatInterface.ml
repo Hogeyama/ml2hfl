@@ -384,12 +384,12 @@ let infer_with_ext
     (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
     (prog: CEGAR_syntax.prog)
   =
-  Format.printf "labeled %a@." (Util.List.print Format.pp_print_string) labeled;
-  Format.printf "cexs %a@." (Util.List.print @@ Util.List.print Format.pp_print_int) cexs;
+  Verbose.printf "labeled %a@." (Util.List.print Format.pp_print_string) labeled;
+  Verbose.printf "cexs %a@." (Util.List.print @@ Util.List.print Format.pp_print_int) cexs;
   let pr ppf (tenv, phi) =
-    Format.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
+    Verbose.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
   in
-  Format.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
+  Verbose.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
   let fs = List.map fst prog.env in
   let defs' =
     if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
