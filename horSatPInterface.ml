@@ -166,7 +166,7 @@ let rec verifyFile_aux filename =
 (** run HorSatP on `filename` *)
 let verifyFile filename =
   let r = verifyFile_aux filename in
-  Format.eprintf "[Info] HorSatP returned \"%s\"@." r;
+  Verbose.eprintf "[Info] HorSatP returned \"%s\"@." r;
   match r with
   | "Satisfied"   | "safe"   -> Satisfied
   | "Unsatisfied" | "unsafe" -> Unsatisfied
