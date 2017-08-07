@@ -341,7 +341,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
   | Texp_constant c ->
       {desc = Const (from_constant c); typ = typ'; attr=[]}
   | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
-       when (function {pat_desc=PVar _} -> false | _ -> true) (from_pattern vb_pat) ->
+       when (function Tpat_var _ -> false | _ -> true) vb_pat.Typedtree.pat_desc ->
       let p' = from_pattern vb_pat in
       let t1 = from_expression id_env vb_expr in
       let t2 = from_expression id_env e2 in
@@ -362,10 +362,10 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
       let t = from_expression id_env e in
       make_let bindings t
   | Texp_function(_,[case],Total)
-       when (function ({pat_desc=PVar _},t,_) -> t = true_term | _ -> false) @@ from_case id_env case ->
+       when (function {c_lhs={pat_desc=Tpat_var _}; c_guard=None} -> true | _ -> false) case ->
       begin
         match from_case id_env case with
-        | ({pat_desc=PVar x}, _, e) -> make_fun x e
+        | {pat_desc=PVar x}, _, e -> make_fun x e
         | _ -> assert false
       end
   | Texp_function(_,pats,totality) ->

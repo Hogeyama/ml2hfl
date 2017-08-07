@@ -610,4 +610,5 @@ let () =
         Option.iter output_csv !Flag.output_csv;
         Option.iter output_json !Flag.output_json;
         Main_loop.print_result_delimiter ();
-        if not !!is_only_result then print_error e
+        if not !!is_only_result then print_error e;
+        exit 1
