@@ -131,6 +131,7 @@ let assume_if = ref false (* whether replace if-term to branch or not (this flag
 let expand_non_rec = ref true
 let expand_non_rec_init = ref true
 let decomp_pred = ref false
+let decomp_eq_pred = ref false
 
 (* pretty printer option *)
 let () = Format.set_margin 120

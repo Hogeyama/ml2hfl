@@ -8,6 +8,7 @@ DONE
 depend
 config.status
 environment.ml
+revision.ml
 configure
 aclocal.m4
 autom4te.cache

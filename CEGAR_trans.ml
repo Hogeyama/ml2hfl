@@ -19,6 +19,7 @@ let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
 let rec decomp_bool t =
   match t with
   | App(App(Const (And|Or), t1), t2) -> decomp_bool t1 @ decomp_bool t2
+  | App(App(Const EqInt, t1), t2) when !Flag.decomp_eq_pred -> [make_leq t1 t2; make_geq t1 t2]
   | _ -> [t]
 
 let rec merge_typ env typ typ' =
@@ -505,8 +506,8 @@ let rename_prog prog =
   let defs = List.map rename_def prog.defs in
   let main = rename_var map prog.main in
   let prog = {env; defs; main; info=prog.info} in
-  if false then Format.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
-  ignore (Typing.infer prog);
+  Debug.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  ignore @@ Typing.infer prog;
   let rmap = List.map (Pair.map_snd trans_inv_var) map in
   Id.set_counter counter1;
   prog, map, rmap

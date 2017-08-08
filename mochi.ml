@@ -337,6 +337,7 @@ let rec arg_spec () =
      "-neg-pred-off", Arg.Set Flag.never_use_neg_pred,
                       " Never use negative predicates for abstraction";
      "-decomp-pred", Arg.Set Flag.decomp_pred, " Decompose abstraction predicates (e.g., [P1 && P2] ==> [P1, P2])";
+     "-decomp-eq-pred", Arg.Set Flag.decomp_eq_pred, " Decompose abstraction predicates on equalities (e.g., [t1 = t2] ==> [t1 <= t2, t1 >= t2])";
      (* higher-order model checking *)
      "", Arg.Unit ignore, "Options_for_model_checking";
      "-ea", Arg.Set Flag.print_eval_abst, " Print evaluation of abstacted program";
