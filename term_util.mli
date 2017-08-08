@@ -197,3 +197,6 @@ val find_exn_typ : term -> typ option
 val col_typ_var : term -> typ option ref list
 val add_tapred : id -> term list -> typ -> typ
 val get_tapred : typ -> (id * term list) option
+val col_app_args : id -> term -> term list list
+val find_fixed_args : id -> id list -> term -> id list
+val trans_if : (term -> term option) -> term -> term

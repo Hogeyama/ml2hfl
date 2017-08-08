@@ -52,6 +52,7 @@ val order : 'a t -> int
 val arity : 'a t -> int
 val var_name_of : 'a t -> string
 val primitives : string list
+val remove_arg_at : int -> 'a t -> 'a t
 
 (** {6 destructor} *)
 

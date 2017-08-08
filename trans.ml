@@ -2800,3 +2800,72 @@ let ignore_exn_arg t =
   | Some(Type(["exn", TVariant decl], "exn")) ->
       ignore_exn_arg.tr2_term decl t
   | Some _ -> assert false
+
+
+
+let elim_redundant_arg =
+  let tr = make_trans2 () in
+  let tr_desc vars desc =
+    match desc with
+    | Let([f,xs,t1], t) when not @@ is_non_rec [f,xs,t1] ->
+        let fixed_args = find_fixed_args f xs t1 in
+        if fixed_args = [] then
+          Let([f, xs, tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
+        else
+          let () = Format.printf "FIXED_ARGS %a@." (List.print Id.print) fixed_args in
+          let ixs = List.filter_mapi (fun i x -> if Id.mem x fixed_args then Some (i,x) else None) xs in
+          begin
+            match col_app_args f t with
+            | [] -> Let([f, xs, tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
+            | args::argss ->
+                Format.printf "ixs: %a@." (List.print @@ Pair.print Format.pp_print_int Id.print) @@ ixs;
+                let args' = List.map decomp_var args in
+                let argss' = List.map (List.map decomp_var) argss in
+                Format.printf "APP: %a@." Print.term @@ make_app (make_var f) args;
+                Format.printf "APPS: %a@." (List.print Print.term) @@ List.map (make_app (make_var f)) argss;
+                let redundant =
+                  let check (i,_) =
+                    match List.nth args' i with
+                    | None -> false
+                    | Some x ->
+                        Id.mem x vars &&
+                        List.for_all (fun args'' -> Option.exists (Id.eq x) @@ List.nth args'' i) argss'
+                    | exception _ -> false
+                  in
+                  List.filter check ixs
+                in
+                Format.printf "vars: %a@." (List.print Id.print) vars;
+                Format.printf "REDUNDANT: %a@." (List.print Id.print) @@ List.map snd redundant;
+                let pos = List.map fst redundant in
+                let map = List.map (fun (i,x) -> x, List.nth args i) redundant in
+                let f' = Id.map_typ (List.fold_right Type.remove_arg_at pos) f in
+                let xs' = List.fold_right List.remove_at pos xs in
+                let remove_arg t =
+                  match t.desc with
+                  | App({desc=Var g}, ts) when Id.eq f g ->
+                      let desc = App(make_var f', List.fold_right List.remove_at pos ts) in
+                      Some {t with desc}
+                  | _ -> None
+                in
+                let t1' =
+                  t1
+                  |> tr.tr2_term (xs@vars)
+                  |> subst_map map
+                  |> trans_if remove_arg
+                in
+                let t' =
+                  t
+                  |> tr.tr2_term vars
+                  |> trans_if remove_arg
+                in
+                Let([f',xs',t1'], t')
+          end
+    | Let(bindings, t) ->
+        let bindings' = List.map (fun (f,xs,t1) -> f, xs, tr.tr2_term_rec (xs@vars) t1) bindings in
+        Let(bindings', tr.tr2_term_rec vars t)
+    | _ -> tr.tr2_desc_rec vars desc
+  in
+  tr.tr2_desc <- tr_desc;
+  fun t ->
+    Format.printf "BEGIN: @[%a@." Print.term t;
+  tr.tr2_term [] t

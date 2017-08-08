@@ -60,6 +60,7 @@ let encode_list_opt = ref false
 let abst_list_eq = ref true
 let abst_list_literal = ref (-1)
 let tupling = ref false
+let elim_redundant_arg = ref true
 let elim_same_arg = ref false
 let base_to_int = ref false
 let exists_unknown_false = true

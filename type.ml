@@ -481,3 +481,10 @@ let rec is_mutable_record typ =
 
 
 let primitives = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"; "Format.format"; "Format.formatter"]
+
+
+let rec remove_arg_at i typ =
+  match typ with
+  | TFun(x, typ) when i = 0 -> typ
+  | TFun(x, typ) -> TFun(x, remove_arg_at (i-1) typ)
+  | _ -> assert false

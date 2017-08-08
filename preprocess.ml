@@ -15,6 +15,7 @@ type preprocess_label =
   | Copy_poly
   | Ignore_non_termination
   | Beta_reduce_trivial
+  | Eliminate_redundant_arguments
   | Recover_const_attr
   | Decomp_pair_eq
   | Add_preds
@@ -54,6 +55,7 @@ let string_of_label = function
   | Copy_poly -> "Copy_poly"
   | Ignore_non_termination -> "Ignore_non_termination"
   | Beta_reduce_trivial -> "Beta_reduce_trivial"
+  | Eliminate_redundant_arguments -> "Eliminate_redundant_arguments"
   | Recover_const_attr -> "Recover_const_attr"
   | Decomp_pair_eq -> "Decomp_pair_eq"
   | Add_preds -> "Add_preds"
@@ -126,6 +128,9 @@ let all spec : t list =
     Beta_reduce_trivial,
       (Fun.const true,
        map_trans Trans.beta_reduce_trivial);
+    Eliminate_redundant_arguments,
+      (Fun.const !Flag.elim_redundant_arg,
+       map_trans Trans.elim_redundant_arg);
     Recover_const_attr,
       (Fun.const true,
        map_trans Trans.recover_const_attr);

@@ -1077,3 +1077,50 @@ let rec is_fail t =
   | Let([_, [], t], _) -> is_fail t
   | App({desc=Event("fail",_)}, [{desc=Const Unit}]) -> true
   | _ -> false
+
+
+let col_app_args =
+  let col = make_col2 [] (@) in
+  let col_desc f desc =
+    match desc with
+    | App({desc=Var g}, ts) when Id.same f g -> [ts]
+    | _ -> col.col2_desc_rec f desc
+  in
+  col.col2_desc <- col_desc;
+  col.col2_term
+
+
+let col_non_fixed_args =
+  let col = make_col2 [] (@) in
+  let col_desc (f,xs) desc =
+    match desc with
+    | App({desc=Var g}, ts) when Id.same f g ->
+        let check (i,x) =
+          match List.nth ts i with
+          | {desc=Var y} when Id.same x y -> []
+          | t -> x :: col.col2_term (f,xs) t
+          | exception Invalid_argument _ -> [x]
+        in
+        List.flatten_map check xs
+    | _ -> col.col2_desc_rec (f,xs) desc
+  in
+  col.col2_desc <- col_desc;
+  fun f xs t ->
+    let xs' = List.mapi Pair.pair xs in
+    col.col2_term (f,xs') t
+
+let find_fixed_args f xs t =
+  let non_fixed = col_non_fixed_args f xs t in
+  List.filter_out (Id.mem -$- non_fixed) xs
+
+
+
+let trans_if =
+  let tr = make_trans2 () in
+  let trans_if_term trans t2 =
+    match trans t2 with
+    | None -> tr.tr2_term_rec trans t2
+    | Some t2' -> t2'
+  in
+  tr.tr2_term <- trans_if_term;
+  tr.tr2_term
