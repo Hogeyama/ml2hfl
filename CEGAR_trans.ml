@@ -470,47 +470,76 @@ let rec uniq_env = function
 let remove_id_event = map_def_prog (fun (f,xs,t1,e,t2) -> f, xs, t1, List.remove_all e (Event "id"), t2)
 
 let rename_prog prog =
+  Debug.printf "@.BEFORE RENAMING:@.%a@." CEGAR_print.prog_typ prog;
   let counter1 = Id.get_counter () in
   Id.clear_counter ();
   let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
   let var_names = List.rev_map id_name (List.unique vars) in
   let rename_id' x var_names =
     let x_name = id_name x in
-      if List.length (List.filter ((=) x_name) var_names) <= 1 &&
-        x_name <> "l0" && x_name <> "l1" (* for labels in model-checking *)
-      then x_name
-      else rename_id x
+    if List.length (List.filter ((=) x_name) var_names) <= 1 &&
+         x_name <> "l0" && x_name <> "l1" (* for labels in model-checking *)
+    then x_name
+    else rename_id x
   in
   let make_map_fun (f,_) =
-    let f' = rename_id' f var_names in
-      f, f'
+    f, rename_id' f var_names
   in
-  let map = List.rev_map make_map_fun prog.env in
-  List.iter (fun (f,f') -> Debug.printf "rename: %s ==> %s@." f f') map;
+  let fun_map = List.rev_map make_map_fun prog.env in
+  List.iter (fun (f,f') -> Debug.printf "rename: %s ==> %s@." f f') fun_map;
   Debug.printf "@.";
-  let var_names' = List.map snd map in
-  let rename_var map x = List.assoc x map in
-  let rename_def (f,xs,t1,e,t2) =
-    let counter2 = Id.get_counter () in
-    let () = Id.clear_counter () in
-    let var_names'' = List.rev_map id_name xs @@@ var_names' in
-    let arg_map = List.map (fun x -> x, rename_id' x var_names'') xs in
-    let arg_map = List.unique ~eq:(Compare.eq_on fst) arg_map in
-    let smap = List.map (fun (x,x') -> x, Var x') (arg_map @@@ map) in
-    let rename_term t = subst_map smap t in
-    let def = rename_var map f, List.map (rename_var arg_map) xs, rename_term t1, e, rename_term t2 in
-    Id.set_counter counter2;
-    def
+  let rename_var map x = List.assoc_default x x map in
+  let env = List.map (Pair.map_fst @@ rename_var fun_map) prog.env in
+  let defs =
+    let rename_def (f,xs,t1,e,t2) =
+      Id.save_counter ();
+      Id.clear_counter ();
+      let var_names' =
+        fun_map
+        |> List.map snd
+        |> (@@@) (List.rev_map id_name xs)
+      in
+      let arg_map =
+        xs
+        |> List.map (fun x -> x, rename_id' x var_names')
+        |> List.unique ~eq:(Compare.eq_on fst)
+        |> List.unique ~eq:(Compare.eq_on snd)
+      in
+      Debug.printf "f: %s@." f;
+      List.iter (fun (f,f') -> Debug.printf "  rename: %s ==> %s@." f f') arg_map;
+      Debug.printf "@.";
+      let rename_term t =
+        let smap = List.map (Pair.map_snd _Var) (arg_map @@@ fun_map) in
+        subst_map smap t
+      in
+      let check_uniq xs = (* for debug *)
+        let rec check xs =
+          match xs with
+          | [] -> ()
+          | [_] -> ()
+          | x1::(x2::_ as xs') -> assert (x1 <> x2); check xs'
+        in
+        check @@ List.sort compare xs
+      in
+      let def =
+        rename_var fun_map f,
+        List.map (rename_var arg_map) xs |@> check_uniq,
+        rename_term t1,
+        e,
+        rename_term t2
+      in
+      Id.reset_counter();
+      def
+    in
+    List.map rename_def prog.defs
   in
-  let env = List.map (Pair.map_fst @@ rename_var map) prog.env in
-  let defs = List.map rename_def prog.defs in
-  let main = rename_var map prog.main in
+  let main = rename_var fun_map prog.main in
   let prog = {env; defs; main; info=prog.info} in
-  Debug.printf "@.PROG:@.%a@." CEGAR_print.prog_typ prog;
+  Debug.printf "@.RENAMED:@.%a@." CEGAR_print.prog_typ prog;
   ignore @@ Typing.infer prog;
-  let rmap = List.map (Pair.map_snd trans_inv_var) map in
+  let rmap = List.map (Pair.map_snd trans_inv_var) fun_map in
   Id.set_counter counter1;
-  prog, map, rmap
+  prog, fun_map, rmap
 
 let id_prog prog =
   let map = List.rev_map (fun (f,_) -> f, f) prog.env in
