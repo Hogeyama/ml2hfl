@@ -155,9 +155,29 @@ let make_or t1 t2 =
   else
     {desc=BinOp(Or, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_ors ts = List.fold_right make_or ts false_term
-let make_add t1 t2 = {desc=BinOp(Add, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
-let make_sub t1 t2 = {desc=BinOp(Sub, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
-let make_mul t1 t2 = {desc=BinOp(Mult, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+let make_add t1 t2 =
+  if t2.desc = Const (Int 0) then
+    t1
+  else if t1.desc = Const (Int 0) then
+    t2
+  else
+    {desc=BinOp(Add, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+let make_sub t1 t2 =
+  if t2.desc = Const (Int 0) then
+    t1
+  else
+    {desc=BinOp(Sub, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+let make_mul t1 t2 =
+  if t1.desc = Const (Int 0) && List.Set.subset [ANotFail;ATerminate] t2.attr then
+    make_int 0
+  else if t2.desc = Const (Int 0) && List.Set.subset [ANotFail;ATerminate] t1.attr then
+    make_int 0
+  else if t2.desc = Const (Int 1) then
+    t1
+  else if t1.desc = Const (Int 1) then
+    t2
+  else
+    {desc=BinOp(Mult, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_div t1 t2 = {desc=BinOp(Div, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_neg t = make_sub (make_int 0) t
 let make_if_ t1 t2 t3 =
@@ -680,28 +700,28 @@ let rec get_top_rec_funs acc = function
 let get_top_rec_funs = get_top_rec_funs []
 
 
-let has_no_effect = make_col true (&&)
-
-let has_no_effect_term t =
-  match t.desc with
-  | Const _ -> true
-  | Var _ -> true
-  | Fun _ -> true
-  | App _ -> false
-  | Let(bindings,t) ->
-      has_no_effect.col_term t &&
-      List.for_all (fun (f,xs,t) -> xs <> [] || has_no_effect.col_term t) bindings
-  | Field _ -> false
-  | SetField _ -> false
-  | Raise _ -> false
-  | Bottom -> false
-  | Ref _ -> false
-  | Deref _ -> false
-  | SetRef _ -> false
-  | _ -> has_no_effect.col_term_rec t
-
-let () = has_no_effect.col_term <- has_no_effect_term
-let has_no_effect = has_no_effect.col_term
+let has_no_effect =
+  let col = make_col true (&&) in
+  let col_term t =
+    match t.desc with
+    | Const _ -> true
+    | Var _ -> true
+    | Fun _ -> true
+    | App _ -> false
+    | Let(bindings,t) ->
+        col.col_term t &&
+          List.for_all (fun (f,xs,t) -> xs <> [] || col.col_term t) bindings
+    | Field _ -> false
+    | SetField _ -> false
+    | Raise _ -> false
+    | Bottom -> false
+    | Ref _ -> false
+    | Deref _ -> false
+    | SetRef _ -> false
+    | _ -> col.col_term_rec t
+  in
+  col.col_term <- col_term;
+  col.col_term
 
 
 
