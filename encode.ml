@@ -188,10 +188,6 @@ let encode_simple_variant_pat p =
   | PConstruct(c, ts) when is_simple_variant p.pat_typ ->
       assert (ts = []);
       make_pconst (make_int @@ position c p.pat_typ)
-  | PConstruct(c, ts) ->
-      Format.printf "p: %a@." Print.pattern p;
-      Format.printf "typ: %a@." Print.typ p.pat_typ;
-      assert false
   | _ -> encode_simple_variant.tr_pat_rec p
 
 let encode_simple_variant_term t =

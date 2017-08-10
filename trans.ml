@@ -2812,17 +2812,13 @@ let elim_redundant_arg =
         if fixed_args = [] then
           Let([f, xs, tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
         else
-          let () = Format.printf "FIXED_ARGS %a@." (List.print Id.print) fixed_args in
           let ixs = List.filter_mapi (fun i x -> if Id.mem x fixed_args then Some (i,x) else None) xs in
           begin
             match col_app_args f t with
             | [] -> Let([f, xs, tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
             | args::argss ->
-                Format.printf "ixs: %a@." (List.print @@ Pair.print Format.pp_print_int Id.print) @@ ixs;
                 let args' = List.map decomp_var args in
                 let argss' = List.map (List.map decomp_var) argss in
-                Format.printf "APP: %a@." Print.term @@ make_app (make_var f) args;
-                Format.printf "APPS: %a@." (List.print Print.term) @@ List.map (make_app (make_var f)) argss;
                 let redundant =
                   let check (i,_) =
                     match List.nth args' i with
@@ -2834,8 +2830,6 @@ let elim_redundant_arg =
                   in
                   List.filter check ixs
                 in
-                Format.printf "vars: %a@." (List.print Id.print) vars;
-                Format.printf "REDUNDANT: %a@." (List.print Id.print) @@ List.map snd redundant;
                 let pos = List.map fst redundant in
                 let map = List.map (fun (i,x) -> x, List.nth args i) redundant in
                 let f' = Id.map_typ (List.fold_right Type.remove_arg_at pos) f in
@@ -2866,6 +2860,4 @@ let elim_redundant_arg =
     | _ -> tr.tr2_desc_rec vars desc
   in
   tr.tr2_desc <- tr_desc;
-  fun t ->
-    Format.printf "BEGIN: @[%a@." Print.term t;
-  tr.tr2_term [] t
+  tr.tr2_term []
