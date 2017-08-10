@@ -205,7 +205,11 @@ let run prog =
   in
   try
     let is_cp = FpatInterface.is_cp prog in
-    snd @@ loop {prog with info} is_cp []
+    try
+      snd @@ loop {prog with info} is_cp []
+    with Fpat.RefTypInfer.FailedToRefineTypes when !Flag.web ->
+      FpatInterface.parse_arg "-hccs it";
+      snd @@ loop {prog with info} is_cp []
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress

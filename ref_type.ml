@@ -226,10 +226,6 @@ let rec rename var = function
   | Base(base, x, p) ->
       let x' = Option.default (Id.new_var_id x) var in
       Base(base, x', U.subst_var x x' p)
-  | Fun(x, typ1, (Fun(_, typ, _) as typ2)) when !Flag.web && is_fun typ ->
-      let x' = Id.new_var ~name:("@" ^ Id.name x) (Id.typ x) in
-      let typ2' = subst_var x x' typ2 in
-      Fun(x', rename (Some x') typ1, rename None typ2')
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var_id x in
       let typ2' = subst_var x x' typ2 in

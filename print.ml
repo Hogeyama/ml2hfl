@@ -5,25 +5,9 @@ open Syntax
 
 let rec print_typ fm t = Type.print ~occur (print_term 0 false) fm t
 and print_ids typ fm xs =
-  if !Flag.web then
-    let rec aux xs =
-      match xs with
-      | [] -> ()
-      | [x] ->
-	  fprintf fm "%a" print_id x
-      | x1 :: x2 :: xs ->
-	  if is_fun_typ @@ Id.typ x2 then
-	    fprintf fm "$%a$ " print_id x1
-	  else
-	    fprintf fm "%a " print_id x1;
-	  aux (x2 :: xs)
-    in
-    aux xs
-  else
-    if xs <> []
-    then
-      let p_id = if typ then print_id_typ else print_id in
-      print_list p_id "@ " ~first:true fm xs
+  if xs <> [] then
+    let p_id = if typ then print_id_typ else print_id in
+    print_list p_id "@ " ~first:true fm xs
 
 (*
   and print_id fm x = fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
@@ -67,21 +51,7 @@ and print_binop fm = function
   | Div -> fprintf fm "/"
 
 and print_termlist pri typ fm ts =
-  if !Flag.web then
-    let rec aux ts =
-      match ts with
-      | [] -> ()
-      | [t] -> fprintf fm "@ %a" (print_term pri typ) t
-      | t1 :: t2 :: ts' ->
-          if is_fun_typ t2.typ then
-            fprintf fm "@ $%a$" (print_term pri typ) t1
-          else
-            fprintf fm "@ %a" (print_term pri typ) t1;
-          aux (t2 :: ts')
-    in
-    aux ts
-  else
-    print_list (print_term pri typ) "@ " fm ts
+  print_list (print_term pri typ) "@ " fm ts
 
 and print_const fm = function
   | Unit -> fprintf fm "()"

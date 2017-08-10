@@ -84,7 +84,7 @@ let report_safe env orig t0 =
       in
       let t = Term_util.subst_map map t0 in
       Format.printf "Program with Quantifiers Added:@.";
-      Ref.tmp_set Flag.web true (fun () -> Format.printf "  @[<v>%a@]@.@." Print.term t)
+      Format.printf "  @[<v>%a@]@.@." Print.term t
     end;
 
   if env <> [] && !Flag.mode <> Flag.Termination then

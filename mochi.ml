@@ -270,6 +270,7 @@ let rec arg_spec () =
      "-version", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
+     "-web", Arg.Set Flag.web, " Web mode";
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.ignore_exn_arg, " Ignore exception arguments";

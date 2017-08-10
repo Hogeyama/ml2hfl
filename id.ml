@@ -69,12 +69,7 @@ let is_external x = List.mem External x.attr
 let is_coefficient x = List.mem Coefficient x.attr
 
 let print fm x =
-  let s =
-    if !Flag.web then
-      name x
-    else
-      to_string x
-  in
+  let s = to_string x in
   assert (s <> "");
   let s' =
     if !Flag.print_as_ocaml then
