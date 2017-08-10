@@ -16,7 +16,7 @@ let preprocess make_pps ?(fun_list=None) t spec =
   let t = Preprocess.last_t results in
   let fun_list' =
     match fun_list with
-    | None -> Term_util.get_top_funs @@ Preprocess.take_result Preprocess.Decomp_pair_eq results
+    | None -> Term_util.get_top_funs Preprocess.(take_result Decomp_pair_eq results)
     | Some fun_list' -> fun_list'
   in
 
@@ -51,9 +51,9 @@ let preprocess make_pps ?(fun_list=None) t spec =
       else
         None
     in
-    {prog.CEGAR_syntax.info with CEGAR_syntax.orig_fun_list; CEGAR_syntax.inlined; CEGAR_syntax.fairness}
+    CEGAR_syntax.{prog.info with orig_fun_list; inlined; fairness}
   in
-  {prog with CEGAR_syntax.info}, make_get_rtyp
+  CEGAR_syntax.{prog with info}, make_get_rtyp
 
 
 

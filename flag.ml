@@ -99,6 +99,7 @@ let print_as_ocaml = ref false
 let print_only_if_id = ref false
 let print_unused_arg = ref false
 let print_result = ref true
+let print_certificate = ref false
 
 let web = ref false
 

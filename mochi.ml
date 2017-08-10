@@ -286,6 +286,7 @@ let rec arg_spec () =
      "-print-as-ocaml", Arg.Set Flag.print_as_ocaml, " Print terms in OCaml syntax";
      "-print-progress", Arg.Set Flag.print_progress, " Print progress (use after -modular/-imodular)";
      "-print-unused-arg", Arg.Set Flag.print_unused_arg, " Print unused arguments";
+     "-print-cert", Arg.Set Flag.print_certificate, " Print certificates even if the model checker does not support certificates (need TRecS)";
      (* preprocessing *)
      "", Arg.Unit ignore, "Options_for_preprocessing";
      "-fail-as-excep", Arg.Set Flag.fail_as_exception, " Treat fail as an exception";

@@ -80,8 +80,7 @@ let rec loop prog0 is_cp ces =
   let result = MC.check abst prog spec in
   match result, !Flag.mode with
   | MC.Safe env, _ ->
-      if !!Flag.print_ref_typ_debug
-      then
+      if !!Flag.print_ref_typ_debug then
         begin
           Format.printf "Intersection types:@.";
           List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f Inter_type.print typ) env;
@@ -92,9 +91,15 @@ let rec loop prog0 is_cp ces =
           Some (x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp)
         with Not_found -> None
       in
-      let env' = List.filter_map aux env in
-      if !!Flag.print_ref_typ_debug
-      then
+      let env' =
+        if !Flag.print_certificate && Flag.(!mc <> TRecS) then
+          match Ref.tmp_set Flag.mc Flag.TRecS (fun () -> MC.check abst prog spec) with
+          | MC.Safe env -> List.filter_map aux env
+          | _ -> assert false
+        else
+          List.filter_map aux env
+      in
+      if !!Flag.print_ref_typ_debug then
         begin
           Format.printf "Refinement types:@.";
           List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f CEGAR_ref_type.print typ) env';
