@@ -303,10 +303,12 @@ let assert_to_fun t =
 
 let rec top_to_local_aux (f,xs,t1) t =
   match t.desc with
+  | Const Unit ->
+      make_let [f,xs,t1] t
   | Let([main,ys,t2], {desc=Const Unit}) ->
       let t2' = make_let [f,xs,t1] t2 in
       let desc = Let([main,ys,t2'], unit_term) in
-      {t with desc}
+      top_to_local {t with desc}
   | Let(bindings, t2) ->
       let used,bindings' =
         let aux (g,ys,t3) =
@@ -331,16 +333,15 @@ let rec top_to_local_aux (f,xs,t1) t =
         |> top_to_local_aux (f,xs,t1)
       in
       let desc = Let(bindings'', t2') in
-      {t with desc}
+      top_to_local {t with desc}
   | _ ->
       assert (not @@ Id.mem f @@ get_fv t);
       t
 
-let rec top_to_local t =
+and top_to_local t =
   match t.desc with
   | Let([f,xs,t1 as binding], t2) when xs @ fst (decomp_funs t1) = [] ->
-      let t2' = top_to_local_aux binding t2 in
-      top_to_local t2'
+      top_to_local_aux binding t2
   | Let([binding], t2) ->
       let desc = Let([binding], top_to_local t2) in
       {t with desc}
