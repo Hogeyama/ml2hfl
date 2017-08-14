@@ -574,12 +574,7 @@ and simplify typ =
       if p' = U.false_term
       then Union(to_simple typ, [])
       else Base(base, x, p')
-  | Fun(x,typ1,typ2) ->
-      begin
-        match simplify typ1 with
-        | Union(_, []) -> Inter(to_simple typ, [])
-        | typ1' -> Fun(x, typ1', simplify typ2)
-      end
+  | Fun(x,typ1,typ2) -> Fun(x, simplify typ1, simplify typ2)
   | Tuple xtyps ->
       let xtyps' = List.map (Pair.map_snd simplify) xtyps in
       if List.exists (snd |- is_bottom) xtyps' then

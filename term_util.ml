@@ -199,7 +199,10 @@ let make_if_ t1 t2 t3 =
       {desc=If(t1, t2, t3); typ=typ; attr=make_attr[t1;t2;t3]}
 let make_eq t1 t2 =
   assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
-  {desc=BinOp(Eq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+  match t1.desc, t2.desc with
+  | Const c1, Const c2 -> make_bool (c1 = c2)
+  | _ ->
+      {desc=BinOp(Eq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
