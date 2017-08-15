@@ -551,6 +551,20 @@ let id_prog prog =
 module CRT = CEGAR_ref_type
 module RT = Ref_type
 
+let rec revert_typ ty =
+  match ty with
+  | TBase(TUnit, _) -> Type.TUnit
+  | TBase(TBool, _) -> Type.TBool
+  | TBase(TInt, _) -> Type.TInt
+  | TBase(TAbst s, _) -> Type.TData s
+  | TBase(b,_) ->
+      Format.printf "%a@." CEGAR_print.typ ty;
+      unsupported "CEGAR_trans.revert_typ: TBase"
+  | TBase _ -> unsupported "CEGAR_trans.revert_typ: TBase"
+  | TAbs _ -> unsupported "CEGAR_trans.revert_typ: TAbs"
+  | TApp _ -> unsupported "CEGAR_trans.revert_typ: TApp"
+  | TFun(typ1, typ2) -> Type.TFun(Id.new_var (revert_typ typ1), revert_typ @@ typ2 @@ Const Unit)
+
 let rec trans_ref_type = function
   | CRT.Base(b,x,p) ->
       let b' =
@@ -565,11 +579,7 @@ let rec trans_ref_type = function
       RT.Fun(trans_inv_var x, trans_ref_type typ1, trans_ref_type typ2)
   | CRT.Inter(typ, typs) ->
       let typs' = List.map trans_ref_type typs in
-      let typ' =
-        match typs' with
-        | [] -> Type.typ_unknown (* TODO *)
-        | typ''::_ -> RT.to_simple typ''
-      in
+      let typ' = revert_typ typ in
       RT.Inter(typ', typs')
 
 

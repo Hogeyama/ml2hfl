@@ -2,6 +2,8 @@ open Util
 
 module CS = CEGAR_syntax
 
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+
 type base =
   | Unit
   | Bool
@@ -33,6 +35,7 @@ let rec print fm = function
       if occur x typ2
       then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" CEGAR_print.var x print typ1 print typ2
       else Format.fprintf fm "(@[%a@ ->@ %a@])" print typ1 print typ2
+  | Inter(sty, []) when !!Debug.check -> Format.fprintf fm "Top(%a)" CEGAR_print.typ sty
   | Inter(_, []) -> Format.fprintf fm "Top"
   | Inter(_, [typ]) -> print fm typ
   | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs

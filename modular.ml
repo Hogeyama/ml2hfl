@@ -99,10 +99,14 @@ let non_terminating_typ typ =
   aux @@ of_simple @@ to_simple typ
 
 let check prog f typ depth =
-  Time.measure_and_add time_check (fun () -> Modular_check.check prog f typ depth)
+  Time.measure_and_add
+    time_check
+    (fun () -> Modular_check.check prog f typ depth)
 
 let infer prog f typ ce_set2 depth =
-  Time.measure_and_add time_synthesize (fun () -> Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
+  Time.measure_and_add
+    time_synthesize
+    (fun () -> Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
 
 let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
   let space = String.make (8*List.length history) ' ' in
@@ -153,7 +157,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
             | None -> infer prog f typ ce_set2 idepth
             | Some sol -> sol
           in
-          match Time.measure_and_add time_synthesize (fun () -> sol Modular_infer.init_mode) with
+          match sol Modular_infer.init_mode with
           | None ->
               pr "%a{%a,%d}%t THERE ARE NO CANDIDATES" Color.set Color.Blue Id.print f c Color.reset;
               let neg_env' = merge_neg_tenv neg_env @@ Ref_type.NegEnv.of_list [f, typ] in
@@ -185,13 +189,13 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
                    main_loop_ind history (c+1) prog cmp dep f typ cdepth (idepth+1) ce_set3)
                 else
                   raise NoProgress
-(*
+              (*
                   let typ' = non_terminating_typ typ in
                   ignore @@ read_line();
                   let _, env'', neg_env'', ce_set4 = main_loop_ind history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep f typ' depth ce_set3 in
                   ignore @@ read_line();
                   main_loop_ind history (c+1) {prog with fun_typ_env=env''; fun_typ_neg_env=neg_env''} cmp dep f typ depth ce_set4
- *)
+               *)
               in
               infer_mode_loop Modular_infer.init_mode candidate
         in

@@ -1124,7 +1124,7 @@ let infer prog f typ (ce_set:ce_set) depth merge =
     |@> Debug.printf "HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
     |@!!Debug.check&> check_arity
     |*> HC.inline need
-    |@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
+    |*@> Debug.printf "INLINED HORN CLAUSES:@.@[%a@.@." HC.print_horn_clauses
   in
   let merge_candidates =
     if merge then

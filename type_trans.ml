@@ -14,12 +14,19 @@ let ref_base_of_abs_base = function
   | AT.TTuple -> assert false
   | AT.TAbst s -> RT.Abst s
 
+let rec simple typ =
+  match typ with
+  | AT.TBase(base,_) when base = AT.typ_result_base -> AT.TBase(AT.TUnit, fun _ -> [])
+  | AT.TBase(base,_) -> AT.TBase(base, fun _ -> [])
+  | AT.TAbs _ -> unsupported "CEGAR_type.remove_pred: TAbs"
+  | AT.TApp _ -> unsupported "CEGAR_type.remove_pred: TApp"
+  | AT.TFun(typ1, typ2) -> AT.TFun(simple typ1, simple -| typ2)
 
 let rec ref_of_inter env cond atyp ityp =
   match atyp,ityp with
   | _, IT.Inter ityps ->
       let rtyps = List.map (ref_of_inter env cond atyp) ityps in
-      RT.Inter(atyp, rtyps)
+      RT.Inter(simple atyp, rtyps)
   | AT.TFun(AT.TBase(b,ps), atyp2), _ ->
       let x = CS.new_id "x" in
       let ps' = ps (CS.Var x) in
@@ -69,4 +76,8 @@ let rec ref_of_inter env cond atyp ityp =
       RT.Base(RT.Unit, "", CS.Const CS.True)
   | _ -> Format.printf "atyp:%a@.ityp:%a@." CEGAR_print.typ atyp IT.print ityp; assert false
 
-let ref_of_inter atyp ityp = ref_of_inter [] [] atyp ityp
+let ref_of_inter atyp ityp =
+  let r = ref_of_inter [] [] atyp ityp in
+  Debug.printf "atyp:%a@.ityp:%a@." CEGAR_print.typ atyp IT.print ityp;
+  Debug.printf "r:%a@.@." RT.print r;
+  r

@@ -86,12 +86,12 @@ let rec loop prog0 is_cp ces =
           List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f Inter_type.print typ) env;
           Format.printf "@."
         end;
-      let aux (x,ityp) =
-        try
-          Some (x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp)
-        with Not_found -> None
-      in
       let env' =
+        let aux (x,ityp) =
+          try
+            Some (x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp)
+          with Not_found -> None
+        in
         if !Flag.print_certificate && Flag.(!mc <> TRecS) then
           match Ref.tmp_set Flag.mc Flag.TRecS (fun () -> MC.check abst prog spec) with
           | MC.Safe env -> List.filter_map aux env
@@ -112,26 +112,26 @@ let rec loop prog0 is_cp ces =
       post ();
       loop prog' is_cp ((MC.CENonTerm ce_tree)::ces)
   | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.FairNonTermination ->
-     begin
-       let prog' = CEGAR_fair_non_term.cegar prog0 labeled is_cp ce_rules prog in
-       post ();
-       Fpat.PredAbst.use_neg_pred := true;
-       let same_counterexample =
-         match ces with
-         | [] -> false
-         | MC.CEFairNonTerm ce_pre :: _ -> ce_pre = ce_rules (*TODO*)
-         | _ -> assert false
-       in
-       if same_counterexample then
-         try
-           improve_precision ();
-           loop prog is_cp ces
-         with NoProgress ->
-           post ();
-           raise NoProgress
-       else
-         loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces)
-     end
+      begin
+        let prog' = CEGAR_fair_non_term.cegar prog0 labeled is_cp ce_rules prog in
+        post ();
+        Fpat.PredAbst.use_neg_pred := true;
+        let same_counterexample =
+          match ces with
+          | [] -> false
+          | MC.CEFairNonTerm ce_pre :: _ -> ce_pre = ce_rules (*TODO*)
+          | _ -> assert false
+        in
+        if same_counterexample then
+          try
+            improve_precision ();
+            loop prog is_cp ces
+          with NoProgress ->
+            post ();
+            raise NoProgress
+        else
+          loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces)
+      end
   | MC.Unsafe ce, _ ->
       let ce_orig =
         match ce with
@@ -154,38 +154,38 @@ let rec loop prog0 is_cp ces =
           post ();
           if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
           raise NoProgress
-      else
-        begin
-          if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
-          match Feasibility.check ce' prog, !Flag.mode with
-          | Feasibility.Feasible sol, Flag.Termination ->
-              (* termination analysis *)
-              Refine.refine_rank_fun ce' [] prog0;
-              assert false
-          | Feasibility.Feasible sol, Flag.FairTermination ->
-              Refine.refine_rank_fun ce' [] prog0;
-              assert false
-          | Feasibility.Feasible sol, _ ->
-              prog, Unsafe(sol, ce)
-          | Feasibility.FeasibleNonTerm _, _ ->
-              assert false
-          | Feasibility.Infeasible prefix, _ ->
-              let ces' = ce::ces in
-              let inlined_functions = inlined_functions prog0 in
-              let aux ce =
-                match ce with
-                | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce' None
-                | _ -> assert false
-              in
-              let prog' =
-                let ces'' = List.map aux ces' in
-                let ext_ces = List.map (Fun.const []) ces'' in
-                snd @@ Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
-              in
-              Verbose.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
-              post ();
-              loop prog' is_cp ces'
-        end
+          else
+            begin
+              if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
+              match Feasibility.check ce' prog, !Flag.mode with
+              | Feasibility.Feasible sol, Flag.Termination ->
+                  (* termination analysis *)
+                  Refine.refine_rank_fun ce' [] prog0;
+                  assert false
+              | Feasibility.Feasible sol, Flag.FairTermination ->
+                  Refine.refine_rank_fun ce' [] prog0;
+                  assert false
+              | Feasibility.Feasible sol, _ ->
+                  prog, Unsafe(sol, ce)
+              | Feasibility.FeasibleNonTerm _, _ ->
+                  assert false
+              | Feasibility.Infeasible prefix, _ ->
+                  let ces' = ce::ces in
+                  let inlined_functions = inlined_functions prog0 in
+                  let aux ce =
+                    match ce with
+                    | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce' None
+                    | _ -> assert false
+                  in
+                  let prog' =
+                    let ces'' = List.map aux ces' in
+                    let ext_ces = List.map (Fun.const []) ces'' in
+                    snd @@ Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
+                  in
+                  Verbose.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
+                  post ();
+                  loop prog' is_cp ces'
+            end
 
 
 let run prog =

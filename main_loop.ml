@@ -29,8 +29,14 @@ let preprocess make_pps ?(fun_list=None) t spec =
   let make_get_rtyp =
     if !!Debug.check then
       let aux f (label,(_,g)) map x =
-        Format.printf "BEGIN %s@." @@ Preprocess.string_of_label label;
-        let r = try g (f map) x with _ -> Format.printf "GET_RTYP ERROR: %s@." @@ Preprocess.string_of_label label; assert false in
+        Format.printf "BEGIN[%s]@." @@ Preprocess.string_of_label label;
+        let r =
+          try
+            g (f map) x
+          with e ->
+            Format.printf "GET_RTYP ERROR[%s]: %s@." (Preprocess.string_of_label label) (Printexc.to_string e);
+            assert false
+        in
         Format.printf "END %s@." @@ Preprocess.string_of_label label;
         r
         in
