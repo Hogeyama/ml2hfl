@@ -640,3 +640,4 @@ let from_use_file ast =
   |> Trans.merge_let_fun
   |> subst_data_type_term "exn" !!exc_typ
   |> Trans.rename_bound_module
+  |> Trans.split_let

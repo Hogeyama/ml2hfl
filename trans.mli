@@ -103,3 +103,4 @@ val bool_eta_reduce : term -> term
 val eta_tuple : term -> term
 val eta_reduce : term -> term
 val elim_redundant_arg : term -> term
+val split_let : term -> term

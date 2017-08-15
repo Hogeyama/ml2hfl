@@ -2861,3 +2861,27 @@ let elim_redundant_arg =
   in
   tr.tr2_desc <- tr_desc;
   tr.tr2_term []
+
+
+let split_let =
+  let tr = make_trans () in
+  let tr_term t =
+    match t.desc with
+    | Let((f,xs,t1)::bindings, t2) when is_non_rec [f,xs,t1] ->
+        let desc = tr.tr_desc_rec @@ Let([f,xs,t1], make_let bindings t2) in
+        {t with desc}
+    | Let(_::_::_ as bindings, t2) ->
+        Format.printf "orig: %a@." (List.print Id.print) @@ List.map Triple.fst bindings;
+        let bindings' = List.map (Triple.map_trd tr.tr_term) bindings in
+        let fvs = List.flatten_map (fun (_,xs,t) -> get_fv @@ make_funs xs t) bindings' in
+        let desc =
+          let recs,non_recs = List.partition (fun (f,_,_) -> Id.mem f fvs) bindings' in
+          Format.printf "recs: %a@." (List.print Id.print) @@ List.map Triple.fst recs;
+          Format.printf "non_recs: %a@." (List.print Id.print) @@ List.map Triple.fst non_recs;
+          Let(recs, make_lets non_recs @@ tr.tr_term t2)
+        in
+        {t with desc}
+    | _ -> tr.tr_term_rec t
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_term
