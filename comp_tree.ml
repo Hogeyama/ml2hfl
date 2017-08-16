@@ -33,7 +33,9 @@ and value = Closure of var_env * val_env * term
 
 let rec pr_bind depth fm (x,vl) =
   let Closure(var_env,val_env,t) = vl in
-  if depth <= 0 then
+  if true then
+    Format.fprintf fm "%a := @[%a%a@]" Id.print x (List.print Id.print) (List.map fst var_env) Print.term t
+  else if depth <= 0 then
     Format.fprintf fm "%a := @[[...]%a@]" Id.print x Print.term t
   else
     Format.fprintf fm "%a := @[%a%a@]" Id.print x (pr_env (depth-1)) val_env Print.term t
@@ -43,7 +45,7 @@ let pr_env fm env = pr_env 0 fm env
 let rec print_tid = Format.pp_print_int
 and print_nlabel fm nlabel =
   match nlabel with
-  | App(f,map) when false ->
+  | App(f,map) when true ->
       Format.fprintf fm "@[App %a %a@]" Id.print f pr_env map
   | App(f,map) ->
       Format.fprintf fm "@[App %a ...@]" Id.print f
@@ -217,18 +219,18 @@ let rec from_term
         let val_env = val_env' in
         let ce_env = ce_env' in
         let nid = Counter.gen cnt in
-        Debug.printf "  APP1: %a@\n" Print.term t;
+        Debug.printf "  APP2: %a@\n" Print.term t;
         let var_env_f,val_env_f,(ys,t_f) = assoc_fun f var_env val_env in
-        Debug.printf "    APP1 (ys -> t_f): %a, %d@\n" Print.term (make_funs ys t_f) (List.length ts);
-        Debug.printf "    APP1 var_env_f: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env_f;
+        Debug.printf "    APP2 (ys -> t_f): %a, %d@\n" Print.term (make_funs ys t_f) (List.length ts);
+        Debug.printf "    APP2 var_env_f: %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env_f;
         let arg_map = make_arg_map var_env val_env f ys ts in
-        Debug.printf "    APP1 arg_map: %a@\n" pr_env arg_map;
+        Debug.printf "    APP2 arg_map: %a@\n" pr_env arg_map;
         let val_env' = List.rev arg_map @ val_env_f in
-        Debug.printf "    APP1 val_env': %a@\n" pr_env val_env';
+        Debug.printf "    APP2 val_env': %a@\n" pr_env val_env';
         let vars_f = Id.assoc f var_env in
-        Debug.printf "    APP1 vars_f: %a@\n" (List.print Id.print) vars_f;
+        Debug.printf "    APP2 vars_f: %a@\n" (List.print Id.print) vars_f;
         let var_env',_ = List.fold_left (fun (acc,vars) x -> (x, vars)::acc, x::vars) (var_env_f,vars_f) ys in
-        Debug.printf "    APP1 var_env': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env';
+        Debug.printf "    APP2 var_env': %a@\n" (List.print @@ Pair.print Id.print @@ List.print Id.print) var_env';
         let node = {nid; var_env; val_env; ce_env; nlabel = App(f, arg_map)} in
         assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
         RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env' depth t_f])

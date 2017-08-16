@@ -85,10 +85,10 @@ let rec inline_PApp typ ts =
   | Fun(x, typ1, typ2) -> Fun(x, _PApp typ1 ts, _PApp typ2 ts)
   | Inter(styp, typs) -> Inter(styp, List.map (inline_PApp -$- ts) typs)
 and _PApp typ ts =
-  let dbg = 0=9 in
+  let dbg = 0=0 in
   let typ' = inline_PApp typ @@ List.filter (is_base_typ -| Syntax.typ) ts in
-  if dbg then Format.printf "_PApp(%a, %a)" print_template typ (List.print Print.term) ts;
-  if dbg then Format.printf " = %a@." print_template typ';
+  if dbg then Debug.printf "        _PApp(%a, %a)" print_template typ (List.print Print.term) ts;
+  if dbg then Debug.printf " = %a@." print_template typ';
   match typ' with
   | PApp(typ'', []) -> typ''
   | _ -> typ'
@@ -408,7 +408,7 @@ let subst_template x t typ =
   r
 
 let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.ce_env; CT.nlabel}, children)) =
-  let dbg = 0=1 in
+  let dbg = 0=0 in
   let pr f = if dbg then Debug.printf @@ "MT " ^^ f else Format.ifprintf Format.std_formatter f in
   let templates = merge_template @@ List.map (make_template cnt env args) children in
   match nlabel with
@@ -450,6 +450,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
             make_var x :: pargs, fun tmp2 -> k @@ Fun(x, tmp1', tmp2)
           in
           (snd @@ List.fold_left aux' ([], Fun.id) map) @@ Base None
+          |@> pr "  head: %a@." print_template
         in
         let pargs' =
           pr "  f: %a@." Id.print f;
@@ -487,7 +488,7 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
         List.map (Pair.map_snd @@ List.fold_right aux vars) arg_templates
       in
       if dbg then Debug.printf "  arg_templates[%a]: %a@." Id.print f print_tmp_env arg_templates;
-      if dbg && arg_templates<>arg_templates' then Format.printf "  arg_templates'[%a]: %a@." Id.print f print_tmp_env arg_templates';
+      if dbg && arg_templates<>arg_templates' then Debug.printf "  arg_templates'[%a]: %a@." Id.print f print_tmp_env arg_templates';
       pr "  TEMPLATE: %a@." print_tmp_env templates;
       ((f,Some nid), typ) :: arg_templates' @ templates
   | CT.Spawn(f, g) ->
@@ -509,7 +510,7 @@ let make_template env t =
 
 
 let rec generate_constraints templates assumption (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.ce_env; CT.nlabel}, children) as ct) =
-  let dbg = 0=1 in
+  let dbg = 0=0 in
   if dbg then Debug.printf "label: %a@." CT.print_nlabel nlabel;
   if dbg then Debug.printf "  Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
   let r =
