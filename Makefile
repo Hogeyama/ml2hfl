@@ -8,7 +8,7 @@ MOCHI_BIN_DIR = mochi_bin
 
 WARN_FLAGS = -w -52-58
 OCAMLCFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
-OCAMLOPTFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
+OCAMLOPTFLAGS = -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
 
 DOC = doc
 
@@ -124,7 +124,7 @@ parser_wrapper.ml: parser_wrapper_$(OCAML_MAJOR_VER).ml
 
 # Dependencies
 DEP_FPAT = CEGAR CEGAR_syntax CEGAR_abst_util feasibility mochi \
-	main_loop termination_loop refine syntax trans fpatInterface writeAnnot BRA_types
+	main_loop termination_loop refine syntax trans fpatInterface writeAnnot BRA_types term_util
 FPAT_LIB = $(FPAT)/fpat.cmi $(FPAT)/fpat.cma $(FPAT)/fpat.cmxa
 $(addsuffix .cmi,$(DEP_FPAT)): $(FPAT_LIB)
 $(addsuffix .cmo,$(DEP_FPAT)): $(FPAT_LIB)
