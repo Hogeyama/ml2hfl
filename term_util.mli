@@ -200,3 +200,51 @@ val get_tapred : typ -> (id * term list) option
 val col_app_args : id -> term -> term list list
 val find_fixed_args : id -> id list -> term -> id list
 val trans_if : (term -> term option) -> term -> term
+
+
+module Term : sig
+  val unit : term
+  val tt : term
+  val true_ : term
+  val ff : term
+  val false_ : term
+  val fail : term
+  val randi : term
+  val randb : term
+  val bot : typ -> term
+  val var : id -> term
+  val int : int -> term
+  val string : string -> term
+  val (@) : term -> term list -> term
+  val (@@) : term -> term list -> term
+  val let_ : (id * id list * term) list -> term -> term
+  val fun_ : id -> term -> term
+  val not : term -> term
+  val (&&) : term -> term -> term
+  val (||) : term -> term -> term
+  val (+) : term -> term -> term
+  val (-) : term -> term -> term
+  val ( *) : term -> term -> term
+  val (/) : term -> term -> term
+  val (~-) : term -> term
+  val if_ : term -> term -> term -> term
+  val br : term -> term -> term
+  val (=) : term -> term -> term
+  val (<>) : term -> term -> term
+  val (<) : term -> term -> term
+  val (>) : term -> term -> term
+  val (<=) : term -> term -> term
+  val (>=) : term -> term -> term
+  val fst : term -> term
+  val snd : term -> term
+  val pair : term -> term -> term
+  val tuple : term list -> term
+  val nil : term Type.t -> term
+  val cons : term -> term -> term
+  val seq : term -> term -> term
+  val ignore : term -> term
+  val assume : term -> term -> term
+  val none : typ -> term
+  val some : term -> term
+  val length : term -> term
+end

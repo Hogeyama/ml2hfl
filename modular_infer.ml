@@ -60,7 +60,7 @@ let print_tmp_env fm env =
   let print_idx fm (x,nid) =
     match nid with
     | None -> Format.fprintf fm "%a" Id.print x
-    | Some nid' -> Format.fprintf fm "%a@%d" Id.print x nid'
+    | Some nid' -> Format.fprintf fm "%a{%d}" Id.print x nid'
   in
   Format.fprintf fm "%a" (List.print @@ Pair.print print_idx print_template) env
 
@@ -183,7 +183,7 @@ let rec subst_constr x t constr =
   | Pred _ -> assert false
 
 let rec expand_type templates typ =
-  let dbg = 0=10 in
+  let dbg = 0=0 in
   let pr f = if dbg then Format.printf @@ "        ET " ^^ f else Format.ifprintf Format.std_formatter f in
   let et = expand_type templates in
   let r =
@@ -195,7 +195,8 @@ let rec expand_type templates typ =
       pr "  TEMPLATE: %a@." print_tmp_env templates;
       templates
       |> List.filter (Id.eq x -| fst -| fst)
-      |> List.map (fun ((x,nid),typ) -> pr "  VAR[%a]: typ: %a@." Id.print x print_template typ; nid,typ)
+      |@> List.iter (fun ((x,_),typ) -> pr "  VAR[%a]: typ: %a@." Id.print x print_template typ)
+      |> List.map (Pair.map_fst fst)
       |> List.sort compare
       |> List.hd
       |> snd
@@ -736,7 +737,37 @@ let apply_sol mode sol tmp = apply_sol mode sol None [] tmp
 
 
 
-let normalize = Trans.reduce_fail_unit |- Trans.reconstruct
+let lift_fun_arg =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match tr.tr_desc_rec desc with
+    | App(t1,ts) ->
+        let bindings,ts' =
+          let aux t =
+            match t.desc with
+            | Fun _ ->
+                let x = new_var_of_term t in
+                [x,[],t], make_var x
+            | _ -> [], t
+          in
+          ts
+          |> List.map aux
+          |> List.split
+        in
+        let bindings' = List.flatten bindings in
+        (make_lets bindings' (make_app t1 ts')).desc
+    | desc' -> desc'
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
+
+
+let rec normalize t =
+  t
+  |> Trans.eta_normal
+  |> lift_fun_arg
+  |> Trans.reconstruct
 
 let trans_CPS env funs t =
   let t',make_get_rtyp_cps =
@@ -754,7 +785,7 @@ let trans_CPS env funs t =
     |@> Debug.printf "trans_CPS INPUT: %a@." Print.term
     |> Trans.reduce_fail_unit
     |@> Debug.printf "trans_CPS reduce_fail_unit: %a@." Print.term
-    |> Trans.reconstruct
+    |> normalize
     |@> Debug.printf "trans_CPS normalized: %a@." Print.term
     |> decomp_prog
   in

@@ -93,7 +93,7 @@ let rec get_rtyp_list rtyp typ =
       let rtyp2' = get_rtyp_list rtyp2 typ2 in
       let rtyp2'' =
         match rtyp1' with
-        | RT.List _ -> RT.replace_term (make_fst @@ make_var x) (make_length @@ make_var x) rtyp2'
+        | RT.List _ -> RT.replace_term Term.(fst (var x)) Term.(length (var x)) rtyp2'
         | _ -> rtyp2'
       in
       RT.Fun(x, rtyp1', rtyp2'')
@@ -118,9 +118,7 @@ let make_get_rtyp_list_of typed get_rtyp f =
 
 let make_tl n t =
   let x = Id.new_var TInt in
-  let t1 = make_sub (make_fst t) (make_int n) in
-  let t2 = make_fun x (make_app (make_snd t) [make_add (make_var x) (make_int n)]) in
-  make_pair t1 t2
+  Term.(pair (fst t - int n) (fun_ x (snd t @ [var x + int n])))
 
 
 
@@ -166,8 +164,8 @@ let rec get_match_bind_cond t p =
       bind', add_bind bind' cond
   | PConst {desc=Const Unit} -> [], true_term
   | PConst t' when t'.desc = randint_unit_term.desc -> [], randbool_unit_term (* just for -base-to-int *)
-  | PConst t' -> [],  make_eq t t'
-  | PNil -> [], make_leq (make_fst t) (make_int 0)
+  | PConst t' -> [], make_eq t t'
+  | PNil -> [], Term.(fst t <= int 0)
   | PCons _ ->
       let rec decomp = function
         | {pat_desc=PCons(p1,p2)} ->
@@ -242,22 +240,19 @@ let abst_list_term post t =
       let bindings = List.rev_map2 (fun x t -> x, [], t) xs ts' in
       let x = Id.new_var ~name:"i" TInt in
       let aux y (i,t) =
-        i-1, make_if (make_eq (make_var x) @@ make_int i) (make_var y) t
+        i-1, Term.(if_ (var x = int i) (var y) t)
       in
       let n = List.length ts in
       let _,t = List.fold_right aux xs (n-1, make_bottom typ'') in
-      make_lets bindings @@ make_pair (make_int n) (make_fun x t)
+      make_lets bindings Term.(pair (int n) (fun_ x t))
   | Cons(t1,t2) ->
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
       let i = Id.new_var ~name:"i" TInt in
       let x = Id.new_var ~name:"x" t1'.typ in
       let xs = Id.new_var ~name:"xs" t2'.typ in
-      let t11 = make_eq (make_var i) (make_int 0) in
-      let t12 = make_var x in
-      let t13 = make_app (make_snd (make_var xs)) [make_sub (make_var i) (make_int 1)] in
-      let t_f = make_fun i (make_if t11 t12 t13) in
-      let t_len = make_add (make_fst (make_var xs)) (make_int 1) in
+      let t_f = Term.(fun_ i (if_ (var i = int 0) (var x) (snd (var xs) @ [var i - int 1]))) in
+      let t_len = Term.(fst (var xs) + int 1) in
       let cons = Id.new_var ~name:("cons"^post) (TFun(x,TFun(xs,t2'.typ))) in
       make_let [cons, [x;xs], make_pair t_len t_f] (make_app (make_var cons) [t1'; t2'])
   | Constr("Abst",[]) -> t

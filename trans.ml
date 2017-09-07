@@ -2620,17 +2620,32 @@ let replace_fail_with desc t =
 
 
 
-let eta_normal = make_trans ()
-let eta_normal_desc desc =
-  fatal "Not tested"(*;
-  match eta_normal.tr_desc_rec desc with
-  | App(t, ts) when arity t.typ > List.length ts ->
-      let xs,_ = decomp_tfun t.typ in
-      let xs' = List.map Id.new_var_id @@ List.take (List.length ts) xs in
-      (make_funs xs' (make_app t (ts @ List.map make_var xs'))).desc
-  | desc' -> desc'*)
-let () = eta_normal.tr_desc <- eta_normal_desc
-let eta_normal = eta_normal.tr_term
+let eta_normal =
+  let tr = make_trans () in
+  let map_arg t =
+    match t.desc with
+    | Var _ -> t
+    | App(t1,ts) -> {t with desc=App(t1, List.map tr.tr_term ts)}
+    | _ -> assert false
+  in
+  let tr_term t =
+    match t.desc with
+    | Var _
+    | App _ when is_fun_typ t.typ ->
+        Format.printf "ETA: %a@." Print.term t;
+        let t' = map_arg t in
+        let xs =
+          t.typ
+          |> decomp_tfun
+          |> fst
+          |> List.map Id.new_var_id
+        in
+        make_funs xs (make_app t' @@ List.map make_var xs)
+    | App _ -> map_arg t
+    | _ -> tr.tr_term_rec t
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_term
 
 
 let direct_from_CPS = make_trans ()

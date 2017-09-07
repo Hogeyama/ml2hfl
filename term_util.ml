@@ -358,12 +358,17 @@ let decomp_get_val t =
   | Proj(1, t) -> Some t
   | _ -> None
 
-let is_randint_unit t = t.desc = randint_unit_term.desc
+let is_randint_unit t =
+  match t.desc with
+  | App(t1, [{desc=Const Unit}]) -> t1.desc = randint_term.desc
+  | _ -> false
 let is_randbool_unit t =
   match t.desc with
   | BinOp((Eq|Leq|Geq|Lt|Gt), t, {desc=Const _})
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, t) -> is_randint_unit t
   | _ -> false
+
+
 
 
 
@@ -1147,3 +1152,52 @@ let trans_if =
   in
   tr.tr2_term <- trans_if_term;
   tr.tr2_term
+
+
+
+module Term = struct
+  let unit = unit_term
+  let tt = true_term
+  let true_ = true_term
+  let ff = false_term
+  let false_ = false_term
+  let fail = fail_unit_term
+  let randi = randint_unit_term
+  let randb = randbool_unit_term
+  let bot = make_bottom
+  let var = make_var
+  let int = make_int
+  let string = make_string
+  let (@) = make_app
+  let (@@) = make_app
+  let let_ = make_let
+  let fun_ = make_fun
+  let not = make_not
+  let (&&) = make_and
+  let (||) = make_or
+  let (+) = make_add
+  let (-) = make_sub
+  let ( * ) = make_mul
+  let (/) = make_div
+  let (~-) = make_neg
+  let if_ = make_if
+  let br = make_br
+  let (=) = make_eq
+  let (<>) = make_neq
+  let (<) = make_lt
+  let (>) = make_gt
+  let (<=) = make_leq
+  let (>=) = make_geq
+  let fst = make_fst
+  let snd = make_snd
+  let pair = make_pair
+  let tuple = make_tuple
+  let nil = make_nil
+  let cons = make_cons
+  let seq = make_seq
+  let ignore = make_ignore
+  let assume = make_assume
+  let none = make_none
+  let some = make_some
+  let length = make_length
+end
