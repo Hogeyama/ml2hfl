@@ -172,9 +172,6 @@ let make_arg_map var_env val_env _ xs ts =
 
 let filter_extend extend = List.filter_out (fun (_,n) -> n <= 0) extend
 
-let can_treat_as_value t =
-  is_simple_aexp t || is_simple_bexp t || is_randint_unit t || is_randbool_unit t
-
 let rec from_app_term
           nid f ts
           (cnt : Counter.t)  (* counter for nid *)
@@ -255,8 +252,11 @@ and from_term
       let child = from_app_term (Counter.gen cnt) f' ts cnt fun_env var_env' val_env' ce_env' depth t' in
       let node = {nid; var_env; val_env; ce_env; nlabel=Spawn(f, f')} in
       RT.Node(node, [child])
-  | App({desc=Fun(_,t); typ}, [t2]) when can_treat_as_value t2 ->
-      from_term cnt fun_env var_env val_env ce_env depth t
+  | App({desc=Fun(x,t); typ}, t2::ts) ->
+      assert ( is_simple_aexp t2 || is_simple_bexp t2 || is_randint_unit t2 || is_randbool_unit t2 || is_var t2);
+      let var_env' = (x, List.map fst val_env)::var_env in
+      let val_env' = (x, Closure(var_env, val_env, t2))::val_env in
+      from_term cnt fun_env var_env' val_env' ce_env depth (make_app t ts)
   | App({desc=Var f}, ts) ->
       from_app_term nid f ts cnt fun_env var_env val_env ce_env depth t
   (*
@@ -349,7 +349,7 @@ let from_term fun_env var_env val_env ce_env t =
 
 let rec filter_ends (RT.Node(node,ts)) =
   let check (RT.Node({nlabel},ts)) =
-    ts <> [] || nlabel = Fail || nlabel = End
+    ts <> [] || nlabel = Fail(* || nlabel = End*)
   in
   let ts' =
     ts
@@ -370,5 +370,5 @@ let from_program (fun_env: (id * (id list * term)) list) (ce_set:ce_set) depth t
   let ce_env = [] in
   t
   |> from_term fun_env' var_env val_env ce_env depth
+  |*> filter_ends
   |@> Debug.printf "@.@.comp_tree:@.%a@.@." print
-  |> filter_ends

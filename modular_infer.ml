@@ -184,7 +184,7 @@ let rec subst_constr x t constr =
 
 let rec expand_type templates typ =
   let dbg = 0=0 in
-  let pr f = if dbg then Format.printf @@ "        ET " ^^ f else Format.ifprintf Format.std_formatter f in
+  let pr f = if dbg then Debug.printf @@ "        ET " ^^ f else Format.ifprintf Format.std_formatter f in
   let et = expand_type templates in
   let r =
   match typ with

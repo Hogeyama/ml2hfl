@@ -2632,7 +2632,6 @@ let eta_normal =
     match t.desc with
     | Var _
     | App _ when is_fun_typ t.typ ->
-        Format.printf "ETA: %a@." Print.term t;
         let t' = map_arg t in
         let xs =
           t.typ
