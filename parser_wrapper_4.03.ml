@@ -206,7 +206,7 @@ let add_exc_env_from_constr cstr_desc env =
         add_exc_env name typs
   | _ -> assert false
 
-let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
+let rec from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
 (*
   add_type_env env typ;
 *)
@@ -215,7 +215,7 @@ let rec from_pattern {Typedtree.pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=
     match desc with
     | Tpat_any -> PAny
     | Tpat_var(x,_) -> PVar(from_ident x typ')
-    | Tpat_alias({Typedtree.pat_desc=Tpat_any},x,_) -> PVar (from_ident x typ')
+    | Tpat_alias({pat_desc=Tpat_any},x,_) -> PVar (from_ident x typ')
     | Tpat_alias(p,x,_) -> PAlias(from_pattern p, from_ident x typ')
     | Tpat_constant(Const_int n) -> PConst {desc=Const(Int n);typ=typ'; attr=[]}
     | Tpat_constant(Const_char c) -> PConst {desc=Const(Char c);typ=typ'; attr=[]}
@@ -333,6 +333,12 @@ let from_constant = function
   | Const_nativeint n -> Nativeint n
 
 
+let is_var_case case =
+  match case with
+  | {c_lhs={pat_desc=Tpat_var _}; c_guard=None} -> true
+  | {c_lhs={pat_desc=Tpat_alias({pat_desc=Tpat_any},_,_)}; c_guard=None} -> true
+  | _ -> false
+
 let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} =
   let typ' = from_type_expr env typ in
   match exp_desc with
@@ -341,7 +347,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
   | Texp_constant c ->
       {desc = Const (from_constant c); typ = typ'; attr=[]}
   | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
-       when (function Tpat_var _ -> false | _ -> true) vb_pat.Typedtree.pat_desc ->
+       when (function Tpat_var _ -> false | _ -> true) vb_pat.pat_desc ->
       let p' = from_pattern vb_pat in
       let t1 = from_expression id_env vb_expr in
       let t2 = from_expression id_env e2 in
@@ -361,8 +367,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
       let bindings = List.map aux pats in
       let t = from_expression id_env e in
       make_let bindings t
-  | Texp_function(_,[case],Total)
-       when (function {c_lhs={pat_desc=Tpat_var _}; c_guard=None} -> true | _ -> false) case ->
+  | Texp_function(_,[case],Total) when is_var_case case ->
       begin
         match from_case id_env case with
         | {pat_desc=PVar x}, _, e -> make_fun x e
