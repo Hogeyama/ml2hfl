@@ -32,6 +32,16 @@ let print_ce_aux fm (l,b) = Format.pp_print_int fm (if b then l else -l)
 let print_ce fm ce = (List.print print_ce_aux) fm ce
 let print_ce_set fm ce_set = (List.print @@ Pair.print Id.print print_ce) fm ce_set
 
+let decomp_id x =
+  let s = Id.to_string x in
+  match String.split s ~by:":" with
+  | exception Not_found -> s, None, []
+  | _, "" -> s, None, []
+  | x', rest ->
+      match String.nsplit rest ~by:"@" with
+      | [] -> assert false
+      | nid::args -> x', Some nid, args
+
 let rec is_atom t =
   match t.desc with
   | App({desc=Const(RandValue _)}, [_]) -> true

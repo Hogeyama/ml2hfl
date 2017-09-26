@@ -33,12 +33,12 @@ and value = Closure of var_env * val_env * term
 
 let rec pr_bind depth fm (x,vl) =
   let Closure(var_env,val_env,t) = vl in
-  if false then
-    Format.fprintf fm "%a := @[%a%a@]" Id.print x (List.print Id.print) (List.map fst var_env) Print.term t
+  if true then
+    Format.fprintf fm "@[%a%a@]" (List.print Id.print) (List.map fst var_env) Print.term t
   else if depth <= 0 then
-    Format.fprintf fm "%a := @[[...]%a@]" Id.print x Print.term t
+    Format.fprintf fm "@[[...]%a@]" Print.term t
   else
-    Format.fprintf fm "%a := @[%a%a@]" Id.print x (pr_env (depth-1)) val_env Print.term t
+    Format.fprintf fm "@[%a%a@]" (pr_env (depth-1)) val_env Print.term t
 and pr_env depth fm env = List.print (pr_bind depth) fm env
 let pr_env fm env = pr_env 0 fm env
 
@@ -151,20 +151,12 @@ let assoc_fun nid f var_env val_env =
         xs, make_app (make_var f) @@ List.map make_var xs
     | _ -> decomp_funs t
   in
-  let ys' = List.map (rename_var nid) ys in
+  let ys' = List.mapi (fun i y -> Id.make 0 (Format.asprintf "%a@%d" Id.print f i) [] (Id.typ y)) ys in
   Debug.printf "    ALPHA: %a => %a@\n" (List.print Id.print) ys (List.print Id.print) ys';
   let t'' = List.fold_right2 subst_var ys ys' t' in
   var_env_f, val_env_f, (ys', t'')
 
 let ends = RT.exists (fun {nlabel} -> nlabel = Fail || nlabel = End)
-
-let eta_expand t =
-  let xs,t' = decomp_funs t in
-  let ys,_ = decomp_tfun t'.typ in
-  let ys' = List.map Id.new_var_id ys in
-  match t'.desc with
-  | Let(bindings, t'') -> make_funs (xs@ys') @@ make_let bindings @@ make_app t'' @@ List.map make_var ys'
-  | _ -> make_funs (xs@ys') @@ make_app t' @@ List.map make_var ys'
 
 let make_arg_map var_env val_env _ xs ts =
   let value_of t = Closure(var_env, val_env, t) in
@@ -224,7 +216,7 @@ and from_term
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       Debug.printf "  APP2,%a@\n" Id.print f;
       let t_f,ce_env_f = Id.assoc f fun_env in
-      let f' = Id.new_var_id f in
+      let f' = Id.make 0 (Format.asprintf "%a:%d" Id.print f nid) [] (Id.typ f) in
       Debug.printf "    SPAWN: %a => %a@\n" Id.print f Id.print f';
       let var_env' = (f', []) :: var_env in
       let tid_map =
@@ -240,7 +232,7 @@ and from_term
       let val_env' =
         let t_f' =
           t_f
-          |> Trans.alpha_rename
+          |*> Trans.alpha_rename
           |> subst_var f f'
           |> rename_tid_if tid_map
         in
@@ -259,15 +251,6 @@ and from_term
       from_term cnt fun_env var_env' val_env' ce_env depth (make_app t ts)
   | App({desc=Var f}, ts) ->
       from_app_term nid f ts cnt fun_env var_env val_env ce_env depth t
-  (*
-  | App({desc=Var f}, ts) when Id.mem_assoc f val_env ->
-      from_app_term nid f ts cnt fun_env var_env val_env ce_env depth t
-  | App({desc=Fun _; typ} as t1, ts) ->
-      let f = Id.new_var typ in
-      make_app (make_var f) ts
-      |> make_let [f, [], t1]
-      |> from_term cnt fun_env var_env val_env ce_env depth
- *)
   | If(t1, t2, t3) ->
       Debug.printf "  IF t1: %a@\n" Print.term t1;
       let tid = get_id_option t in
@@ -328,10 +311,12 @@ and from_term
       Debug.printf "  LET@\n";
       Debug.printf "    t: %a@\n" Print.term t;
       assert (xs <> []);
-      let var_env' = (f, List.map fst val_env)::var_env in
-      let rec val_env' = (f, Closure(var_env', val_env', make_funs xs t1))::val_env in
-      let node = {nid; var_env; val_env; ce_env; nlabel = Let(f, make_funs xs t1)} in
-      RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env depth t2])
+      let f' = Id.make 0 (Format.asprintf "%a:%d" Id.print f nid) [] (Id.typ f) in
+      let t2' = subst_var f f' t2 in
+      let var_env' = (f', List.map fst val_env)::var_env in
+      let rec val_env' = (f', Closure(var_env', val_env', make_funs xs t1))::val_env in
+      let node = {nid; var_env; val_env; ce_env; nlabel = Let(f', make_funs xs t1)} in
+      RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env depth t2'])
   | _ when is_fail t ->
       let node = {nid; var_env; val_env; ce_env; nlabel = Fail} in
       RT.Node(node, [])

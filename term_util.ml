@@ -1154,6 +1154,15 @@ let trans_if =
   tr.tr2_term
 
 
+let get_max_var_id =
+  let col = make_col (-1) max in
+  let col_id_term t =
+    match t.desc with
+    | Var x -> Id.id x
+    | _ -> col.col_term_rec t
+  in
+  col.col_term <- col_id_term;
+  col.col_term
 
 module Term = struct
   let unit = unit_term
@@ -1200,4 +1209,5 @@ module Term = struct
   let none = make_none
   let some = make_some
   let length = make_length
+  let (|->) = subst
 end

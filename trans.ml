@@ -10,37 +10,52 @@ module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 let flatten_tvar = (make_trans ()).tr_term
 
 
-
-let alpha_rename = make_trans ()
-
-let alpha_rename_term t =
-  match t.desc with
-  | Let(bindings, t) ->
-      let bindings' =
-        let aux (f,xs,t) =
-          let f' = Id.new_var_id f in
-          let xs' = List.map Id.new_var_id xs in
-          let t' =
-            t
-            |> alpha_rename.tr_term
-            |> subst_var f f'
-            |> List.fold_right2 subst_var xs xs'
-          in
-          (f', xs', t')
-        in
-        List.map aux bindings
+let alpha_rename ?(whole=false) =
+  let new_var cnt names x =
+    if whole then
+      let id =
+        let s = Id.name x in
+        if StringSet.mem s !names then
+          Counter.gen cnt
+        else
+          (names := StringSet.add s !names; 0)
       in
-      let sbst t = List.fold_left2 (fun t' (f,_,_) (f',_,_) -> subst_var f f' t') t bindings bindings' in
-      let bindings'' = List.map (Triple.map_trd sbst) bindings' in
-      let t' = sbst @@ alpha_rename.tr_term t in
-      make_let bindings'' t'
-  | Fun(x, t) ->
-      let x' = Id.new_var_id x in
-      make_fun x' @@ subst_var x x' @@ alpha_rename.tr_term t
-  | _ -> alpha_rename.tr_term_rec t
-
-let () = alpha_rename.tr_term <- alpha_rename_term
-let alpha_rename = alpha_rename.tr_term
+      Id.set_id x id
+    else
+      Id.new_var_id x
+  in
+  let tr = make_trans2 () in
+  let alpha_rename_term (cnt,names) t =
+    match t.desc with
+    | Let(bindings, t) ->
+        let bindings' =
+          let aux (f,xs,t) =
+            let f' = new_var cnt names f in
+            let xs' = List.map (new_var cnt names) xs in
+            let t' =
+              t
+              |> tr.tr2_term (cnt,names)
+              |> subst_var f f'
+              |> List.fold_right2 subst_var xs xs'
+            in
+            (f', xs', t')
+          in
+          List.map aux bindings
+        in
+        let sbst t = List.fold_left2 (fun t' (f,_,_) (f',_,_) -> subst_var f f' t') t bindings bindings' in
+        let bindings'' = List.map (Triple.map_trd sbst) bindings' in
+        let t' = sbst @@ tr.tr2_term (cnt,names) t in
+        make_let bindings'' t'
+    | Fun(x, t) ->
+        let x' = new_var cnt names x in
+        make_fun x' @@ subst_var x x' @@ tr.tr2_term (cnt,names) t
+    | _ -> tr.tr2_term_rec (cnt,names) t
+  in
+  tr.tr2_term <- alpha_rename_term;
+  fun t ->
+    let cnt = !!Counter.create in
+    let names = ref StringSet.empty in
+    tr.tr2_term (cnt,names) t
 
 
 let inst_tvar_tunit = make_trans ()
@@ -2633,7 +2648,6 @@ let eta_normal =
   in
   let tr_term t =
     match t.desc with
-    | Var _
     | App _ when is_fun_typ t.typ ->
         let t' = map_arg t in
         let xs =

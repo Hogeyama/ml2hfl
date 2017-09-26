@@ -36,7 +36,7 @@ val make_ext_funs : ?fvs:(id list) -> Ref_type.env -> term -> term
 val assoc_typ : id -> term -> typ
 val diff_terms : term -> term -> (term * term) list
 val remove_label : ?label:string -> term -> term
-val alpha_rename : term -> term
+val alpha_rename : ?whole:bool -> term -> term
 val replace_base_with_int : term -> term
 val remove_top_por : term -> term
 val replace_bottom_def : term -> term

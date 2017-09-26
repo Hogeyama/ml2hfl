@@ -560,7 +560,6 @@ let rec revert_typ ty =
   | TBase(b,_) ->
       Format.printf "%a@." CEGAR_print.typ ty;
       unsupported "CEGAR_trans.revert_typ: TBase"
-  | TBase _ -> unsupported "CEGAR_trans.revert_typ: TBase"
   | TAbs _ -> unsupported "CEGAR_trans.revert_typ: TAbs"
   | TApp _ -> unsupported "CEGAR_trans.revert_typ: TApp"
   | TFun(typ1, typ2) -> Type.TFun(Id.new_var (revert_typ typ1), revert_typ @@ typ2 @@ Const Unit)

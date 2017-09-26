@@ -37,7 +37,7 @@ let print fm {head;body} =
   let pr fm t =
     match t.desc with
     | Var p when is_pred_var p -> Format.fprintf fm "%a()" pr_aux t
-    | App(p, ts) -> Format.fprintf fm "@[%a(%a)@]" pr_aux p (print_list pr_aux ",") ts
+    | App(p, ts) -> Format.fprintf fm "@[%a(%a)@]" pr_aux p (print_list pr_aux ", ") ts
     | _ -> pr_aux fm t
   in
   if head = false_term

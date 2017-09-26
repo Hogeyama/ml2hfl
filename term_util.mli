@@ -200,6 +200,7 @@ val get_tapred : typ -> (id * term list) option
 val col_app_args : id -> term -> term list list
 val find_fixed_args : id -> id list -> term -> id list
 val trans_if : (term -> term option) -> term -> term
+val get_max_var_id : term -> int
 
 
 module Term : sig
@@ -224,7 +225,7 @@ module Term : sig
   val (||) : term -> term -> term
   val (+) : term -> term -> term
   val (-) : term -> term -> term
-  val ( *) : term -> term -> term
+  val ( * ) : term -> term -> term
   val (/) : term -> term -> term
   val (~-) : term -> term
   val if_ : term -> term -> term -> term

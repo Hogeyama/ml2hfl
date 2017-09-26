@@ -17,6 +17,7 @@ val print_prog : Format.formatter -> program -> unit
 val print_ce : Format.formatter -> ce -> unit
 val print_ce_set : Format.formatter -> ce_set -> unit
 
+val decomp_id : Syntax.id -> string * string option * string list
 val is_atom : Syntax.term -> bool
 val normalize : bool -> Syntax.term -> Syntax.term
 val used_by : Syntax.id -> program -> Syntax.id list

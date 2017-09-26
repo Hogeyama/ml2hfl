@@ -646,3 +646,5 @@ let from_use_file ast =
   |> subst_data_type_term "exn" !!exc_typ
   |> Trans.rename_bound_module
   |> Trans.split_let
+  |> Trans.alpha_rename ~whole:true
+  |@> Id.set_counter -| succ -| Term_util.get_max_var_id

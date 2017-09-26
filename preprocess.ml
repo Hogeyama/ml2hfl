@@ -103,7 +103,7 @@ let all spec : t list =
   [
     Eliminate_unused_let,
       (Fun.const true,
-       map_trans Trans.elim_unused_let);
+       map_trans @@ Trans.elim_unused_let ~leave_last:true);
     Replace_const,
       (Fun.const !Flag.replace_const,
        map_trans CFA.replace_const);

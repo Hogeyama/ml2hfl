@@ -283,7 +283,9 @@ let rec last_def_to_fun t =
   | Let(defs, t2) ->
       let t2' = last_def_to_fun t2 in
       {t with desc = Let(defs, t2')}
-  | _ -> assert false
+  | _ ->
+      Format.printf "%a@." Print.term t;
+      assert false
 
 let assert_to_fun t =
   let rec loop t =
@@ -387,6 +389,8 @@ let main _ spec parsed =
     |@> pr "INITIALIZED" Print.term_typ
     |> normalize true
     |@> pr "NORMALIZED" Print.term
+    |> Trans.alpha_rename ~whole:true
+    |@> pr "ALPHA_RENAMED" Print.term
     |> decomp_prog
   in
   assert (body.desc = Const Unit);
