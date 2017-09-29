@@ -121,6 +121,7 @@ let ignore_conf = ref false
 let init_trans = ref true
 let just_print_non_CPS_abst = ref false
 let trans_to_CPS = ref true
+let module_mode = ref false
 
 (* predicate abstraction option *)
 let use_filter = ref false

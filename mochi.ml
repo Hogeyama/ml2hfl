@@ -1,4 +1,3 @@
-
 open Util
 
 let print_info_default () =
@@ -140,7 +139,7 @@ let main_input_cegar lb =
 let main_split_assert orig spec parsed =
   let paths = Trans.search_fail parsed in
   let ts = List.map (Trans.screen_fail -$- parsed) paths in
-  List.for_all (Main_loop.run orig [] ~spec) (List.rev ts)
+  List.for_all (Main_loop.run orig ~spec) (List.rev ts)
 
 let main_termination orig parsed =
   let open BRA_util in
@@ -185,6 +184,9 @@ let main_fair_termination orig spec parsed =
   else Format.printf "Unknown...@.@.";
   result
 
+let main_module_verification orig spec parsed =
+  assert false
+
 let output_randint_refinement_log input_string =
   let cout =
     let input =
@@ -221,18 +223,24 @@ let main cin =
     if !Flag.randint_refinement_log
     then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
+    let check_safety t =
+      if !Flag.modular then
+        Modular.main orig spec t
+      else
+        Main_loop.run orig ~spec t
+    in
     if !Flag.split_assert then
       main_split_assert orig spec parsed
-    else if !Flag.modular then
-      Modular.main orig spec parsed
     else if !Flag.verify_ref_typ then
       Verify_ref_typ.main orig spec parsed
     else if !Flag.mode = Flag.Termination then
       main_termination orig parsed
     else if !Flag.mode = Flag.FairTermination then
       main_fair_termination orig spec parsed
+    else if !Flag.module_mode then
+      Verify_module.main check_safety parsed
     else
-      Main_loop.run orig [] ~spec parsed
+      check_safety parsed
 
 
 let set_exp_filename filename =
@@ -302,7 +310,7 @@ let rec arg_spec () =
      "-tupling", Arg.Unit (fun () -> Flag.tupling := not !Flag.tupling), " Toggle tupling";
      "-elim-same-arg", Arg.Set Flag.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.base_to_int, " Replace primitive base types with int";
-     (* verifier *)
+     (* verification *)
      "", Arg.Unit ignore, "Options_for_verifier";
      "-modular",
        Arg.Unit (fun () ->
@@ -322,6 +330,7 @@ let rec arg_spec () =
      "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
      "-use-spec", Arg.Set Flag.use_spec, " use XYZ.spec for verifying XYZ.ml if exists\n(This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.comment_spec, " disable {SPEC} on comments";
+     "-module-verification", Arg.Set Flag.module_mode, " Check input as library";
      (* CEGAR *)
      "", Arg.Unit ignore, "Options_for_CEGAR";
      "-split-assert", Arg.Set Flag.split_assert, " Reduce to verification of multiple programs\n(each program has only one assertion)";

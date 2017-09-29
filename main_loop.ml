@@ -249,7 +249,7 @@ let print_result_delimiter () =
   if not !!is_only_result then
     Format.printf "@.%s@.@." @@ String.make !!Format.get_margin '='
 
-let run ?make_pps ?fun_list orig exparam_sol ?(spec=Spec.init) parsed =
+let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
   let (result, make_get_rtyp, set_target'), main, set_target = verify ~make_pps ~fun_list exparam_sol spec parsed in
   print_result_delimiter ();
   match result with

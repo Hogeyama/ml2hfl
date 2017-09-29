@@ -5,6 +5,7 @@ module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type preprocess_label =
   | Init
+  | Eliminate_unused_let
   | Replace_const
   | Encode_mutable_record
   | Encode_record
@@ -45,6 +46,8 @@ type t = preprocess_label * ((results -> bool) * (results -> tr_result))
 
 let string_of_label = function
   | Init -> "Init"
+  | Eliminate_unused_let -> "Eliminate_unused_let"
+  | Eliminate_same_arguments -> "Eliminate_same_arguments"
   | Replace_const -> "Replace_const"
   | Encode_mutable_record -> "Encode_mutable_record"
   | Encode_record -> "Encode_record"
@@ -98,6 +101,9 @@ let filter_out labels pps =
 
 let all spec : t list =
   [
+    Eliminate_unused_let,
+      (Fun.const true,
+       map_trans Trans.elim_unused_let);
     Replace_const,
       (Fun.const !Flag.replace_const,
        map_trans CFA.replace_const);

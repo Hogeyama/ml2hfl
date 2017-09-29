@@ -558,7 +558,7 @@ let rec from_module_binding id_env mb =
           | _ -> []
         in
         let fs = List.flatten_map aux decls in
-        List.map (fun f -> f, Id.add_name_before prefix f) fs
+        List.map (fun f -> Format.printf "id_env: %a@." Id.print f ;f, Id.add_name_before prefix f) fs
       in
       let decls' =
         let rename decl =
@@ -580,7 +580,7 @@ and from_str_item id_env str_item =
   match str_item.str_desc with
   | Tstr_eval(e,_) ->
       let t = from_expression id_env e in
-      [], [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
+      id_env, [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
   | Tstr_value(rec_flag,pats) ->
       let flag = from_rec_flag rec_flag in
       let aux {vb_pat;vb_expr} =
@@ -593,21 +593,21 @@ and from_str_item id_env str_item =
         | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
         | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
       in
-      [], [Decl_let(flag, List.map aux pats)]
-  | Tstr_primitive _ -> [], []
-  | Tstr_type _ -> [], []
+      id_env, [Decl_let(flag, List.map aux pats)]
+  | Tstr_primitive _ -> id_env, []
+  | Tstr_type _ -> id_env, []
   | Tstr_typext _ -> unsupported "typext"
-  | Tstr_exception _ -> [], []
+  | Tstr_exception _ -> id_env, []
   | Tstr_module mb ->
       from_module_binding id_env mb
   | Tstr_recmodule _
   | Tstr_modtype _ ->
       unsupported "module"
-  | Tstr_open _ -> [], []
+  | Tstr_open _ -> id_env, []
   | Tstr_class _
   | Tstr_class_type _ -> unsupported "class"
-  | Tstr_include _ -> [], []
-  | Tstr_attribute _ -> [], []
+  | Tstr_include _ -> id_env, []
+  | Tstr_attribute _ -> id_env, []
 
 and from_structure id_env struc =
   let aux (id_env,decls) str_item =
