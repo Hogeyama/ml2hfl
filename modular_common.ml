@@ -32,15 +32,29 @@ let print_ce_aux fm (l,b) = Format.pp_print_int fm (if b then l else -l)
 let print_ce fm ce = (List.print print_ce_aux) fm ce
 let print_ce_set fm ce_set = (List.print @@ Pair.print Id.print print_ce) fm ce_set
 
+let compose_id ?nid ?arg orig =
+  let name = Id.to_string orig in
+  let nid' = Option.map_default ((^) ":" -| string_of_int) "" nid in
+  let arg' = Option.map_default ((^) "@" -| string_of_int) "" arg in
+  Id.make 0 (Format.sprintf "%s%s%s" name nid' arg') [] (Id.typ orig)
+
 let decomp_id x =
   let s = Id.to_string x in
-  match String.split s ~by:":" with
+  match String.rsplit s ~by:":" with
   | exception Not_found -> s, None, []
   | _, "" -> s, None, []
   | x', rest ->
       match String.nsplit rest ~by:"@" with
       | [] -> assert false
-      | nid::args -> x', Some nid, args
+      | nid::args ->
+          try
+            x', Some (int_of_string nid), List.map int_of_string args
+          with _ -> invalid_arg "Modular_common.decomp_id"
+
+let same_top_fun x y =
+  let x_orig,_,x_args = decomp_id x in
+  let y_orig,_,y_args = decomp_id y in
+  x_args = [] && y_args = [] && x_orig = y_orig
 
 let rec is_atom t =
   match t.desc with

@@ -246,14 +246,15 @@ let rec expand_type templates val_env typ =
   if dbg then pr "r: %a@." print_template r;
   r
 
-let _PAppSelf typ t =
-  let typ',ts =
-    match typ with
-    | Base _ -> typ, []
-    | PApp(Base(Some _) as typ', ts) -> typ', ts
-    | _ -> assert false
-  in
-  _PApp typ' (t::ts)
+let rec _PAppSelf typ t =
+  match typ with
+  | Base _ -> _PApp typ [t]
+  | PApp(Base(Some _) as typ', ts) -> _PApp typ' (t::ts)
+  | Inter(styp,typs) ->
+      Inter(styp, List.map (_PAppSelf -$- t) typs)
+  | _ ->
+      Format.printf "%a@." print_template typ;
+      assert false
 
 let rec inline_sub templates val_env typ1 typ2 =
   let _dbg = false in
@@ -389,7 +390,7 @@ let filter_assumption val_env assumption =
 
 let make_assumption templates val_env =
   let dbg = 0=0 in
-  if dbg then Debug.printf "  MA: Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
+  if dbg then Debug.printf "  [MA] Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
   let aux x =
     Debug.printf "  MA Dom(val_env(%a)): %a@." Id.print x (List.print Id.print) @@ List.map fst @@ CT.val_env_of_value @@ Id.assoc x val_env;
     let val_env_x =
@@ -398,24 +399,24 @@ let make_assumption templates val_env =
       |> List.filter_out (fun (x,_) -> Id.mem_assoc x val_env)
     in
     try
-      if dbg then Debug.printf "    MA: x: %a@." Id.print x;
+      if dbg then Debug.printf "    [MA] x: %a@." Id.print x;
       make_var x
       |> _PAppSelf @@ List.assoc ~eq:Id.eq x templates
-      |@dbg&> Debug.printf "      MA: typ of %a: %a@." Id.print x print_template
+      |@dbg&> Debug.printf "      [MA] typ of %a: %a@." Id.print x print_template
       |> List.fold_right (fun (y,v) typ -> subst_template y (CT.term_of_value v) typ) val_env_x
-      |@dbg&> Debug.printf "      MA: typ' of %a: %a@." Id.print x print_template
+      |@dbg&> Debug.printf "      [MA] typ' of %a: %a@." Id.print x print_template
       |> constr_of_typ
-      |@dbg&> Debug.printf "      MA: constr: %a@." print_constr
+      |@dbg&> Debug.printf "      [MA] constr: %a@." print_constr
       |> Option.some
     with Not_found -> None
   in
   val_env
   |> List.map fst
-  |@dbg&> Debug.printf "  MA: vars: %a@." (List.print Id.print)
+  |@dbg&> Debug.printf "  [MA] vars: %a@." (List.print Id.print)
   |> List.filter is_base_var
-  |@dbg&> Debug.printf "  MA: base_vars: %a@." (List.print Id.print)
+  |@dbg&> Debug.printf "  [MA] base_vars: %a@." (List.print Id.print)
   |> List.filter_map aux
-  |@dbg&> Debug.printf "  MA: base_vars_constr: %a@." (List.print print_constr)
+  |@dbg&> Debug.printf "  [MA] base_vars_constr: %a@." (List.print print_constr)
 
 
 let subst_template x t typ =
@@ -424,10 +425,23 @@ let subst_template x t typ =
     Debug.printf "ST: [%a |-> %a] %a = %a@." Id.print x Print.term t print_template typ print_template r;
   r
 
-let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.ce_env; CT.nlabel}, children)) =
+let new_template_of_simple cnt ty =
+  ty
+  |> Ref_type.of_simple
+  |> from_ref_type
+  |> init_with_pred_var cnt
+
+let arg_of x y =
+  try
+    let s1,s2 = String.split (Id.to_string y) ~by:(Id.to_string x ^ ":") in
+    ignore (int_of_string s2);
+    s1 = ""
+  with _ -> false
+
+let rec make_template cnt args (Rose_tree.Node({CT.nid; var_env; val_env; ce_env; nlabel}, children)) =
   let dbg = 0=0 in
-  let pr f = if dbg then Debug.printf @@ "MT " ^^ f else Format.ifprintf Format.std_formatter f in
-  let templates = merge_template @@ List.map (make_template cnt env args) children in
+  let pr f = if dbg then Debug.printf @@ "[MT] " ^^ f else Format.ifprintf Format.std_formatter f in
+  let templates = merge_template @@ List.map (make_template cnt args) children in
   Debug.printf "@.@.";
   match nlabel with
   | CT.App(f, map) ->
@@ -445,16 +459,22 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
             |@> pr "  pargs': %a@." (List.print Print.term)
           in
           let aux' (pargs,k) (x,CT.Closure(_,_,t)) =
+            pr "  x: %a@." Id.print x;
             pr "  pargs,t: %a, %a@." (List.print Print.term) pargs Print.term t;
             let tmp1 =
               if is_base_typ t.typ then
                 _PApp (new_pred (base_of_typ t.typ) cnt) (pargs@pargs')
               else
-                templates
-                |> List.filter (Id.eq x -| fst)
-                |> List.sort compare
-                |> List.map snd
-                |> _Inter t.typ
+                let typs =
+                  templates
+                  |> List.filter (fun (y,_) -> arg_of x y)
+                  |> List.sort compare
+                  |> List.map snd
+                in
+                if typs = [] then
+                  new_template_of_simple cnt t.typ
+                else
+                  _Inter t.typ typs
             in
             pr "    [%a] tmp1: %a@." Id.print x print_template tmp1;
             make_var x :: pargs, fun tmp2 -> k @@ Fun(x, tmp1, tmp2)
@@ -467,16 +487,24 @@ let rec make_template cnt env args (Rose_tree.Node({CT.nid; CT.var_env; CT.val_e
       pr "  typ[%a]: %a@." Id.print f print_template typ;
       (f, typ) :: templates
       |@> pr "  TEMPLATE: %a@." print_tmp_env
-  | CT.Spawn(f, g) ->
-      let typ = List.find_map (fun (h,typ) -> if Id.same g h then Some typ else None) templates in
+  | CT.Spawn f ->
+      let typ =
+        templates
+        |> List.filter_map (fun (h,typ) -> if same_top_fun f h then Some typ else None)
+        |> _Inter (Id.typ f)
+      in
       (f, typ)::templates
   | CT.Let(f, t) ->
       assert (is_fun_var f);
       templates
   | CT.Branch _ -> templates
   | CT.Assume _ -> templates
-  | CT.End -> []
-  | CT.Fail -> []
+  | CT.End ->
+      assert (children = []);
+      []
+  | CT.Fail ->
+      assert (children = []);
+      []
 
 let rec make_arg_templates_aux typ =
   let aux = make_arg_templates_aux in
@@ -505,14 +533,25 @@ let make_template env t =
     | _, _, [] -> true
     | _ -> false
   in
-  make_template (Counter.create()) env [] t
-  |> List.filter is_top
+  let cnt = Counter.create() in
+  let templates =
+    make_template cnt [] t
+    |> List.filter is_top
+  in
+  let templates_unused =
+(*
+    env
+    |> List.filter_map (fun (f,_) -> if Id.mem_assoc f templates then None else Some (f, new_template_of_simple cnt @@ Id.typ f))
+ *)
+    []
+  in
+  templates_unused @ templates
 
 
 
 
 
-let rec generate_constraints templates arg_templates assumption (Rose_tree.Node({CT.nid; CT.var_env; CT.val_env; CT.ce_env; CT.nlabel}, children)) =
+let rec generate_constraints templates arg_templates assumption (Rose_tree.Node({CT.nid; var_env; val_env; ce_env; nlabel}, children)) =
   let dbg = 0=0 in
   if dbg then Debug.printf "label: %a@." CT.print_nlabel nlabel;
   if dbg then Debug.printf "  Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
@@ -699,7 +738,8 @@ let solve hcs =
   sol'
 let solve_option hcs =
   try Some (solve hcs) with
-  | Fpat.HCCSSolver.Unknown -> None
+  | Fpat.HCCSSolver.Unknown
+  | Fpat.HCCSSolver.NoSolution -> None
 
 let any_var = Id.make (-1) "any" [] TBool
 
@@ -719,14 +759,15 @@ let rec apply_sol mode sol x vars tmp =
           | _ -> assert false
         in
         if dbg then Debug.printf "  P_%d@." p;
+        if dbg then Debug.printf "  tmp: %a@." print_template tmp;
         if dbg then Debug.printf "  Dom(sol): %a@." (List.print Format.pp_print_int) @@ List.map fst sol;
+        if dbg then Debug.printf "  vars: %a@." (List.print Id.print) vars;
         let x' = Option.get x in
         let p =
           let vars' = List.filter is_base_var vars in
           let ts' = make_var x' :: List.map make_var vars' @ ts in
           try
             let xs,t = List.assoc p sol in
-            if dbg then Debug.printf "  P_%d@." p;
             if dbg then Debug.printf "  t: %a@." Print.term t;
             if dbg then Debug.printf "  xs: %a@." (List.print Id.print) xs;
             if dbg then Debug.printf "  ts': %a@." (List.print Print.term) ts';
@@ -744,8 +785,8 @@ let rec apply_sol mode sol x vars tmp =
       Format.eprintf "%a@." print_template tmp;
       assert false
   in
-  if dbg then Debug.printf "AS tmp: %a@." print_template tmp;
-  if dbg then Debug.printf "AS r: %a@." Ref_type.print r;
+  if dbg then Debug.printf "[AS] tmp: %a@." print_template tmp;
+  if dbg then Debug.printf "[AS] r: %a@." Ref_type.print r;
   r
 let apply_sol mode sol tmp = apply_sol mode sol None [] tmp
 
@@ -782,7 +823,8 @@ let rec normalize t =
   |> Trans.eta_normal
   |> lift_fun_arg
   |> Trans.reconstruct
-  |> Trans.alpha_rename ~whole:true
+  |*> Trans.alpha_rename ~whole:true
+
 
 let trans_CPS env funs t =
   let t',make_get_rtyp_cps =
@@ -978,7 +1020,7 @@ let solve_merged map hcs =
         incr cnt;
         match solve_option hcs' with
         | exception e ->
-            if 0=1 then Debug.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps;
+            Debug.printf "DEPS: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps;
             raise e
         | None ->
             Debug.printf "CANNOT MERGE %d, %d@." p1 p2;
@@ -988,14 +1030,14 @@ let solve_merged map hcs =
             let merged' = add_merged (p1,p2) merged in
             let map'' = sbst (p1,p2) map' in
             let deps' = add_dependency (add_dependency deps (p1,p2)) (p2,p1) in
-            if !!Debug.check then save_dep deps' hcs' @@ Format.sprintf "tmp/test%d.dot" !cnt;
+            if 0=1 && !!Debug.check then save_dep deps' hcs' @@ Format.sprintf "tmp/test%d.dot" !cnt;
             Debug.printf "SOLVED@.";
             let map''',merged'',deps'',hcs'' = merge_same_sol sol map'' merged' deps' hcs' in
             let used' = List.remove used p1 in
             loop used' sol merged'' deps'' map''' hcs''
   in
   if 0=1 then Debug.printf "init_deps: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements dependencies;
-  if !!Debug.check then save_dep dependencies hcs "tmp/test.dot";
+  if 0=1 && !!Debug.check then save_dep dependencies hcs "tmp/test.dot";
   match solve_option hcs with
   | None -> None
   | Some sol ->
@@ -1156,7 +1198,7 @@ let infer prog f typ (ce_set:ce_set) depth merge =
     Debug.printf "t: %a@.@." Print.term t;
     CT.from_program fun_env' ce_set depth t
   in
-  let templates = make_template env comp_tree in
+  let templates = make_template fun_env' comp_tree in
   Debug.printf "TEMPLATES: @[%a@.@." print_tmp_env templates;
 (*
   let arg_templates = make_arg_templates templates in

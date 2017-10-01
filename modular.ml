@@ -184,7 +184,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
                   let mode' = Modular_infer.next_mode mode in
                   MVerbose.printf "%schange infer_mode %a => %a@." space Modular_infer.print_mode mode Modular_infer.print_mode mode';
                   infer_mode_loop mode' @@ Option.get @@ sol mode'
-                else if true then
+                else if false then
                   (MVerbose.printf "%sdepth := %d@." space (idepth+1);
                    main_loop_ind history (c+1) prog cmp dep f typ cdepth (idepth+1) ce_set3)
                 else

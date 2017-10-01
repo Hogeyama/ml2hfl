@@ -8,7 +8,7 @@ open Term_util
 open Type
 
 
-module Debug = Debug.Make(struct let check () = List.mem "Parser_wrapper" !Flag.debug_module end)
+module Debug = Debug.Make(struct let check = make_debug_check "Parser_wrapper" end)
 
 type declaration =
   | Decl_let of rec_flag * (id * term) list
@@ -646,5 +646,7 @@ let from_use_file ast =
   |> subst_data_type_term "exn" !!exc_typ
   |> Trans.rename_bound_module
   |> Trans.split_let
+  |@> Debug.printf "before alpha: %a@." Print.term'
   |> Trans.alpha_rename ~whole:true
+  |@> Debug.printf "after alpha: %a@." Print.term'
   |@> Id.set_counter -| succ -| Term_util.get_max_var_id

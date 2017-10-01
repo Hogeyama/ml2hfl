@@ -13,7 +13,7 @@ type nlabel =
   | Let of id * term
   | Assume of term
   | Branch of label option
-  | Spawn of id * id
+  | Spawn of id
   | Fail
   | End
 and t = node RT.t
@@ -33,10 +33,10 @@ and value = Closure of var_env * val_env * term
 
 let rec pr_bind depth fm (x,vl) =
   let Closure(var_env,val_env,t) = vl in
-  if true then
+  if false then
     Format.fprintf fm "@[%a%a@]" (List.print Id.print) (List.map fst var_env) Print.term t
   else if depth <= 0 then
-    Format.fprintf fm "@[[...]%a@]" Print.term t
+    Format.fprintf fm "@[%a@]" Print.term t
   else
     Format.fprintf fm "@[%a%a@]" (pr_env (depth-1)) val_env Print.term t
 and pr_env depth fm env = List.print (pr_bind depth) fm env
@@ -56,7 +56,7 @@ and print_nlabel fm nlabel =
   | Assume t -> Format.fprintf fm "@[Assume %a@]" Print.term t
   | Branch None -> Format.fprintf fm "Branch"
   | Branch (Some label) -> Format.fprintf fm "Branch %d" label
-  | Spawn(f,g) -> Format.fprintf fm "Spawn %a as %a" Id.print f Id.print g
+  | Spawn f -> Format.fprintf fm "Spawn %a" Id.print f
   | Fail -> Format.fprintf fm "Fail"
   | End -> Format.fprintf fm "End"
 and print_value fm (Closure(var_env,val_env,t)) =
@@ -171,6 +171,7 @@ let rec from_app_term
           (var_env : var_env)  (* scope environment *)
           (val_env : val_env)  (* value environment *)
           (ce_env : ce_env)  (* counterexamples *)
+          (spawned : Syntax.id list)  (* list of ids spawned *)
           (depth : int)
           (t : term)  (* term to be reduced *) =
   Debug.printf "  APP: %a@\n" Print.term t;
@@ -187,7 +188,7 @@ let rec from_app_term
   let node = {nid; var_env; val_env; ce_env; nlabel = App(f, arg_map)} in
   assert (List.Set.eq ~eq:Id.eq (List.map fst var_env') (List.map fst val_env'));
   let ce_env' = ce_env in
-  RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env' depth t_f])
+  RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env' spawned depth t_f])
 
 (* 't' must be a CPS term *)
 and from_term
@@ -196,6 +197,7 @@ and from_term
       (var_env : var_env)  (* scope environment *)
       (val_env : val_env)  (* value environment *)
       (ce_env : ce_env)  (* counterexamples *)
+      (spawned : Syntax.id list)  (* list of ids spawned *)
       (depth : int)
       (t : term)  (* term to be reduced *)
     : t =
@@ -212,45 +214,55 @@ and from_term
       RT.Node(node, [])
   | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
       let t2' = subst_var x (rename_var nid x) t2 in
-      from_term cnt fun_env var_env val_env ce_env depth t2'
+      from_term cnt fun_env var_env val_env ce_env spawned depth t2'
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)
       Debug.printf "  APP2,%a@\n" Id.print f;
       let t_f,ce_env_f = Id.assoc f fun_env in
       let f' = Id.make 0 (Format.asprintf "%a:%d" Id.print f nid) [] (Id.typ f) in
       Debug.printf "    SPAWN: %a => %a@\n" Id.print f Id.print f';
-      let var_env' = (f', []) :: var_env in
       let tid_map =
         t_f
         |> col_id
         |> List.map (fun x -> x, make_new_tid ())
       in
       Debug.printf "tid_map: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) tid_map;
-      let ce_env' =
-        let ce_env_f' = List.map (List.map (fun (n,t) -> List.assoc_default n n tid_map, t)) ce_env_f in
-        ce_env_f' @ ce_env
-      in
-      let val_env' =
-        let t_f' =
-          t_f
-          |*> Trans.alpha_rename
-          |> subst_var f f'
-          |> rename_tid_if tid_map
-        in
-        let var_env_f' = [f', []] in
-        let rec val_env_f' = [f', Closure(var_env_f', val_env_f', t_f')] in
-        val_env_f' @ val_env
-      in
       let t' = make_app (make_var f') ts in
-      let child = from_app_term (Counter.gen cnt) f' ts cnt fun_env var_env' val_env' ce_env' depth t' in
-      let node = {nid; var_env; val_env; ce_env; nlabel=Spawn(f, f')} in
+      let child =
+        let var_env' = (f', []) :: var_env in
+        let val_env' =
+          let t_f' =
+            t_f
+            |*> Trans.alpha_rename
+            |> subst_var f f'
+            |> rename_tid_if tid_map
+          in
+          let rec val_env_f' = [f', Closure([f', []], val_env_f', t_f')] in
+          val_env_f' @ val_env
+        in
+        let ce_env' =
+          let ce_env_f' = List.map (List.map (fun (n,t) -> List.assoc_default n n tid_map, t)) ce_env_f in
+          ce_env_f' @ ce_env
+        in
+        from_app_term (Counter.gen cnt) f' ts cnt fun_env var_env' val_env' ce_env' spawned depth t' in
+      let node = {nid; var_env; val_env; ce_env; nlabel=Spawn f} in
       RT.Node(node, [child])
   | App({desc=Fun(x,t); typ}, t2::ts) ->
       assert ( is_simple_aexp t2 || is_simple_bexp t2 || is_randint_unit t2 || is_randbool_unit t2 || is_var t2);
       let var_env' = (x, List.map fst val_env)::var_env in
       let val_env' = (x, Closure(var_env, val_env, t2))::val_env in
-      from_term cnt fun_env var_env' val_env' ce_env depth (make_app t ts)
+      from_term cnt fun_env var_env' val_env' ce_env spawned depth (make_app t ts)
   | App({desc=Var f}, ts) ->
-      from_app_term nid f ts cnt fun_env var_env val_env ce_env depth t
+      let f',var_env',val_env',t' =
+        if true || List.exists (fst |- same_top_fun f) fun_env then
+          let f' = compose_id ~nid f in
+          let var_env' = (f',Id.assoc f var_env)::var_env in
+          let val_env' = (f',Id.assoc f val_env) :: val_env in
+          let t' = subst_var f f' t in
+          f',var_env', val_env', t'
+        else
+          f,var_env, val_env, t
+      in
+      from_app_term nid f' ts cnt fun_env var_env' val_env' ce_env spawned depth t'
   | If(t1, t2, t3) ->
       Debug.printf "  IF t1: %a@\n" Print.term t1;
       let tid = get_id_option t in
@@ -259,7 +271,7 @@ and from_term
         let cond,t23 = if br then t1, t2 else make_not t1, t3 in
         Debug.printf "    t23: %a@\n" Print.term t23;
         let node = {nid; var_env; val_env; ce_env=ce_env'; nlabel=Assume cond} in
-        RT.Node(node, [from_term cnt fun_env var_env val_env ce_env' depth t23])
+        RT.Node(node, [from_term cnt fun_env var_env val_env ce_env' spawned depth t23])
       in
       let children =
         match tid with
@@ -306,7 +318,7 @@ and from_term
       let node = {nid; val_env; var_env; ce_env; nlabel = Branch tid} in
       RT.Node(node, children)
   | Let([f,[],({desc=Bottom} as t1)], _) ->
-      from_term cnt fun_env var_env val_env ce_env depth t1
+      from_term cnt fun_env var_env val_env ce_env spawned depth t1
   | Let([f,xs,t1], t2) ->
       Debug.printf "  LET@\n";
       Debug.printf "    t: %a@\n" Print.term t;
@@ -316,7 +328,7 @@ and from_term
       let var_env' = (f', List.map fst val_env)::var_env in
       let rec val_env' = (f', Closure(var_env', val_env', make_funs xs t1))::val_env in
       let node = {nid; var_env; val_env; ce_env; nlabel = Let(f', make_funs xs t1)} in
-      RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env depth t2'])
+      RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env spawned depth t2'])
   | _ when is_fail t ->
       let node = {nid; var_env; val_env; ce_env; nlabel = Fail} in
       RT.Node(node, [])
@@ -354,6 +366,7 @@ let from_program (fun_env: (id * (id list * term)) list) (ce_set:ce_set) depth t
   let val_env = [] in
   let ce_env = [] in
   t
-  |> from_term fun_env' var_env val_env ce_env depth
-  |*> filter_ends
+  |> from_term fun_env' var_env val_env ce_env [] depth
   |@> Debug.printf "@.@.comp_tree:@.%a@.@." print
+  |*> filter_ends (* "filter_ends" causes NoProgress *)
+  |*@> Debug.printf "@.@.comp_tree':@.%a@.@." print

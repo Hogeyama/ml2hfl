@@ -540,28 +540,6 @@ module String = struct
   let split_nth s n =
     sub s 0 n, sub s n (length s - n)
 
-  let rsplit s sep =
-    match nsplit s sep with
-    | [] -> assert false
-    | [s] -> invalid_arg "rsplit"
-    | subs -> Pair.map_fst (join sep) @@ List.decomp_snoc subs
-
-  let fold_left f s str =
-    let rec aux n i acc =
-      if i >= n
-      then acc
-      else aux n (i+1) (f acc str.[i])
-    in
-    aux (length str) 0 s
-
-  let fold_right f str s =
-    let rec aux i acc =
-      if i < 0
-      then acc
-      else aux (i-1) (f acc str.[i])
-    in
-    aux (length str - 1) s
-
   let count_line s =
     fold_left (fun n c -> if c = '\n' then n+1 else n) 0 s
 
