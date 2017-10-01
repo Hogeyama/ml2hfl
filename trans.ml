@@ -1701,9 +1701,7 @@ let elim_unused_let_term (leave,cbv) t =
     | Let(bindings, t) when not flag ->
         let t' = elim_unused_let.tr2_term (leave,cbv) t in
         let bindings' = List.map (Triple.map_trd @@ elim_unused_let.tr2_term (leave,cbv)) bindings in
-        let fv1 = List.flatten_map (get_fv -| Triple.trd) bindings in
         let fv2 = get_fv t' in
-        let fv = fv1 @ fv2 in
         let used (f,xs,t) =
           Id.mem f leave ||
           List.exists (fun (f,_,_) -> Id.mem f fv2) bindings' ||
@@ -2915,13 +2913,10 @@ let split_let =
         let desc = tr.tr_desc_rec @@ Let([f,xs,t1], make_let bindings t2) in
         {t with desc}
     | Let(_::_::_ as bindings, t2) ->
-        Format.printf "orig: %a@." (List.print Id.print) @@ List.map Triple.fst bindings;
         let bindings' = List.map (Triple.map_trd tr.tr_term) bindings in
         let fvs = List.flatten_map (fun (_,xs,t) -> get_fv @@ make_funs xs t) bindings' in
         let desc =
           let recs,non_recs = List.partition (fun (f,_,_) -> Id.mem f fvs) bindings' in
-          Format.printf "recs: %a@." (List.print Id.print) @@ List.map Triple.fst recs;
-          Format.printf "non_recs: %a@." (List.print Id.print) @@ List.map Triple.fst non_recs;
           Let(recs, make_lets non_recs @@ tr.tr_term t2)
         in
         {t with desc}

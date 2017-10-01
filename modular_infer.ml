@@ -582,11 +582,6 @@ let rec generate_constraints templates arg_templates assumption (Rose_tree.Node(
             if is_base_typ t.typ then
               let typ1 = Singleton t in
               let typ2 =
-                let val_env_f =
-                  Id.assoc f val_env
-                  |> CT.val_env_of_value
-                       (*                  |> List.filter_out (fun (x,_) -> Id.mem_assoc x val_env)*)
-                in
                 Arg(Var f, env)
                 |> List.fold_right (fun (y,v) typ -> subst_template y (CT.term_of_value v) typ) val_env
               in

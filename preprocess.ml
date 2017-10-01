@@ -47,7 +47,6 @@ type t = preprocess_label * ((results -> bool) * (results -> tr_result))
 let string_of_label = function
   | Init -> "Init"
   | Eliminate_unused_let -> "Eliminate_unused_let"
-  | Eliminate_same_arguments -> "Eliminate_same_arguments"
   | Replace_const -> "Replace_const"
   | Encode_mutable_record -> "Encode_mutable_record"
   | Encode_record -> "Encode_record"
