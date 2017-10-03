@@ -96,30 +96,36 @@ let print_info () =
 let print_env cmd json =
   let mochi = Revision.mochi in
   let fpat = Revision.fpat in
-  let trecs_version = TrecsInterface.version () in
-  let horsat_version = HorSatInterface.version () in
-  let horsat2_version = HorSat2Interface.version () in
-  let horsatp_version = HorSatPInterface.version () in
+  let z3 =
+    let a,b,c,d = Z3native.get_version () in
+    Format.sprintf "%d.%d.%d.%d" a b c d
+  in
+  let trecs = TrecsInterface.version () in
+  let horsat = HorSatInterface.version () in
+  let horsat2 = HorSat2Interface.version () in
+  let horsatp = HorSatPInterface.version () in
   if json then
     try
       let mochi = Option.get mochi in
       Format.printf "{Build:%S," @@ String.sub mochi 0 (String.index mochi ' ');
       Format.printf "FPAT:%S," @@ Option.get fpat;
-      Format.printf "TRecS:%S," @@ Option.get trecs_version;
-      Format.printf "HorSat:%S," @@ Option.get horsat_version;
-      Format.printf "HorSat2:%S," @@ Option.get horsat2_version;
-      Format.printf "HorSatP:%S," @@ Option.get horsatp_version;
+      Format.printf "Z3:%S," z3;
+      Format.printf "TRecS:%S," @@ Option.get trecs;
+      Format.printf "HorSat:%S," @@ Option.get horsat;
+      Format.printf "HorSat2:%S," @@ Option.get horsat2;
+      Format.printf "HorSatP:%S," @@ Option.get horsatp;
       Format.printf "OCaml:%S}" Sys.ocaml_version;
     with Option.No_value -> exit 1
   else
     begin
       Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
       Option.iter (Format.printf "  Build: %s@.") mochi;
-      Option.iter (Format.printf "  FPAT version: %s@.") fpat;
-      Option.iter (Format.printf "  TRecS version: %s@.") trecs_version;
-      Option.iter (Format.printf "  HorSat version: %s@.") horsat_version;
-      Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2_version;
-      Option.iter (Format.printf "  HorSatP version: %s@.") horsatp_version;
+      Option.iter (Format.printf "  FPAT revision: %s@.") fpat;
+      Format.printf "  Z3 version: %s@." z3;
+      Option.iter (Format.printf "  TRecS version: %s@.") trecs;
+      Option.iter (Format.printf "  HorSat version: %s@.") horsat;
+      Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2;
+      Option.iter (Format.printf "  HorSatP version: %s@.") horsatp;
       Format.printf "  OCaml version: %s@." Sys.ocaml_version;
       if cmd then
         !Flag.args

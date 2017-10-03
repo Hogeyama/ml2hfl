@@ -35,10 +35,12 @@ if test "$OCAML_PKG_extlib" = "no"; then
   AC_MSG_ERROR([extlib not found])
 fi
 
-AC_PATH_TOOL(CVC3, cvc3, [no], [$PATH:$PWD])
-if test "$CVC3" = "no"; then
-  AC_MSG_ERROR([CVC3 not found])
+AC_CHECK_OCAML_PKG([Z3])
+if test "$OCAML_PKG_Z3" = "no"; then
+  AC_MSG_ERROR([Z3 not found])
 fi
+
+AC_PATH_TOOL(CVC3, cvc3, [no], [$PATH:$PWD])
 AC_SUBST(CVC3)
 
 AC_PATH_TOOL(TRECS, trecs, [no], [$PATH:$PWD])
