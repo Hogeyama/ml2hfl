@@ -596,8 +596,11 @@ let print_error = function
       Format.printf "Unsupported: %s@." s
   | Sys_error s ->
       Format.printf "%s@." s
-  | TimeOut ->
+  | TimeOut
+  | Assert_failure("timer.ml", _, _) ->
       Format.printf "Verification failed (time out)@."
+  | Z3native.Exception("out of memory") ->
+      Format.printf "Verification failed (out ou memory)@."
   | e when !Flag.debug_module = [] ->
       Format.printf "Exception: %s@." @@ Printexc.to_string e
   | e -> raise e
