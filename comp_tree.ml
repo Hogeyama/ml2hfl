@@ -36,9 +36,9 @@ let rec pr_bind depth fm (x,vl) =
   if false then
     Format.fprintf fm "@[%a%a@]" (List.print Id.print) (List.map fst var_env) Print.term t
   else if depth <= 0 then
-    Format.fprintf fm "@[%a@]" Print.term t
+    Format.fprintf fm "@[%a := %a@]" Id.print x Print.term t
   else
-    Format.fprintf fm "@[%a%a@]" (pr_env (depth-1)) val_env Print.term t
+    Format.fprintf fm "@[%a := %a%a@]" Id.print x (pr_env (depth-1)) val_env Print.term t
 and pr_env depth fm env = List.print (pr_bind depth) fm env
 let pr_env fm env = pr_env 0 fm env
 
@@ -82,11 +82,6 @@ let get_arg_num = List.length -| Triple.snd -| Option.get -| decomp_fix
 
 let counter = Counter.create ()
 let make_new_tid () = Counter.gen counter
-let make_new_ce_env ce =
-  let aux (f,path) =
-    f, Counter.gen counter, path
-  in
-  List.map aux ce
 
 let get_tid t = get_id t
 let get_tid_option t = get_id_option t
@@ -356,6 +351,7 @@ let rec filter_ends (RT.Node(node,ts)) =
   RT.Node(node, ts')
 
 let from_program (fun_env: (id * (id list * term)) list) (ce_set:ce_set) depth t =
+  Counter.reset counter;
   Debug.printf "@.CE_SET: %a@." print_ce_set ce_set;
   Debug.printf "FUN_ENV: %a@." (List.print @@ Pair.print Id.print Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) fun_env;
   Debug.printf "from_program: %a@." Print.term t;

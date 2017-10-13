@@ -2654,7 +2654,10 @@ let eta_normal =
   let map_arg t =
     match t.desc with
     | Var _ -> t
-    | App(t1,ts) -> {t with desc=App(t1, List.map tr.tr_term ts)}
+    | App(t1,ts) ->
+        let t1' = tr.tr_term t1 in
+        let desc = App(t1', List.map tr.tr_term ts) in
+        {t with desc}
     | _ -> assert false
   in
   let tr_term t =

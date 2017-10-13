@@ -185,7 +185,7 @@ let rec subst_constr x t constr =
   | Pred _ -> assert false
 
 let rec expand_type templates val_env typ =
-  let dbg = 0=0 in
+  let dbg = 0=1 in
   let pr f = if dbg then Debug.printf @@ "        ET " ^^ f else Format.ifprintf Format.std_formatter f in
   let et = expand_type templates val_env in
   let r =
@@ -392,7 +392,7 @@ let make_assumption templates val_env =
   let dbg = 0=0 in
   if dbg then Debug.printf "  [MA] Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
   let aux x =
-    Debug.printf "  MA Dom(val_env(%a)): %a@." Id.print x (List.print Id.print) @@ List.map fst @@ CT.val_env_of_value @@ Id.assoc x val_env;
+    Debug.printf "  [MA] Dom(val_env(%a)): %a@." Id.print x (List.print Id.print) @@ List.map fst @@ CT.val_env_of_value @@ Id.assoc x val_env;
     let val_env_x =
       Id.assoc x val_env
       |> CT.val_env_of_value
@@ -583,7 +583,7 @@ let rec generate_constraints templates arg_templates assumption (Rose_tree.Node(
               let typ1 = Singleton t in
               let typ2 =
                 Arg(Var f, env)
-                |> List.fold_right (fun (y,v) typ -> subst_template y (CT.term_of_value v) typ) val_env
+                |*> List.fold_right (fun (y,v) typ -> subst_template y (CT.term_of_value v) typ) val_env
               in
               make_sub templates' val_env typ1 typ2
             else
