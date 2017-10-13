@@ -787,7 +787,7 @@ let apply_sol mode sol tmp = apply_sol mode sol None [] tmp
 
 
 
-let lift_fun_arg =
+let lift_arg =
   let tr = make_trans () in
   let tr_desc desc =
     match tr.tr_desc_rec desc with
@@ -798,6 +798,8 @@ let lift_fun_arg =
             | Fun _ ->
                 let x = new_var_of_term t in
                 [x,[],t], make_var x
+            | Let(bindings, t') ->
+                bindings, t'
             | _ -> [], t
           in
           ts
@@ -816,7 +818,7 @@ let lift_fun_arg =
 let rec normalize t =
   t
   |> Trans.eta_normal
-  |> lift_fun_arg
+  |> lift_arg
   |> Trans.reconstruct
   |*> Trans.alpha_rename ~whole:true
 
