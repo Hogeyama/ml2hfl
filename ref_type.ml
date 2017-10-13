@@ -63,7 +63,6 @@ let is_bottom typ =
 let is_top typ =
   match typ with
   | Inter(_, []) -> true
-  | Base(_, _, {S.desc=S.Const S.True}) -> true
   | _ -> false
 let rec is_bottom' typ =
   match typ with
