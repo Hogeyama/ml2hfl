@@ -734,7 +734,7 @@ let has_no_effect =
 
 
 let rec is_simple_aexp t =
-  if t.typ <> TInt
+  if elim_tattr t.typ <> TInt
   then false
   else
     match t.desc with
@@ -744,7 +744,7 @@ let rec is_simple_aexp t =
     | _ -> false
 
 and is_simple_bexp t =
-  if t.typ <> TBool
+  if elim_tattr t.typ <> TBool
   then false
   else
     match t.desc with
