@@ -319,10 +319,11 @@ and from_term
       Debug.printf "    t: %a@\n" Print.term t;
       assert (xs <> []);
       let f' = Id.make 0 (Format.asprintf "%a:%d" Id.print f nid) [] (Id.typ f) in
+      let t1' = subst_var f f' t1 in
       let t2' = subst_var f f' t2 in
       let var_env' = (f', List.map fst val_env)::var_env in
-      let rec val_env' = (f', Closure(var_env', val_env', make_funs xs t1))::val_env in
-      let node = {nid; var_env; val_env; ce_env; nlabel = Let(f', make_funs xs t1)} in
+      let rec val_env' = (f', Closure(var_env', val_env', make_funs xs t1'))::val_env in
+      let node = {nid; var_env; val_env; ce_env; nlabel = Let(f', make_funs xs t1')} in
       RT.Node(node, [from_term cnt fun_env var_env' val_env' ce_env spawned depth t2'])
   | _ when is_fail t ->
       let node = {nid; var_env; val_env; ce_env; nlabel = Fail} in
