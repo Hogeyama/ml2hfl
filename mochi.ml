@@ -600,7 +600,7 @@ let print_error = function
   | Assert_failure("timer.ml", _, _) ->
       Format.printf "Verification failed (time out)@."
   | Z3native.Exception("out of memory") ->
-      Format.printf "Verification failed (out ou memory)@."
+      Format.printf "Verification failed (out of memory)@."
   | e when !Flag.debug_module = [] ->
       Format.printf "Exception: %s@." @@ Printexc.to_string e
   | e -> raise e
