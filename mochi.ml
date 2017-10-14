@@ -455,21 +455,6 @@ and print_option_and_exit () =
   exit 0
 let arg_spec = arg_spec ()
 
-let string_of_exception = function
-  | e when Fpat.FPATConfig.is_fpat_exception e ->
-     Fpat.FPATConfig.string_of_fpat_exception e
-  | Syntaxerr.Error err -> "Syntaxerr.Error"
-  | Typecore.Error(loc,env,err) -> "Typecore.Error"
-  | Typemod.Error(loc,env,err) -> "Typemod.Error"
-  | Env.Error e -> "Env.Error"
-  | Typetexp.Error(loc,env,err) -> "Typetexp.Error"
-  | Lexer.Error(err, loc) -> "Lexer.Error"
-  | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
-  | Fatal s -> "Fatal"
-  | TimeOut -> "TimeOut"
-  | Killed -> "Killed"
-  | e -> Printexc.to_string e
-
 let set_file name =
   let name' =
     match !Flag.pp with
@@ -566,6 +551,22 @@ let init_after_parse_arg () =
     Flag.church_encode := true
 
 let timeout_handler _ = raise TimeOut
+
+let string_of_exception = function
+  | e when Fpat.FPATConfig.is_fpat_exception e ->
+     Fpat.FPATConfig.string_of_fpat_exception e
+  | Syntaxerr.Error err -> "Syntaxerr.Error"
+  | Typecore.Error(loc,env,err) -> "Typecore.Error"
+  | Typemod.Error(loc,env,err) -> "Typemod.Error"
+  | Env.Error e -> "Env.Error"
+  | Typetexp.Error(loc,env,err) -> "Typetexp.Error"
+  | Lexer.Error(err, loc) -> "Lexer.Error"
+  | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
+  | Fatal s -> "Fatal"
+  | TimeOut -> "TimeOut"
+  | Killed -> "Killed"
+  | Z3native.Exception("out of memory") -> "OutOfMemory"
+  | e -> Printexc.to_string e
 
 let print_error = function
   | Fpat.RefTypInfer.FailedToRefineTypes ->
