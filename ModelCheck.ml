@@ -287,6 +287,7 @@ let preprocess prog =
   |&Flag.useless_elim&> Useless_elim.elim
   |&Flag.beta_reduce&> beta_reduce
   |& !Flag.church_encode&> church_encode
+  |@> pr "church_encode"
 
 let preprocess_cps prog =
   prog
@@ -306,6 +307,7 @@ let preprocess_cps prog =
   |&Flag.useless_elim&> Useless_elim.elim
   |&Flag.beta_reduce&> beta_reduce
   |& !Flag.church_encode&> church_encode
+  |@> pr "church_encode"
 
 let check abst prog spec =
   if !Flag.print_progress

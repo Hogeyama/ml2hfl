@@ -14,7 +14,7 @@ let abst_arg x typ =
         match ps (Var x) with
         | [] -> []
         | [_] -> [x]
-        | ps -> List.mapi (fun i _ -> add_name x @@ string_of_int @@ i+1) ps
+        | ps -> List.mapi (fun i _ -> add_name x @@ Format.sprintf "_%d" @@ i+1) ps
       end
   | _ -> [x]
 let make_pts x typ =
@@ -397,6 +397,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   let env'' = env' @@@ env in
   let pts = List.flatten_map (Fun.uncurry make_pts) env' in
   let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
+  assert (List.for_all (fun x -> x <> "l0" && x <> "l1") xs);
   Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
   if Debug.check() then Flag.print_fun_arg_typ := true;
   Debug.printf "%s:: %a@." f CEGAR_print.term t2;
