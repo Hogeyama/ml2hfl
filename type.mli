@@ -21,13 +21,10 @@ and constr =
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list
   | TAPureFun
+  | TAEffect of effect
+and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
-
-val print :
-  ?occur:('a t Id.t -> 'a t -> bool) ->
-  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
-val print_typ_init : Format.formatter -> 'a t -> unit
 
 val is_fun_typ : 'a t -> bool
 val is_base_typ : 'a t -> bool
@@ -84,3 +81,12 @@ val make_tlist : 'a t -> 'a t
 val make_tref : 'a t -> 'a t
 val make_toption : 'a t -> 'a t
 val make_tarray : 'a t -> 'a t
+
+
+(** {6 Printers} *)
+
+val print :
+  ?occur:('a t Id.t -> 'a t -> bool) ->
+  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+val print_typ_init : Format.formatter -> 'a t -> unit
+val print_effect : Format.formatter -> effect -> unit

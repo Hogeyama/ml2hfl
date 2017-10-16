@@ -15,6 +15,7 @@ and attr =
   | AId of int
   | AMark
   | ADoNotInline
+  | AEffect of Type.effect
 and term = {desc:desc; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | Unit

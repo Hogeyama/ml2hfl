@@ -2927,3 +2927,22 @@ let split_let =
   in
   tr.tr_term <- tr_term;
   tr.tr_term
+
+
+let remove_effect_attribute =
+  let app = make_trans () in
+  let tr_attr = List.filter (function AEffect _ -> false | _ -> true) in
+  let tr_typ ty =
+    match ty with
+    | TAttr(attrs, ty1) ->
+        let attrs' = List.filter (function TAEffect _ -> false | _ -> true) attrs in
+        let ty1' = app.tr_typ ty1 in
+        if attrs' = [] then
+          ty1'
+        else
+          TAttr(attrs', ty1')
+    | _ -> app.tr_typ_rec ty
+  in
+  app.tr_attr <- tr_attr;
+  app.tr_typ <- tr_typ;
+  app.tr_term

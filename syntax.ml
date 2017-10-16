@@ -32,6 +32,7 @@ and attr =
   | AId of int
   | AMark
   | ADoNotInline
+  | AEffect of Type.effect
 
 and term = {desc:desc; typ:typ; attr:attr list}
 and desc =
@@ -155,6 +156,7 @@ let trans_typ trans = function
         match a with
         | TAPred(x,ps) -> TAPred(trans.tr_var x, List.map trans.tr_term ps)
         | TAPureFun -> TAPureFun
+        | TAEffect e -> TAEffect e
       in
       TAttr(List.map tr attr, trans.tr_typ typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
@@ -313,6 +315,7 @@ let trans2_gen_typ tr env = function
         match a with
         | TAPred(x,ps) -> TAPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
         | TAPureFun -> TAPureFun
+        | TAEffect e -> TAEffect e
       in
       TAttr(List.map aux attr, tr.tr2_typ env typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
@@ -477,6 +480,7 @@ let col_typ col typ =
             let acc' = col.col_var x -@- acc in
             List.fold_left (fun acc p -> acc -@- col.col_term p) acc' ps
         | TAPureFun -> acc
+        | TAEffect e -> acc
       in
       List.fold_left aux (col.col_typ typ) attr
   | TVariant labels -> List.fold_left (fun acc (_,typs) -> List.fold_left (fun acc' typ -> acc' -@- col.col_typ typ) acc typs) col.col_empty labels
@@ -642,6 +646,7 @@ let col2_typ col env typ =
             let acc' = col.col2_var env x -@- acc in
             List.fold_left (fun acc p -> acc -@- col.col2_term env p) acc' ps
         | TAPureFun -> acc
+        | TAEffect _ -> acc
       in
       List.fold_left aux (col.col2_typ env typ) attr
   | TVariant labels -> List.fold_left (fun acc (_, typs) -> List.fold_left (fun acc' typ -> acc -@- col.col2_typ env typ) acc typs) col.col2_empty labels
@@ -821,6 +826,7 @@ let tr_col2_typ tc env = function
             let acc',ps' = tr_col2_list tc tc.tr_col2_term ~init:acc env ps in
             acc', TAPred(x',ps')
         | TAPureFun -> tc.tr_col2_empty, TAPureFun
+        | TAEffect e -> tc.tr_col2_empty, TAEffect e
       in
       let acc,typ' = tc.tr_col2_typ env typ in
       let acc',attr' = tr_col2_list tc aux ~init:acc env attr in
@@ -1123,6 +1129,7 @@ let fold_tr_typ fld env = function
             let env'',ps' = fold_tr_list fld.fold_tr_term env' ps in
             env'', TAPred(x',ps')
         | TAPureFun -> env, TAPureFun
+        | TAEffect e -> env, TAEffect e
       in
       let env',attr' = fold_tr_list aux env attr in
       let env'',typ' = fld.fold_tr_typ env' typ in
@@ -1435,6 +1442,7 @@ let occur_typ x typ =
         match a with
         | TAPred(y,ps) -> List.exists (List.exists (Id.same x) -| get_fv) ps
         | TAPureFun -> false
+        | TAEffect _ -> false
       in
       List.exists aux attr || occur.col2_typ x typ
   | _ -> occur.col2_typ_rec x typ

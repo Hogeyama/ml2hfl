@@ -82,6 +82,7 @@ and print_attr fm = function
   | AId n -> fprintf fm "AId %d" n
   | AMark -> fprintf fm "AMark"
   | ADoNotInline -> fprintf fm "ADoNotInline"
+  | AEffect e -> print_effect fm e
 
 and ignore_attr_list = ADoNotInline::const_attr
 

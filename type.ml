@@ -24,8 +24,10 @@ and constr =
   | TOption
   | TArray
 and 'a attr =
-  | TAPred of 'a t Id.t * 'a list (* TAPred must occur at most ones *)
+  | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
   | TAPureFun
+  | TAEffect of effect
+and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
 
@@ -119,13 +121,20 @@ let rec decomp_tfun typ =
   | TFun(x,typ) ->
       let xs,typ = decomp_tfun typ in
       x :: xs, typ
-  | typ -> [], typ
+  | _ -> [], typ
 
 let rec decomp_tfuns = function
   | TFuns(xs, typ) -> xs, typ
   | _ -> invalid_arg "decomp_tfuns"
 
 let arity typ = List.length @@ fst @@ decomp_tfun typ
+
+let print_effect fm e =
+  match e with
+  | EVar n -> Format.fprintf fm "'e%d" n
+  | ENone -> Format.fprintf fm "none"
+  | ECont -> Format.fprintf fm "cont"
+  | EExcep -> Format.fprintf fm "excep"
 
 let rec print occur print_pred fm typ =
   let print' = print occur print_pred in
@@ -169,6 +178,8 @@ let rec print occur print_pred fm typ =
       if occur x typ
       then Format.fprintf fm "@[<hov 2>%a:%a -+>@ %a@]" Id.print x print' (Id.typ x) print' typ
       else Format.fprintf fm "@[<hov 2>%a -+>@ %a@]" print' (Id.typ x) print' typ
+  | TAttr([TAEffect e], typ) ->
+      Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
   | TAttr _ -> unsupported "Type.print TAttr"
   | TVariant labels ->
       let pr fm (s, typs) =
