@@ -15,36 +15,12 @@ let initial_env cont_if =
   let constraints = [ECont, EVar 0] in
   {counter; constraints; cont_if}
 
-let effect_max x y =
-  match x, y with
-  | EVar _, _
-  | _, EVar _ -> assert false
-  | ENone, _ -> y
-  | _, ENone -> x
-  | _, EExcep -> EExcep
-  | EExcep, _ -> EExcep
-  | ECont, ECont -> ECont
-
 let rec infer _ =
   assert false
 
 let new_evar env =
   env.counter <- env.counter + 1;
   EVar env.counter
-
-let effect_of_typ ty =
-  match ty with
-  | TAttr(TAEffect e::_, _) -> e
-  | _ ->
-      Format.printf "%a@." Print.typ ty;
-      invalid_arg "effect_of_typ"
-
-let effect_of t =
-  match t.attr with
-  | AEffect e::_ -> e
-  | _ ->
-      Format.printf "%a@." Print.term t;
-      invalid_arg "effect_of"
 
 let add_effect_typ e ty =
   _TAttr [TAEffect e] ty
@@ -140,8 +116,9 @@ let rec gen_constr env tenv t =
 	| Not_found ->
             Format.printf "%a@." Print.id x; assert false
       in
+      let x' = Id.set_typ x ty in
       let e = effect_of_typ ty in
-      add_effect e {t with typ=ty; attr=t.attr}
+      add_effect e {desc=Var x'; typ=ty; attr=t.attr}
   | Fun(x, t1) ->
       let x_typ = make_template env (Id.typ x) in
       let x' = Id.set_typ x x_typ in
@@ -178,12 +155,12 @@ let rec gen_constr env tenv t =
       add_effect e @@ {(make_if t1' t2' t3') with typ=ty; attr=t.attr}
   | Let(bindings, t1) ->
       let tenv' =
-        let make_env (f,_,_) = f, make_template env (Id.typ f) in
+        let make_env (f,_,_) = f, make_template env (Id.typ f) |@> Format.printf "%a : %a@." Id.print f Print.typ in
         List.map make_env bindings @@@ tenv
       in
       let e = new_evar env in
       let aux (f, xs, t1) =
-        let f_typ = make_template env @@ Id.typ f in
+        let f_typ = Id.assoc f tenv' in
         let f' = Id.set_typ f f_typ in
         let t1' =
           t1
@@ -196,7 +173,9 @@ let rec gen_constr env tenv t =
       in
       let bindings' = List.map aux bindings in
       let t1' = gen_constr env tenv' t1 in
-      add_effect e @@ {(make_let bindings' t1') with attr=t.attr}
+      env.constraints <- (effect_of t1', e) :: env.constraints;
+      let ty = add_effect_typ e @@ elim_tattr t1'.typ in
+      add_effect e @@ {(make_let bindings' t1') with typ=ty; attr=t.attr}
   | BinOp(op, t1, t2) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
@@ -282,7 +261,7 @@ let rec solve env =
   set EExcep exceps;
   solve ECont conts;
   set ECont conts;
-  Array.iteri (fun i x -> Debug.printf  "e_%d := %a@." i print_effect x) sol;
+  Array.iteri (fun i x -> Debug.printf  "  e_%d := %a@." i print_effect x) sol;
   fun x ->
     if x < 0 || n < x then invalid_arg "solve";
     match sol.(x) with
@@ -326,8 +305,10 @@ let infer ?(cont_if=false) t =
     end;
   let tenv = List.map (Pair.add_right (Id.typ |- make_template env |- force_cont)) ext_funs in
   let t' = gen_constr env tenv t in
+  Debug.printf "Add evar: %a@." Print.term' t';
   Debug.printf "CONSTRAINTS:@.";
   List.iter (fun (e1,e2) -> Debug.printf "  %a <: %a@." print_effect e1 print_effect e2) env.constraints;
   Debug.printf "@.";
   let sol = solve env in
   apply_sol sol t'
+  |@> Debug.printf "Inferred: %a@." Print.term'

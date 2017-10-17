@@ -1164,6 +1164,20 @@ let get_max_var_id =
   col.col_term <- col_id_term;
   col.col_term
 
+let effect_of_typ ty =
+  match ty with
+  | TAttr(TAEffect e::_, _) -> e
+  | _ ->
+      Format.printf "%a@." Print.typ ty;
+      invalid_arg "effect_of_typ"
+
+let effect_of t =
+  match t.attr with
+  | AEffect e::_ -> e
+  | _ ->
+      Format.printf "%a@." Print.term t;
+      invalid_arg "effect_of"
+
 module Term = struct
   let unit = unit_term
   let tt = true_term
@@ -1201,6 +1215,7 @@ module Term = struct
   let snd = make_snd
   let pair = make_pair
   let tuple = make_tuple
+  let proj = make_proj
   let nil = make_nil
   let cons = make_cons
   let seq = make_seq

@@ -110,7 +110,7 @@ val new_var_of_term : term -> id
 
 
 
-(** {6 Term destructor} *)
+(** {6 Term destructor / Inspector} *)
 val is_none : term -> bool
 val decomp_some : term -> term option
 val decomp_is_none : term -> term option
@@ -136,7 +136,8 @@ val is_var : term -> bool
 val is_fail : term -> bool
 val is_randint_unit : term -> bool
 val is_randbool_unit : term -> bool
-
+val effect_of_typ : typ -> Type.effect
+val effect_of : term -> Type.effect
 
 (** {6 Misc} *)
 val subst : id -> term -> term -> term
@@ -240,6 +241,7 @@ module Term : sig
   val snd : term -> term
   val pair : term -> term -> term
   val tuple : term list -> term
+  val proj : int -> term -> term
   val nil : term Type.t -> term
   val cons : term -> term -> term
   val seq : term -> term -> term

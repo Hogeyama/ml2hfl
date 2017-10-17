@@ -129,6 +129,23 @@ let rec decomp_tfuns = function
 
 let arity typ = List.length @@ fst @@ decomp_tfun typ
 
+let rec decomp_effect = function
+  | TAttr(attrs, typ) ->
+      let attrs1,attrs2 = List.partition (function TAEffect _ -> true | _ -> false) attrs in
+      let typ' =
+        if attrs2 = [] then
+          typ
+        else
+          TAttr(attrs2, typ)
+      in
+      begin
+        match attrs1 with
+        | [] -> None
+        | [TAEffect e] -> Some (e, typ')
+        | _ -> invalid_arg "decomp_effect"
+      end
+  | _ -> None
+
 let print_effect fm e =
   match e with
   | EVar n -> Format.fprintf fm "'e%d" n

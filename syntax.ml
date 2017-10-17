@@ -238,7 +238,7 @@ let trans_desc trans = function
   | TSome t -> TSome (trans.tr_term t)
 
 let trans_term trans t =
-  {desc = trans.tr_desc t.desc; typ = trans.tr_typ t.typ; attr=t.attr}
+  {desc = trans.tr_desc t.desc; typ = trans.tr_typ t.typ; attr=trans.tr_attr t.attr}
 
 
 
@@ -398,7 +398,7 @@ let trans2_gen_desc tr env = function
   | TNone -> TNone
   | TSome t -> TSome (tr.tr2_term env t)
 
-let trans2_gen_term tr env t = {desc = tr.tr2_desc env t.desc; typ = tr.tr2_typ env t.typ; attr = t.attr}
+let trans2_gen_term tr env t = {desc = tr.tr2_desc env t.desc; typ = tr.tr2_typ env t.typ; attr = tr.tr2_attr env t.attr}
 
 
 let make_trans2 () =
@@ -1034,7 +1034,8 @@ let tr_col2_desc tc env = function
 let tr_col2_term tc env t =
   let acc1,desc' = tc.tr_col2_desc env t.desc in
   let acc2,typ' = tc.tr_col2_typ env t.typ in
-  tc.tr_col2_app acc1 acc2, {desc=desc'; typ=typ'; attr=t.attr}
+  let acc3,attr' = tc.tr_col2_attr env t.attr in
+  tc.tr_col2_app acc1 acc2, {desc=desc'; typ=typ'; attr=attr'}
 
 
 let make_tr_col2 empty app =
@@ -1338,7 +1339,8 @@ let fold_tr_desc fld env = function
 let fold_tr_term fld env t =
   let env',desc = fld.fold_tr_desc env t.desc in
   let env'',typ = fld.fold_tr_typ env' t.typ in
-  env'', {desc; typ; attr=t.attr}
+  let env''',attr = fld.fold_tr_attr env'' t.attr in
+  env''', {desc; typ; attr}
 
 
 let make_fold_tr () =
