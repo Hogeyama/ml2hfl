@@ -1,10 +1,8 @@
 open Syntax
 
 val flatten_tvar : term -> term
-val inst_tvar_tunit_typ : typ -> typ
-val inst_tvar_tunit : term -> term
-val inst_tvar_tint_typ : typ -> typ
-val inst_tvar_tint : term -> term
+val inst_tvar : typ -> term -> term
+val inst_tvar_typ : typ -> typ -> typ
 val get_tvars : typ -> typ option ref list
 val rename_poly_funs : id -> term -> (id * id) list * term
 val copy_poly_funs : term -> term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
@@ -14,13 +12,12 @@ val ref_to_assert : ?make_fail:(typ -> term) -> ?typ_exn:typ -> Ref_type.env -> 
 val replace_main : ?force:bool -> term -> term -> term
 val map_main : (term -> term) -> term -> term
 val set_main : term -> (string * int) option * term
-val canonize : term -> term
 val part_eval : term -> term
 val trans_let : term -> term
 val propagate_typ_arg : term -> term
 val replace_typ : (Syntax.id * Syntax.typ) list -> term -> term
 val eval : term -> term
-val get_and_list : term -> term list
+val decomp_and : term -> term list
 val elim_fun : term -> term
 val make_ext_env : term -> env
 val init_base_rand : term -> term (** replace rand_int() with a fresh variable*)
@@ -74,6 +71,7 @@ val eta_normal : term -> term
 val direct_from_CPS : term -> term
 val rename_bound_module : term -> term
 val name_read_int : term -> term
+
 
 (** {6 Simplification, Inlining, Reduction} *)
 val simplify_match : term -> term

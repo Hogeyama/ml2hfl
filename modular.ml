@@ -62,7 +62,7 @@ let make_init_env cmp bindings =
     let xs,_ = decomp_funs t in
     f,
     Id.typ f
-    |> Trans.inst_tvar_tunit_typ
+    |> Trans.inst_tvar_typ TUnit
     |> (if Id.is_external f then Ref_type.of_simple else to_weak)
     |> replace_with_top (List.length xs - 1)
   in
