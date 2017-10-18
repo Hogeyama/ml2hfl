@@ -110,7 +110,8 @@ let get_diff_args_desc (env,f) desc =
       let diff_args = List.flatten @@ List.map (get_diff_args.col2_term (env,f)) ts in
       aux diff_args its
   | Let([_] as bindings, t) ->
-      let aux (g,xs,t') =
+      let aux (g,t') =
+        let xs,t' = decomp_funs t' in
         let all = make_all xs in
         let same_args = get_same_args env g t all in
         let env' = make_env xs same_args in
@@ -166,11 +167,11 @@ let trans = make_trans2 ()
 
 let trans_desc env desc =
   match desc with
-  | Let([f,xs,{desc=Fun _}], t2) -> assert false
-  | Let([f,xs,t1], t2) ->
+  | Let([f,t1], t2) ->
+      let xs,t1 = decomp_funs t1 in
       let same_args = get_same_args env f t2 @@ make_all xs in
       let same_args' =
-        if is_non_rec [f,xs,t1] then
+        if is_non_rec [f, make_funs xs t1] then
           same_args
         else
           let rec aux same_args =
@@ -204,7 +205,7 @@ let trans_desc env desc =
                 |> elim_arg f elim_args
                 |> subst_var f f'
       in
-      Let([f',xs',t1'], t2')
+      Let([f',make_funs xs' t1'], t2')
   | _ -> trans.tr2_desc_rec env desc
 
 let () = trans.tr2_desc <- trans_desc

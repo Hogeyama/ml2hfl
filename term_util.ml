@@ -102,21 +102,14 @@ let make_let bindings t2 =
   if bindings = [] then
     t2
   else
-    let rec aux (f,xs,t) =
-      match t.desc with
-      | Fun(x,t') -> aux (f, xs@[x], t')
-      | Let([x,[],t'], {desc=Var y}) when Id.same x y -> f, xs, t'
-      | _ -> f, xs, t
-    in
-    let bindings' = List.map aux bindings in
-    {desc=Let(bindings',t2); typ=t2.typ; attr=[]}
+    {desc=Let(bindings,t2); typ=t2.typ; attr=[]}
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
 let make_seq t1 t2 =
   if is_value t1 then
     t2
   else
-    make_let [Id.new_var ~name:"u" t1.typ, [], t1] t2
+    make_let [Id.new_var ~name:"u" t1.typ, t1] t2
 let make_ignore t =
   if Type.can_unify t.typ TUnit then
     t
@@ -289,7 +282,7 @@ let make_eq_dec t1 t2 =
     | Var x -> make_var x, Std.identity
     | _ ->
         let x = Id.new_var t.typ in
-        make_var x, make_let [x,[],t]
+        make_var x, make_let [x,t]
   in
   let rec make t1 t2 =
     match t1.typ with
@@ -383,11 +376,7 @@ let decomp_var t =
   | _ -> None
 let is_var t = Option.is_some @@ decomp_var t
 
-let rec decomp_funs = function
-  | {desc=Fun(x,t)} ->
-      let xs,t' = decomp_funs t in
-      x::xs, t'
-  | t -> [], t
+let is_fun t = [] <> fst @@ decomp_funs t
 
 let rec decomp_lets t =
   match t.desc with
@@ -445,13 +434,9 @@ let subst_term (x,t) t' =
   match t'.desc with
   | Var y when Id.same x y -> t
   | Fun(y, t1) when Id.same x y -> t'
-  | Let(bindings, t2) when List.exists (fun (f,_,_) -> Id.same f x) bindings -> t'
+  | Let(bindings, t2) when List.exists (fun (f,_) -> Id.same f x) bindings -> t'
   | Let(bindings, t2) ->
-      let aux (f,xs,t1) =
-        subst.tr2_var (x,t) f,
-        List.map (subst.tr2_var (x,t)) xs,
-        if List.exists (Id.same x) xs then t1 else subst.tr2_term (x,t) t1
-      in
+      let aux (f,t1) = subst.tr2_var (x,t) f, subst.tr2_term (x,t) t1 in
       let bindings' = List.map aux bindings in
       let t2' = subst.tr2_term (x,t) t2 in
       let desc = Let(bindings', t2') in
@@ -490,12 +475,8 @@ let subst_map_term map t =
       let t1' = subst_map.tr2_term map' t1 in
       make_fun y t1'
   | Let(bindings, t2) ->
-      let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_,_) -> Id.same f x) bindings)) map in
-      let aux (f,xs,t1) =
-        let map'' = List.filter (fun (x,_) -> not (Id.mem x xs)) map' in
-        f, xs, subst_map.tr2_term map'' t1
-      in
-      let bindings' = List.map aux bindings in
+      let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_) -> Id.same f x) bindings)) map in
+      let bindings' = List.map (Pair.map_snd @@ subst_map.tr2_term map') bindings in
       let t2' = subst_map.tr2_term map' t2 in
       make_let bindings' t2'
   | Match(t1,pats) -> (* TODO: fix *)
@@ -570,7 +551,7 @@ and same_desc t1 t2 =
   | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
   | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
   | Let(bindings1,t1), Let(bindings2,t2) ->
-     let same_binding (f,xs,t1) (g,ys,t2) = Id.same f g && same_list Id.same xs ys && same_term t1 t2 in
+     let same_binding (f,t1) (g,t2) = Id.same f g && same_term t1 t2 in
      same_list same_binding bindings1 bindings2 && same_term t1 t2
   | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
   | Not t1, Not t2 -> same_term t1 t2
@@ -695,14 +676,14 @@ let make_br t2 t3 = make_if randbool_unit_term t2 t3
 
 let rec get_top_funs acc = function
   | {desc=Let(defs, t)} ->
-      let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
+      let acc' = List.fold_left (fun acc (f,_) -> f::acc) acc defs in
       get_top_funs acc' t
   | _ -> acc
 let get_top_funs = get_top_funs []
 
 let rec get_top_rec_funs acc = function
   | {desc=Let(defs, t)} ->
-      let acc' = List.fold_left (fun acc (f,_,_) -> f::acc) acc defs in
+      let acc' = List.fold_left (fun acc (f,_) -> f::acc) acc defs in
       get_top_rec_funs acc' t
   | _ -> acc
 let get_top_rec_funs = get_top_rec_funs []
@@ -716,9 +697,7 @@ let has_no_effect =
     | Var _ -> true
     | Fun _ -> true
     | App _ -> false
-    | Let(bindings,t) ->
-        col.col_term t &&
-          List.for_all (fun (f,xs,t) -> xs <> [] || col.col_term t) bindings
+    | Let(bindings,t) -> col.col_term t && List.for_all (snd |- col.col_term) bindings
     | Field _ -> false
     | SetField _ -> false
     | Raise _ -> false
@@ -781,7 +760,7 @@ let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
 let make_let' t1 make_t2 =
   let x = new_var_of_term t1 in
-  make_let [x,[],t1] @@ make_t2 x
+  make_let [x,t1] @@ make_t2 x
 
 
 let col_same_term = make_col2 [] (@@@)
@@ -831,9 +810,7 @@ let get_bound_variables_desc desc =
   match desc with
   | Fun(x,t) -> x :: get_bound_variables.col_term t
   | Let(bindings,t) ->
-      let aux (f,xs,t) =
-        f::xs @@@ get_bound_variables.col_term t
-      in
+      let aux (f,t) = f :: get_bound_variables.col_term t in
       get_bound_variables.col_term t @@@ List.rev_map_flatten aux bindings
   | _ -> get_bound_variables.col_desc_rec desc
 
@@ -858,7 +835,8 @@ let is_id_unique t =
 
 
 
-let rec is_bottom_def f xs t =
+let rec is_bottom_def f t =
+  let xs,t = decomp_funs t in
   match xs, t.desc with
   | _::_, App({desc=Var g},ts) ->
       Id.same f g && List.for_all has_no_effect ts
@@ -905,7 +883,7 @@ let rec list_of_term t =
 let rec get_last_definition f t =
   match t.desc with
   | Let(bindings, t2) ->
-      let f,_,_ = List.last bindings in
+      let f,_ = List.last bindings in
       get_last_definition (Some f) t2
   | Fun _ -> None
   | _ -> f
@@ -1102,7 +1080,7 @@ let col_id t = List.unique @@ col_id.col_term t
 
 let rec is_fail t =
   match t.desc with
-  | Let([_, [], t], _) -> is_fail t
+  | Let([_, t], _) -> is_fail t
   | App({desc=Event("fail",_)}, [{desc=Const Unit}]) -> true
   | _ -> false
 

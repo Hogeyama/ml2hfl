@@ -69,7 +69,7 @@ let remove_and_replace_event_desc desc =
         | [{desc = Const (String s)}] -> (make_event_unit s).desc
         | _ -> unsupported "the argument of event must be a constant"
       end
-  | Let([f, [_], _], t') when is_event_fun_var f -> (remove_and_replace_event.tr_term t').desc
+  | Let([f, _], t') when is_event_fun_var f -> (remove_and_replace_event.tr_term t').desc
   | _ -> remove_and_replace_event.tr_desc_rec desc
 let () = remove_and_replace_event.tr_desc <- remove_and_replace_event_desc
 let remove_and_replace_event = remove_and_replace_event.tr_term
@@ -85,7 +85,7 @@ let normalize_aux t =
   then [], t
   else
     let x = new_var_of_term t in
-    [x, [], t], make_var x
+    [x, t], make_var x
 
 let normalize_term t =
   let t' = normalize.tr_term_rec t in
@@ -139,15 +139,12 @@ let insert_extra_param_desc vars desc =
       let vars' = ex :: (if Id.typ x' = TInt then [x'] else []) @ vars in
       Fun(ex, make_fun x' @@ insert_extra_param.tr2_term vars' t)
   | Let(bindings, t2) ->
-      let aux (f,xs,t) =
+      let aux (f,t) =
         let f' = insert_extra_param.tr2_var vars f in
-        let xs' = List.map (insert_extra_param.tr2_var vars) xs in
-        let xs'' = List.flatten_map (fun x -> if is_fun_var x then [!!new_exparam; x] else [x]) xs' in
-        let vars' = List.filter ((=) TInt -| Id.typ) xs'' @ vars in
-        f', xs'', insert_extra_param.tr2_term vars' t
+        f', insert_extra_param.tr2_term vars t
       in
       let bindings' = List.map aux bindings in
-      let vars' = List.filter_map (fun (x,_,_) -> if Id.typ x = TInt then Some x else None) bindings @ vars in
+      let vars' = List.filter_map (fun (x,_) -> if Id.typ x = TInt then Some x else None) bindings @ vars in
       Let(bindings', insert_extra_param.tr2_term vars' t2)
   | App(t1, ts) ->
       let t1' = insert_extra_param.tr2_term vars t1 in
@@ -179,7 +176,7 @@ let set_main t =
         | _ -> unsupported "fair_termination: set_main"
       in
       let main = make_app (make_var f) @@ List.map aux xs in
-      let main' = make_let [new_var_of_term main, [], main] unit_term in
+      let main' = make_let [new_var_of_term main, main] unit_term in
       Trans.replace_main main' t
 
 

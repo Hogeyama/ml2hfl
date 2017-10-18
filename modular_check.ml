@@ -21,23 +21,6 @@ let rec to_CEGAR_ref_type typ =
   | Ref_type.Inter(styp, typs) -> CEGAR_ref_type.Inter(CEGAR_trans.trans_typ styp, List.map to_CEGAR_ref_type typs)
   | _ -> unsupported "Ref_type.to_CEGAR_ref_type"
 
-let rec add_id_event t =
-  match t.desc with
-  | Let(bindings, t') ->
-      let bindings' = List.map (Triple.map_trd @@ make_seq (make_event_unit "id")) bindings in
-      {t with desc=Let(bindings', add_id_event t')}
-  | _ -> t
-
-
-let make_fix f xs t =
-  make_let [f, xs, t] @@ make_var f
-let decomp_fix t =
-  match t.desc with
-  | Let([f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
-  | _ -> None
-let is_fix t = decomp_fix t <> None
-
-let get_arg_num = List.length -| Triple.snd -| Option.get -| decomp_fix
 
 
 let bool_of_term' t = Option.try_any (fun _ -> bool_of_term t)
@@ -146,8 +129,8 @@ and eval
                   |> append_paths paths'
                 with Exception(ans, ce, paths) -> raise (Exception(ans, ce, merge_paths paths' paths))
           end
-      | Let([f,xs,t1], t2) when is_non_rec [f,xs,t1] ->
-          let ans, ce, paths = eval val_env ce @@ make_funs xs t1 in
+      | Let([f,t1], t2) when is_non_rec [f,t1] ->
+          let ans, ce, paths = eval val_env ce t1 in
           if ans = Fail then
             (ans, ce, paths)
           else
@@ -158,9 +141,8 @@ and eval
                 |> append_paths paths
               with Exception(ans', ce', paths') -> raise (Exception(ans', ce', merge_paths paths paths'))
             end
-      | Let([f,xs,t1], t2) ->
-          assert (xs <> []);
-          let rec val_env' = (f, Closure(val_env', make_funs xs t1))::val_env in
+      | Let([f,({desc=Fun _} as t1)], t2) ->
+          let rec val_env' = (f, Closure(val_env', t1))::val_env in
           eval val_env' ce t2
       | Raise t ->
           let ans, ce', paths' = eval val_env ce t in
@@ -244,12 +226,12 @@ let add_context prog f xs t typ =
     env
     |> Ref_type.Env.filter_key (Id.mem -$- fs)
     |> Ref_type.Env.to_list
-    |> List.map (Pair.map_snd @@ decomp_funs -| Triple.trd -| Ref_type_gen.generate (Some typ_exn) ~make_fail [] [])
+    |> List.map (Pair.map_snd @@ Triple.trd -| Ref_type_gen.generate (Some typ_exn) ~make_fail [] [])
     |@dbg&> Debug.printf "ADD_CONTEXT fun_env': %a@." print_def_env
   in
   let fun_env'' =
-    List.map (Pair.map_snd @@ Pair.map_snd @@ normalize false) fun_env' @
-    [f, (xs, Trans.replace_fail_with fail_unit_desc @@ normalize false t)]
+    List.map (Pair.map_snd @@ normalize false) fun_env' @
+    [f, make_funs xs @@ Trans.replace_fail_with fail_unit_desc @@ normalize false t]
   in
   if dbg then Debug.printf "ADD_CONTEXT fun_env'': %a@." print_def_env fun_env'';
   t', fun_env''
@@ -259,7 +241,8 @@ let complete_ce_set f t ce =
   let let_fun_var_desc desc =
     match desc with
     | Let(bindings,t) ->
-        let aux (f,xs,t) =
+        let aux (f,t) =
+          let xs,t = decomp_funs t in
           let fs = let_fun_var.col_term t in
           if xs = [] then
             fs
@@ -281,11 +264,11 @@ let check prog f typ depth =
   Debug.printf "MAIN_LOOP prog: %a@." print_prog prog;
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
   let t,fun_env' =
-    let xs, t = Id.assoc f prog.fun_def_env in
+    let xs, t = decomp_funs @@ Id.assoc f prog.fun_def_env in
     let t' =
       let fs = List.filter_out (Id.same f) @@ take_funs_of_depth fun_env f depth in
       let fun_env' = List.filter (fst |- Id.mem -$- fs) fun_env in
-      make_lets (List.map Triple.of_pair_r fun_env') t
+      make_lets fun_env' t
     in
     Debug.printf "t': %a@." Print.term t';
     add_context prog f xs t' typ
@@ -308,7 +291,7 @@ let check prog f typ depth =
   in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
-    |> make_lets (List.map Triple.of_pair_r fun_env')
+    |> make_lets fun_env'
     |> add_preds
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check -$- TUnit
@@ -330,8 +313,8 @@ let check prog f typ depth =
       Debug.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
       let ans,ce_single'',ce =
         let val_env =
-          let aux val_env (f,(xs,t)) =
-            let rec val_env' = (f, Closure(val_env', make_funs xs t))::val_env in
+          let aux val_env (f,t) =
+            let rec val_env' = (f, Closure(val_env', t))::val_env in
             val_env'
           in
           List.fold_left aux [] fun_env'

@@ -112,7 +112,8 @@ let rec infer (env,counter) t =
       if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
       (0, Option.get !id) :: unify (get_typ env t1) typ @ constr
   | Let(bindings, t2) ->
-      let aux (f,xs,t1) =
+      let aux (f,t1) =
+        let xs,t1 = decomp_funs t1 in
         List.iter (add_env_var env) (f::xs);
         let id = ref None in
         let aux x typ =
@@ -125,7 +126,7 @@ let rec infer (env,counter) t =
         if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
         (if xs <> [] then [0, Option.get !id] else []) @ unify (get_typ_var env f) typ
       in
-      List.flatten_map (infer (env,counter) -| Triple.trd) bindings @ infer (env,counter) t2 @
+      List.flatten_map (infer (env,counter) -| snd) bindings @ infer (env,counter) t2 @
       List.flatten_map aux bindings
   | BinOp(op, t1, t2) ->
       infer (env,counter) t1 @ infer (env,counter) t2
@@ -182,7 +183,8 @@ let uncurry_term (env,sol) t =
       let ts' = List.map (uncurry.tr2_term (env,sol)) ts in
       make_app t1' @@ aux ts' @@ get_typ env t1
   | Let(bindings, t2) ->
-      let aux (f,xs,t1) =
+      let aux (f,t1) =
+        let xs,t1 = decomp_funs t1 in
         let rec aux xs typ =
           let typs,typ' = decomp_tfun sol typ in
           if false then Format.printf "f: %a@." Id.print f;
@@ -205,7 +207,7 @@ let uncurry_term (env,sol) t =
         in
         let t1' = uncurry.tr2_term (env,sol) t1 in
         let t = List.fold_right aux' xss t1' in
-        Id.set_typ f t.typ, [], t
+        Id.set_typ f t.typ, t
       in
       let bindings' = List.map aux bindings in
       make_let bindings' @@ uncurry.tr2_term (env,sol) t2
@@ -271,17 +273,18 @@ let to_funs_var env sol x =
 let to_tfuns_desc (env,sol) desc =
   match desc with
   | Let(bindings, t) ->
-      let aux (f,xs,t) (bindings',t') =
+      let aux (f,t) (bindings',t') =
+        let xs,t = decomp_funs t in
         if false then Format.printf "f: %a@." Id.print f;
         let f' = to_funs_var env sol f in
         if false then Format.printf "f': %a@." Print.id_typ f';
         let xs' = List.map (to_funs_var env sol) xs in
         let sbst = List.fold_right2 subst_var (f::xs) (f'::xs') in
-        (f', xs', sbst @@ to_tfuns.tr2_term (env,sol) t)::bindings', sbst t'
+        (f', make_funs xs' @@ sbst @@ to_tfuns.tr2_term (env,sol) t)::bindings', sbst t'
       in
       let bindings',t' = List.fold_right aux bindings @@ ([], to_tfuns.tr2_term (env,sol) t) in
-      let map = List.map2 (fun (f,_,_) (f',_,_) -> f, f') bindings bindings' in
-      let bindings'' = List.map (Triple.map_trd @@ List.fold_right (Fun.uncurry subst_var) map) bindings' in
+      let map = List.map2 (fun (f,_) (f',_) -> f, f') bindings bindings' in
+      let bindings'' = List.map (Pair.map_snd @@ List.fold_right (Fun.uncurry subst_var) map) bindings' in
       Let(bindings'', t')
   | _ -> to_tfuns.tr2_desc_rec (env,sol) desc
 

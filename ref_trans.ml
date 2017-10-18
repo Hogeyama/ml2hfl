@@ -179,7 +179,7 @@ Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.
             in
             List.fold_left aux t1 same_arg_apps
           in
-          List.fold_left2 (fun t x app -> make_let [x,[],app] t) t2 xs apps
+          List.fold_left2 (fun t x app -> make_let [x,app] t) t2 xs apps
         in
         subst y' t t'
   | _ -> make_app (make_var x) [t] (* negligence *)
@@ -212,15 +212,15 @@ let trans_typ ttbb typ =
 
 let trans_term (tt,bb) t =
   match t.desc with
-  | Let([x,[],({desc=App({desc=Var x1},[t11])} as t1)], t) when is_non_rec [x,[],t1] ->
+  | Let([x,({desc=App({desc=Var x1},[t11])} as t1)], t) when is_non_rec [x,t1] ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let t11' = trans.tr2_term (tt,bb) t11 in
       let bb' = (x,t1)::bb in
       let t' = trans.tr2_term (tt,bb') t in
       let tx = inst_var_fun x1' tt bb' t11' in
-      make_let [x',[],tx] t'
-  | Let([x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.same x1 x2 && is_non_rec [x,[],t1] ->
+      make_let [x',tx] t'
+  | Let([x,({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.same x1 x2 && is_non_rec [x,t1] ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
@@ -239,14 +239,14 @@ let trans_term (tt,bb) t =
             let t2' = make_if (make_is_none @@ make_var y2) (make_none @@ get_opt_typ t2.typ) t2 in
             let t_neq = make_pair t1' t2' in
             let z = Id.new_var ~name:"r" t1.typ in
-            let t_eq = make_let [z,[],t1] @@ make_pair (make_var z) (make_var z) in
+            let t_eq = make_let [z,t1] @@ make_pair (make_var z) (make_var z) in
             let cond1 = make_and (make_is_some @@ make_var y1) (make_is_some @@ make_var y2) in
             let cond2 = make_eq (make_get_val @@ make_var y1) (make_get_val @@ make_var y2) in
-            make_fun y' @@ make_lets [y1,[],ty1; y2,[],ty2] @@ make_if (make_and cond1 cond2) t_eq t_neq
+            make_fun y' @@ make_lets [y1,ty1; y2,ty2] @@ make_if (make_and cond1 cond2) t_eq t_neq
         | _ -> make_pair (make_var x1') (make_var x1')
       in
-      make_let [x',[],t1'] t'
-  | Let([x,[],({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when is_non_rec [x,[],t1] ->
+      make_let [x',t1'] t'
+  | Let([x,({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when is_non_rec [x,t1] ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let x2' = trans.tr2_var (tt,bb) x2 in
@@ -264,11 +264,11 @@ let trans_term (tt,bb) t =
             let t1' = make_if (make_is_none @@ make_var y1) (make_none @@ get_opt_typ t1.typ) t1 in
             let t2 = make_some @@ make_app (make_var x2') [make_get_val @@ make_var y2] in
             let t2' = make_if (make_is_none @@ make_var y2) (make_none @@ get_opt_typ t2.typ) t2 in
-            make_fun y' @@ make_lets [y1,[],ty1; y2,[],ty2] @@ make_pair t1' t2'
+            make_fun y' @@ make_lets [y1,ty1; y2,ty2] @@ make_pair t1' t2'
         | _ -> make_pair (make_var x1') (make_var x2')
       in
-      make_let [x',[],t1'] t'
-  | Let([x,[],({desc=Tuple ts} as t1)], t) when List.for_all (Option.is_some -| decomp_var) ts && is_non_rec [x,[],t1] ->
+      make_let [x',t1'] t'
+  | Let([x,({desc=Tuple ts} as t1)], t) when List.for_all (Option.is_some -| decomp_var) ts && is_non_rec [x,t1] ->
       let xs = List.map (function {desc=Var x} -> x | t -> Format.printf "%a@." Print.term t; assert false) ts in
       let x' =  trans.tr2_var (tt,bb) x in
       let xs' = List.map (trans.tr2_var (tt,bb)) xs in
@@ -286,12 +286,12 @@ let trans_term (tt,bb) t =
               ti'
             in
             let ts' = List.map2 aux xs' ys in
-            let bindings = List.map2 (fun x t -> x, [], t) ys tys in
+            let bindings = List.combine ys tys in
             make_fun y' @@ make_lets bindings @@ make_tuple ts'
         | _ -> make_tuple @@ List.map make_var xs
       in
-      make_let [x',[],t1'] t'
-  | Let([x,[],({desc=Proj(i,{desc=Var x1})} as t1)], t) when is_non_rec [x,[],t1] ->
+      make_let [x',t1'] t'
+  | Let([x,({desc=Proj(i,{desc=Var x1})} as t1)], t) when is_non_rec [x,t1] ->
       let x' = trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
@@ -309,7 +309,7 @@ let trans_term (tt,bb) t =
             end
         | _ -> assert false
       in
-      make_let [x',[],t1'] t'
+      make_let [x',t1'] t'
   | _ -> trans.tr2_term_rec (tt,bb) t
 
 let () = trans.tr2_term <- trans_term
@@ -319,7 +319,7 @@ let () = trans.tr2_typ <- trans_typ
 
 let rec decomp_simple_let t =
   match t.desc with
-  | Let([x,[],t1],t2) when is_non_rec [x,[],t1] ->
+  | Let([x,t1],t2) when is_non_rec [x,t1] ->
       let bindings,t2' = decomp_simple_let t2 in
       (x,t1)::bindings, t2'
   | _ -> [], t
@@ -328,8 +328,8 @@ let sort_let_pair = make_trans ()
 
 let sort_let_pair_aux x t =
   let bindings,t' = decomp_simple_let t in
-  let bindings' = List.map (fun (x,t) -> x, [], sort_let_pair.tr_term t) bindings in
-  let is_proj (_,_,t) =
+  let bindings' = List.map (Pair.map_snd sort_let_pair.tr_term) bindings in
+  let is_proj (_,t) =
     match t.desc with
     | Proj(_, {desc=Var y}) -> Id.same x y
     | _ -> false
@@ -340,14 +340,15 @@ let sort_let_pair_aux x t =
 
 let sort_let_pair_term t =
   match t.desc with
-  | Let([x,[],({desc=Tuple _} as t1)],t2) when is_non_rec [x,[],t1] ->
+  | Let([x,({desc=Tuple _} as t1)],t2) when is_non_rec [x,t1] ->
       let t2' = sort_let_pair_aux x t2 in
-      make_let [x,[],t1] t2'
-  | Let([f,xs,t1],t2) ->
+      make_let [x,t1] t2'
+  | Let([f,t1],t2) ->
+      let xs,t1 = decomp_funs t1 in
       let t1' = sort_let_pair.tr_term t1 in
       let t2' = sort_let_pair.tr_term t2 in
       let t1'' = List.fold_right sort_let_pair_aux xs t1' in
-      make_let [f,xs,t1''] t2'
+      make_let [f, make_funs xs t1''] t2'
   | _ -> sort_let_pair.tr_term_rec t
 
 let () = sort_let_pair.tr_term <- sort_let_pair_term
@@ -369,17 +370,16 @@ let rec move_proj_aux x t =
       |> Trans.inline_var_const
       |> List.fold_right2 subst_rev' ts xs'
       |> List.fold_right move_proj_aux xs'
-      |> make_lets @@ List.map2 (fun x t -> x,[],t) xs' ts
+      |> make_lets @@ List.combine xs' ts
   | _ -> t
 
 let move_proj_term t =
   match t.desc with
   | Let(bindings,t2) ->
-      let bindings' = List.map (fun (f,xs,t) -> f, xs, move_proj.tr_term t) bindings in
-      let bindings'' = List.map (fun (f,xs,t) -> f, xs, List.fold_right move_proj_aux xs t) bindings' in
+      let bindings' = List.map (fun (f,t) -> f, move_proj.tr_term t) bindings in
       let t2' = move_proj.tr_term t2 in
-      let t2'' = List.fold_right (move_proj_aux -| Triple.fst) bindings t2' in
-      make_let bindings'' t2''
+      let t2'' = List.fold_right (move_proj_aux -| fst) bindings t2' in
+      make_let bindings' t2''
   | Fun(x,t1) -> make_fun x @@ move_proj_aux x t1
   | _ -> move_proj.tr_term_rec t
 
@@ -395,7 +395,7 @@ let col_assert_desc desc =
   match desc with
   | If(t1, t2, t3) when same_term t2 unit_term && same_term t3 (make_app fail_term [unit_term]) ->
       [t1]
-  | Let([x,[],t1], t2) when is_non_rec [x,[],t1] ->
+  | Let([x,t1], t2) when is_non_rec [x,t1] ->
       let ts1 = col_assert.col_term t1 in
       let ts2 = col_assert.col_term t2 in
       let ts2' = List.map (subst x t1) ts2 in
@@ -422,7 +422,7 @@ let col_rand_funs = make_col [] (@@@)
 let col_rand_funs_desc desc =
   match desc with
   | Let(bindings, t2) ->
-      let aux (f,_,t) = if has_rand t then [f] else [] in
+      let aux (f,t) = if has_rand t then [f] else [] in
       let funs1 = List.flatten_map aux bindings in
       let funs2 = col_rand_funs.col_term_rec t2 in
       funs1 @ funs2
@@ -509,7 +509,7 @@ let defined fs env = List.for_all (Id.mem -$- env) fs
 
 let add_fun_tuple_term (funs,env) t =
   match t.desc with
-  | Let([f,xs,t1],t2) ->
+  | Let([f,t1],t2) ->
       let env' = f::env in
       let funs1,funs2 = List.partition (fun fs -> defined fs env') funs in
       let t1' = add_fun_tuple.tr2_term (funs2,env') t1 in
@@ -517,12 +517,12 @@ let add_fun_tuple_term (funs,env) t =
       let aux t fs =
         let name = String.join "__" @@ List.rev_map Id.name fs in
         let fg = Id.new_var ~name @@ make_ttuple @@ List.map Id.typ fs in
-        let projs = List.mapi (fun i g -> Id.new_var_id g, [], make_proj i (make_var fg)) fs in
-        let t' = replace_head fs (List.map Triple.fst projs) t in
-        let defs = (fg, [], make_label ~label:"add_fun_tuple" (InfoString "") @@ make_tuple @@ List.map make_var fs)::projs in
+        let projs = List.mapi (fun i g -> Id.new_var_id g, make_proj i (make_var fg)) fs in
+        let t' = replace_head fs (List.map fst projs) t in
+        let defs = (fg, make_label ~label:"add_fun_tuple" (InfoString "") @@ make_tuple @@ List.map make_var fs)::projs in
         make_lets defs t'
       in
-      make_let [f,xs,t1'] @@ List.fold_left aux t2' funs1
+      make_let [f,t1'] @@ List.fold_left aux t2' funs1
   | Let(_,_) -> unsupported "add_fun_tuple (let (rec) ... and ...)"
   | _ -> add_fun_tuple.tr2_term_rec (funs,env) t
 

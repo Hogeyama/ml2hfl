@@ -8,13 +8,12 @@ val inst_tvar_tint : term -> term
 val get_tvars : typ -> typ option ref list
 val rename_poly_funs : id -> term -> (id * id) list * term
 val copy_poly_funs : term -> term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-val define_randvalue : ((typ * id) list * (id * id list * term) list) -> typ -> ((typ * id) list * (id * id list * term) list) * term
+val define_randvalue : ((typ * id) list * (id * term) list) -> typ -> ((typ * id) list * (id * term) list) * term
 val inst_randval : term -> term
 val ref_to_assert : ?make_fail:(typ -> term) -> ?typ_exn:typ -> Ref_type.env -> term -> term
 val replace_main : ?force:bool -> term -> term -> term
 val map_main : (term -> term) -> term -> term
 val set_main : term -> (string * int) option * term
-val merge_let_fun : term -> term
 val canonize : term -> term
 val part_eval : term -> term
 val trans_let : term -> term
@@ -63,8 +62,6 @@ val normalize_binop_exp : binop -> term -> term -> desc
 val normalize_bool_exp : term -> term
 val normalize_let : ?is_atom:(term -> bool) -> term -> term
 val merge_geq_leq : term -> term
-val let2fun : term -> term
-val fun2let : term -> term
 val null_tuple_to_unit : term -> term
 val reconstruct : term -> term
 val short_circuit_eval : term -> term

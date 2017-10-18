@@ -62,27 +62,12 @@ let rec check t typ =
       check t2 typ';
       check t3 typ'
   | Let(bindings, t2), typ' ->
-      let rec aux t xs typ =
-        match xs, elim_tattr typ with
-        | x::xs,TFun(y,typ) ->
-            check_var x @@ Id.typ y;
-            aux t xs typ
-        | [],typ -> check t typ
-        | [x],typ ->
-            let f,_,_ = List.hd bindings in
-            Format.printf "%a@." Print.id_typ f;
-            Format.printf "[%a]@." Print.id_typ x;
-            assert false
-        | x::xs,typ ->
-            Format.printf "%a %a@." Id.print x Print.typ typ;
-            assert false
-      in
-      List.iter (fun (f,xs,t) -> aux t xs @@ Id.typ f) bindings;
+      List.iter (fun (f,t) -> check t @@ elim_tattr @@ Id.typ f) bindings;
       let aux' f =
         let fv = get_fv t2 in
         List.iter (fun f' -> assert (Id.same f f' => Type.can_unify (Id.typ f) (Id.typ f'))) fv
       in
-      List.iter (aux' -| Triple.fst) bindings;
+      List.iter (aux' -| Pair.fst) bindings;
       check t2 typ'
   | BinOp(Eq,t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);
@@ -91,11 +76,7 @@ let rec check t typ =
   | BinOp((Lt|Gt|Leq|Geq),t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);
       check t1 t1.typ;
-      check t2 t2.typ;
-  (*
-        check t1 TInt;
-        check t2 TInt
-   *)
+      check t2 t2.typ
   | BinOp((And|Or),t1,t2), TBool ->
       check t1 TBool;
       check t2 TBool

@@ -93,12 +93,12 @@ let rec trans f i n t =
         let rec aux i defs =
           match defs with
           | [] -> N i
-          | (g,xs,t)::defs' ->
+          | (g,t)::defs' ->
               match trans f i n t with
-              | S t' -> S ((g,xs,t')::defs')
+              | S t' -> S ((g,t')::defs')
               | N i' ->
                   match aux i' defs' with
-                  | S defs'' -> S ((g,xs,t)::defs'')
+                  | S defs'' -> S ((g,t)::defs'')
                   | N i'' -> N i''
         in
         begin

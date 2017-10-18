@@ -266,13 +266,12 @@ let rec infer_effect env tenv t =
       unify env typed2.typ_cps typed3.typ_cps;
       {t_orig=t; t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typed2.typ_cps; effect=e}
   | Let(bindings, t1) ->
-      let make_env (f,_,_) = Id.to_string f, infer_effect_typ env (Id.typ f) in
+      let make_env (f,_) = Id.to_string f, infer_effect_typ env (Id.typ f) in
       let tenv_f = List.map make_env bindings in
       let tenv' = tenv_f @@@ tenv in
-      let aux (f, xs, t1) =
+      let aux (f, t1) =
         let f' = {id_cps=f; id_typ=List.assoc (Id.to_string f) tenv_f} in
-        let t1' = List.fold_right make_fun xs t1 in
-        let typed = infer_effect env tenv' t1' in
+        let typed = infer_effect env tenv' t1 in
         let () = lift_letrec_typ env typed in
         unify env f'.id_typ typed.typ_cps;
         f', typed
@@ -424,7 +423,7 @@ let rec add_preds_cont_aux k t =
         App(add_preds_cont_aux k t1, ts')
     | If(t1, t2, t3) -> If(add_preds_cont_aux k t1, add_preds_cont_aux k t2, add_preds_cont_aux k t3)
     | Let(bindings, t2) ->
-        let bindings' = List.map (fun (f,xs,t) -> f, xs, add_preds_cont_aux k t) bindings in
+        let bindings' = List.map (fun (f,t) -> f, add_preds_cont_aux k t) bindings in
         let t2' = add_preds_cont_aux k t2 in
         Let(bindings', t2')
     | BinOp(op, t1, t2) -> BinOp(op, add_preds_cont_aux k t1, add_preds_cont_aux k t2)
@@ -551,7 +550,7 @@ let make_app' t1 ts =
   | Fun(x,t1'), [t2] -> subst x t2 t1'
   | Fun(x1,{desc=Fun(x2,t1')}), [t2;t3] ->
       if count_occurrence x2 t1' >= 2 then (* t3 must be a hanadler *)
-        subst x1 t2 @@ make_let [x2,[],t3] t1'
+        subst x1 t2 @@ make_let [x2,t3] t1'
       else
         subst x1 t2 @@ subst x2 t3 t1'
   | _ -> make_app t1 ts
@@ -683,7 +682,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let e0 = get_tfun_effect t1.typ_cps in
         make_fun k
           (make_fun h
-             (make_let [h', [], make_var h] (* to prevent the increase of code size in eta-reduction *)
+             (make_let [h', make_var h] (* to prevent the increase of code size in eta-reduction *)
                 (make_app_excep sol t1.effect t1'
                    (make_fun x1
                       (make_app_excep sol t2.effect t2'
@@ -706,7 +705,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let k' = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let b = Id.new_var TBool in
         make_fun k @@
-          make_let [k', [], make_var k] @@
+          make_let [k', make_var k] @@
             make_app_cont sol t1.effect t1' @@
               make_fun b @@
                 add_attrs t_orig.attr @@
@@ -726,9 +725,9 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let h' = Id.new_var_id h in
         make_fun k @@
-          make_let [k', [], make_var k] @@ (* to prevent the increase of code size in eta-reduction *)
+          make_let [k', make_var k] @@ (* to prevent the increase of code size in eta-reduction *)
             make_fun h @@
-              make_let [h', [], make_var h] @@ (* to prevent the increase of code size in eta-reduction *)
+              make_let [h', make_var h] @@ (* to prevent the increase of code size in eta-reduction *)
                 make_app_excep sol
                   t1.effect t1'
                   (make_fun b @@
@@ -741,7 +740,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
     | LetCPS(bindings, t1), ENone ->
         let aux (f,t) =
           let f' = trans_var sol typ_excep f in
-          f', [], transform sol typ_excep (k_post ^ "_" ^ Id.name f') t
+          f', transform sol typ_excep (k_post ^ "_" ^ Id.name f') t
         in
         let bindings' = List.map aux bindings in
         let t1' = transform sol typ_excep k_post t1 in
@@ -757,11 +756,11 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
             then f'
             else Id.set_typ f' t'.typ
           in
-          f'', [], t'
+          f'', t'
         in
         let bindings' = List.map aux bindings in
         let t1' = transform sol typ_excep k_post t1 in
-        let aux (_,t_orig) (f,_,_) t' =
+        let aux (_,t_orig) (f,_) t' =
           let f' = Id.new_var ~name:(Id.name f) (trans_typ sol typ_excep t_orig.t_orig.typ t_orig.typ_cps) in
           let t'' = subst_var f f' t' in
           make_app_cont sol t_orig.effect (make_var f) (make_fun f' t'')
@@ -781,11 +780,11 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
             then f'
             else Id.set_typ f' t'.typ
           in
-          f'', [], t'
+          f'', t'
         in
         let bindings' = List.map aux bindings in
         let t1' = transform sol typ_excep k_post t1 in
-        let aux (_,t_orig) (f,_,t) t' =
+        let aux (_,t_orig) (f,t) t' =
           let f' = Id.new_var ~name:(Id.name f) (trans_typ sol typ_excep t_orig.t_orig.typ t_orig.typ_cps) in
           let t'' = subst_var f f' t' in
           make_app_excep sol t_orig.effect (make_var f) (make_fun f' t'') (make_var h)
@@ -824,7 +823,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let t2' = transform sol typ_excep k_post t2 in
           make_fun k
             (make_fun h
-               (make_let [h', [], make_var h] (* to prevent the increase of code size in eta-reduction *)
+               (make_let [h', make_var h] (* to prevent the increase of code size in eta-reduction *)
                   (make_app_excep sol t1.effect t1'
                      (make_fun x1
                         (make_app_excep sol t2.effect t2'
@@ -895,7 +894,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let aux t_acc x t = make_app_excep sol t.effect (transform sol typ_excep k_post t) (make_fun x t_acc) (make_var h') in
         make_fun k
         @@ make_fun h
-        @@ make_let [h', [], make_var h] (* to prevent the increase of code size in eta-reduction(???) *)
+        @@ make_let [h', make_var h] (* to prevent the increase of code size in eta-reduction(???) *)
         @@ List.fold_left2 aux t' xs ts
     | RaiseCPS t1, EExcep ->
         let u = Id.new_var ~name:"u" (trans_typ sol typ_excep typ_orig typ) in
@@ -906,7 +905,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let t1' = transform sol typ_excep k_post t1 in
         make_fun k
           (make_fun h
-             (make_let [h', [], make_var h] (* to prevent the increase of code size in eta-reduction *)
+             (make_let [h', make_var h] (* to prevent the increase of code size in eta-reduction *)
                 (make_app_excep sol t1.effect t1' (make_var h') (make_var h'))))
     | TryWithCPS(t1,t2), ENone ->
         transform sol typ_excep k_post t1

@@ -21,7 +21,7 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 	| App (func, args) -> App (ev func, List.map ev args)
 	| If (cond_expr, then_expr, else_expr) -> If (ev cond_expr, ev then_expr, ev else_expr)
 	| Let (bindings, e) ->
-	  let fmap (ident, args, body) = (ident, args, ev body) in
+	  let fmap (ident, body) = (ident, ev body) in
 	  Let (List.map fmap bindings, ev e)
 	| BinOp (op, e1, e2) -> BinOp (op, ev e1, ev e2)
 	| Not e -> Not (ev e)
@@ -71,7 +71,8 @@ and show_desc = function
   | If (t1, t2, t3) -> "if " ^ show_term t1 ^ " then " ^ show_term t2 ^ " else " ^ show_term t3
   | Let ([], _) -> assert false
   | Let (b::bs, t) ->
-    let show_bind (x, args, body) =
+    let show_bind (x, body) =
+      let args,body = decomp_funs body in
       modify_id x
       ^ (List.fold_left (fun acc a -> acc ^ " " ^ modify_id_typ a) "" args)
       ^ "="
@@ -109,7 +110,7 @@ let restore_ids =
   in
   let sub = function
     | {desc = Let (bindings, cont); typ = t} ->
-      {desc = Let (List.map (fun (f, args, body) -> (trans_id f, List.map trans_id args, body)) bindings, cont); typ = t; attr=[]}
+      {desc = Let (List.map (fun (f, body) -> (trans_id f, body)) bindings, cont); typ = t; attr=[]}
     | {desc = Fun (f, body); typ = t} -> {desc = Fun (trans_id f, body); typ = t; attr=[]}
     | {desc = Var v; typ = t} -> {desc = Var (trans_id v); typ = t; attr=[]}
     | t -> t
@@ -137,7 +138,10 @@ let retyping t type_of_state  =
   (orig, parsed)
 
 let extract_functions (target_program : term) =
-  let ext acc (id, args, body) = if args = [] then acc else {id=id; args=args}::acc in
+  let ext acc (id, body) =
+    let args,body = decomp_funs body in
+    if args = [] then acc else {id=id; args=args}::acc
+  in
   let rec iter t =
     match t.desc with
       | Let (bindings, body) -> List.fold_left ext [] bindings @ iter body
@@ -147,13 +151,19 @@ let extract_functions (target_program : term) =
   List.filter (fun {id=id} -> Id.name id <> "main") extracted
 
 let rec transform_function_definitions f term =
-  let sub ((id, args, _) as binding) = if args <> [] then f binding else binding in
+  let sub ((id, body) as binding) =
+    let args,body = decomp_funs body in
+    if args <> [] then f binding else binding
+  in
   match term with
     | {desc = Let (bindings, cont)} as t -> { t with desc = Let (List.map sub bindings, transform_function_definitions f cont) }
     | t -> t
 
 let rec transform_main_expr f term =
-  let sub ((id, args, body) as binding) = if args = [] then (id, args, everywhere_expr f body) else binding in
+  let sub ((id, body) as binding) =
+    let args,body = decomp_funs body in
+    if args = [] then (id, everywhere_expr f body) else binding
+  in
   match term with
     | {desc = Let (bindings, body)} as t -> { t with desc = Let (List.map sub bindings, transform_main_expr f body) }
     | t -> everywhere_expr f t
@@ -185,18 +195,20 @@ let rec find_main_function = function
   | {desc = Let (bindings, body)} ->
     let rec aux = function
       | [] -> find_main_function body
-      | ({Id.name = "main"} as main_func , _, _) :: _ -> Some main_func
+      | ({Id.name = "main"} as main_func , _) :: _ -> Some main_func
       | _ :: bs -> aux bs
     in aux bindings
   | _ -> None
 
 let remove_unit_wraping = function
-  | {desc = Let ([{Id.name="u"}, [], t], {desc = Const Unit; typ = TUnit})} -> t
+  | {desc = Let ([{Id.name="u"}, t], {desc = Const Unit; typ = TUnit})} -> t
   | t -> t
 
 let rec lambda_lift t =
-  let lift_binding (id, args, body) =
-    let (sub_bindings, body') , _ = Lift.lift' ~args body in (id, args, body') :: List.map (fun (a, (b, c)) -> (a, b, c)) sub_bindings
+  let lift_binding (id, body) =
+    let args,body = decomp_funs body in
+    let (sub_bindings, body') , _ = Lift.lift' ~args body in
+    (id, make_funs args body') :: List.map (fun (a, (b, c)) -> (a, make_funs b c)) sub_bindings
   in
   match t with
     | {desc = Let (bindings, rest)} ->
@@ -229,7 +241,7 @@ let implement_recieving ({program = program; state = state; verified = verified}
     | [arg] -> (List.map extract_id (passed f))@[arg]
     | arg::args -> (placeholders f)@[arg]@(set_state f) args
   in
-  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, (if !Flag.split_callsite && id = verified.id then args else set_state id args), body)) program }
+  { holed with program = transform_function_definitions (fun (id, body) -> let args,body = decomp_funs body in (id, make_funs (if !Flag.split_callsite && id = verified.id then args else set_state id args) body)) program }
 
 let implement_transform_initial_application ({program = program; state = state} as holed) =
   let sub = function
@@ -248,7 +260,7 @@ let implement_propagation ({program = program; state = state; verified = verifie
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> propagated@[arg]) args)}
     | t -> t
   in
-  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, args, if !Flag.split_callsite && id = verified.id then body else everywhere_expr sub body)) program }
+  { holed with program = transform_function_definitions (fun (id, body) -> let args,body = decomp_funs body in (id, make_funs args (if !Flag.split_callsite && id = verified.id then body else everywhere_expr sub body))) program }
 
 let transform_program_by_call holed =
   holed |> implement_recieving
@@ -279,7 +291,8 @@ let to_holed_programs (target_program : term) =
   let state_template = build_state defined_functions in
   let no_checking_function = ref None in (** split-callsite **)
   let hole_insert target state typed =
-    let sub (id, args, body) =
+    let sub (id, body) =
+      let args,body = decomp_funs body in
 
       let id' = Id.new_var ~name:(Id.name id ^ "_without_checking") (Id.typ id) in (** split-callsite **)
 
@@ -295,10 +308,10 @@ let to_holed_programs (target_program : term) =
                  x
                  else
                  s_prev_x *)
-	  make_let [extract_id statevar, [], make_if update_flag (restore_type state argvar) prev_statevar] cont
+	  make_let [extract_id statevar, make_if update_flag (restore_type state argvar) prev_statevar] cont
 	else
               (* let s_x = x *)
-  	  make_let [extract_id statevar, [], restore_type state argvar] cont
+  	  make_let [extract_id statevar, restore_type state argvar] cont
       in
       let body' =
 	if id = target.id then
@@ -310,15 +323,15 @@ let to_holed_programs (target_program : term) =
                            fail
                in *)
             make_let
-	      [Id.new_var ~name:"_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" TUnit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 
               (* let update_flag = Random.int 0 = 0 in *)
 	      (make_let
-		 [(extract_id update_flag, [], randbool_unit_term)]
+		 [(extract_id update_flag, randbool_unit_term)]
 
 		 (* let set_flag = update_flag || prev_set_flag in *)
 		 (make_let
-		    [(extract_id set_flag, [], make_or update_flag prev_set_flag)]
+		    [(extract_id set_flag, make_or update_flag prev_set_flag)]
 
 		    (* each statevars update *)
 		    (fold_left3 add_update_statement
@@ -331,11 +344,11 @@ let to_holed_programs (target_program : term) =
                            fail
                in *)
             make_let
-	      [Id.new_var ~name:"_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" TUnit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 
 	      (* let set_flag = true in *)
 	      (make_let
-		 [(extract_id set_flag, [], true_term)]
+		 [(extract_id set_flag, true_term)]
 
 		 (* each statevars update *)
 		 (fold_left3 add_update_statement
@@ -345,7 +358,7 @@ let to_holed_programs (target_program : term) =
 	  let body_update =
 	    (* let set_flag = true in *)
 	    make_let
-	      [(extract_id set_flag, [], true_term)]
+	      [(extract_id set_flag, true_term)]
 	      (* each statevars update *)
 	      (fold_left3 add_update_statement
 		 body prev_statevars statevars argvars)
@@ -362,13 +375,13 @@ let to_holed_programs (target_program : term) =
 
 	  let app_assert =
 	    make_let
-	      [Id.new_var ~name:"_" TUnit, [], make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" TUnit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 	      {desc = App (make_var id', List.map make_var args'); typ = Id.typ id'; attr=[]}
 	  in
 	  (no_checking_function := Some ({id = id'; args = args} : function_info);
-	   [(id, args', app_assert); (id', args, body_update)])
+	   [(id, make_funs args' app_assert); (id', make_funs args body_update)])
 	else
-	  [(id, args, body')]
+	  [(id, make_funs args body')]
     in
 
     { typed with desc = match typed.desc with

@@ -797,7 +797,7 @@ let lift_arg =
             match t.desc with
             | Fun _ ->
                 let x = new_var_of_term t in
-                [x,[],t], make_var x
+                [x,t], make_var x
             | Let(bindings, t') ->
                 bindings, t'
             | _ -> [], t
@@ -826,7 +826,7 @@ let rec normalize t =
 let trans_CPS env funs t =
   let t',make_get_rtyp_cps =
     t
-    |> List.fold_right (fun (f,(xs,t1)) t -> add_attr ADoNotInline @@ make_let [f,xs,t1] t) env
+    |> List.fold_right (fun (f,t1) t -> add_attr ADoNotInline @@ make_let [f, t1] t) env
     |@> Debug.printf "trans_CPS: %a@." Print.term
     |> CPS.trans_as_direct
   in
@@ -846,13 +846,13 @@ let trans_CPS env funs t =
   let make_get_rtyp = make_get_rtyp_cps -| make_get_rtyp_pair in
   let env1,env2 =
     env'
-    |> List.flatten_map (List.map Triple.to_pair_r)
+    |> List.flatten
     |> List.partition (fst |- Id.mem_assoc -$- env)
   in
   Debug.printf "funs: %a@." (List.print Id.print) funs;
   if false then
-    (Debug.printf "env1: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env1;
-     Debug.printf "env2: %a@." (List.print @@ Pair.print Id.print @@ Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) env2)
+    (Debug.printf "env1: %a@." (List.print @@ Pair.print Id.print @@ Print.term) env1;
+     Debug.printf "env2: %a@." (List.print @@ Pair.print Id.print @@ Print.term) env2)
   else
     (Debug.printf "Dom(env1): %a@." (List.print Id.print) @@ List.map fst env1;
      Debug.printf "Dom(env2): %a@." (List.print Id.print) @@ List.map fst env2);
@@ -862,7 +862,7 @@ let trans_CPS env funs t =
       Format.printf "REMOVED: %a@." (List.print Id.print) removed;
       assert false
     end;
-  env1, make_lets (List.map Triple.of_pair_r env2) t_main, make_get_rtyp
+  env1, make_lets env2 t_main, make_get_rtyp
 
 
 let add_context for_infer prog f typ =
@@ -1191,7 +1191,7 @@ let infer prog f typ (ce_set:ce_set) depth merge =
   Debug.printf "add_context t: %a@.@." Print.term t;
   let comp_tree =
     Debug.printf "Dom(Fun_env'): %a@.@." (List.print Id.print) @@ List.map fst fun_env';
-    Debug.printf "t with def: %a@.@." Print.term @@ make_lets (List.map Triple.of_pair_r fun_env') t;
+    Debug.printf "t with def: %a@.@." Print.term @@ make_lets fun_env' t;
     Debug.printf "t: %a@.@." Print.term t;
     CT.from_program fun_env' ce_set depth t
   in

@@ -271,7 +271,7 @@ let conv_primitive_app t ts typ =
           make_check t2
         else
           let x = Id.new_var TInt in
-          make_let [x,[],t2] @@ make_check @@ make_var x
+          make_let [x,t2] @@ make_check @@ make_var x
       in
       make_div t1 t2'
   | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
@@ -293,7 +293,7 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
   | Var {Id.name="Random.int"}, [t] ->
       let x = Id.new_var ~name:"n" TInt in
-      make_let [x, [], randint_unit_term] @@
+      make_let [x, randint_unit_term] @@
         make_assume
           (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
           (make_var x)
@@ -358,7 +358,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
         let p' = from_pattern vb_pat in
         let e' = from_expression id_env vb_expr in
         match p'.pat_desc with
-        | PVar x -> x, [], e'
+        | PVar x -> x, e'
         | _ ->
             if flag = Recursive
             then unsupported "Only variables are allowed as left-hand side of 'let rec'"
@@ -470,7 +470,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
         in
         List.map aux labels
       in
-      make_let [r, [], from_expression id_env init] {desc=Record fields';typ=typ'; attr=[]}
+      make_let [r, from_expression id_env init] {desc=Record fields';typ=typ'; attr=[]}
   | Texp_field(e,_,label) ->
       let t = from_expression id_env e in
       {desc=Field(t, get_label_name label env); typ=typ'; attr=make_attr[t]}
@@ -497,7 +497,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
       let x = Id.new_var TUnit in
       let f = Id.new_var ~name:"while" @@ make_tfun TUnit t2.typ in
       let t2' = make_if t1 (make_seq t2 @@ make_app (make_var f) [unit_term]) unit_term in
-      make_let [f, [x], t2'] @@ make_app (make_var f) [unit_term]
+      make_let [f, make_fun x t2'] @@ make_app (make_var f) [unit_term]
   | Texp_for(x, _, e1, e2, dir, e3) ->
       let t1 = from_expression id_env e1 in
       let t2 = from_expression id_env e2 in
@@ -525,7 +525,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
       in
       assert (Flag.check_typ => Type.can_unify t31.typ TBool);
       let t3' = make_if t31 t32 unit_term in
-      make_lets [init,[],t1; last,[],t2] @@ make_let [f, [x'], t3'] @@ make_app (make_var f) [make_var init]
+      make_lets [init,t1; last,t2] @@ make_let [f, make_fun x' t3'] @@ make_app (make_var f) [make_var init]
   | Texp_send _
   | Texp_new _ -> unsupported "expression (class)"
   | Texp_instvar _ -> unsupported "expression (instvar)"
@@ -632,9 +632,7 @@ let from_use_file ast =
   let env = Compmisc.initial_env () in
   init_exc_env ();
   let aux t = function
-    | Decl_let(_, defs) ->
-        let defs' = List.map (fun (f,t1) -> f, [], t1) defs in
-        make_let defs' t
+    | Decl_let(_, defs) -> make_let defs t
     | Decl_type _ -> t
     | Decl_exc _ -> t
   in
@@ -642,11 +640,11 @@ let from_use_file ast =
   |> List.fold_left from_top_level_phrase (env,[],[])
   |> Triple.trd
   |> List.fold_left aux unit_term
-  |> Trans.merge_let_fun
   |> subst_data_type_term "exn" !!exc_typ
   |> Trans.rename_bound_module
   |> Trans.split_let
   |@> Debug.printf "before alpha: %a@." Print.term'
   |> Trans.alpha_rename ~whole:true
   |@> Debug.printf "after alpha: %a@." Print.term'
+  |@> Debug.printf "after alpha: %a@." Print.term
   |@> Id.set_counter -| succ -| Term_util.get_max_var_id

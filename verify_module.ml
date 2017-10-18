@@ -11,7 +11,7 @@ let main f parsed =
     let main = Id.new_var_id x in
     let t =
       parsed
-      |> Trans.replace_main Term.(let_ [main,[],var x] unit)
+      |> Trans.replace_main Term.(let_ [main,var x] unit)
       |> Trans.elim_unused_let ~leave_last:true
     in
     let r = f t in
@@ -39,7 +39,7 @@ let main verify parsed =
   let main =
     let body = List.fold_right make_seq target unit_term in
     Format.printf "body: %a@." Print.term body;
-    make_let [new_var_of_term body, [], body] unit_term
+    make_let [new_var_of_term body, body] unit_term
   in
   parsed
   |@> Format.printf "parsed: %a@." Print.term

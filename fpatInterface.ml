@@ -589,53 +589,14 @@ let insert_extra_param t =
          Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
       | Syntax.Let(bindings, t2) ->
          let bvs' =
-           bvs @
-             (List.map
-                Fpat.Triple.fst bindings)
+           bvs @ List.map fst bindings
          in
-         let aux' (f,xs,t) =
+         let aux' (f,t) =
            let f' = trans_id f in
-           let xs' = List.map trans_id xs in
-
-           let xss =
-             List.map
-               (fun x ->
-                match x.Id.typ with
-                | Type.TFun(_, _)
-                | Type.TTuple _(* ToDo: fix it *) ->
-                   Fpat.Util.List.unfold
-                     (fun i ->
-                      if i < !Fpat.RefTypInfer.number_of_extra_params then
-                        Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
-                      else
-                        None)
-                     0
-                | _ ->
-                   [])
-               xs'
-           in
-           let xs'' =
-             List.flatten
-               (List.map2 (fun xs x -> xs @ [x]) xss xs')
-           in
-           let bvs, exs =
-             (if true then
-                bvs' @ xs''
-              else
-                bvs' @ xs'),
-             exs @ List.flatten xss
-           in
-           let rfs' =
-             (f,
-              List.map2
-                (fun xs x -> x, xs)
-                xss xs',
-              true) :: rfs
-           in
            (* mutual recursion and binding partial applied functions are not supported
               let rfs' = (if flag = Flag.Nonrecursive then [] else List.map (fun (f, _, _) -> Id.to_string f) bindings) @ rfs in
             *)
-           f', xs'', aux rfs' bvs exs t
+           f', aux rfs bvs' exs t
          in
          let bindings' = List.map aux' bindings in
          Syntax.Let
@@ -643,7 +604,7 @@ let insert_extra_param t =
             aux rfs
                 (bvs @
                    List.map
-                     Fpat.Triple.fst
+                     fst
                      bindings')
                 exs t2)
       | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)

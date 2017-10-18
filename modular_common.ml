@@ -10,7 +10,7 @@ module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 type program =
   {fun_typ_env : Ref_type.env;
    fun_typ_neg_env : Ref_type.neg_env;
-   fun_def_env : (id * (id list * term)) list;
+   fun_def_env : (id * term) list;
    exn_decl : (string * typ list) list}
 
 type label = int
@@ -19,7 +19,7 @@ type ce_set = (id * ce) list
 
 let print_typ_env = Ref_type.Env.print
 let print_typ_neg_env = Ref_type.NegEnv.print
-let print_def_env fm def = List.print (Pair.print Id.print Print.term) fm @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) def
+let print_def_env fm def = List.print (Pair.print Id.print Print.term) fm def
 
 let print_prog fm {fun_typ_env; fun_typ_neg_env; fun_def_env} =
   Format.fprintf fm "@[";
@@ -75,12 +75,13 @@ let inline_simple_fun = make_trans2 ()
 let inline_simple_fun_desc env desc =
   match desc with
   | Let(bindings, t) ->
-      let bindings' = List.map (Triple.map_trd @@ inline_simple_fun.tr2_term env) bindings in
-      let env' = List.filter (fun (_,xs,t) -> xs <> [] && is_simple_term t) bindings' @ env in
+      let bindings' = List.map (Pair.map_snd @@ inline_simple_fun.tr2_term env) bindings in
+      let env' = List.filter (snd |- is_simple_term) bindings' @ env in
       Let(bindings', inline_simple_fun.tr2_term env' t)
-  | App({desc=Var f}, ts) when List.exists (fun (g,xs,_) -> Id.same g f && List.length xs = List.length ts) env && List.for_all is_simple_term ts ->
-      let _,xs,t = List.find (Triple.fst |- Id.same f) env in
-      (List.fold_right2 subst xs ts t).desc
+  | App({desc=Var f}, ts) when List.exists (fun (g,t) -> Id.same g f && List.length (fst @@ decomp_funs t) = List.length ts) env && List.for_all is_simple_term ts ->
+      let _,t = List.find (fst |- Id.same f) env in
+      let xs,t' = decomp_funs t in
+      (List.fold_right2 subst xs ts t').desc
   | _ -> inline_simple_fun.tr2_desc_rec env desc
 let () = inline_simple_fun.tr2_desc <- inline_simple_fun_desc
 let inline_simple_fun t = inline_simple_fun.tr2_term [] t
@@ -118,11 +119,11 @@ let used_by f prog =
     | [] -> acc
     | f::rest' when Id.mem f acc -> aux acc rest'
     | f::rest' ->
-        let xs,t = Id.assoc f prog.fun_def_env in
+        let xs,t = decomp_funs @@ Id.assoc f prog.fun_def_env in
         aux (f::acc) (List.Set.diff ~eq:Id.eq (get_fv t) (f::xs) @ rest')
   in
   let fs = List.unique ~eq:Id.eq @@ aux [] [f] in
-  if Id.mem f @@ get_fv @@ snd @@ Id.assoc f prog.fun_def_env then
+  if Id.mem f @@ get_fv @@ snd @@ decomp_funs @@ Id.assoc f prog.fun_def_env then
     fs
   else
     List.filter_out (Id.same f) fs
@@ -132,7 +133,7 @@ let term_of_prog prog =
   |> List.last
   |> fst
   |> make_var
-  |> make_lets (List.map Triple.of_pair_r prog.fun_def_env)
+  |> make_lets prog.fun_def_env
 
 
 let take_funs_of_depth env f depth =
@@ -141,8 +142,12 @@ let take_funs_of_depth env f depth =
       acc
     else
       let fs' =
+        let aux g =
+          let xs,t = decomp_funs @@ Id.assoc g env in
+          List.Set.diff ~eq:Id.eq (get_fv t) (g::xs)
+        in
         fs
-        |> List.flatten_map (fun g -> let xs,t = Id.assoc g env in List.Set.diff ~eq:Id.eq (get_fv t) (g::xs))
+        |> List.flatten_map aux
         |> List.unique ~eq:Id.eq
       in
       aux (fs@acc) fs' (depth-1)

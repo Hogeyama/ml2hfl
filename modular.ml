@@ -26,8 +26,8 @@ let normalize_ce_set (ce_set:ce_set) =
 let is_closed f def_env depth =
   let fs = take_funs_of_depth def_env f depth in
   let def_env' = List.filter (fst |- Id.mem -$- fs) def_env in
-  let fv = List.flatten_map (snd |- snd |- get_fv) def_env' in
-  let bv = List.flatten_map (fun (f,(xs,_)) -> f::xs) def_env' in
+  let fv = List.flatten_map (snd |- get_fv) def_env' in
+  let bv = List.flatten_map (fun (f,t) -> f :: fst (decomp_funs t)) def_env' in
   List.Set.subset ~eq:Id.eq fv bv
 
 let report_safe env =
@@ -58,7 +58,8 @@ let make_init_env cmp bindings =
     | TFun(x,typ2) -> Ref_type.Fun(x, Ref_type.bottom @@ Id.typ x, to_weak typ2)
     | _ -> Ref_type.of_simple typ
   in
-  let make (f,xs,_) =
+  let make (f,t) =
+    let xs,_ = decomp_funs t in
     f,
     Id.typ f
     |> Trans.inst_tvar_tunit_typ
@@ -268,7 +269,8 @@ let main_loop prog ce_set cmp dep f typ =
 
 let rec last_def_to_fun t =
   match t.desc with
-  | Let([f,xs,t1], ({desc=Const Unit} as t2)) ->
+  | Let([f,t1], ({desc=Const Unit} as t2)) ->
+      let xs,t1 = decomp_funs t1 in
       let f',xs' =
         if xs = [] then
           let u = Id.new_var ~name:"u" TUnit in
@@ -277,7 +279,7 @@ let rec last_def_to_fun t =
         else
           f, xs
       in
-      let desc = Let([f',xs',t1], t2) in
+      let desc = Let([f', make_funs xs' t1], t2) in
       {t with desc}
   | Let(_, {desc=Const Unit}) -> unsupported "last_def_to_fun"
   | Let(defs, t2) ->
@@ -290,7 +292,7 @@ let rec last_def_to_fun t =
 let assert_to_fun t =
   let rec loop t =
     match t.desc with
-    | Let([u,[],t1], t2) when Id.typ u = TUnit ->
+    | Let([u,t1], t2) when Id.typ u = TUnit ->
         let u' = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var @@ TFun(u', TUnit) in
         let t1',t2' =
@@ -299,7 +301,7 @@ let assert_to_fun t =
           | `Lifted, _ -> t, unit_term
           | `Other, _ -> unsupported @@ Format.asprintf "top-level let-bindings of non-functions: %a" Print.term t1
         in
-        `Lifted, make_let [f,[u],t1'] t2'
+        `Lifted, make_let [f, make_fun u t1'] t2'
     | Let(bindings, t) ->
         `Other, make_let bindings @@ snd @@ loop t
     | Const Unit -> `Unit, t
@@ -307,23 +309,23 @@ let assert_to_fun t =
   in
   snd @@ loop t
 
-let rec top_to_local_aux (f,xs,t1) t =
+let rec top_to_local_aux (f,t1) t =
   match t.desc with
   | Const Unit ->
-      make_let [f,xs,t1] t
-  | Let([main,ys,t2], {desc=Const Unit}) ->
-      let t2' = make_let [f,xs,t1] t2 in
-      let desc = Let([main,ys,t2'], unit_term) in
+      make_let [f,t1] t
+  | Let([main,t2], {desc=Const Unit}) ->
+      let t2' = make_let [f,t1] t2 in
+      let desc = Let([main,t2'], unit_term) in
       top_to_local {t with desc}
   | Let(bindings, t2) ->
       let used,bindings' =
-        let aux (g,ys,t3) =
+        let aux (g,t3) =
           if Id.mem f @@ get_fv t3 then
             let typ = TFun(f, Id.typ g) in
             let g' = Id.set_typ g typ in
-            Some(g, g'), (g', f::ys, t3)
+            Some(g, g'), (g', make_fun f t3)
           else
-            None, (g,ys,t3)
+            None, (g, t3)
         in
         List.split_map aux bindings
       in
@@ -332,11 +334,11 @@ let rec top_to_local_aux (f,xs,t1) t =
         let sbst (g,g') t = subst g (make_app (make_var g') [make_var f]) t in
         List.fold_right sbst used' t
       in
-      let bindings'' = List.map (Triple.map_trd sbst_all) bindings' in
+      let bindings'' = List.map (Pair.map_snd sbst_all) bindings' in
       let t2' =
         t2
         |> sbst_all
-        |> top_to_local_aux (f,xs,t1)
+        |> top_to_local_aux (f,t1)
       in
       let desc = Let(bindings'', t2') in
       top_to_local {t with desc}
@@ -346,7 +348,7 @@ let rec top_to_local_aux (f,xs,t1) t =
 
 and top_to_local t =
   match t.desc with
-  | Let([f,xs,t1 as binding], t2) when xs @ fst (decomp_funs t1) = [] ->
+  | Let([f,t1 as binding], t2) when fst (decomp_funs t1) = [] ->
       top_to_local_aux binding t2
   | Let([binding], t2) ->
       let desc = Let([binding], top_to_local t2) in
@@ -394,15 +396,15 @@ let main _ spec parsed =
     |> decomp_prog
   in
   assert (body.desc = Const Unit);
-  Debug.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (List.map Triple.fst) bindings;
-  let non_fun = List.flatten_map (List.filter (Triple.fst |- is_fun_var |- not)) bindings in
+  Debug.printf "TOP_FUNS: %a@." (print_list Print.id_typ "@\n") @@ List.flatten_map (List.map fst) bindings;
+  let non_fun = List.flatten_map (List.filter (fst |- is_fun_var |- not)) bindings in
   if non_fun <> [] then
-    unsupported @@ Format.asprintf "top-level let-bindings of non-functions %a" (List.print Id.print) @@ List.map Triple.fst non_fun;
-  let fun_env = List.flatten_map (List.map Triple.to_pair_r) bindings in
+    unsupported @@ Format.asprintf "top-level let-bindings of non-functions %a" (List.print Id.print) @@ List.map fst non_fun;
+  let fun_env = List.flatten bindings in
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
   let cmp,dep =
-    let edges = List.flatten_map (fun (f,(xs,t)) -> List.map (fun g -> g, f) @@ List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)) fun_env in
+    let edges = List.flatten_map (fun (f,t) -> let xs,t = decomp_funs t in List.map (fun g -> g, f) @@ List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)) fun_env in
     Compare.topological ~eq:Id.eq ~dom:(List.map fst fun_env) edges,
     transitive_closure ~eq:Id.eq edges
   in
@@ -410,7 +412,7 @@ let main _ spec parsed =
     let env_init = make_init_env cmp bindings in
     Debug.printf "ENV_INIT: %a@." Ref_type.Env.print env_init;
     let fun_typ_neg_env =
-      List.flatten_map (List.map Triple.fst) bindings
+      List.flatten_map (List.map fst) bindings
       |> Ref_type.NegEnv.create (Ref_type.union -$- [] -| Id.typ)
     in
     let exn_decl =

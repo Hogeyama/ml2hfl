@@ -36,7 +36,7 @@ and desc =
   | Fun of id * term
   | App of term * term list
   | If of term * term * term
-  | Let of (id * id list * term) list * term
+  | Let of (id * term) list * term
   | BinOp of binop * term * term
   | Not of term
   | Event of string * bool (** true denotes CPS-term *)
@@ -221,7 +221,8 @@ val make_fold_tr : unit -> 'a fold_tr
 val occur : id -> typ -> bool
 val get_vars_pat : pattern -> id list
 val get_fv : ?eq:(id -> id -> bool) -> term -> id list
-val is_non_rec : (id * id list * term) list -> bool
+val is_non_rec : (id * term) list -> bool
 
 val make_extra_coeff : ?name:string -> ?typ:typ -> unit -> id
 val is_extra_coeff : id -> bool
+val decomp_funs : term -> id list * term

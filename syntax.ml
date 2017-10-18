@@ -41,7 +41,7 @@ and desc =
   | Fun of id * term
   | App of term * term list
   | If of term * term * term
-  | Let of (id * id list * term) list * term
+  | Let of (id * term) list * term
   | BinOp of binop * term * term
   | Not of term
   | Event of string * bool
@@ -212,7 +212,7 @@ let trans_desc trans = function
   | App(t1, ts) -> App(trans.tr_term t1, List.map trans.tr_term ts)
   | If(t1, t2, t3) -> If(trans.tr_term t1, trans.tr_term t2, trans.tr_term t3)
   | Let(bindings, t2) ->
-      let bindings' = List.map (Triple.map trans.tr_var (List.map trans.tr_var) trans.tr_term) bindings in
+      let bindings' = List.map (Pair.map trans.tr_var trans.tr_term) bindings in
       let t2' = trans.tr_term t2 in
       Let(bindings', t2')
   | BinOp(op, t1, t2) -> BinOp(op, trans.tr_term t1, trans.tr_term t2)
@@ -372,7 +372,7 @@ let trans2_gen_desc tr env = function
   | App(t1, ts) -> App(tr.tr2_term env t1, List.map (tr.tr2_term env) ts)
   | If(t1, t2, t3) -> If(tr.tr2_term env t1, tr.tr2_term env t2, tr.tr2_term env t3)
   | Let(bindings, t2) ->
-      let aux (f,xs,t) = tr.tr2_var env f, List.map (tr.tr2_var env) xs, tr.tr2_term env t in
+      let aux (f,t) = tr.tr2_var env f, tr.tr2_term env t in
       Let(List.map aux bindings, tr.tr2_term env t2)
   | BinOp(op, t1, t2) -> BinOp(op, tr.tr2_term env t1, tr.tr2_term env t2)
   | Not t1 -> Not (tr.tr2_term env t1)
@@ -527,10 +527,9 @@ let col_desc col = function
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) (col.col_term t1) ts
   | If(t1, t2, t3) -> col.col_app (col.col_term t1) @@ col.col_app (col.col_term t2) (col.col_term t3)
   | Let(bindings, t2) ->
-      let aux acc (f,xs,t) =
+      let aux acc (f,t) =
         col.col_app acc @@
-        col.col_app (col.col_var f) @@
-        List.fold_left (fun acc x -> col.col_app acc @@ col.col_var x) (col.col_term t) xs
+        col.col_app (col.col_var f) (col.col_term t)
       in
       List.fold_left aux (col.col_term t2) bindings
   | BinOp(op, t1, t2) -> col.col_app (col.col_term t1) (col.col_term t2)
@@ -693,10 +692,9 @@ let col2_desc col env = function
   | App(t1, ts) -> List.fold_left (fun acc t -> col.col2_app acc @@ col.col2_term env t) (col.col2_term env t1) ts
   | If(t1, t2, t3) -> col.col2_app (col.col2_term env t1) @@ col.col2_app (col.col2_term env t2) (col.col2_term env t3)
   | Let(bindings, t2) ->
-      let aux acc (f,xs,t) =
+      let aux acc (f,t) =
         col.col2_app acc @@
-        col.col2_app (col.col2_var env f) @@
-        List.fold_left (fun acc x -> col.col2_app acc @@ col.col2_var env x) (col.col2_term env t) xs
+        col.col2_app (col.col2_var env f) (col.col2_term env t)
       in
       List.fold_left aux (col.col2_term env t2) bindings
   | BinOp(op, t1, t2) -> col.col2_app (col.col2_term env t1) (col.col2_term env t2)
@@ -949,11 +947,10 @@ let tr_col2_desc tc env = function
       let acc3,t3' = tc.tr_col2_term env t3 in
       tc.tr_col2_app acc1 @@ tc.tr_col2_app acc2 acc3, If(t1',t2',t3')
   | Let(bindings, t2) ->
-      let aux env (f,xs,t) =
+      let aux env (f,t) =
         let acc1,f' = tc.tr_col2_var env f in
-        let acc1',xs' = tr_col2_list tc tc.tr_col2_var ~init:acc1 env xs in
         let acc2,t' = tc.tr_col2_term env t in
-        tc.tr_col2_app acc1' acc2, (f',xs',t')
+        tc.tr_col2_app acc1 acc2, (f',t')
       in
       let acc1,bindings' = tr_col2_list tc aux env bindings in
       let acc2,t2' = tc.tr_col2_term env t2 in
@@ -1254,11 +1251,10 @@ let fold_tr_desc fld env = function
       let env''',t3' = fld.fold_tr_term env'' t3 in
       env''', If(t1',t2',t3')
   | Let(bindings, t2) ->
-      let aux env (f,xs,t) =
+      let aux env (f,t) =
         let env',f' = fld.fold_tr_var env f in
-        let env'',xs' = fold_tr_list fld.fold_tr_var env' xs in
-        let env''',t' = fld.fold_tr_term env'' t in
-        env''', (f',xs',t')
+        let env'',t' = fld.fold_tr_term env' t in
+        env'', (f',t')
       in
       let env',bindings' = fold_tr_list aux env bindings in
       let env'',t2' = fld.fold_tr_term env' t2 in
@@ -1414,8 +1410,8 @@ let get_fv_term vars t =
   match t.desc with
   | Var x -> if Id.mem x vars then [] else [x]
   | Let(bindings, t2) ->
-      let vars' = List.fold_left (fun vars (f,_,_) -> f::vars) vars bindings in
-      let aux fv (_,xs,t) = get_fv.col2_term (xs@@@vars') t @@@ fv in
+      let vars' = List.fold_left (fun vars (f,_) -> f::vars) vars bindings in
+      let aux fv (_,t) = get_fv.col2_term vars' t @@@ fv in
       let fv_t2 = get_fv.col2_term vars' t2 in
       List.fold_left aux fv_t2 bindings
   | Fun(x,t) -> get_fv.col2_term (x::vars) t
@@ -1461,5 +1457,13 @@ let is_extra_coeff = List.mem Id.Coefficient -| Id.attr
 let is_non_rec bindings =
   match bindings with
   | [] -> assert false
-  | [f, _, t] -> not @@ Id.mem f @@ get_fv t
+  | [f, t] -> not @@ Id.mem f @@ get_fv t
   | _ -> false
+
+
+let rec decomp_funs t =
+  match t.desc with
+  | Fun(x,t) ->
+      let xs,t' = decomp_funs t in
+      x::xs, t'
+  | _ -> [], t

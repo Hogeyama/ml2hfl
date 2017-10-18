@@ -267,7 +267,7 @@ let abst_recdata_term t =
       in
       let xtyps = List.map (fun t -> Id.new_var @@ abst_recdata.tr_typ t.typ, t.typ) ts in
       let pats = List.mapi make_pat xtyps in
-      let defs = List.map2 (fun (x,_) t -> x, [], t) xtyps ts' in
+      let defs = List.map2 (fun (x,_) t -> x, t) xtyps ts' in
       make_lets defs @@
         make_pair unit_term @@ (* for adding predicates *)
           make_fun path @@

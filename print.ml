@@ -117,15 +117,7 @@ and print_desc attr pri typ fm desc =
   | Const c -> print_const fm c
   | Var x -> print_id fm x
   | Fun _ ->
-      let xs,t =
-        let rec decomp = function
-          | {desc=Fun(x,t)} ->
-              let xs,t' = decomp t in
-              x::xs, t'
-          | t -> [], t
-        in
-        decomp {desc; typ=typ_unknown; attr=[]}
-      in
+      let xs,t = decomp_funs {desc; typ=typ_unknown; attr=[]} in
       let fv = get_fv t in
       let xs' =
         if !Flag.print_unused_arg then
@@ -190,11 +182,11 @@ and print_desc attr pri typ fm desc =
   | Let([], t) ->
       Format.printf "@.%a@." (print_term 0 typ) t;
       assert false
-  | Let([_, [], {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
+  | Let([_, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[%sassert@ false%s@]" s1 s2
-  | Let([u,[],t1], t2) when Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
+  | Let([u,t1], t2) when Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
       let p = 18 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a;@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
@@ -203,14 +195,15 @@ and print_desc attr pri typ fm desc =
       let s1,s2 = paren pri (p+1) in
       let s_rec = if is_non_rec bindings then "" else " rec" in
       let b = ref true in
-      let print_binding fm (f,xs,t1) =
+      let print_binding fm (f,t1) =
         let pre =
           if !b then
             "let" ^ (if List.mem ADoNotInline attr && not !Flag.print_as_ocaml then "!" else "") ^ s_rec
           else
             "and"
         in
-        let fv = get_fv t1 in
+        let xs,t1' = decomp_funs t1 in
+        let fv = get_fv t1' in
         let xs' =
           if !Flag.print_unused_arg then
             xs
@@ -225,7 +218,7 @@ and print_desc attr pri typ fm desc =
             in
             List.map aux xs
         in
-        fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs' (print_term 0 typ) t1;
+        fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs' (print_term 0 typ) t1';
         b := false
       in
       let print_bindings bs = print_list print_binding "@ " ~last:true bs in
@@ -235,7 +228,7 @@ and print_desc attr pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
+    | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 8 in
       let s1,s2 = paren pri p in
       if !Flag.print_as_ocaml then
@@ -443,9 +436,10 @@ let rec print_term' pri fm t =
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
         let b = ref true in
-        let print_binding fm (f,xs,t1) =
+        let print_binding fm (f,t1) =
+          let xs,t1' = decomp_funs t1 in
           let pre = if !b then "let" ^ s_rec else "and" in
-          fprintf fm "@[<hov 2>%s%a =@ %a@ @]" pre (print_ids true) (f::xs) (print_term' p) t1;
+          fprintf fm "@[<hov 2>%s%a =@ %a@ @]" pre (print_ids true) (f::xs) (print_term' p) t1';
           b := false
         in
         let print_bindings bs = print_list print_binding "" bs in

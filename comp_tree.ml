@@ -69,16 +69,6 @@ and print_node fm {nid;var_env;val_env;ce_env;nlabel} =
 let rec print fm (Rose_tree.Node(node,ts)) =
   Format.fprintf fm "(@[<hov>%a,@ %a@])" print_node node (List.print print) ts
 
-let make_fix f xs t =
-  make_let [f, xs, t] @@ make_var f
-let decomp_fix t =
-  match t.desc with
-  | Let([f, xs, t'], {desc=Var g}) when f = g -> Some (f, xs, t')
-  | _ -> None
-let is_fix t = decomp_fix t <> None
-
-let get_arg_num = List.length -| Triple.snd -| Option.get -| decomp_fix
-
 
 let counter = Counter.create ()
 let make_new_tid () = Counter.gen counter
@@ -121,7 +111,6 @@ let rec is_value fun_env val_env t =
   | Not t -> is_value fun_env val_env t
   | Fun _ -> true
   | Event _ -> true
-  | Let _ -> is_fix t
   | App(t1, ts) ->
       is_value fun_env val_env t1 &&
       arity fun_env val_env t < List.length ts &&
@@ -312,9 +301,10 @@ and from_term
       in
       let node = {nid; val_env; var_env; ce_env; nlabel = Branch tid} in
       RT.Node(node, children)
-  | Let([f,[],({desc=Bottom} as t1)], _) ->
+  | Let([f,({desc=Bottom} as t1)], _) ->
       from_term cnt fun_env var_env val_env ce_env spawned depth t1
-  | Let([f,xs,t1], t2) ->
+  | Let([f,t1], t2) ->
+      let xs,t1 = decomp_funs t1 in
       Debug.printf "  LET@\n";
       Debug.printf "    t: %a@\n" Print.term t;
       assert (xs <> []);
@@ -351,13 +341,13 @@ let rec filter_ends (RT.Node(node,ts)) =
   in
   RT.Node(node, ts')
 
-let from_program (fun_env: (id * (id list * term)) list) (ce_set:ce_set) depth t =
+let from_program (fun_env: (id * term) list) (ce_set:ce_set) depth t =
   Counter.reset counter;
   Debug.printf "@.CE_SET: %a@." print_ce_set ce_set;
-  Debug.printf "FUN_ENV: %a@." (List.print @@ Pair.print Id.print Print.term) @@ List.map (Pair.map_snd @@ Fun.uncurry make_funs) fun_env;
+  Debug.printf "FUN_ENV: %a@." (List.print @@ Pair.print Id.print Print.term) fun_env;
   Debug.printf "from_program: %a@." Print.term t;
   let fun_env' =
-    List.map (fun (f,(xs,t)) -> f, (make_funs xs t, List.assoc_all ~eq:Id.eq f ce_set)) fun_env
+    List.map (fun (f,t) -> f, (t, List.assoc_all ~eq:Id.eq f ce_set)) fun_env
   in
   let var_env = [] in
   let val_env = [] in

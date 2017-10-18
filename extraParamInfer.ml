@@ -76,11 +76,12 @@ let rec insertExparam scope expr =
     | Let (bindings, e) ->
       let rec extend sc = function
 	| [] -> sc
-	| (x, [], body) :: bs when (Id.typ x) = TInt -> extend (x :: sc) bs
+	| (x, body) :: bs when (Id.typ x) = TInt -> extend (x :: sc) bs
 	| _ :: bs -> extend sc bs
       in
       let scope = extend scope bindings in
-      let insertExparamBinding (x, args, body) =
+      let insertExparamBinding (x, body) =
+        let args,body = decomp_funs body in
 	let insertExparamArgs (sc, ags) = function
 	  | t when Id.typ t = TInt -> (t::sc, ags@[t])
 	  | t when is_base_typ (Id.typ t) -> (sc, ags@[t])
@@ -95,7 +96,7 @@ let rec insertExparam scope expr =
 	    (scope, [])
 	    args
 	in
-	({x with Id.typ = transType x.Id.typ}, args, insertExparam scope body)
+	({x with Id.typ = transType x.Id.typ}, make_funs args @@ insertExparam scope body)
       in
       { expr with
 	desc = Let (List.map insertExparamBinding bindings, insertExparam (extend scope bindings) e)}
@@ -108,7 +109,7 @@ let rec insertExparam scope expr =
     | _ -> assert false (* unimplemented *)
 
 let rec removeDummySubstitutions = function
-  | { desc = Let ([id, [], {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
+  | { desc = Let ([id, {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
   | e -> e
 
 let substituteZero e =
@@ -129,7 +130,7 @@ let addTemplate prog =
   let _ = counter := !counter - 1 in
   let rec dummySubst = function
     | (-1) -> prog
-    | n -> make_let [(List.nth !nthCoefficient n), [], make_int 0] (dummySubst (n-1))
+    | n -> make_let [(List.nth !nthCoefficient n), make_int 0] (dummySubst (n-1))
 (*    | n -> make_letrec [(List.nth !nthCoefficient n), [], make_var (List.nth !nthCoefficient n)] (tmp (n-1))*)
   in
   begin

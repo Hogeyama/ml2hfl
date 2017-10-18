@@ -76,8 +76,8 @@ let rec eval_print fm rands t =
       let t' = if b then t2 else t3 in
       eval_print fm rands' t'
   | Let(bindings, t2) ->
-      let aux (rands,vs) (f,xs,t) =
-        let rands',v = eval_print fm rands @@ List.fold_right make_fun xs t in
+      let aux (rands,vs) (f,t) =
+        let rands',v = eval_print fm rands t in
         rands', vs@[f,v]
       in
       let rands',vs = List.fold_left aux (rands,[]) bindings in

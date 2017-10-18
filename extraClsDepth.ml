@@ -22,7 +22,7 @@ let rec dynamicMaximum = function
     let freshVarId = Id.new_var ~name:"tmp_DEPTH" TInt in
     let freshVar = make_var freshVarId in
     make_let
-      [(freshVarId, [], dynamicMaximum xs)]
+      [(freshVarId, dynamicMaximum xs)]
       (dynamicGreaterThan freshVar x)
   | [] -> assert false
 
@@ -95,17 +95,17 @@ let rec insertClsDepth varToDepth expr =
 		   (insertClsDepth varToDepth elseClause))}
     | Let (bindings, e) ->
       let makeBaseEnv varToDepth = function
-	| (x, [], body) when is_base_typ (Id.typ x) -> varToDepth
-	| (x, [], body) when is_fun_typ (Id.typ x) ->
+	| (x, body) when is_base_typ (Id.typ x) -> varToDepth
+	| (x, body) when not @@ is_fun body && is_fun_typ (Id.typ x) ->
 	  let x_depthId = Id.new_var ~name:((Id.name x) ^ "_DEPTH") TInt in
 	  let x_depth = make_var x_depthId in
 	  (Id.to_string x, x_depth)::varToDepth
-	| (x, args, body) -> (Id.to_string x, make_int 0)::varToDepth
+	| (x, body) -> (Id.to_string x, make_int 0)::varToDepth
       in
       let insertClsDepthBinding varToDepth (varToDepth', bindings') = function
-	| (x, [], body) when is_base_typ (Id.typ x) ->
-	  (varToDepth', (x, [], insertClsDepth varToDepth body)::bindings')
-	| (x, [], body) when is_fun_typ (Id.typ x) ->
+	| (x, body) when is_base_typ (Id.typ x) ->
+	  (varToDepth', (x, insertClsDepth varToDepth body)::bindings')
+	| (x, body) when not @@ is_fun body && is_fun_typ (Id.typ x) ->
 	  let x_depthId =
 	    begin
 	      try
@@ -116,8 +116,9 @@ let rec insertClsDepth varToDepth expr =
 	  in
 	  let x_depth = make_var x_depthId in
 	  ( (Id.to_string x, x_depth)::varToDepth'
-	  , (x_depthId, [], closureDepth varToDepth body)::({x with Id.typ = transType x.Id.typ}, [], insertClsDepth varToDepth body)::bindings')
-	| (x, args, body) ->
+	  , (x_depthId, closureDepth varToDepth body)::({x with Id.typ = transType x.Id.typ}, insertClsDepth varToDepth body)::bindings')
+	| (x, body) ->
+          let args,body = decomp_funs body in
 	  let insertToArgs (vtd, ags) = function
 	    | t when is_base_typ (Id.typ t) -> (vtd, ags@[t])
 	    | t when is_fun_typ (Id.typ t) ->
@@ -131,7 +132,7 @@ let rec insertClsDepth varToDepth expr =
 	      (varToDepth, [])
 	      args
 	  in
-	  ((Id.to_string x, make_int 0)::varToDepth', ({x with Id.typ = transType x.Id.typ}, args, insertClsDepth varToDepth body)::bindings')
+	  ((Id.to_string x, make_int 0)::varToDepth', ({x with Id.typ = transType x.Id.typ}, make_funs args @@ insertClsDepth varToDepth body)::bindings')
       in
       let varToDepth' = List.fold_left makeBaseEnv varToDepth bindings in
       let (varToDepth, bindings) =

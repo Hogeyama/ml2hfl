@@ -114,7 +114,7 @@ let trans_term env t =
       Debug.printf "t2': %a@." Print.term t2';
       Debug.printf "t3': %a@." Print.term t3';
       join vs2 vs3, make_if v1 t2' t3'
-  | Let([x,[],t1], t2) when not @@ Id.same x env.target ->
+  | Let([x,t1], t2) when not @@ Id.same x env.target && [] = fst @@ decomp_funs t1 ->
       Debug.printf "START@.";
       Debug.printf "t1: %a@." Print.term t1;
       let vs1,t1' = trans.tr_col2_term env t1 in
@@ -124,9 +124,10 @@ let trans_term env t =
       let vs2,t2' = trans.tr_col2_term {env with s=s'} t2 in
       let _,x' = trans.tr_col2_var env x in
       Debug.printf "sx: %a@." Print.id_typ sx;
-      join vs1 vs2, make_lets [sx,[],t1'; s',[],make_fst(make_var sx); x',[],make_snd(make_var sx)] t2'
+      join vs1 vs2, make_lets [sx,t1'; s',make_fst(make_var sx); x',make_snd(make_var sx)] t2'
   | Let(bindings, t2) ->
-      let aux (g,xs,t1) =
+      let aux (g,t1) =
+        let xs,t1 = decomp_funs t1 in
         if xs = [] then unsupported @@ Format.asprintf "fair termination!? %a" Print.id g;
         let _,g' = trans.tr_col2_var env g in
         let g_true = Id.new_var_id g' in
@@ -168,17 +169,17 @@ let trans_term env t =
             let sp = Id.new_var ~name:"sp" t_sp.typ in
             let t1'' =
               let bindings' =
-                (sp, [], t_sp) ::
-                  (s'', [], make_fst @@ make_var sp) ::
-                    (set_flag'', [], true_term) ::
-                      List.mapi (fun i p'' -> p'', [], make_proj i @@ make_snd @@ make_var sp) ps''
+                (sp, t_sp) ::
+                  (s'', make_fst @@ make_var sp) ::
+                    (set_flag'', true_term) ::
+                      List.mapi (fun i p'' -> p'', make_proj i @@ make_snd @@ make_var sp) ps''
               in
               Debug.printf "t1: %a@." Print.term t1;
               let vs,t1''' = trans.tr_col2_term {env with s=s''; ps=ps''; set_flag=set_flag''} t1 in
               assert (vs = None);
               make_lets bindings' t1'''
             in
-            let t1''' = make_let [b,[],t_b] t1'' in
+            let t1''' = make_let [b,t_b] t1'' in
             let t1'''' =
               if !Flag.expand_set_flag
               then make_if (make_var set_flag')
@@ -210,9 +211,9 @@ let trans_term env t =
         in
         if false && Id.same g env.target
         then
-          vs, [g', [], Trans.alpha_rename @@ snd @@ List.fold_right2 aux1 args xss' (true, t1');
-               g_true, [], snd @@ List.fold_right2 aux2 args xss' (true, t1')]
-        else vs, [g', [], snd @@ List.fold_right2 aux args xss' (true, t1')]
+          vs, [g', Trans.alpha_rename @@ snd @@ List.fold_right2 aux1 args xss' (true, t1');
+               g_true, snd @@ List.fold_right2 aux2 args xss' (true, t1')]
+        else vs, [g', snd @@ List.fold_right2 aux args xss' (true, t1')]
       in
       let vss,bindingss = List.split_map aux bindings in
       let bindings' = List.flatten bindingss in
@@ -230,7 +231,8 @@ let rec get_top_fun_typ f t =
   | Let(bindings, t1) ->
       begin
         try
-          let _,xs,t = List.find (fun (g,_,_) -> Id.same f g) bindings in
+          let _,t = List.find (fst |- Id.same f) bindings in
+          let xs,t = decomp_funs t in
           xs, t.typ
         with Not_found -> get_top_fun_typ f t1
       end
@@ -245,9 +247,9 @@ let trans target fairness t =
   let env = {target; target_xs; target_result_typ; states; fairness; s; set_flag; ps} in
   let vs,t' = trans.tr_col2_term env t in
   let bindings =
-    (s, [], make_s_init states) ::
-    (set_flag, [], false_term) ::
-    List.map (fun p -> p, [], make_term @@ Id.typ p) ps
+    (s, make_s_init states) ::
+    (set_flag, false_term) ::
+    List.map (fun p -> p, make_term @@ Id.typ p) ps
   in
   vs,make_lets bindings t'
 
@@ -260,7 +262,7 @@ let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   (*
   let rank_funs = if read_int () = 0 then [{coeffs=[-1;1];const=0}] else rank_funs in (* koskinen-2 *)
    *)
-  let _t' = make_let [rank_var, ps@xs, make_check_rank ps xs rank_funs] t in
+  let _t' = make_let [rank_var, make_funs (ps@xs) @@ make_check_rank ps xs rank_funs] t in
   Debug.printf "INPUT: %a@." Print.term t;
   let t'' = Trans.inline_specified (rank_var, ps@xs, make_check_rank ps xs rank_funs) t in
   let t''' = Trans.split_assert t'' in

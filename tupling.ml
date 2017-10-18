@@ -20,7 +20,7 @@ let normalize_tuple_term t =
   | Tuple ts ->
       let ts' = List.map normalize_tuple.tr_term ts in
       let xs = List.mapi (fun i t -> Id.new_var ~name:("x" ^ string_of_int (i+1)) t.typ) ts' in
-      make_lets (List.map2 (fun x t -> x,[],t) xs ts') @@ make_tuple @@ List.map make_var xs
+      make_lets (List.combine xs ts') @@ make_tuple @@ List.map make_var xs
   | _ -> normalize_tuple.tr_term_rec t
 
 let () = normalize_tuple.tr_term <- normalize_tuple_term
@@ -30,12 +30,12 @@ let normalize_tuple = normalize_tuple.tr_term
 
 let rec decomp_let t =
   match t.desc with
-  | Let([f,xs,t1], t2) ->
+  | Let([f,t1], t2) ->
       let bindings,t2' = decomp_let t2 in
-      ((f,xs,t1))::bindings, t2'
+      (f,t1)::bindings, t2'
   | _ ->
       let r = Id.new_var ~name:"r" t.typ in
-      [(r,[],t)], make_var r
+      [r,t], make_var r
 
 let partition_bindings x t =
   Debug.printf "PB: x:%a@." Id.print x;
@@ -44,23 +44,24 @@ let partition_bindings x t =
     if List.mem x (get_fv t)
     then raise Cannot_compose
   in
-  let aux (f,xs,t) (before,app_x,after) =
-    match app_x, xs, t with
+  let aux (f,t) (before,app_x,after) =
+    let xs,t1 = decomp_funs t in
+    match app_x, xs, t1 with
     | None, [], {desc=App({desc=Var y}, ts)} when Id.same x y ->
         before, Some (f,ts), after
     | None, _, _ ->
-        Debug.printf "CHECK: %a@." Print.term t;
-        check t;
-        before, app_x, (f,xs,t)::after
+        Debug.printf "CHECK: %a@." Print.term t1;
+        check t1;
+        before, app_x, (f, t)::after
     | Some _, _, {desc=App({desc=Var y}, ts)} when Id.same x y ->
         raise Cannot_compose
     | Some _, _, _ ->
-        check t;
-        (f,xs,t)::before, app_x, after
+        check t1;
+        (f, t)::before, app_x, after
   in
   let before,app_x,after = List.fold_right aux bindings ([],None,[]) in
   match app_x with
-    None -> raise Not_recursive
+  | None -> raise Not_recursive
   | Some xts -> before, xts, after, t'
 
 let classify f t =
@@ -130,8 +131,8 @@ let rec compose fg fts =
       let before,xs,arg,after,ts = List.fold_right aux fts ([],[],[],[],[]) in
       let p = Id.new_var ~name:"p" @@ TTuple xs in
       let pat =
-        (p,  [], make_app (make_var fg) arg)
-        :: List.mapi (fun i x -> x, [], make_proj i @@ make_var p) xs
+        (p, make_app (make_var fg) arg)
+        :: List.mapi (fun i x -> x, make_proj i @@ make_var p) xs
       in
       make_lets before @@ make_lets pat @@ make_lets after @@ make_tuple ts
     else
@@ -140,13 +141,13 @@ let rec compose fg fts =
 
 
 
-let new_funs = ref ([] : (id list * (id * id list * term)) list)
+let new_funs = ref ([] : (id list * (id * term)) list)
 
 let assoc_env f env =
   if Debug.check() then Color.printf Color.Reverse "%a@." Id.print f;
-  let _,xs,t = Id.assoc f env in
-  let ys,t' = decomp_funs t in
-  match xs@ys with
+  let _,t = Id.assoc f env in
+  let xs,t' = decomp_funs t in
+  match xs with
   | x::xs' -> x, List.fold_right make_fun xs' t'
   | _ -> raise Not_found
 
@@ -191,7 +192,7 @@ let tupling_term env t =
           let fs' = List.filter_map Std.identity fs in
           let fg =
             try
-              let _,(fg,_,_) = List.find (fun (gs,_) -> List.length fs' = List.length gs && List.for_all2 Id.same fs' gs) !new_funs in
+              let _,(fg,_) = List.find (fun (gs,_) -> List.length fs' = List.length gs && List.for_all2 Id.same fs' gs) !new_funs in
               fg
             with
             | Not_found ->
@@ -200,7 +201,7 @@ let tupling_term env t =
                   Id.new_var ~name @@ List.fold_right (fun x typ -> TFun(x,typ)) xs' typ
                 in
                 let t_body = compose fg @@ List.combine fs' bodies in
-                new_funs := (fs', (fg, xs', t_body)) :: !new_funs;
+                new_funs := (fs', (fg, make_funs xs' t_body)) :: !new_funs;
                 fg
           in
           let r = Id.new_var ~name:"r" typ in
@@ -222,13 +223,13 @@ let tupling_term env t =
             | None -> make_none @@ get_opt_typ (List.nth ts i).typ
             | Some _ -> make_some @@ make_proj (index i) @@ make_var r
           in
-          make_let [r, [], t_app] @@ make_tuple @@ List.mapi aux ts'
+          make_let [r, t_app] @@ make_tuple @@ List.mapi aux ts'
         with Not_found -> tupling.tr2_term_rec env t
       else
         tupling.tr2_term_rec env t
   | Let(bindings, t) ->
-      let bindings' = List.map (fun (f,xs,t) -> f, xs, tupling.tr2_term env t) bindings in
-      let env' = List.map (fun (f,xs,t) -> f,(f,xs,t)) bindings' @ env in
+      let bindings' = List.map (fun (f,t) -> f, tupling.tr2_term env t) bindings in
+      let env' = List.map (fun (f,t) -> f,(f,t)) bindings' @ env in
       make_let bindings' @@ tupling.tr2_term env' t
   | _ -> tupling.tr2_term_rec env t
 
@@ -239,13 +240,13 @@ let add_funs = make_trans ()
 let add_funs_desc desc =
   match desc with
   | Let(bindings, t) ->
-      let bindings' = List.map (fun (f,xs,t) -> add_funs.tr_var f, List.map add_funs.tr_var xs, add_funs.tr_term t) bindings in
+      let bindings' = List.map (fun (f,t) -> add_funs.tr_var f, add_funs.tr_term t) bindings in
       let funs1,funs2 =
-        let aux (fs,_) = List.exists (fun (f,_,_) -> Id.mem f fs) bindings in
+        let aux (fs,_) = List.exists (fun (f,_) -> Id.mem f fs) bindings in
         List.partition aux !new_funs
       in
       let funs1' =
-        List.map (Pair.map_fst @@ List.filter_out (fun f -> List.exists (Id.same f -| Triple.fst) bindings)) funs1 in
+        List.map (Pair.map_fst @@ List.filter_out (fun f -> List.exists (Id.same f -| fst) bindings)) funs1 in
       let funs11,funs12 = List.partition ((=) [] -| fst) funs1' in
       new_funs := funs12 @ funs2;
       let t' =
@@ -276,9 +277,9 @@ let tupling t =
 
 let rec decomp_let_app t =
   match t.desc with
-  | Let([x,[], ({desc=App _} as t1)], t2) when is_non_rec [x,[],t1] ->
+  | Let([x, ({desc=App _} as t1)], t2) when is_non_rec [x,t1] ->
       let bindings,t' = decomp_let_app t2 in
-      (x,[],t1)::bindings, t'
+      (x,t1)::bindings, t'
   | _ -> [], t
 
 let is_depend t x = Id.mem x @@ get_fv t
@@ -287,26 +288,26 @@ let let_normalize = make_trans ()
 
 let let_normalize_desc desc =
   match desc with
-  | Let([x,[],{desc=App _}] as bindings, _) when is_non_rec bindings ->
+  | Let([x,{desc=App _}] as bindings, _) when is_non_rec bindings ->
       let_normalize.tr_desc_rec desc
-  | Let([x,[],t1] as bindings, t2) when is_non_rec bindings ->
+  | Let([x,t1] as bindings, t2) when is_non_rec bindings ->
       let t1' = let_normalize.tr_term t1 in
       let t2' = let_normalize.tr_term t2 in
       let bindings,t2'' = decomp_let_app t2' in
       let rec aux acc bindings =
         match bindings with
           [] -> acc,[]
-        | (_,_,t)::bindings' when is_depend t x -> acc, bindings
-        | (y,_,t)::bindings' -> aux (acc@[y,[],t]) bindings'
+        | (_,t)::bindings' when is_depend t x -> acc, bindings
+        | (y,t)::bindings' -> aux (acc@[y,t]) bindings'
       in
       let bindings1,bindings2 = aux [] bindings in
       if bindings1 = [] then
-        Let([x,[],t1'], t2')
+        Let([x,t1'], t2')
       else
         let t2''' = make_lets bindings2 t2'' in
         if Debug.check() then Color.printf Color.Yellow "NORMALIZE: %a@." Id.print x;
-        if Debug.check() then Color.printf Color.Reverse "[%a]@." (print_list Id.print ";") @@ List.map (fun (x,_,_) -> x) bindings;
-        (make_lets bindings1 @@ make_lets [x,[],t1'] t2''').desc
+        if Debug.check() then Color.printf Color.Reverse "[%a]@." (print_list Id.print ";") @@ List.map fst bindings;
+        (make_lets bindings1 @@ make_lets [x,t1'] t2''').desc
   | _ -> let_normalize.tr_desc_rec desc
 
 let () = let_normalize.tr_desc <- let_normalize_desc
@@ -339,7 +340,7 @@ let elim_sub_app = make_trans2 ()
 
 let elim_sub_app_desc env desc =
   match desc with
-  | Let([x,[],t1], t2) when is_non_rec [x,[],t1] ->
+  | Let([x,t1], t2) when is_non_rec [x,t1] ->
       let env' = (x,t1)::env in
       let t2' =
         let ys = List.map fst @@ List.filter (fun (y,t2) -> not (is_depend t1 y) && is_subsumed t2 t1) env in
@@ -347,7 +348,7 @@ let elim_sub_app_desc env desc =
         List.fold_left (fun t y -> make_label ~label:"elim_sub" (InfoId y) @@ subst_var y x t) t2 ys
       in
       let t2'' = elim_sub_app.tr2_term env' t2' in
-      Let([x,[],t1], t2'')
+      Let([x,t1], t2'')
   | _ -> elim_sub_app.tr2_desc_rec env desc
 
 let () = elim_sub_app.tr2_desc <- elim_sub_app_desc
@@ -356,7 +357,7 @@ let elim_substed_let = make_trans2 ()
 
 let elim_substed_let_term xs t =
   match t.desc with
-  | Let([x,[],t1], t2) when Id.mem x xs && not (is_depend t2 x) && is_non_rec [x,[],t1] ->
+  | Let([x,t1], t2) when Id.mem x xs && not (is_depend t2 x) && is_non_rec [x,t1] ->
       elim_substed_let.tr2_term xs t2
   | _ -> elim_substed_let.tr2_term_rec xs t
 
@@ -382,14 +383,14 @@ let elim_same_app = make_trans2 ()
 
 let elim_same_app_term env t =
   match t.desc with
-  | Let([x,[],({desc=App({desc=Var _}, [{desc=Tuple _}])} as t1)], t2) when is_non_rec [x,[],t1] ->
+  | Let([x,({desc=App({desc=Var _}, [{desc=Tuple _}])} as t1)], t2) when is_non_rec [x,t1] ->
       begin
         try
           let y,_ = List.find (same_term t1 -| snd) env in
           Debug.printf "%a |-> %a@." Id.print x Id.print y;
           elim_same_app.tr2_term env @@ subst_var x y t2
         with Not_found ->
-          make_let [x,[],t1] @@ elim_same_app.tr2_term ((x,t1)::env) t2
+          make_let [x,t1] @@ elim_same_app.tr2_term ((x,t1)::env) t2
       end
   | _ -> elim_same_app.tr2_term_rec env t
 
@@ -404,19 +405,19 @@ let is_used_in t1 t2 = col_same_term t1 t2 <> []
 
 let rec decomp_let_app_option f t =
   match t.desc with
-  | Let([x, [], {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g && is_non_rec [binding] ->
+  | Let([x, {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g && is_non_rec [binding] ->
       let ts' = List.map decomp_some ts in
       if not @@ List.for_all2 (fun t t' -> Option.is_some t' || is_none t) ts ts' then invalid_arg "decomp_let_app_option";
       let args = List.filter_map Std.identity @@ List.mapi (fun i t -> Option.map (fun t' -> i, x, t') t) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
-  | Let([x, [], {desc=App({desc=Var g}, [_])}] as bindings, t2) when Id.same f g && is_non_rec bindings ->
+  | Let([x, {desc=App({desc=Var g}, [_])}] as bindings, t2) when Id.same f g && is_non_rec bindings ->
       invalid_arg "decomp_let_app_option"
   | _ -> [], [], t
 
 let replace_app_term env t =
   match t.desc with
-  | Let([x, [], {desc=App({desc=Var f},[t1])}] as bindings, _) when is_non_rec bindings->
+  | Let([x, {desc=App({desc=Var f},[t1])}] as bindings, _) when is_non_rec bindings->
       begin
         try
           let bindings,apps1,t2 = decomp_let_app_option f t in
@@ -453,7 +454,7 @@ let replace_app_term env t =
           in
           let t1 = make_app (make_var f) [arg] in
           Debug.printf "NEW: %a = %a@." Id.print y Print.term t1;
-          make_lets bindings @@ make_let [y,[],t1] @@ sbst t2'
+          make_lets bindings @@ make_let [y,t1] @@ sbst t2'
         with Invalid_argument ("decomp_let_app_option"|"replace_app") -> replace_app.tr2_term_rec env t
       end
   | _ -> replace_app.tr2_term_rec env t

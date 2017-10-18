@@ -155,21 +155,17 @@ let rec gen_constr env tenv t =
       add_effect e @@ {(make_if t1' t2' t3') with typ=ty; attr=t.attr}
   | Let(bindings, t1) ->
       let tenv' =
-        let make_env (f,_,_) = f, make_template env (Id.typ f) |@> Format.printf "%a : %a@." Id.print f Print.typ in
+        let make_env (f,_) = f, make_template env (Id.typ f) |@> Format.printf "%a : %a@." Id.print f Print.typ in
         List.map make_env bindings @@@ tenv
       in
       let e = new_evar env in
-      let aux (f, xs, t1) =
+      let aux (f, t1) =
         let f_typ = Id.assoc f tenv' in
         let f' = Id.set_typ f f_typ in
-        let t1' =
-          t1
-          |> List.fold_right make_fun xs
-          |> gen_constr env tenv'
-        in
+        let t1' = gen_constr env tenv' t1 in
         flatten_sub env t1'.typ f_typ;
         env.constraints <- (effect_of t1', e) :: env.constraints;
-        f', [], t1'
+        f', t1'
       in
       let bindings' = List.map aux bindings in
       let t1' = gen_constr env tenv' t1 in

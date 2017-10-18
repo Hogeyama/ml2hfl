@@ -39,8 +39,8 @@ val make_randint_cps : bool -> term
 val make_app : term -> term list -> term
 val make_app_raw : term -> term list -> term (** Does not merge arguments *)
 val make_fail : typ -> term
-val make_let : (id * id list * term) list -> term -> term
-val make_lets : (id * id list * term) list -> term -> term
+val make_let : (id * term) list -> term -> term
+val make_lets : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
 val make_fun : id -> term -> term
 val make_funs : id list -> term -> term
@@ -115,11 +115,10 @@ val is_none : term -> bool
 val decomp_some : term -> term option
 val decomp_is_none : term -> term option
 val decomp_get_val : term -> term option
-val decomp_funs : term -> id list * term
-val decomp_lets : term -> (id * id list * term) list list * term
+val decomp_lets : term -> (id * term) list list * term
 val decomp_var : term -> id option
 val decomp_bexp : term -> term list
-val decomp_prog : term -> (id * id list * term) list list * term
+val decomp_prog : term -> (id * term) list list * term
 val decomp_list : term -> term list option
 val var_of_term : term -> id
 val int_of_term : term -> int
@@ -138,6 +137,7 @@ val is_randint_unit : term -> bool
 val is_randbool_unit : term -> bool
 val effect_of_typ : typ -> Type.effect
 val effect_of : term -> Type.effect
+val is_fun : term -> bool
 
 (** {6 Misc} *)
 val subst : id -> term -> term -> term
@@ -174,7 +174,7 @@ val var_of_term : term -> id
 val make_term : typ -> term
 val col_same_term : term -> term -> term list
 val col_info_id : term -> id list
-val is_bottom_def : id -> id list -> Syntax.term -> bool
+val is_bottom_def : id -> Syntax.term -> bool
 val merge_typ : typ -> typ -> typ
 val get_last_definition : term -> id option
 val get_body : term -> term
@@ -219,7 +219,7 @@ module Term : sig
   val string : string -> term
   val (@) : term -> term list -> term
   val (@@) : term -> term list -> term
-  val let_ : (id * id list * term) list -> term -> term
+  val let_ : (id * term) list -> term -> term
   val fun_ : id -> term -> term
   val not : term -> term
   val (&&) : term -> term -> term
