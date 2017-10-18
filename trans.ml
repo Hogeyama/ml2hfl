@@ -473,15 +473,15 @@ let part_eval t =
 
 let trans_let = make_trans ()
 
-let trans_let_term t =
-  match t.desc with
+let trans_let_desc desc =
+  match desc with
   | Let([f, t1], t2) when not @@ is_fun t1 ->
-      make_app (make_fun f @@ trans_let.tr_term t2) [trans_let.tr_term t1]
+      App(make_fun f @@ trans_let.tr_term t2, [trans_let.tr_term t1])
   | Let(bindings, t2) when List.exists (function (_,{desc=Fun _}) -> false | _ -> true) bindings ->
       assert false
-  | _ -> trans_let.tr_term_rec t
+  | _ -> trans_let.tr_desc_rec desc
 
-let () = trans_let.tr_term <- trans_let_term
+let () = trans_let.tr_desc <- trans_let_desc
 let trans_let = trans_let.tr_term
 
 
@@ -1904,7 +1904,8 @@ let replace_bottom_def = make_trans ()
 let replace_bottom_def_desc desc =
   match desc with
   | Let([f,t1], t2) when is_bottom_def f t1 ->
-      Let([f,make_bottom t1.typ], replace_bottom_def.tr_term t2)
+      let xs,t1 = decomp_funs t1 in
+      Let([f, make_funs xs @@ make_bottom t1.typ], replace_bottom_def.tr_term t2)
   | _ -> replace_bottom_def.tr_desc_rec desc
 
 let () = replace_bottom_def.tr_desc <- replace_bottom_def_desc
