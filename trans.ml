@@ -1536,6 +1536,7 @@ let normalize_let_term is_atom t =
   | _ -> normalize_let.tr2_term_rec is_atom t
 
 let () = normalize_let.tr2_term <- normalize_let_term
+let () = normalize_let.tr2_typ <- fun x y -> y
 let normalize_let ?(is_atom=fun _ -> false) = normalize_let.tr2_term is_atom
 
 
