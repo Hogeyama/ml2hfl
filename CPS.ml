@@ -1554,6 +1554,8 @@ let initial_env () =
 let pr2 s p t = Debug.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
 
+let transform2 _ = assert false
+
 let trans t =
   pr "INPUT" t;
   let env = initial_env () in
@@ -1576,7 +1578,15 @@ let trans t =
       if !!Debug.check then Format.printf "typ_excep: %a@." Print.typ typ_excep;
       trans_typ sol typ_unknown typ_excep typ_exn
     in
-    let t = transform sol typ_excep' "" typed in
+    let t =
+      if false then
+        t
+        |> Effect_analysis.infer ~for_cps:true
+        |> transform2 typ_excep' ""
+        |> Trans.remove_effect_attribute
+      else
+        transform sol typ_excep' "" typed
+    in
     let x = Id.new_var TUnit in
     let e = Id.new_var ~name:"e" typ_excep' in
     let k = make_fun x cps_result in

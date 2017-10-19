@@ -8,12 +8,12 @@ module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 type env =
   {mutable constraints: (effect * effect) list;
    mutable counter: int;
-   cont_if: bool}
+   for_cps: bool}
 
-let initial_env cont_if =
+let initial_env for_cps =
   let counter = 0 in
   let constraints = [ECont, EVar 0] in
-  {counter; constraints; cont_if}
+  {counter; constraints; for_cps}
 
 let rec infer _ =
   assert false
@@ -32,7 +32,17 @@ let rec make_template env ty =
     | TBool
     | TInt -> ty
     | TVar _ -> unsupported __MODULE__
-    | TFun(x, ty2) -> TFun(Id.map_typ (make_template env) x, make_template env ty2)
+    | TFun(x, ty2) ->
+        let x' = Id.map_typ (make_template env) x in
+        let ty2' = make_template env ty2 in
+        if env.for_cps then
+          match elim_tattr ty2 with
+          | TUnit | TBool | TInt ->
+              env.constraints <- (ECont, effect_of_typ ty2') :: env.constraints
+          | _ -> ()
+        else
+          ();
+        TFun(x', ty2')
     | TFuns _ -> unsupported __MODULE__
     | TTuple xs -> TTuple (List.map (Id.map_typ (make_template env)) xs)
     | TData _ -> unsupported __MODULE__
@@ -99,8 +109,19 @@ let rec flatten_sub ?(ignore_top=false) env ty1 ty2 =
   | TApp _, _ -> unsupported __MODULE__
   | TAttr _, _ -> assert false
 
+let get_tfun_effect ty =
+  match elim_tattr ty with
+  | TFun(_, ty2) -> effect_of_typ ty2
+  | _ -> assert false
+
 let rec gen_constr env tenv t =
   match t.desc with
+  | Const (RandValue(_, false)) ->
+      let t' = add_evar env t in
+      let e = get_tfun_effect t'.typ in
+      env.constraints <- (ECont, e) :: env.constraints;
+      t'
+  | Const (RandValue(_, true)) -> unsupported __MODULE__
   | Const _ -> add_evar env t
   | Bottom ->
       let e = new_evar env in
@@ -117,8 +138,7 @@ let rec gen_constr env tenv t =
             Format.printf "%a@." Print.id x; assert false
       in
       let x' = Id.set_typ x ty in
-      let e = effect_of_typ ty in
-      add_effect e {desc=Var x'; typ=ty; attr=t.attr}
+      add_effect ENone {desc=Var x'; typ=ty; attr=t.attr}
   | Fun(x, t1) ->
       let x_typ = make_template env (Id.typ x) in
       let x' = Id.set_typ x x_typ in
@@ -128,7 +148,7 @@ let rec gen_constr env tenv t =
       add_effect ENone @@ {desc=Fun(x',t1'); typ=ty; attr=t.attr}
   | App(t1, []) -> assert false
   | App(t1, t2::t3::ts) ->
-      let typ = (make_app t1 [t2]).typ in
+      let typ = (make_app_raw t1 [t2]).typ in
       let t12 = {desc=App(t1,[t2]);typ;attr=[]} in
       let t' = {desc=App(t12, t3::ts); typ=t.typ; attr=[]} in
       gen_constr env tenv t'
@@ -140,8 +160,10 @@ let rec gen_constr env tenv t =
         | TFun(x,ty2) -> Id.typ x, effect_of_typ ty2
         | _ -> assert false
       in
+      env.constraints <- (effect_of t1', e) :: env.constraints;
+      env.constraints <- (effect_of t2', e) :: env.constraints;
       flatten_sub ~ignore_top:true env t2'.typ ty_arg;
-      add_effect e @@ {(make_app t1' [t2']) with attr=t.attr}
+      add_effect e @@ {(make_app_raw t1' [t2']) with attr=t.attr}
   | If(t1, t2, t3) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
@@ -151,11 +173,11 @@ let rec gen_constr env tenv t =
       env.constraints <- (effect_of t1', e) :: env.constraints;
       flatten_sub env t2'.typ ty;
       flatten_sub env t3'.typ ty;
-      if env.cont_if then env.constraints <- (ECont, e) :: env.constraints;
+      if env.for_cps then env.constraints <- (ECont, e) :: env.constraints;
       add_effect e @@ {(make_if t1' t2' t3') with typ=ty; attr=t.attr}
   | Let(bindings, t1) ->
       let tenv' =
-        let make_env (f,_) = f, make_template env (Id.typ f) |@> Format.printf "%a : %a@." Id.print f Print.typ in
+        let make_env (f,_) = f, make_template env (Id.typ f) in
         List.map make_env bindings @@@ tenv
       in
       let e = new_evar env in
@@ -189,11 +211,7 @@ let rec gen_constr env tenv t =
   | Event(s,true) -> unsupported __MODULE__
   | Event(s,false) ->
       let t' = add_evar env t in
-      let e =
-        match elim_tattr t'.typ with
-        | TFun(_, ty) -> effect_of_typ ty
-        | _ -> assert false
-      in
+      let e = get_tfun_effect t'.typ in
       env.constraints <- (ECont, e) :: env.constraints;
       t'
   | Proj(i,t1) ->
@@ -288,8 +306,8 @@ let apply_sol =
 
 
 
-let infer ?(cont_if=false) t =
-  let env = initial_env cont_if in
+let infer ?(for_cps=false) t =
+  let env = initial_env for_cps in
   let ext_funs =
     let eq x y = Id.same x y && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
     get_fv ~eq t
