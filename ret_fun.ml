@@ -36,7 +36,7 @@ let normalize_term t =
       let t2' = normalize.tr_term t2 in
       let x1 = new_var_of_term t1 in
       let x2 = new_var_of_term t2 in
-      make_lets [x1,t1'; x2,t2'] @@ {desc=BinOp(op,make_var x1,make_var x2); typ=t.typ; attr=[]}
+      make_lets [x1,t1'; x2,t2'] @@ make_binop op (make_var x1) (make_var x2)
   | Not t1 ->
       let t1' = normalize.tr_term t1 in
       let x = new_var_of_term t in

@@ -63,6 +63,7 @@ val make_lt : term -> term -> term
 val make_gt : term -> term -> term
 val make_leq : term -> term -> term
 val make_geq : term -> term -> term
+val make_binop : binop -> term -> term -> term
 val make_fst : term -> term
 val make_snd : term -> term
 val make_pair : term -> term -> term
@@ -237,6 +238,8 @@ module Term : sig
   val (>) : term -> term -> term
   val (<=) : term -> term -> term
   val (>=) : term -> term -> term
+  val (<|) : term -> binop -> term -> term
+  val (|>) : (term -> term) -> term -> term
   val fst : term -> term
   val snd : term -> term
   val pair : term -> term -> term

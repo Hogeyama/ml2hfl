@@ -61,12 +61,16 @@ let rec merge_typ env typ typ' =
   | TBase _, _
   | TFun _, _
   | TAbs _, _
-  | TApp _, _ -> Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ'; assert false
+  | TApp _, _ ->
+      Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ';
+      assert false
 
 let merge_typ typ1 typ2 =
   try
     merge_typ [] typ1 typ2
-  with _ -> (Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false)
+  with _ ->
+    Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;
+    assert false
 
 let rec negate_typ = function
   | TBase(b,ps) -> TBase(b, List.map make_not -| ps)

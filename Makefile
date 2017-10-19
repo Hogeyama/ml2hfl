@@ -25,8 +25,12 @@ opt: $(NAME).opt
 top: $(NAME).top
 
 
+ifdef GIT
+GIT_FILES = $(shell git ls-files)
+endif
+
 main: revision.ml
-revision.ml: .git/logs/HEAD $(FPAT_LIB) Makefile Makefile.config
+revision.ml: .git/logs/HEAD $(GIT_FILES) $(FPAT_LIB) Makefile Makefile.config
 	@echo make revision.ml
 	@rm -f $@
 ifdef GIT

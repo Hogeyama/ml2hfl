@@ -185,14 +185,14 @@ and remove_pair_aux t typ_opt =
   | Fun(x, t) ->
       let xs = flatten @@ remove_pair_var x in
       let t' = remove_pair t in
-      leaf (List.fold_right make_fun xs t')
+      leaf @@ List.fold_right make_fun xs t'
   | App(t1, ts) ->
       let typs = get_argtyps t1.typ in
       assert (List.length typs >= List.length ts);
       let typs' = List.take (List.length ts) typs in
       let t' = remove_pair t1 in
       let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t @@ Some typ)) ts typs') in
-      leaf (make_app t' ts')
+      leaf @@ make_app t' ts'
   | If(t1, t2, t3) ->
       let t1' = remove_pair t1 in
       let t2' = remove_pair t2 in
@@ -206,7 +206,7 @@ and remove_pair_aux t typ_opt =
       in
       let bindings' = List.map aux bindings in
       let t' = remove_pair t in
-      leaf (make_let bindings' t')
+      leaf @@ make_let bindings' t'
   | BinOp(op, t1, t2) ->
       begin
         match op, elim_tattr t1.typ with
@@ -220,10 +220,10 @@ and remove_pair_aux t typ_opt =
       end;
       let t1' = remove_pair t1 in
       let t2' = remove_pair t2 in
-      leaf {desc=BinOp(op, t1', t2'); typ=root typs; attr=[]}
+      leaf @@ make_binop op t1' t2'
   | Not t1 ->
       let t1' = remove_pair t1 in
-      leaf (make_not t1')
+      leaf @@ make_not t1'
   | Record fields -> assert false
   | Field(s,t1) -> assert false
   | SetField(s,t1,t2) -> assert false

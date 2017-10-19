@@ -532,8 +532,7 @@ let normalize_binop_exp op t1 t2 =
         begin
           match List.exists aux xns1, List.exists aux xns2 with
           | true, true ->
-              Format.printf "Nonlinear expression not supported: %a@."
-                            Print.term {desc=BinOp(op,t1,t2);typ=TInt; attr=[]};
+              Format.printf "Nonlinear expression not supported: %a@." Print.term (make_binop op t1 t2);
               assert false
           | false, true ->
               let k = reduce xns1 in
@@ -1339,7 +1338,7 @@ let normalize_let =
     | BinOp(op,t1,t2) ->
         let t1',post1 = tr_aux is_atom t1 in
         let t2',post2 = tr_aux is_atom t2 in
-        post1 @@ post2 @@ {desc=BinOp(op, t1', t2'); typ=t.typ; attr=[]}
+        post1 @@ post2 @@ make_binop op t1' t2'
     | Not t1 ->
         let t1',post = tr_aux is_atom t1 in
         post @@ make_not t1'
@@ -2001,6 +2000,7 @@ let recover_const_attr_shallowly t =
   in
   {t with attr = List.unique (attr @ t.attr)}
 
+
 let recover_const_attr =
   let tr = make_trans () in
   tr.tr_term <- recover_const_attr_shallowly -| tr.tr_term_rec;
@@ -2189,10 +2189,8 @@ let reconstruct =
       | Fun(x, t) -> make_fun x @@ tr.tr_term t
       | App(t1, ts) -> make_app (tr.tr_term t1) @@ List.map tr.tr_term ts
       | If(t1, t2, t3) -> make_if (tr.tr_term t1) (tr.tr_term t2) (tr.tr_term t3)
-      | Let(bindings, t) ->
-          make_let (List.map (Pair.map_snd tr.tr_term) bindings) @@ tr.tr_term t
-      | BinOp(And, t1, t2) -> make_and (tr.tr_term t1) (tr.tr_term t2)
-      | BinOp(Or, t1, t2) -> make_or (tr.tr_term t1) (tr.tr_term t2)
+      | Let(bindings, t) -> make_let (List.map (Pair.map_snd tr.tr_term) bindings) @@ tr.tr_term t
+      | BinOp(op, t1, t2) -> make_binop op (tr.tr_term t1) (tr.tr_term t2)
       | Not t -> make_not @@ tr.tr_term t
       | Tuple ts -> make_tuple @@ List.map tr.tr_term ts
       | Proj(i, t) -> make_proj i @@ tr.tr_term t

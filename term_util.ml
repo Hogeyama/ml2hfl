@@ -214,6 +214,22 @@ let make_geq t1 t2 =
   assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
   assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Geq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+let make_binop op t1 t2 =
+  let f =
+    match op with
+    | Eq -> make_eq
+    | Lt -> make_lt
+    | Gt -> make_gt
+    | Leq -> make_leq
+    | Geq -> make_geq
+    | And -> make_and
+    | Or -> make_or
+    | Add -> make_add
+    | Sub -> make_sub
+    | Mult -> make_mul
+    | Div -> make_div
+  in
+  f t1 t2
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
 let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
 let make_tuple' ts =
@@ -1189,6 +1205,7 @@ module Term = struct
   let (>) = make_gt
   let (<=) = make_leq
   let (>=) = make_geq
+  let (<|) t1 op = make_binop op t1 and (|>) mb t2 = mb t2
   let fst = make_fst
   let snd = make_snd
   let pair = make_pair
