@@ -12,7 +12,6 @@ type base =
 
 type 'a t =
   | TBase of base * ('a -> 'a list)
-  | TAbs of ('a t -> 'a t)
   | TApp of 'a t * 'a t
   | TFun of 'a t * ('a -> 'a t)
 
@@ -70,6 +69,5 @@ let is_ttuple typ =
 let rec arg_num x typ =
   match typ with
   | TBase _ -> 0
-  | TAbs _ -> unsupported "CEGAR_type.arg_num: TAbs"
-  | TApp _ -> unsupported "CEGAR_type.arg_num: TAbs"
+  | TApp _ -> unsupported "CEGAR_type.arg_num: TApp"
   | TFun(typ1, typ2) -> 1 + arg_num x (typ2 x)

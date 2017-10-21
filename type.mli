@@ -38,8 +38,6 @@ val typ_unknown : 'a t
 val elim_tattr : 'a t -> 'a t
 val tfuns_to_tfun : 'a t -> 'a t
 val elim_tattr_all : 'a t -> 'a t
-val decomp_tfun : 'a t -> 'a t Id.t list * 'a t
-val decomp_tfuns : 'a t -> 'a t Id.t list * 'a t
 val flatten : 'a t -> 'a t
 val unify : 'a t -> 'a t -> unit
 val copy : 'a t -> 'a t
@@ -53,6 +51,8 @@ val remove_arg_at : int -> 'a t -> 'a t
 
 (** {6 destructor} *)
 
+val decomp_tfun : 'a t -> 'a t Id.t list * 'a t
+val decomp_tfuns : 'a t -> 'a t Id.t list * 'a t
 val tuple_num : 'a t -> int option
 val proj_typ : int -> 'a t -> 'a t
 val fst_typ : 'a t -> 'a t
@@ -66,6 +66,7 @@ val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
 val get_free_data_name : 'a t -> string list
 val array_typ : 'a t -> 'a t
+val decomp_tattr : 'a t -> 'a attr list * 'a t
 
 
 (** {6 Type constructor} *)

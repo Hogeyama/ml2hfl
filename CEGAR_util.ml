@@ -56,7 +56,6 @@ let rec subst_typ x t = function
       TBase(b, ps')
   | TFun(typ1,typ2) -> TFun(subst_typ x t typ1, subst_typ x t -| typ2)
   | TApp(typ1, typ2) -> TApp(subst_typ x t typ1, subst_typ x t typ2)
-  | _ -> assert false
 
 let rec subst_typ_map map = function
   | TBase(b,ps) ->
@@ -72,7 +71,6 @@ let rec arg_num = function
   | TBase _ -> 0
   | TFun(_,typ) -> 1 + arg_num (typ (Const Unit))
   | TApp _ -> 0
-  | _ -> assert false
 
 
 
@@ -868,7 +866,6 @@ let elim_same_arg prog =
   let rec subst_arg_typ_aux j x typ =
     match typ with
     | TBase _ -> assert false
-    | TAbs _ -> unsupported "elim_arg_typ"
     | TApp _ -> unsupported "elim_arg_typ"
     | TFun(typ1, typ2) ->
         if j = 0 then
@@ -879,7 +876,6 @@ let elim_same_arg prog =
   let rec subst_arg_typ i j typ =
     match typ with
     | TBase _ -> assert false
-    | TAbs _ -> unsupported "elim_arg_typ"
     | TApp _ -> unsupported "elim_arg_typ"
     | TFun(typ1, typ2) ->
         if i = 0 then

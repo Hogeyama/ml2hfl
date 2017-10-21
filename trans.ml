@@ -5,7 +5,7 @@ open Type
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let flatten_tvar = (make_trans ()).tr_term
+let flatten_tvar = !!make_trans.tr_term
 
 (* not capture-avoiding *)
 let subst_var_id =

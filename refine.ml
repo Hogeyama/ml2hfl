@@ -35,7 +35,7 @@ let rec negate_typ = function
       let typ1 = negate_typ typ1 in
       let typ2 = negate_typ typ2 in
       TFun(typ1, fun t -> subst_typ x t typ2)
-  | (TAbs _ | TApp _) as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
+  | TApp _ as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
 
 let add_nag_preds_renv env =
   let aux (f,typ) = if is_randint_var f then merge_typ typ (negate_typ typ) else typ in
@@ -60,7 +60,6 @@ let rec add_pred n path typ =
   | TFun(typ1,typ2) ->
       assert (List.hd path = 1);
       TFun(typ1, fun x -> add_pred (n-1) (List.tl path) (typ2 x))
-  | TAbs _ -> assert false
   | TApp _ -> assert false
 
 

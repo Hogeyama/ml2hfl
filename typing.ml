@@ -39,7 +39,6 @@ let rec from_typ = function
   | TBase(TList, _) -> assert false
   | TBase(TTuple, _) -> assert false
   | TBase(TAbst s, _) -> TAbst s
-  | TAbs _ -> assert false
   | TApp _ -> assert false
   | TFun(typ1, typ2) -> TFun(from_typ typ1, from_typ (typ2 (Const Unit)))
 

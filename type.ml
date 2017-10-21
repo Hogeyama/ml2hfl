@@ -516,3 +516,9 @@ let rec remove_arg_at i typ =
   | TFun(x, typ) when i = 0 -> typ
   | TFun(x, typ) -> TFun(x, remove_arg_at (i-1) typ)
   | _ -> assert false
+
+
+let decomp_tattr ty =
+  match ty with
+  | TAttr(attrs, ty') -> attrs, ty'
+  | _ -> [], ty

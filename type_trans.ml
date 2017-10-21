@@ -18,7 +18,6 @@ let rec simple typ =
   match typ with
   | AT.TBase(base,_) when base = AT.typ_result_base -> AT.TBase(AT.TUnit, fun _ -> [])
   | AT.TBase(base,_) -> AT.TBase(base, fun _ -> [])
-  | AT.TAbs _ -> unsupported "CEGAR_type.remove_pred: TAbs"
   | AT.TApp _ -> unsupported "CEGAR_type.remove_pred: TApp"
   | AT.TFun(typ1, typ2) -> AT.TFun(simple typ1, simple -| typ2)
 

@@ -22,7 +22,6 @@ let new_id x =
 let rec occur_arg_pred x = function
   | TBase(_,ps) -> List.mem x @@ List.rev_flatten_map get_fv @@ ps (Const Unit)
   | TFun(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x @@ typ2 (Const Unit)
-  | TAbs _ -> assert false
   | TApp(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x typ2
 
 let rec print_var = Format.pp_print_string
@@ -62,7 +61,6 @@ and print_typ_aux var fm = function
   | TApp _ as typ ->
       let typ,typs = decomp_tapp typ in
       Format.fprintf fm "(%a)" (print_list (print_typ_aux None) " ") (typ::typs)
-  | TAbs _ -> assert false
 
 and print_typ fm typ =
   counter := 1;
@@ -359,7 +357,6 @@ and print_typ_as_tree fm = function
     TBase(b,ps) ->
       let x = new_id "x" in
         Format.fprintf fm "(TBase(%a,fun %s->%a))" print_base_typ_as_tree b x (print_list_as_tree print_term_as_tree) (ps (Var x))
-  | TAbs _ -> assert false
   | TApp _ -> assert false
   | TFun(typ1,typ2) ->
       let x = new_id "x" in
@@ -496,7 +493,6 @@ let rec has_preds = function
   | TBase(_, ps) -> (ps (Var "x") <> [])
   | TApp(t1, t2) -> has_preds t1 || has_preds t2
   | TFun(t1, t2) -> has_preds t1 || has_preds (t2 (Var "x"))
-  | _ -> assert false
 
 let rec print_env_diff fm env =
   let add_rand_info f = match decomp_randint_name f with

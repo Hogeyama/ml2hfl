@@ -60,7 +60,6 @@ let rec merge_typ env typ typ' =
       TFun(typ1, fun t -> subst_typ x t typ2)
   | TBase _, _
   | TFun _, _
-  | TAbs _, _
   | TApp _, _ ->
       Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ';
       assert false
@@ -68,7 +67,7 @@ let rec merge_typ env typ typ' =
 let merge_typ typ1 typ2 =
   try
     merge_typ [] typ1 typ2
-  with _ ->
+  with _ when !!Debug.check ->
     Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;
     assert false
 
@@ -78,7 +77,7 @@ let rec negate_typ = function
       let typ1 = negate_typ typ1 in
       let typ2 = negate_typ -| typ2 in
       TFun(typ1, typ2)
-  | (TAbs _ | TApp _) as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
+  | TApp _ as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
 
 let add_neg_preds_renv env =
   let aux (f,typ) = if is_randint_var f then (f, merge_typ typ (negate_typ typ)) else (f, typ) in
@@ -147,7 +146,8 @@ let rec preds_of typ =
       end
   | _ -> fun _ -> []
 
-and trans_typ = function
+and trans_typ ty =
+  match ty with
   | Type.TUnit -> typ_unit
   | Type.TBool -> typ_bool ()
   | Type.TInt -> typ_int
@@ -175,8 +175,8 @@ and trans_typ = function
       let typ2 = trans_typ typ in
       TFun(typ1, fun _ -> typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
-  | Type.TAttr(_, typ) as typ0 when Term_util.get_tapred typ0 <> None ->
-      let x,ps = Option.get @@ Term_util.get_tapred typ0 in
+  | Type.TAttr(_, typ) when Term_util.get_tapred ty <> None ->
+      let x,ps = Option.get @@ Term_util.get_tapred ty in
       begin
         let x' = trans_var x in
         let ps' = List.map (snd -| trans_term "" [] []) ps in
@@ -564,7 +564,6 @@ let rec revert_typ ty =
   | TBase(b,_) ->
       Format.printf "%a@." CEGAR_print.typ ty;
       unsupported "CEGAR_trans.revert_typ: TBase"
-  | TAbs _ -> unsupported "CEGAR_trans.revert_typ: TAbs"
   | TApp _ -> unsupported "CEGAR_trans.revert_typ: TApp"
   | TFun(typ1, typ2) -> Type.TFun(Id.new_var (revert_typ typ1), revert_typ @@ typ2 @@ Const Unit)
 

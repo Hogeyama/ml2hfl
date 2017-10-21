@@ -27,8 +27,6 @@ let (|@>) x f = f x; x
 let (|*>) x f = x
 let (|*@>) x f = x
 let (|@*>) x f = x
-let assert_ f x = assert (f x)
-let assert_false _ = fatal "assert_false"
 let (|@) x b f = if b then f x; x
 let (|@!) x b f = if !b then f x; x
 let (|@!!) x b f = if !!b then f x; x
@@ -44,6 +42,23 @@ let (-$-) f x y = f y x
 let (!?) x = Lazy.force x
 
 let (=>) b1 b2 = not b1 || b2
+
+let raise_assert_failure loc =
+  let r = Str.regexp {|^File \"\(.*\)\", line \([0-9]+\), characters \([0-9]+\)-[0-9]+$|} in
+  assert (Str.string_match r loc 0);
+  let file = Str.matched_group 1 loc in
+  let line = int_of_string @@ Str.matched_group 2 loc in
+  let first = int_of_string @@ Str.matched_group 3 loc in
+  raise (Assert_failure(file,line,first))
+
+let assert_ ?__LOC__ f x =
+  try
+    assert (f x)
+  with Assert_failure _ when __LOC__ <> None -> raise_assert_failure (Option.get __LOC__)
+let assert_false ?__LOC__ _ =
+  match __LOC__ with
+  | None -> fatal "assert_false"
+  | Some loc -> raise_assert_failure loc
 
 let (@@@) = List.rev_append
 

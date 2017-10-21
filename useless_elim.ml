@@ -309,8 +309,7 @@ let rec meat typ1 typ2 =
 *)
 
 let rec template = function
-    CEGAR_type.TBase _ -> new_tvar ()
-  | TAbs _ -> assert false
+  | CEGAR_type.TBase _ -> new_tvar ()
   | TApp _ -> assert false
   | CEGAR_type.TFun(typ1,typ2) -> TFun(template typ1, template (typ2 (Const Unit)))
 
