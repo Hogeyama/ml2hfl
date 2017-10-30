@@ -357,6 +357,7 @@ let rec arg_spec () =
      "-decomp-eq-pred", Arg.Set Flag.PredAbst.decomp_eq_pred, " Decompose abstraction predicates on equalities (e.g., [t1 = t2] ==> [t1 <= t2, t1 >= t2])";
      (* higher-order model checking *)
      "", Arg.Unit ignore, "Options_for_model_checking";
+     "-rename-hors", Arg.Set Flag.ModelCheck.rename_hors, " Set different name to each hors file";
      "-ea", Arg.Set Flag.Print.eval_abst, " Print evaluation of abstacted program";
      "-bool-church", Arg.Set Flag.ModelCheck.church_encode, " Use church-encoding for model checking";
      "-trecs", Arg.Unit Flag.ModelCheck.(fun () -> mc:=TRecS), " Use TRecS as the model checker";
@@ -376,6 +377,7 @@ let rec arg_spec () =
      "-bool-init-empty", Arg.Set Flag.Method.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
+     "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
      (* SWT solver *)
      "", Arg.Unit ignore, "Options_for_SMT_solver";
      "-cvc3-bin", Arg.Set_string Flag.cvc3,

@@ -178,7 +178,13 @@ let verifyFile filename =
 *)
 let check target =
   let target' = trans target in
-  let input = Filename.change_extension !!Flag.mainfile "hors" in
+  let ext =
+    if !Flag.ModelCheck.rename_hors then
+      string_of_int !Flag.Log.cegar_loop ^ ".hors"
+    else
+      "hors"
+  in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     Debug.printf "%s." target';
     write_log input target';

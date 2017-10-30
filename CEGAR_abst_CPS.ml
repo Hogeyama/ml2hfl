@@ -7,7 +7,7 @@ open CEGAR_abst_util
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let abst_arg x typ =
-  Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
+  if false then Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
   match typ with
   | TBase(_,ps) ->
       begin
@@ -161,7 +161,7 @@ let rec eta_expand_term_aux env t typ =
   | _ -> assert false
 
 let rec eta_expand_term env t typ =
-  Debug.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if false then Debug.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
   | Const (Rand(TInt,_))
@@ -393,13 +393,13 @@ let abstract_def env (f,xs,t1,e,t2) =
         typ', (x,typ1)::env'
   in
   let typ,env' = decomp_typ (try List.assoc f env with Not_found -> assert false) xs in
-  Debug.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
+  if false then Debug.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@@ env in
   let pts = List.flatten_map (Fun.uncurry make_pts) env' in
   let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
-  Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
+  if false then Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
   if Debug.check() then Flag.Print.fun_arg_typ := true;
-  Debug.printf "%s:: %a@." f CEGAR_print.term t2;
+  if false then Debug.printf "%s:: %a@." f CEGAR_print.term t2;
   let t2' = hd (abstract_term None env'' [t1] pts t2 typ) in
   let t2'' = eta_reduce_term t2' in
   if e <> [] && t1 <> Const True then
@@ -474,24 +474,25 @@ let abstract orig_fun_list force prog top_funs =
   let labeled,prog = add_label prog in
   prog
   |@> pr "INPUT"
-  |> expand_non_rec
-  |@> pr "EXPAND_NONREC"
-  |> CEGAR_trans.simplify_if
-  |@> pr "SIMPLIFY_IF"
+  |&not !Flag.PredAbst.no_simplification&> expand_non_rec
+  |@not !Flag.PredAbst.no_simplification&> pr "EXPAND_NONREC"
+  |&not !Flag.PredAbst.no_simplification&> CEGAR_trans.simplify_if
+  |@not !Flag.PredAbst.no_simplification&> pr "SIMPLIFY_IF"
   |> eta_expand
   |@> pr "ETA_EXPAND"
   |> abstract_prog
   |@> pr "ABST"
-  |> CEGAR_trans.simplify_if
-  |@> pr "SIMPLIFY_IF"
+  |&not !Flag.PredAbst.no_simplification&> CEGAR_trans.simplify_if
+  |@not !Flag.PredAbst.no_simplification&> pr "SIMPLIFY_IF"
   |> Typing.infer -| initialize_env
   |@!Flag.Debug.abst&> eval_step_by_step
   |> CEGAR_lift.lift2
   |@> pr "LIFT"
   |> trans_eager
   |@> pr "TRANS_EAGER"
-  |> put_into_if
-  |@> Typing.infer
-  |@> pr "PUT_INTO_IF"
+  |&not !Flag.PredAbst.no_simplification&> put_into_if
+  |&not !Flag.PredAbst.no_simplification&> Typing.infer
+  |@not !Flag.PredAbst.no_simplification&> pr "PUT_INTO_IF"
   |> CEGAR_lift.lift2
+  |@> pr "LIFT"
   |> Pair.add_left @@ Fun.const labeled

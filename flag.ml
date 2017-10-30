@@ -146,6 +146,7 @@ module ModelCheck = struct
   let church_encode = ref false
   let beta_reduce = false
   let useless_elim = false
+  let rename_hors = ref false
 end
 
 module PrettyPrinter = struct
