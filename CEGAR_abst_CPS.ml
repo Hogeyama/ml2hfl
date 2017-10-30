@@ -301,7 +301,7 @@ and abstract_term must env cond pts t typ =
       in
       let ts',t'' = List.decomp_snoc ts in
       [abstract_rand_int n must env cond pts ts' t'']
-  | App _ when not !Flag.cartesian_abstraction ->
+  | App _ when not !Flag.PredAbst.cartesian ->
       let t1,ts = decomp_app t in
       let rec decomp_typ ts typ =
         match ts,typ with
@@ -341,7 +341,7 @@ and abstract_term must env cond pts t typ =
       in
       let typs = decomp_typ ts @@ get_typ env t1 in
       let t' = make_app t1 @@ List.flatten @@ List.map2 (abstract_term None env cond pts) ts typs in
-      if !Flag.use_filter
+      if !Flag.PredAbst.use_filter
       then [filter env cond pts must t']
       else [t']
   | Fun _ ->
@@ -354,7 +354,7 @@ and abstract_term must env cond pts t typ =
       let typ' = CEGAR_type.app typ (List.map (_Var -| fst) env') in
       let t'' = hd (abstract_term (Some pts') env'' cond pts'' t' typ') in
       let t''' =
-        if !Flag.use_filter
+        if !Flag.PredAbst.use_filter
         then filter env'' cond pts'' must t''
         else t''
       in
@@ -398,7 +398,7 @@ let abstract_def env (f,xs,t1,e,t2) =
   let pts = List.flatten_map (Fun.uncurry make_pts) env' in
   let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
   Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
-  if Debug.check() then Flag.print_fun_arg_typ := true;
+  if Debug.check() then Flag.Print.fun_arg_typ := true;
   Debug.printf "%s:: %a@." f CEGAR_print.term t2;
   let t2' = hd (abstract_term None env'' [t1] pts t2 typ) in
   let t2'' = eta_reduce_term t2' in
@@ -485,7 +485,7 @@ let abstract orig_fun_list force prog top_funs =
   |> CEGAR_trans.simplify_if
   |@> pr "SIMPLIFY_IF"
   |> Typing.infer -| initialize_env
-  |@!Flag.debug_abst&> eval_step_by_step
+  |@!Flag.Debug.abst&> eval_step_by_step
   |> CEGAR_lift.lift2
   |@> pr "LIFT"
   |> trans_eager

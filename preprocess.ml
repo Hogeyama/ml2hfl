@@ -104,7 +104,7 @@ let all spec : t list =
       (Fun.const true,
        map_trans @@ Trans.elim_unused_let ~leave_last:true);
     Replace_const,
-      (Fun.const !Flag.replace_const,
+      (Fun.const !Flag.Method.replace_const,
        map_trans CFA.replace_const);
     Copy_poly,
       (Fun.const true,
@@ -122,19 +122,19 @@ let all spec : t list =
       (Fun.const true,
        map_trans Encode.abst_ref);
     Make_fun_tuple,
-      (Fun.const !Flag.tupling,
+      (Fun.const !Flag.Method.tupling,
        map_trans Ref_trans.make_fun_tuple);
     Make_ext_funs,
       (Fun.const true,
        fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
     Ignore_non_termination,
-      (Fun.const !Flag.ignore_non_termination,
+      (Fun.const !Flag.Method.ignore_non_termination,
        map_trans Trans.ignore_non_termination);
     Beta_reduce_trivial,
       (Fun.const true,
        map_trans Trans.beta_reduce_trivial);
     Eliminate_redundant_arguments,
-      (Fun.const !Flag.elim_redundant_arg,
+      (Fun.const !Flag.Method.elim_redundant_arg,
        map_trans Trans.elim_redundant_arg);
     Recover_const_attr,
       (Fun.const true,
@@ -146,13 +146,13 @@ let all spec : t list =
       (Fun.const (spec.Spec.abst_env <> []),
        fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
     Ignore_excep_arg,
-      (Fun.const !Flag.ignore_exn_arg,
+      (Fun.const !Flag.Method.ignore_exn_arg,
        map_trans Trans.ignore_exn_arg);
     Encode_simple_variant,
       (Fun.const true,
        map_trans Encode.simple_variant);
     Replace_base_with_int,
-      (Fun.const !Flag.base_to_int,
+      (Fun.const !Flag.Method.base_to_int,
        map_trans Trans.replace_base_with_int);
     Encode_recdata,
       (Fun.const true,
@@ -161,22 +161,22 @@ let all spec : t list =
       (Fun.const true,
        Encode.list -| last_t);
     Ret_fun,
-      (Fun.const !Flag.tupling,
+      (Fun.const !Flag.Method.tupling,
        Ret_fun.trans -| last_t);
     Ref_trans,
-      (Fun.const !Flag.tupling,
+      (Fun.const !Flag.Method.tupling,
        Ref_trans.trans -| last_t);
     Tupling,
-      (Fun.const !Flag.tupling,
+      (Fun.const !Flag.Method.tupling,
        Tupling.trans -| last_t);
     Inline,
       (Fun.const true,
        (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
     CPS,
-      (Fun.const !Flag.trans_to_CPS,
+      (Fun.const !Flag.Mode.trans_to_CPS,
        CPS.trans -| last_t);
     Remove_pair,
-      (Fun.const !Flag.trans_to_CPS,
+      (Fun.const !Flag.Mode.trans_to_CPS,
        Curry.remove_pair -| last_t);
     Replace_bottom_def,
       (Fun.const true,
@@ -185,13 +185,13 @@ let all spec : t list =
       (Fun.const (spec.Spec.abst_cps_env <> []),
        fun acc -> Trans.replace_typ (Spec.get_abst_cps_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
     Eliminate_same_arguments,
-      (Fun.const !Flag.elim_same_arg,
+      (Fun.const !Flag.Method.elim_same_arg,
        map_trans Elim_same_arg.trans);
     Insert_unit_param,
-      (Fun.const !Flag.insert_param_funarg,
+      (Fun.const !Flag.Method.insert_param_funarg,
        map_trans Trans.insert_param_funarg);
     Preprocessfortermination,
-      (Fun.const (!Flag.mode = Flag.Termination),
+      (Fun.const Flag.Method.(!mode = Termination),
        map_trans !BRA_types.preprocessForTerminationVerification);
   ]
 

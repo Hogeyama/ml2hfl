@@ -556,7 +556,7 @@ let get_non_rec red_CPS prog =
   let defs' = List.filter check defs in
   let non_rec = List.rev_map (fun (f,_,_,_,_) -> f, assoc_fun_def defs f) defs' in
   let non_rec' =
-    if !Flag.expand_non_rec_init then
+    if !Flag.PredAbst.expand_non_rec_init then
       non_rec
     else
       let orig_fun_list' = List.Set.diff orig_fun_list force in

@@ -98,11 +98,11 @@ let get_pair s =
   (q, n), s'
 
 let rec verifyFile filename =
-  let p1,p2 = !Flag.trecs_param1, !Flag.trecs_param2 in
+  let p1,p2 = !Flag.TRecS.param1, !Flag.TRecS.param2 in
   let result_file = Filename.change_extension !!Flag.mainfile "trecs_out" in
   let oc = open_out result_file in
   let out_descr = Unix.descr_of_out_channel oc in
-  let args = String.nsplit (Format.sprintf "%s -p %d %d %s" !Flag.trecs p1 p2 filename) " " in
+  let args = String.nsplit (Format.sprintf "%s -p %d %d %s" !Flag.ModelCheck.trecs p1 p2 filename) " " in
   let pid = Unix.create_process (List.hd args) (Array.of_list args) Unix.stdin out_descr Unix.stderr in
   let _,_st =
     try
@@ -120,7 +120,7 @@ let rec verifyFile filename =
       Unsafe (trans_ce trace)
   | TS.TimeOut ->
       Verbose.printf "Restart TRecS (param: %d -> %d)@." p1 (2*p1);
-      Flag.trecs_param1 := 2 * p1;
+      Flag.TRecS.param1 := 2 * p1;
       verifyFile filename
 
 
@@ -143,7 +143,7 @@ let check target =
 
 (* returen "" if the version cannot be obtained *)
 let version () =
-  let cin,cout = Unix.open_process (Format.sprintf "%s -help" !Flag.trecs) in
+  let cin,cout = Unix.open_process (Format.sprintf "%s -help" !Flag.ModelCheck.trecs) in
   let v =
     try
       let s = input_line cin in
@@ -183,17 +183,18 @@ let make_file_spec () : spec =
 let make_base_spec n q : spec = (q, "br", [q;q])::make_line_spec 1 q
 
 let make_spec n : spec =
+  let module FM = Flag.Method in
   let spec =
-    match !Flag.mode with
-    | Flag.Reachability
-    | Flag.Termination
-    | Flag.FairTermination -> (0,"unit",[])::make_base_spec n 0
-    | Flag.FileAccess ->
+    match !FM.mode with
+    | FM.Reachability
+    | FM.Termination
+    | FM.FairTermination -> (0,"unit",[])::make_base_spec n 0
+    | FM.FileAccess ->
         let spec = make_file_spec () in
         let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
         let spec' = List.rev_flatten_map (make_base_spec n) @@ List.init (qm+1) Std.identity in
         spec @@@ spec'
-    | Flag.NonTermination
-    | Flag.FairNonTermination -> assert false
+    | FM.NonTermination
+    | FM.FairNonTermination -> assert false
   in
   List.sort compare spec

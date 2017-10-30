@@ -15,7 +15,7 @@ and print_ids typ fm xs =
 and print_id fm x = Id.print fm x
 
 and print_id_typ fm x =
-  if !Flag.print_as_ocaml then
+  if !Flag.Print.as_ocaml then
     print_id fm x
   else
     fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
@@ -66,7 +66,7 @@ and print_const fm = function
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result -> fprintf fm "{end}"
-  | RandValue(TInt,false) when !Flag.print_as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
+  | RandValue(TInt,false) when !Flag.Print.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
   | RandValue(TInt,false) -> fprintf fm "rand_int"
   | RandValue(TInt,true) -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
@@ -102,12 +102,12 @@ and print_term pri typ fm t =
   in
   let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
   let ignore_attr_list' =
-    if !Flag.print_only_if_id then
+    if !Flag.Print.only_if_id then
       List.filter (function AId _ -> true | _ -> false) t.attr @ ignore_attr_list
     else
       ignore_attr_list
   in
-  if List.Set.subset attr ignore_attr_list' || !Flag.print_as_ocaml
+  if List.Set.subset attr ignore_attr_list' || !Flag.Print.as_ocaml
   then pr t.attr fm t.desc
   else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list (List.Set.diff t.attr ignore_attr_list')
 
@@ -127,7 +127,7 @@ and print_desc attr pri typ fm desc =
       in
       let fv = get_fv t in
       let xs' =
-        if !Flag.print_unused_arg then
+        if !Flag.Print.unused_arg then
           xs
         else
           let aux x =
@@ -143,7 +143,7 @@ and print_desc attr pri typ fm desc =
       let p = 15 in
       let s1,s2 = paren pri (p+1) in
       fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids typ) xs' (print_term 0 typ) t s2
-  | App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}]) when !Flag.print_as_ocaml ->
+  | App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}]) when !Flag.Print.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[<hov 2>%sRandom.int 0%s@]" s1 s2
@@ -155,7 +155,7 @@ and print_desc attr pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       let label =
-        if !Flag.print_only_if_id then
+        if !Flag.Print.only_if_id then
           match List.find_option (function AId _ -> true | _ -> false) attr with
           | Some (AId n) -> Format.sprintf "^%d" n
           | _ -> ""
@@ -167,7 +167,7 @@ and print_desc attr pri typ fm desc =
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
       let label =
-        if !Flag.print_only_if_id then
+        if !Flag.Print.only_if_id then
           match List.find_option (function AId _ -> true | _ -> false) attr with
           | Some (AId n) -> Format.sprintf "^%d" n
           | _ -> ""
@@ -205,13 +205,13 @@ and print_desc attr pri typ fm desc =
       let print_binding fm (f,xs,t1) =
         let pre =
           if !b then
-            "let" ^ (if List.mem ADoNotInline attr && not !Flag.print_as_ocaml then "!" else "") ^ s_rec
+            "let" ^ (if List.mem ADoNotInline attr && not !Flag.Print.as_ocaml then "!" else "") ^ s_rec
           else
             "and"
         in
         let fv = get_fv t1 in
         let xs' =
-          if !Flag.print_unused_arg then
+          if !Flag.Print.unused_arg then
             xs
           else
             let aux x =
@@ -237,7 +237,7 @@ and print_desc attr pri typ fm desc =
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 8 in
       let s1,s2 = paren pri p in
-      if !Flag.print_as_ocaml then
+      if !Flag.Print.as_ocaml then
         fprintf fm "%sRandom.bool@ ()%s" s1 s2
       else
         fprintf fm "%srand_bool@ ()%s" s1 s2
@@ -337,7 +337,7 @@ and print_desc attr pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[snd@ %a@]%s" s1 (print_term p typ) t s2
-  | Proj(i,t) when !Flag.print_as_ocaml ->
+  | Proj(i,t) when !Flag.Print.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
       let s = "fun (" ^ String.join "," (List.init (Option.get @@ tuple_num t.typ ) (fun j -> if i = j then "x" else "_") ) ^ ") -> x" in
@@ -346,7 +346,7 @@ and print_desc attr pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[#%d@ %a@]%s" s1 i (print_term p typ) t s2
-  | Bottom when !Flag.print_as_ocaml -> fprintf fm "let rec bot() = bot() in bot()"
+  | Bottom when !Flag.Print.as_ocaml -> fprintf fm "let rec bot() = bot() in bot()"
   | Bottom -> fprintf fm "_|_"
   | Label(info, t) ->
       fprintf fm "(@[label[@[%a@]]@ %a@])" print_info info (print_term 80 typ) t

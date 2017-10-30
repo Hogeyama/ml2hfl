@@ -14,12 +14,12 @@ module S = Syntax
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
+let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.Log.cegar_loop)
 
 let rec decomp_bool t =
   match t with
   | App(App(Const (And|Or), t1), t2) -> decomp_bool t1 @ decomp_bool t2
-  | App(App(Const EqInt, t1), t2) when !Flag.decomp_eq_pred -> [make_leq t1 t2; make_geq t1 t2]
+  | App(App(Const EqInt, t1), t2) when !Flag.PredAbst.decomp_eq_pred -> [make_leq t1 t2; make_geq t1 t2]
   | _ -> [t]
 
 let rec merge_typ env typ typ' =
@@ -30,7 +30,7 @@ let rec merge_typ env typ typ' =
       let ps1' = ps1 (Var x) in
       let ps2' = ps2 (Var x) in
       let ps2'' =
-        if !Flag.decomp_pred then
+        if !Flag.PredAbst.decomp_pred then
           List.flatten_map decomp_bool ps2'
         else
           ps2'
@@ -153,7 +153,7 @@ and trans_typ = function
       let x' = trans_var x in
       let ps' = preds_of @@ Id.typ x in
       let ps'' =
-        if !Flag.bool_init_empty
+        if !Flag.Method.bool_init_empty
         then fun z -> ps' z
         else fun z -> z :: ps' z
       in
@@ -755,7 +755,7 @@ let rec eval_abst_cbn prog labeled abst ce =
 
 
 let assoc_def labeled defs ce acc rand_num t =
-  if ce = [] && !Flag.mode = Flag.FairNonTermination && !Flag.break_expansion_ref then
+  if ce = [] && Flag.(Method.(!mode = FairNonTermination) && !FairNonTermination.break_expansion_ref) then
     None
   else
     let f = match t with Var f -> f | _ -> assert false in

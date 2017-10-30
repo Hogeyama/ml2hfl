@@ -55,7 +55,7 @@ let subst_matched_var_desc desc =
               fun t0 ->
                 match t0 with
                 | {desc=Const True} -> t0
-                | _ when !Flag.tupling -> make_label (InfoIdTerm(x, t')) t0
+                | _ when !Flag.Method.tupling -> make_label (InfoIdTerm(x, t')) t0
                 | _ -> subst x t' t0
         in
         p, sbst t1', sbst t2'
@@ -111,7 +111,7 @@ let make_get_rtyp_list_of typed get_rtyp f =
   let typ = Trans.assoc_typ f typed in
   let rtyp = get_rtyp f in
   let rtyp' = get_rtyp_list rtyp typ in
-  if !!Flag.print_ref_typ_debug
+  if !!Flag.Debug.print_ref_typ
   then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
@@ -331,7 +331,7 @@ let inst_list_eq_term map t =
       begin
         match t1.typ with
         | TApp(TList, [TInt|TData _ as typ]) when List.mem_assoc typ map ->
-            if !Flag.abst_list_eq then
+            if !Flag.Method.abst_list_eq then
               randbool_unit_term
             else
               make_app (make_var @@ List.assoc typ map) [t1'; t2']
@@ -348,7 +348,7 @@ let inst_list_eq t =
   let t' = inst_list_eq.tr2_term map t in
   let fv = get_fv t' in
   let defs' = List.filter (fun (_,(f,_,_)) -> Id.mem f fv) defs in
-  if !Flag.abst_list_eq then
+  if !Flag.Method.abst_list_eq then
     t'
   else
     make_lets (List.map snd defs') t'
@@ -362,18 +362,18 @@ let inst_list_eq t =
 let is_long_literal t =
   match decomp_list t with
   | None -> false
-  | Some ts -> List.length ts >= !Flag.abst_list_literal (*&& List.for_all has_no_effect ts*)
+  | Some ts -> List.length ts >= !Flag.Method.abst_list_literal (*&& List.for_all has_no_effect ts*)
 let abst_list_literal = make_trans ()
 let abst_list_literal_term t =
   match t.desc with
   | Cons _ when is_long_literal t ->
       Flag.use_abst := true;
-      let ts = List.take !Flag.abst_list_literal @@ Option.get @@ decomp_list t in
+      let ts = List.take !Flag.Method.abst_list_literal @@ Option.get @@ decomp_list t in
       List.fold_right make_cons ts @@ make_randvalue_unit t.typ
   | _ -> abst_list_literal.tr_term_rec t
 let () = abst_list_literal.tr_term <- abst_list_literal_term
 let abst_list_literal t =
-  if !Flag.abst_list_literal >= 0 then
+  if !Flag.Method.abst_list_literal >= 0 then
     abst_list_literal.tr_term t
   else
     t
@@ -390,7 +390,7 @@ let rec get_rtyp_list_opt rtyp typ = raise (Fatal "not implemented get_rtyp_list
 let get_rtyp_list_of typed f rtyp =
   let typ = Trans.assoc_typ f typed in
   let rtyp' = get_rtyp_list_opt rtyp typ in
-  if !!Flag.print_ref_typ_debug
+  if !!Flag.Debug.print_ref_typ
   then Format.printf "LIST: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
@@ -504,7 +504,7 @@ let pr s t = Debug.printf "##[encode_list] %s:@.%a@.@." s Print.term t
 
 let trans t =
   let tr =
-    if !Flag.encode_list_opt then
+    if !Flag.Method.encode_list_opt then
       trans_opt
     else
       trans
@@ -534,7 +534,7 @@ let trans t =
   |*@> (fun t -> Type_check.check t t.typ) -| fst
 
 let trans_typ typ =
-  if !Flag.encode_list_opt then
+  if !Flag.Method.encode_list_opt then
     abst_list_opt.tr_typ typ
   else
     abst_list.tr2_typ "" typ

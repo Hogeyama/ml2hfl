@@ -35,7 +35,7 @@ let rec ref_of_inter env cond atyp ityp =
       let b' = ref_base_of_abs_base b in
       let aux p ityp =
         let is_true ityp =
-          if !Flag.church_encode then
+          if !Flag.ModelCheck.church_encode then
             match ityp with
             | IT.Fun(IT.Base _, IT.Fun(IT.Inter [], IT.Base _)) -> true
             | _ -> false
@@ -43,7 +43,7 @@ let rec ref_of_inter env cond atyp ityp =
             ityp = IT.Base IT.True
         in
         let is_false ityp =
-          if !Flag.church_encode then
+          if !Flag.ModelCheck.church_encode then
             match ityp with
             | IT.Fun(IT.Inter [], IT.Fun(IT.Base _, IT.Base _)) -> true
             | _ -> false

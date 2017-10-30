@@ -195,7 +195,7 @@ let rec infer_effect_typ env typ =
 let new_var env x = {id_cps=x; id_typ=infer_effect_typ env (Id.typ x)}
 
 let _TFunCPS env (e, typ1, typ2) =
-  if !Flag.cps_simpl then env.constraints <- CGeq(e, ECont) :: env.constraints;
+  if !Flag.Method.cps_simpl then env.constraints <- CGeq(e, ECont) :: env.constraints;
   TFunCPS(e, typ1, typ2)
 
 let rec infer_effect env tenv t =
@@ -233,7 +233,7 @@ let rec infer_effect env tenv t =
       let typed = infer_effect env tenv' t1 in
       let typ' = infer_effect_typ env t.typ in
       let e,a_typ,r_typ = match typ' with TFunCPS(e,typ1,typ2) -> e,typ1,typ2 | _ -> assert false in
-      if !Flag.cps_simpl then env.constraints <- CGeq(e, ECont) :: env.constraints;
+      if !Flag.Method.cps_simpl then env.constraints <- CGeq(e, ECont) :: env.constraints;
       env.constraints <- CGeqVar(e, typed.effect) :: env.constraints;
       unify env a_typ x_typ;
       unify env r_typ typed.typ_cps;
@@ -1064,7 +1064,7 @@ let make_get_rtyp sol typ_exn typed get_rtyp f =
   let rtyp = get_rtyp f in
   Debug.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp (print_typ_cps sol) etyp;
   let rtyp' = Ref_type.map_pred Trans.reconstruct @@ uncps_ref_type sol typ_exn rtyp ENone etyp in
-  if !!Flag.print_ref_typ_debug then
+  if !!Flag.Debug.print_ref_typ then
     Format.printf "CPS ref_typ: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 

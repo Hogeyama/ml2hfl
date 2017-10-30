@@ -22,7 +22,7 @@ let add_renv map env =
   let aux (n, preds) = make_randint_name n, TBase(TInt, preds) in
   add_preds_env (List.map aux map) env
 
-let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
+let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.Log.cegar_loop)
 
 let rec negate_typ = function
   | TBase(b,ps) ->
@@ -70,19 +70,19 @@ let refine labeled is_cp prefix ces ext_ces prog =
   let post () =
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    Time.add tmp Flag.time_cegar
+    Time.add tmp Flag.Log.time_cegar
   in
   try
-    if !Flag.print_progress then
+    if !Flag.Print.progress then
       Color.printf
         Color.Green
         "(%d-4) Discovering predicates (infeasible case) ... @."
-        !Flag.cegar_loop;
-    if Flag.use_prefix_trace then
+        !Flag.Log.cegar_loop;
+    if Flag.Refine.use_prefix_trace then
       fatal "Not implemented: Flag.use_prefix_trace";
     let map =
       let ces,ext_ces =
-        if !Flag.use_multiple_paths then
+        if !Flag.Refine.use_multiple_paths then
           ces, ext_ces
         else
           [List.hd ces], [List.hd ext_ces]
@@ -93,12 +93,12 @@ let refine labeled is_cp prefix ces ext_ces prog =
       map
     in
     let env =
-      if !Flag.disable_predicate_accumulation then
+      if !Flag.Refine.disable_predicate_accumulation then
         map
       else
         add_preds_env map prog.env
     in
-    if !Flag.print_progress then Format.printf "DONE!@.@.";
+    if !Flag.Print.progress then Format.printf "DONE!@.@.";
     post ();
     map, {prog with env}
   with e ->
@@ -108,31 +108,31 @@ let refine labeled is_cp prefix ces ext_ces prog =
 let refine_with_ext labeled is_cp prefix ces ext_ces prog =
   let tmp = Time.get () in
   try
-    if !Flag.print_progress then
+    if !Flag.Print.progress then
       Color.printf
         Color.Green
         "(%d-4) Discovering predicates (feasible case) ... @."
-        !Flag.cegar_loop;
-    if Flag.use_prefix_trace then
+        !Flag.Log.cegar_loop;
+    if Flag.Refine.use_prefix_trace then
       raise (Fatal "Not implemented: Flag.use_prefix_trace");
     Format.printf "@[<v>";
     let map = FpatInterface.infer_with_ext labeled is_cp ces ext_ces prog in
     Format.printf "@]";
     let env =
-      if !Flag.disable_predicate_accumulation then
+      if !Flag.Refine.disable_predicate_accumulation then
         map
       else
         add_preds_env map prog.env
     in
-    if !Flag.print_progress then Format.printf "DONE!@.@.";
+    if !Flag.Print.progress then Format.printf "DONE!@.@.";
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    Time.add tmp Flag.time_cegar;
+    Time.add tmp Flag.Log.time_cegar;
     map, {prog with env}
   with e ->
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    Time.add tmp Flag.time_cegar;
+    Time.add tmp Flag.Log.time_cegar;
     raise e
 
 exception PostCondition of (Fpat.Idnt.t * Fpat.Type.t) list * Fpat.Formula.t * Fpat.Formula.t
@@ -151,7 +151,7 @@ let refine_rank_fun ce ex_ce prog =
   try
     (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
       Format.printf "    %a@." (print_prog_typ' [] []) { env=env; defs=defs; main=main };*)
-    if !Flag.print_progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.cegar_loop;
+    if !Flag.Print.progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.Log.cegar_loop;
     let env, spc =
       Format.printf "@[<v>";
       let env, spc = FpatInterface.compute_strongest_post prog ce ex_ce in
@@ -160,7 +160,7 @@ let refine_rank_fun ce ex_ce prog =
     in
 
     let spcWithExparam =
-      if !Flag.add_closure_exparam
+      if !Flag.Termination.add_closure_exparam
       then
         let progWithExparam = Option.get prog.info.exparam_orig in
         if false then Format.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
@@ -180,5 +180,5 @@ let refine_rank_fun ce ex_ce prog =
   with e ->
     Fpat.SMTProver.finalize ();
     Fpat.SMTProver.initialize ();
-    Time.add tmp Flag.time_cegar;
+    Time.add tmp Flag.Log.time_cegar;
     raise e

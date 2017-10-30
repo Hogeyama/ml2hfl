@@ -116,7 +116,7 @@ and print_const fm = function
 
 and print_arg_var fm (x,typ) =
   match typ with
-  | Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
+  | Some typ when !Flag.Print.fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
   | _ -> print_var fm x
 
 and print_term fm = function
@@ -487,7 +487,7 @@ and print_term' limit fm t =
       let env,t' = decomp_annot_fun t in
       let pr fm (x,typ) =
         match typ with
-          Some typ when !Flag.print_fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
+          Some typ when !Flag.Print.fun_arg_typ -> Format.fprintf fm "(%a:%a)" print_var x print_typ typ
         | _ -> print_var fm x
       in
       Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env (print_term' limit) t'

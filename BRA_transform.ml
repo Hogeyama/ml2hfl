@@ -229,7 +229,7 @@ let implement_recieving ({program = program; state = state; verified = verified}
     | [arg] -> (List.map extract_id (passed f))@[arg]
     | arg::args -> (placeholders f)@[arg]@(set_state f) args
   in
-  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, (if !Flag.split_callsite && id = verified.id then args else set_state id args), body)) program }
+  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, (if !Flag.Termination.split_callsite && id = verified.id then args else set_state id args), body)) program }
 
 let implement_transform_initial_application ({program = program; state = state} as holed) =
   let sub = function
@@ -248,7 +248,7 @@ let implement_propagation ({program = program; state = state; verified = verifie
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> propagated@[arg]) args)}
     | t -> t
   in
-  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, args, if !Flag.split_callsite && id = verified.id then body else everywhere_expr sub body)) program }
+  { holed with program = transform_function_definitions (fun (id, args, body) -> (id, args, if !Flag.Termination.split_callsite && id = verified.id then body else everywhere_expr sub body)) program }
 
 let transform_program_by_call holed =
   holed |> implement_recieving
@@ -290,7 +290,7 @@ let to_holed_programs (target_program : term) =
       let statevars = get_statevars state target in
       let argvars = get_argvars state target in
       let add_update_statement cont prev_statevar statevar argvar =
-	if !Flag.disjunctive then
+	if !Flag.Termination.disjunctive then
               (* let s_x = if * then
                  x
                  else
@@ -302,7 +302,7 @@ let to_holed_programs (target_program : term) =
       in
       let body' =
 	if id = target.id then
-	  if !Flag.disjunctive then
+	  if !Flag.Termination.disjunctive then
             (* let _ = if prev_set_flag then
                          if __HOLE__ then
                            ()
@@ -341,7 +341,7 @@ let to_holed_programs (target_program : term) =
 		 (fold_left3 add_update_statement
 		    body prev_statevars statevars argvars))
 	else body
-      in if id = target.id && !Flag.split_callsite then
+      in if id = target.id && !Flag.Termination.split_callsite then
 	  let body_update =
 	    (* let set_flag = true in *)
 	    make_let
@@ -439,7 +439,7 @@ let construct_LLRF {variables = variables_; prev_variables = prev_variables_; co
 	     (make_geq (r variables) (make_int 0)))
     | r::rs ->
       let aux_next cond =
-	if !Flag.disjunctive then
+	if !Flag.Termination.disjunctive then
 	  cond
 	else
 	  make_and (make_geq (r prev_variables) (r variables)) (aux cond)

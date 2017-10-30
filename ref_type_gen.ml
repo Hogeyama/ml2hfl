@@ -175,7 +175,7 @@ and generate typ_exn make_fail genv cenv typ =
         in
         generate typ_exn make_fail genv cenv @@ Base(base, x, p')
     | Inter(styp, ((Fun(_,atyp,rtyp))::_ as typs)) when !Flag.Modular.use_ref_typ_gen_method_in_esop2017 ->
-        Flag.fail_as_exception := true;
+        Flag.Method.fail_as_exception := true;
         let rec wrap typ (genv,cenv,v) =
           match typ with
           | Base(base,x,p) ->
@@ -236,7 +236,7 @@ and generate typ_exn make_fail genv cenv typ =
         Format.printf "typs: %a@." (List.print print) typs;
         List.fold_right wrap typs (genv,cenv,v0)
     | Inter(_, ((Fun _)::_ as typs)) ->
-        Flag.fail_as_exception := true;
+        Flag.Method.fail_as_exception := true;
         let bss = Combination.take_each @@ List.map (Fun.const [true;false]) typs in
         Debug.printf "GEN bss: %a@." (List.print @@ List.print Format.pp_print_bool) bss;
         let x =
