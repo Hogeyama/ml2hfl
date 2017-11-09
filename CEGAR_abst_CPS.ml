@@ -6,23 +6,21 @@ open CEGAR_abst_util
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let abst_arg x typ =
-  Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ typ;
-  match typ with
-  | TBase(_,ps) ->
-      begin
-        match ps (Var x) with
-        | [] -> []
-        | [_] -> [x]
-        | ps -> List.mapi (fun i _ -> add_name x @@ Format.sprintf "_%d" @@ i+1) ps
-      end
-  | _ -> [x]
-let make_pts x typ =
-  let xs = abst_arg x typ in
+let abst_arg x ty =
+  Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ ty;
+  match decomp_base ty with
+  | None -> [x]
+  | Some(_,ps) ->
+      match ps (Var x) with
+      | [] -> []
+      | [_] -> [x]
+      | ps -> List.mapi (fun i _ -> add_name x @@ Format.sprintf "_%d" @@ i+1) ps
+let make_pts x ty =
+  let xs = abst_arg x ty in
   let ps =
-    match typ with
-    | TBase(_,ps) -> ps (Var x)
-    | _ -> [Const True]
+    match decomp_base ty with
+    | None -> [Const True]
+    | Some(_, ps) -> ps (Var x)
   in
   List.filter (fun (p,_) -> p <> Const True) @@ List.map2 (fun p x -> p, Var x) ps xs
 
@@ -278,7 +276,7 @@ and abstract_term must env cond pts t typ =
       assert (is_typ_result typ);
       [Const Bottom]
   | (Var _ | Const _ | App _) when is_base_term env t ->
-      let btyp,ps = decomp_tbase typ in
+      let btyp,ps = Option.get @@ decomp_base typ in
       if btyp = typ_result_base
       then [Const Unit]
       else List.map (abst env cond pts) (ps t)
@@ -315,14 +313,7 @@ and abstract_term must env cond pts t typ =
         let pts' = make_pts x typ @@@ pts in
         let xs' = abst_arg x typ in
         let ts' = abstract_term None env cond pts t typ in
-        let add_flag =
-          let b =
-            match typ with
-            | TBase _ -> false
-            | _ -> true
-          in
-          List.map (Pair.pair b)
-        in
+        let add_flag = List.map (Pair.pair @@ is_base typ) in
         defs @ (add_flag @@ List.combine xs' ts'),
         args @ List.map _Var xs',
         pts'
@@ -378,6 +369,7 @@ let rec abstract_typ = function
       let typs = abstract_typ typ1 in
       let aux typ1 typ2 = TFun(typ1, fun _ -> typ2) in
       [List.fold_right aux typs (hd (abstract_typ typ2))]
+  | TApp(TConstr TAssumeTrue, ty) -> abstract_typ ty
   | _ -> assert false
 
 let abstract_typ typ = hd @@ abstract_typ typ

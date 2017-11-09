@@ -121,7 +121,7 @@ let hd x = assert (List.length x = 1); List.hd x
 
 let rec extract_tuple_var env x =
   match List.assoc x env with
-  | TBase(TTuple, _) -> [x]
+  | TConstr TTuple -> [x]
   | TApp _ as typ when is_ttuple typ ->
       let typ,typs = decomp_tapp typ in
       let n = List.length typs in

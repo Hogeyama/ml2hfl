@@ -5,6 +5,7 @@ open CEGAR_print
 open CEGAR_util
 open Fpat.Combinator
 
+module CS = CEGAR_syntax
 module S = Syntax
 
 module String = Fpat.Util.String
@@ -28,6 +29,7 @@ let rec conv_typ ty =
   | TApp _ when is_ttuple ty ->
       let _,tys = decomp_tapp ty in
       Fpat.Type.mk_tuple @@ List.map conv_typ tys
+  | TApp(TConstr TAssumeTrue, ty) -> conv_typ ty
   | _ ->
      Format.printf "%a@." CEGAR_print.typ ty;
      assert false
@@ -282,43 +284,71 @@ let conv_prog prog =
       List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
     Fpat.Prog.main = main }
 
+(* TODO: merge this function to conversion from refinement types to abstraction types *)
+let add_to_temp t1 t2 =
+  let rec aux t =
+    match decomp_app t with
+    | Const (Int 0), [] -> []
+    | Const Add, [Const (Int n); t2] -> Const (Int n) :: aux t2
+    | _ -> assert false
+  in
+  make_app (Const (Temp "path")) (t2 :: aux t1)
+let rec path_to_attr ty =
+  match ty with
+  | TBase(b, p) -> ty
+  | TConstr c -> unsupported "FpatInterface.path_to_attr (TConstr)"
+  | TApp _ -> unsupported "FpatInterface.path_to_attr (TApp)"
+  | TFun(TBase(b,p), ty2) ->
+      let x = new_id "x" in
+      let aux t =
+        match decomp_app t with
+        | Const And, [t1;t2] -> [add_to_temp t1 t2]
+        | Const Add, _ -> [add_to_temp t (Const True)]
+        | _ ->
+            Format.printf "%a@." CEGAR_print.term t;
+            assert false
+      in
+      let preds = List.concat_map aux @@ p (Var x) in
+      let p' t = List.map (subst x t) preds in
+      let ty2' = path_to_attr -| ty2 in
+      TFun(TBase(b,p'), ty2')
+  | TFun(ty1, ty2) -> TFun(path_to_attr ty1, path_to_attr -| ty2)
+
 let rec inv_abst_type aty =
   match aty with
-  | Fpat.AbsType.Base(Fpat.TypConst.Ext(id), x, ts) ->
-     let x = Fpat.Idnt.string_of x in
-     TBase(TAbst(id),
-           fun s -> List.map (fun t -> subst x s (inv_formula t)) ts)
-  | Fpat.AbsType.Base(Fpat.TypConst.Unit, x, ts) ->
-     let x = Fpat.Idnt.string_of x in
-     TBase(TUnit,
-           fun s -> List.map (fun t -> subst x s (inv_formula t)) ts)
-  | Fpat.AbsType.Base(Fpat.TypConst.Bool, x, ts) ->
-     let x = Fpat.Idnt.string_of x in
-     TBase(TBool,
-           fun s -> List.map (fun t -> subst x s (inv_formula t)) ts)
-  | Fpat.AbsType.Base(Fpat.TypConst.Int, x, ts) ->
-     let x = Fpat.Idnt.string_of x in
-     TBase(TInt,
-           fun s -> List.map (fun t -> subst x s (inv_formula t)) ts)
-  | Fpat.AbsType.Base(Fpat.TypConst.Real, x, ts) ->
-     let x = Fpat.Idnt.string_of x in
-     TBase(TAbst("float"),
-           fun s -> List.map (fun t -> subst x s (inv_formula t)) ts)
-  | Fpat.AbsType.Base(Fpat.TypConst.String, x, ts) ->
-     let x = Fpat.Idnt.string_of x in
-     TBase(TAbst("string"),
-           fun s -> List.map (fun t -> subst x s (inv_formula t)) ts)
+  | Fpat.AbsType.Base(Fpat.TypConst.Ext("X"), x, ts) ->
+      TBase(TAbst("X"), fun s -> [])
+  | Fpat.AbsType.Base(b, x, ts) ->
+      let x = Fpat.Idnt.string_of x in
+      let base =
+        let open Fpat.TypConst in
+        match b with
+        | Ext id -> TAbst id
+        | Unit -> TUnit
+        | Bool -> TBool
+        | Int -> TInt
+        | Real -> TAbst "float"
+        | String -> TAbst "string"
+        | _ ->
+            Format.printf "%a@." Fpat.AbsType.pr aty;
+            assert false
+      in
+      TBase(base, fun s -> List.map (subst x s -| inv_formula) ts)
   | Fpat.AbsType.Fun(aty1, aty2) ->
-     let x =
-       if Fpat.AbsType.is_base aty1 then
-         Fpat.Idnt.string_of (Fpat.AbsType.bv_of aty1)
-       else
-         "_dummy"
-     in
-     TFun(inv_abst_type aty1, fun t -> subst_typ x t (inv_abst_type aty2))
+      let x =
+        if Fpat.AbsType.is_base aty1 then
+          Fpat.Idnt.string_of (Fpat.AbsType.bv_of aty1)
+        else
+          "_dummy"
+      in
+      TFun(inv_abst_type aty1, subst_typ x -$- (inv_abst_type aty2))
   | _ ->
-     Format.printf "%a@." Fpat.AbsType.pr aty;
-     assert false
+      Format.printf "%a@." Fpat.AbsType.pr aty;
+      assert false
+let inv_abst_type ty =
+  ty
+  |> inv_abst_type
+  |> path_to_attr
 
 
 let init prog =
@@ -372,10 +402,7 @@ let infer labeled is_cp cexs ext_cexs prog =
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
-  List.map
-    (fun (f, rty) ->
-     match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
-    env
+  List.map (Pair.map Fpat.Idnt.base inv_abst_type) env
 
 let infer_with_ext
     (labeled: string list)
@@ -434,10 +461,7 @@ let infer_with_ext
 
   Flag.time_parameter_inference :=
     !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
-  List.map
-    (fun (f, rty) ->
-     match f with Fpat.Idnt.V(id) -> id, inv_abst_type rty | _ -> assert false)
-    env
+  List.map (Pair.map Fpat.Idnt.base inv_abst_type) env
 
 
 (** TODO: move the following codes to another file *)

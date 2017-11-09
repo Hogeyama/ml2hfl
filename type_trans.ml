@@ -10,14 +10,13 @@ let ref_base_of_abs_base = function
   | AT.TUnit -> RT.Unit
   | AT.TInt -> RT.Int
   | AT.TBool -> RT.Bool
-  | AT.TList -> assert false
-  | AT.TTuple -> assert false
   | AT.TAbst s -> RT.Abst s
 
 let rec simple typ =
   match typ with
   | AT.TBase(base,_) when base = AT.typ_result_base -> AT.TBase(AT.TUnit, fun _ -> [])
   | AT.TBase(base,_) -> AT.TBase(base, fun _ -> [])
+  | AT.TConstr _ -> unsupported "CEGAR_type.remove_pred: TConstr"
   | AT.TApp _ -> unsupported "CEGAR_type.remove_pred: TApp"
   | AT.TFun(typ1, typ2) -> AT.TFun(simple typ1, simple -| typ2)
 

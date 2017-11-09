@@ -126,24 +126,11 @@ let rec congruent env cond typ1 typ2 =
   | _ -> Format.printf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 
-let decomp_tbase = function
-  | TBase(b, ps) -> b, ps
-  | _ -> raise (Invalid_argument "CEGAR_abst_util.decomp_tbase")
-
 let rec is_base_term env = function
   | Const (Unit | True | False | Int _ | Rand _ | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> true
   | Const _ -> false
   | Var x ->
-      let typ =
-        try
-          List.assoc x env
-        with Not_found -> Format.printf "Not found: %s@." x; assert false
-      in
-        begin
-          match typ with
-              TBase _ -> true
-            | _ -> false
-        end
+      is_base @@ Option.get @@ List.assoc_opt x env
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|CmpPoly _|Add|Sub|Mul|Div),t1),t2) ->
       assert (is_base_term env t1);
       assert (is_base_term env t2);

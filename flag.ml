@@ -135,6 +135,7 @@ let expand_non_rec = ref true
 let expand_non_rec_init = ref true
 let decomp_pred = ref false
 let decomp_eq_pred = ref false
+let assume_safe_fun_arg_pred_true = ref false
 
 (* pretty printer option *)
 let () = Format.set_margin 120

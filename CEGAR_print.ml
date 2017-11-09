@@ -21,6 +21,7 @@ let new_id x =
 
 let rec occur_arg_pred x = function
   | TBase(_,ps) -> List.mem x @@ List.rev_flatten_map get_fv @@ ps (Const Unit)
+  | TConstr _ -> false
   | TFun(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x @@ typ2 (Const Unit)
   | TApp(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x typ2
 
@@ -32,17 +33,27 @@ and print_typ_base fm = function
   | TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TTuple -> Format.fprintf fm "tuple"
-  | TList -> assert false
   | TAbst s -> Format.pp_print_string fm s
+
+and print_typ_constr fm constr =
+  match constr with
+  | TList -> Format.fprintf fm "list"
+  | TTuple -> Format.fprintf fm "tuple"
+  | TAssumeTrue -> Format.fprintf fm "true"
 
 and print_typ_aux var fm = function
   | TBase(b,ps) ->
       let x,occur = match var with None -> new_id "x", false | Some(x,occur) -> x, occur in
       let preds = ps (Var x) in
-      if occur || List.mem x @@ List.rev_flatten_map get_fv preds then Format.fprintf fm "%a:" print_var x;
+      if true || occur || List.mem x @@ List.rev_flatten_map get_fv preds then
+        Format.fprintf fm "%a:" print_var x;
       Format.fprintf fm "%a" print_typ_base b;
-      if preds <> [] then Format.fprintf fm "[@[%a@]]" (Color.blue @@ print_list print_linear_exp ";@ ") preds
+      if preds <> [] then
+        Format.fprintf fm "[@[%a@]]" (Color.blue @@ print_list print_linear_exp ";@ ") preds
+  | TApp(TConstr TAssumeTrue, ty) ->
+      Format.fprintf fm "%a^T" (print_typ_aux var) ty
+  | TConstr constr ->
+      print_typ_constr fm constr
   | TFun _ as typ ->
       let rec aux b fm = function
         | TFun(typ1, typ2) ->
@@ -349,14 +360,20 @@ let rec print_base_typ_as_tree fm = function
     TUnit -> Format.fprintf fm "TUnit"
   | TInt -> Format.fprintf fm "TInt"
   | TBool -> Format.fprintf fm "TBool"
-  | TList -> Format.fprintf fm "TList"
-  | TTuple -> Format.fprintf fm "TTuple"
   | TAbst s -> Format.fprintf fm "%s" s
 
-and print_typ_as_tree fm = function
-    TBase(b,ps) ->
+and print_typ_constr_as_tree fm constr =
+  match constr with
+  | TList -> Format.fprintf fm "TList"
+  | TTuple -> Format.fprintf fm "TTuple"
+  | TAssumeTrue -> Format.fprintf fm "TAssumeTrue"
+
+and print_typ_as_tree fm ty =
+  match ty with
+  | TBase(b,ps) ->
       let x = new_id "x" in
-        Format.fprintf fm "(TBase(%a,fun %s->%a))" print_base_typ_as_tree b x (print_list_as_tree print_term_as_tree) (ps (Var x))
+      Format.fprintf fm "(TBase(%a,fun %s->%a))" print_base_typ_as_tree b x (print_list_as_tree print_term_as_tree) (ps (Var x))
+  | TConstr _ -> assert false
   | TApp _ -> assert false
   | TFun(typ1,typ2) ->
       let x = new_id "x" in
@@ -489,8 +506,10 @@ and print_term' limit fm t =
       in
       Format.fprintf fm "(@[fun %a@ ->@ %a@])" (print_list pr " ") env (print_term' limit) t'
 
-let rec has_preds = function
+let rec has_preds ty =
+  match ty with
   | TBase(_, ps) -> (ps (Var "x") <> [])
+  | TConstr _ -> false
   | TApp(t1, t2) -> has_preds t1 || has_preds t2
   | TFun(t1, t2) -> has_preds t1 || has_preds (t2 (Var "x"))
 

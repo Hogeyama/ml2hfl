@@ -14,7 +14,9 @@ module S = Syntax
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.cegar_loop)
+let new_id' () =
+  let x = "x" in
+  new_id @@ Format.sprintf "%s_%d" x !Flag.cegar_loop
 
 let rec decomp_bool t =
   match t with
@@ -25,7 +27,7 @@ let rec decomp_bool t =
 let rec merge_typ env typ typ' =
   match typ,typ' with
   | TBase(b1,ps1),TBase(b2,ps2) when b1 = b2 ->
-      let x = new_id' "x" in
+      let x = !!new_id' in
       let env' = (x,typ)::env in
       let ps1' = ps1 (Var x) in
       let ps2' = ps2 (Var x) in
@@ -40,7 +42,7 @@ let rec merge_typ env typ typ' =
           let t1' = FpatInterface.conv_formula t1 in
           let t2' = FpatInterface.conv_formula t2 in
           FpatInterface.implies [t1'] [t2'] &&
-            FpatInterface.implies [t2'] [t1']
+          FpatInterface.implies [t2'] [t1']
         in
         if List.exists (equiv env p) ps then
           ps
@@ -50,16 +52,24 @@ let rec merge_typ env typ typ' =
       let ps = List.fold_left (add env') ps1' ps2'' in
       let ps t = List.map (subst x t) ps in
       TBase(b1, ps)
+  | TFun(TApp(TConstr TAssumeTrue, ty11),ty12), TFun(ty21,ty22)
+  | TFun(ty21,ty22), TFun(TApp(TConstr TAssumeTrue, ty11),ty12) ->
+      begin
+        match merge_typ env (TFun(ty21,ty22)) (TFun(ty11,ty12)) with
+        | TFun(ty1,ty2) -> TFun(TApp(TConstr TAssumeTrue,ty1), ty2)
+        | _ -> assert false
+      end
   | TFun(typ11,typ12), TFun(typ21,typ22) ->
-      let x = new_id' "x" in
+      let x = !!new_id' in
       let env' = (x,typ11)::env in
       let typ12 = typ12 (Var x) in
       let typ22 = typ22 (Var x) in
       let typ1 = merge_typ env typ11 typ21 in
       let typ2 = merge_typ env' typ12 typ22 in
-      TFun(typ1, fun t -> subst_typ x t typ2)
+      TFun(typ1, subst_typ x -$- typ2)
   | TBase _, _
   | TFun _, _
+  | TConstr _, _
   | TApp _, _ ->
       Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ';
       assert false
@@ -77,6 +87,7 @@ let rec negate_typ = function
       let typ1 = negate_typ typ1 in
       let typ2 = negate_typ -| typ2 in
       TFun(typ1, typ2)
+  | TConstr _ as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
   | TApp _ as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
 
 let add_neg_preds_renv env =
@@ -98,36 +109,34 @@ let id_prog prog =
   prog, map, rmap
 
 (* for predicates *)
-let rec trans_inv_term = function
-    Const True -> Term_util.true_term
+let rec trans_inv_term t =
+  match t with
+  | Const True -> Term_util.true_term
   | Const False -> Term_util.false_term
   | Const (Int n) -> Term_util.make_int n
   | Var x -> Term_util.make_var (trans_inv_var x)
-  | App(App(Const And, t1), t2) ->
-      Term_util.make_and (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Or, t1), t2) ->
-      Term_util.make_or (trans_inv_term t1) (trans_inv_term t2)
   | App(Const Not, t) ->
       Term_util.make_not (trans_inv_term t)
-  | App(App(Const Lt, t1), t2) ->
-      Term_util.make_lt (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Gt, t1), t2) ->
-      Term_util.make_gt (trans_inv_term t1) (trans_inv_term t2)
-  | App(App((Const (Leq|CmpPoly(_,"<="))), t1), t2) ->
-      Term_util.make_leq (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Geq, t1), t2) ->
-      Term_util.make_geq (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const (EqInt|EqBool), t1), t2) ->
-      Term_util.make_eq (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Add, t1), t2) ->
-      Term_util.make_add (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Sub, t1), t2) ->
-      Term_util.make_sub (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Mul, t1), t2) ->
-      Term_util.make_mul (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const Div, t1), t2) ->
-      Term_util.make_div (trans_inv_term t1) (trans_inv_term t2)
-  | App(App(Const (CmpPoly _ as c), t1), t2) -> Format.printf "%a@." CEGAR_print.const c; assert false
+  | App(App(Const op, t1), t2) ->
+      let f =
+        let open Term_util in
+        match op with
+        | And -> make_and
+        | Or -> make_or
+        | Lt -> make_lt
+        | Gt -> make_gt
+        | Leq|CmpPoly(_,"<=") -> make_leq (* ? *)
+        | Geq -> make_geq
+        | EqInt|EqBool -> make_eq
+        | Add -> make_add
+        | Sub -> make_sub
+        | Mul -> make_mul
+        | Div -> make_div
+        | _ ->
+            Format.printf "%a@." CEGAR_print.term t;
+            assert false
+      in
+      f (trans_inv_term t1) (trans_inv_term t2)
   | t -> Format.printf "%a@." CEGAR_print.term t; assert false
 
 
@@ -153,28 +162,15 @@ and trans_typ ty =
   | Type.TInt -> typ_int
   | Type.TVar{contents=None} -> typ_int
   | Type.TVar{contents=Some typ} -> trans_typ typ
-  | Type.TFun({Id.typ=Type.TBool|Type.TAttr(_,Type.TBool)} as x,typ) ->
-      let x' = trans_var x in
-      let ps' = preds_of @@ Id.typ x in
-      let ps'' =
-        if !Flag.bool_init_empty
-        then fun z -> ps' z
-        else fun z -> z :: ps' z
-      in
-      let typ1 = TBase(TBool, ps'') in
-      let typ2 = trans_typ typ in
-      TFun(typ1, fun y -> subst_typ x' y typ2)
-  | Type.TFun({Id.typ=Type.TInt|Type.TAttr(_,Type.TInt)} as x,typ) ->
-      let x' = trans_var x in
-      let ps' = preds_of @@ Id.typ x in
-      let typ1 = TBase(TInt, ps') in
-      let typ2 = trans_typ typ in
-      TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun(x,typ) ->
       let typ1 = trans_typ @@ Id.typ x in
       let typ2 = trans_typ typ in
-      TFun(typ1, fun _ -> typ2)
+      TFun(typ1, subst_typ (trans_var x) -$- typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
+  | Type.TAttr(attr, typ) when List.mem Type.TAAssumePredTrue attr ->
+      let attr' = List.filter ((<>) Type.TAAssumePredTrue) attr in
+      let ty' = trans_typ @@ Type._TAttr attr' typ in
+      TApp(TConstr TAssumeTrue, ty')
   | Type.TAttr(_, typ) when Term_util.get_tapred ty <> None ->
       let x,ps = Option.get @@ Term_util.get_tapred ty in
       begin
@@ -355,12 +351,14 @@ let trans_def (f,(xs,t)) =
   let post = "_" ^ Id.name f in
   let xs' = List.map trans_var xs in
   let path = ref [] in
-  let aux x' x =
-    let typ = trans_typ @@ Id.typ x in
-    path := 1::!path;
-    x', typ
+  let env =
+    let aux x' x =
+      let typ = trans_typ @@ Id.typ x in
+      path := 1::!path;
+      x', typ
+    in
+    List.map2 aux xs' xs
   in
-  let env = List.map2 aux xs' xs in
   try
     (match t.S.desc with
      | S.If(t1, t2, t3) ->
@@ -561,9 +559,7 @@ let rec revert_typ ty =
   | TBase(TBool, _) -> Type.TBool
   | TBase(TInt, _) -> Type.TInt
   | TBase(TAbst s, _) -> Type.TData s
-  | TBase(b,_) ->
-      Format.printf "%a@." CEGAR_print.typ ty;
-      unsupported "CEGAR_trans.revert_typ: TBase"
+  | TConstr _ -> unsupported "CEGAR_trans.revert_typ: TConstr"
   | TApp _ -> unsupported "CEGAR_trans.revert_typ: TApp"
   | TFun(typ1, typ2) -> Type.TFun(Id.new_var (revert_typ typ1), revert_typ @@ typ2 @@ Const Unit)
 
@@ -940,3 +936,8 @@ and beta_subst x t1 t2 =
   match t1 with
   | Fun(y,_,t11) -> beta_subst_aux x (y,t11) t2
   | _ -> subst x t1 t2
+
+
+let elim_assume_true prog =
+  let env = List.map (Pair.map_snd elim_assume_true) prog.env in
+  {prog with env}

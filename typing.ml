@@ -1,8 +1,6 @@
-
 open Util
 open CEGAR_syntax
 open CEGAR_type
-
 
 exception CannotUnify
 exception External
@@ -36,8 +34,7 @@ let rec from_typ = function
   | TBase(TUnit, _) -> TUnit
   | TBase(TInt, _) -> TInt
   | TBase(TBool, _) -> TBool
-  | TBase(TList, _) -> assert false
-  | TBase(TTuple, _) -> assert false
+  | TConstr _ -> assert false
   | TBase(TAbst s, _) -> TAbst s
   | TApp _ -> assert false
   | TFun(typ1, typ2) -> TFun(from_typ typ1, from_typ (typ2 (Const Unit)))
@@ -83,7 +80,7 @@ let rec trans_typ = function
   | TVar{contents=None} -> typ_unknown
   | TVar{contents=Some typ} -> trans_typ typ
   | TFun(typ1,typ2) -> TFun(trans_typ typ1, fun _ -> trans_typ typ2)
-  | TTuple typs -> make_tapp (TBase(TTuple,nil)) (List.map trans_typ typs)
+  | TTuple typs -> make_tapp (TConstr TTuple) (List.map trans_typ typs)
   | TAbst typ -> TBase(TAbst typ, nil)
   | TResult -> typ_result
 

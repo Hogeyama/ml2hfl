@@ -162,7 +162,7 @@ let rec remove_pair_typ = function
         | Node _ -> fatal "Not implemented CPS.remove_pair_typ(TPred)"
       in
       leaf (add_tapred x ps' typ')
-  | TAttr(_, typ) -> remove_pair_typ typ
+  | TAttr(attr, typ) -> leaf @@ TAttr(attr, root @@ remove_pair_typ typ)
   (*
   | TPred({Id.typ=TTuple _}, ps) ->
       unsupported "Not implemented: remove_pair_typ"

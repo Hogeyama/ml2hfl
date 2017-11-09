@@ -27,6 +27,7 @@ and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
+  | TAAssumePredTrue
 and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
@@ -197,6 +198,11 @@ let rec print occur print_pred fm typ =
       else Format.fprintf fm "@[<hov 2>%a -+>@ %a@]" print' (Id.typ x) print' typ
   | TAttr([TAEffect e], typ) ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
+  | TAttr([TAAssumePredTrue], typ) ->
+      if is_base_typ typ then
+        Format.fprintf fm "@[%a^T@]" print' typ
+      else
+        Format.fprintf fm "@[(%a)^T@]" print' typ
   | TAttr _ -> unsupported "Type.print TAttr"
   | TVariant labels ->
       let pr fm (s, typs) =

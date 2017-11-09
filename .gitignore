@@ -81,3 +81,4 @@ wiki/
 # Others
 option.conf
 *.log
+*.gz

@@ -30,6 +30,7 @@ type preprocess_label =
   | Ref_trans
   | Tupling
   | Inline
+  | Mark_safe_fun_arg
   | CPS
   | Remove_pair
   | Replace_bottom_def
@@ -71,6 +72,7 @@ let string_of_label = function
   | Ref_trans -> "Ref_trans"
   | Tupling -> "Tupling"
   | Inline -> "Inline"
+  | Mark_safe_fun_arg -> "Mark_safe_fun_arg"
   | CPS -> "CPS"
   | Remove_pair -> "Remove_pair"
   | Replace_bottom_def -> "Replace_bottom_def"
@@ -172,6 +174,9 @@ let all spec : t list =
     Inline,
       (Fun.const true,
        (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
+    Mark_safe_fun_arg,
+      (Fun.const !Flag.assume_safe_fun_arg_pred_true,
+       map_trans Effect_analysis.mark_safe_fun_arg);
     CPS,
       (Fun.const !Flag.trans_to_CPS,
        CPS.trans -| last_t);

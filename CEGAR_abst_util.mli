@@ -40,7 +40,6 @@ val assume :
 val congruent :
   (string * CEGAR_syntax.typ) list ->
   CEGAR_syntax.t list -> CEGAR_syntax.typ -> CEGAR_syntax.typ -> bool
-val decomp_tbase : 'a CEGAR_type.t -> CEGAR_type.base * ('a -> 'a list)
 val is_base_term :
   (CEGAR_syntax.var * 'a CEGAR_type.t) list -> CEGAR_syntax.t -> bool
 val make_arg_let_term : CEGAR_syntax.t -> CEGAR_syntax.t

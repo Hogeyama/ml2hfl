@@ -326,3 +326,37 @@ let infer ?(for_cps=false) t =
   let sol = solve env in
   apply_sol sol t'
   |@> Debug.printf "Inferred: %a@." Print.term'
+
+
+
+
+let rec exists_dest ty =
+  match elim_tattr ty with
+  | _ when is_base_typ ty -> true
+  | TFun(x,ty2) when is_base_var x -> true
+  | TFun({Id.typ=TTuple xs},ty2) when List.exists is_base_var xs -> true
+  | TFun(_,ty2) -> exists_dest ty2
+  | _ -> false
+
+
+let rec mark ty =
+  match elim_tattr ty with
+  | _ when is_base_typ ty -> ty
+  | TTuple _ -> ty
+  | TFun(x,ty2) when effect_of_typ ty2 = ENone && exists_dest ty2 ->
+      let x' = Id.map_typ (_TAttr [TAAssumePredTrue]) x in
+      TFun(x', mark ty2)
+  | TFun(x,ty2) -> TFun(Id.map_typ mark x, mark ty2)
+  | _ -> assert false
+let mark =
+  let tr = make_trans () in
+  tr.tr_typ <- mark;
+  tr.tr_term
+
+let mark_safe_fun_arg t =
+  t
+  |> infer
+  |@> Debug.printf "INFERRED: %a@." Print.term_typ
+  |> mark
+  |> Trans.remove_effect_attribute
+  |@> Debug.printf "MARKED: %a@." Print.term'

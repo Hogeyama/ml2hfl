@@ -182,10 +182,9 @@ let make_or t1 t2 =
   | t, Const False -> t
   | Var _, _ when t1 = t2 -> t1
   | _ -> make_app (Const Or) [t1; t2]
-let make_not t =
-  match t with
-  (*  | App(Const Not, t') -> t'*)
-  | _ -> App(Const Not, t)
+let make_not t = App(Const Not, t) (* we cannot eliminate double negation *)
+let make_imply t1 t2 = make_or (make_not t1) t2
+let make_geq t1 t2 = make_app (Const Geq) [t1; t2]
 let make_lt t1 t2 = make_app (Const Lt) [t1; t2]
 let make_gt t1 t2 = make_app (Const Gt) [t1; t2]
 let make_leq t1 t2 = make_app (Const Leq) [t1; t2]
