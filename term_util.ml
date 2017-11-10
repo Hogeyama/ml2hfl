@@ -415,15 +415,18 @@ let get_int t = List.unique @@ get_int.col_term t
 
 
 
-let rec get_args = function
+let rec get_args ty =
+  match elim_tattr ty with
   | TFun(x,typ) -> x :: get_args typ
   | _ -> []
 
-let rec get_argvars = function
+let rec get_argvars ty =
+  match elim_tattr ty with
   | TFun(x,typ) -> x :: get_argvars (Id.typ x) @ get_argvars typ
   | _ -> []
 
-let rec get_argtyps = function
+let rec get_argtyps ty =
+  match elim_tattr ty with
   | TFun(x,typ) -> Id.typ x :: get_argtyps typ
   | _ -> []
 

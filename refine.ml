@@ -66,7 +66,7 @@ let rec move_arg_pred ty =
         move_arg_pred @@ map_base add @@ ty2 (Var x)
       in
       TFun(ty1', subst_typ x -$- ty2')
-  | TFun(TApp(TConstr TAssumeTrue,_),ty12) -> assert false
+  | TFun(TApp(TConstr TAssumeTrue,ty1),ty2) -> move_arg_pred @@ TFun(ty1, ty2)
   | TFun(ty1,ty2) -> TFun(move_arg_pred ty1, move_arg_pred -| ty2)
   | TConstr _ -> unsupported "Refine"
   | TApp _ -> unsupported "Refine"
