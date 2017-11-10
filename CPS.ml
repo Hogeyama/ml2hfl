@@ -491,7 +491,7 @@ let rec trans_typ sol typ_excep typ_orig typ =
         | TAPred _ -> [a]
         | TAPureFun -> []
         | TAEffect _ -> []
-        | TAAssumePredTrue -> assert false
+        | TAAssumePredTrue -> [a]
       in
       let attr' = List.flatten_map aux attr in
       _TAttr attr' @@ trans_typ sol typ_excep typ_orig' typ

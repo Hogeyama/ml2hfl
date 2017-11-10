@@ -40,6 +40,7 @@ and print_typ_constr fm constr =
   | TList -> Format.fprintf fm "list"
   | TTuple -> Format.fprintf fm "tuple"
   | TAssumeTrue -> Format.fprintf fm "true"
+  | TPath path -> Format.fprintf fm "path %a" (List.print Format.pp_print_int) path
 
 and print_typ_aux var fm = function
   | TBase(b,ps) ->
@@ -367,6 +368,7 @@ and print_typ_constr_as_tree fm constr =
   | TList -> Format.fprintf fm "TList"
   | TTuple -> Format.fprintf fm "TTuple"
   | TAssumeTrue -> Format.fprintf fm "TAssumeTrue"
+  | TPath path -> Format.fprintf fm "TPath %a" (List.print Format.pp_print_int) path
 
 and print_typ_as_tree fm ty =
   match ty with

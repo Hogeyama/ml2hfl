@@ -8,7 +8,11 @@ type base =
   | TBool
   | TAbst of string
 
-type constr = TList | TTuple | TAssumeTrue | TPath of int list
+type constr =
+  | TList
+  | TTuple
+  | TAssumeTrue
+  | TPath of int list (* used only for refinement *)
 
 type 'a t =
   | TBase of base * ('a -> 'a list)

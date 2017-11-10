@@ -342,9 +342,6 @@ let rec inv_abst_type aty =
           "_dummy"
       in
       TFun(inv_abst_type aty1, subst_typ x -$- (inv_abst_type aty2))
-  | _ ->
-      Format.printf "%a@." Fpat.AbsType.pr aty;
-      assert false
 let inv_abst_type ty =
   ty
   |> inv_abst_type
