@@ -339,16 +339,17 @@ let rec exists_dest ty =
   | _ -> false
 
 
-let rec mark ty =
-  match elim_tattr ty with
-  | _ when is_base_typ ty -> ty
-  | TTuple _ -> ty
-  | TFun(x,ty2) when effect_of_typ ty2 = ENone && exists_dest ty2 ->
-      let x' = Id.map_typ (_TAttr [TAAssumePredTrue]) x in
-      TFun(x', mark ty2)
-  | TFun(x,ty2) -> TFun(Id.map_typ mark x, mark ty2)
-  | _ -> assert false
 let mark =
+  let rec mark ty =
+    match elim_tattr ty with
+    | _ when is_base_typ ty -> ty
+    | TTuple _ -> ty
+    | TFun(x,ty2) when effect_of_typ ty2 = ENone && exists_dest ty2 ->
+        let x' = Id.map_typ (_TAttr [TAAssumePredTrue] |- mark) x in
+        TFun(x', mark ty2)
+    | TFun(x,ty2) -> TFun(Id.map_typ mark x, mark ty2)
+    | _ -> assert false
+  in
   let tr = make_trans () in
   tr.tr_typ <- mark;
   tr.tr_term

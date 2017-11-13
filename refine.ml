@@ -55,12 +55,12 @@ let rec move_arg_pred ty =
             let p2',path2 = decomp_path p2 in
             let path1',c = List.decomp_snoc path1 in
             assert (c = 0);
-            if List.is_prefix path1' path2 then
-              compose_path path2 (make_imply p1' p2')
+            if List.is_prefix path1' path2 && p1' <> Const True then
+              make_imply p1' p2' |> compose_path path2
             else
               p2
           in
-          let ps'_y' = List.map (fun p2 -> List.fold_right aux ps_x p2) ps'_y in
+          let ps'_y' = List.map (List.fold_right aux ps_x) ps'_y in
           TBase(b', fun t -> List.map (subst y t) ps'_y')
         in
         move_arg_pred @@ map_base add @@ ty2 (Var x)
