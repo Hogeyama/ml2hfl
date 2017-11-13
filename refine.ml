@@ -55,10 +55,16 @@ let rec move_arg_pred ty =
             let p2',path2 = decomp_path p2 in
             let path1',c = List.decomp_snoc path1 in
             assert (c = 0);
-            if List.is_prefix path1' path2 && p1' <> Const True then
-              make_imply p1' p2' |> compose_path path2
-            else
+            if p1' = Const True then
               p2
+            else
+              if List.is_prefix path1' path2 then
+                if p2' = Const True then
+                  make_not p1' |> compose_path path2
+                else
+                  make_imply p1' p2' |> compose_path path2
+              else
+                p2
           in
           let ps'_y' = List.map (List.fold_right aux ps_x) ps'_y in
           TBase(b', fun t -> List.map (subst y t) ps'_y')
@@ -73,7 +79,7 @@ let rec move_arg_pred ty =
 let move_arg_pred typ =
   Debug.printf "[MOVE_PRED] input: %a@." CEGAR_print.typ typ;
   let r = move_arg_pred typ in
-  Debug.printf "[MOVE_PRED] output: %a@.@." CEGAR_print.typ r;
+  Debug.printf "[MOVE_PRED] output: %a@." CEGAR_print.typ r;
   r
 
 let rec remove_arg_pred ty =
@@ -107,7 +113,7 @@ let add_preds_env map env =
           |> copy_attr typ1
           |@> Debug.printf "COPY: %a@." CEGAR_print.typ
           |> move_arg_pred
-          |@> Debug.printf "MOVE: %a@." CEGAR_print.typ
+          |@> Debug.printf "MOVE: %a@.@." CEGAR_print.typ
           |> remove_arg_pred
         in
         merge_typ typ1 typ2
