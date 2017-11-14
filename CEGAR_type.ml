@@ -66,7 +66,7 @@ let get_base ty = fst @@ Option.get @@ decomp_base ty
 let is_typ_result ty =
   try
     get_base ty = typ_result_base
-  with Invalid_argument _ -> false
+  with _ -> false
 
 
 let rec decomp_tapp = function

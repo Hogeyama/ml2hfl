@@ -39,10 +39,20 @@ let rec copy_attr ty1 ty2 =
       Format.printf "Refine.copy_attr: %a, %a@." CEGAR_print.typ ty1 CEGAR_print.typ ty2;
       assert false
 
+let rec can_move ty =
+  match ty with
+  | TBase _ -> true
+  | TFun(TApp(TConstr TAssumeTrue,TBase _),_) -> true
+  | TFun(TBase _,ty2) -> true
+  | TFun(TApp(TConstr TAssumeTrue,TFun _),ty2) -> can_move @@ ty2 (Var "d")
+  | TFun(TFun(TBase _,ty12),ty2) when is_typ_result @@ ty12 (Var "d") && is_typ_result @@ ty2 (Var "d") -> true
+  | TFun(TFun _,ty2) -> false
+  | _ -> assert false
+
 let rec move_arg_pred ty =
   match ty with
   | TBase _ -> ty
-  | TFun(TApp(TConstr TAssumeTrue,TBase(b,ps)),ty2) ->
+  | TFun(TApp(TConstr TAssumeTrue,TBase(b,ps)),ty2) when can_move @@ ty2 (Var "d") ->
       let x = new_id' "x" in
       let ps_x = ps (Var x) in
       let ty1' = TBase(b,fun _ -> []) in
