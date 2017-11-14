@@ -60,7 +60,7 @@ let rec move_arg_pred ty =
             else
               if List.is_prefix path1' path2 then
                 if p2' = Const True then
-                  make_not p1' |> compose_path path2
+                  make_not_s p1' |> compose_path path2
                 else
                   make_imply p1' p2' |> compose_path path2
               else
@@ -69,7 +69,7 @@ let rec move_arg_pred ty =
           let ps'_y' = List.map (List.fold_right aux ps_x) ps'_y in
           TBase(b', fun t -> List.map (subst y t) ps'_y')
         in
-        move_arg_pred @@ map_base add @@ ty2 (Var x)
+        map_base add @@ move_arg_pred @@ ty2 (Var x)
       in
       TFun(ty1', subst_typ x -$- ty2')
   | TFun(TApp(TConstr TAssumeTrue,ty1),ty2) -> move_arg_pred @@ TFun(ty1, ty2)
