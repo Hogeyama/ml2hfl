@@ -113,6 +113,29 @@ let rec remove_arg_pred ty =
   | TApp _ -> assert false
   | TConstr _ -> assert false
 
+let rec remove_redundant_pred ty =
+  match ty with
+  | TBase(b,ps) ->
+      let x = new_id' "x" in
+      let ps_x = ps (Var x) in
+      let ps_x' =
+        let rec aux ps =
+          match ps with
+          | [] -> []
+          | p::ps' ->
+              if List.exists ((=) p) ps' then
+                aux ps'
+              else
+                p :: aux ps'
+        in
+        aux ps_x
+      in
+      TBase(b, fun t -> List.map (subst x t) ps_x')
+  | TFun(ty1,ty2) -> TFun(remove_redundant_pred ty1, remove_redundant_pred -| ty2)
+  | TApp(TConstr TAssumeTrue, ty2) -> remove_redundant_pred ty2
+  | TApp _ -> assert false
+  | TConstr _ -> assert false
+
 let add_preds_env map env =
   let aux (f,typ1) =
     let typ' =
@@ -125,6 +148,7 @@ let add_preds_env map env =
           |> move_arg_pred
           |@> Debug.printf "MOVE: %a@.@." CEGAR_print.typ
           |> remove_arg_pred
+          |> remove_redundant_pred
         in
         merge_typ typ1 typ2
       with Not_found -> typ1

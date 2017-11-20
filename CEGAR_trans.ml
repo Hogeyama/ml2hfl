@@ -76,7 +76,11 @@ let rec merge_typ env typ typ' =
 
 let merge_typ typ1 typ2 =
   try
-    merge_typ [] typ1 typ2
+    let r = merge_typ [] typ1 typ2 in
+    Debug.printf "MERGE: @[%a@." CEGAR_print.typ typ1;
+    Debug.printf "       @[%a@." CEGAR_print.typ typ2;
+    Debug.printf "       @[%a@.@." CEGAR_print.typ r;
+    r
   with _ when !!Debug.check ->
     Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;
     assert false
