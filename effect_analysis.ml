@@ -155,11 +155,13 @@ let rec gen_constr env tenv t =
   | App(t1, [t2]) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
-      let ty_arg,e =
+      let ty_arg,e1 =
         match elim_tattr t1'.typ with
         | TFun(x,ty2) -> Id.typ x, effect_of_typ ty2
         | _ -> assert false
       in
+      let e = new_evar env in
+      env.constraints <- (e1, e) :: env.constraints;
       env.constraints <- (effect_of t1', e) :: env.constraints;
       env.constraints <- (effect_of t2', e) :: env.constraints;
       flatten_sub ~ignore_top:true env t2'.typ ty_arg;
@@ -325,7 +327,7 @@ let infer ?(for_cps=false) t =
   Debug.printf "@.";
   let sol = solve env in
   apply_sol sol t'
-  |@> Debug.printf "Inferred: %a@." Print.term'
+
 
 
 

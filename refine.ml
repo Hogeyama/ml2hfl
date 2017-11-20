@@ -99,11 +99,9 @@ let rec remove_arg_pred ty =
       let ps_x = ps (Var x) in
       let ps_x' =
         let aux t =
-          let t',_ = decomp_path t in
-          if t' = Const True then
-            []
-          else
-            [t']
+          match decomp_path t with
+          | Const _, _ -> []
+          | t', _ -> [t']
         in
         List.flatten_map aux ps_x
       in
@@ -132,7 +130,6 @@ let rec remove_redundant_pred ty =
       in
       TBase(b, fun t -> List.map (subst x t) ps_x')
   | TFun(ty1,ty2) -> TFun(remove_redundant_pred ty1, remove_redundant_pred -| ty2)
-  | TApp(TConstr TAssumeTrue, ty2) -> remove_redundant_pred ty2
   | TApp _ -> assert false
   | TConstr _ -> assert false
 
