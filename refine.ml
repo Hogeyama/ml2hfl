@@ -137,17 +137,21 @@ let add_preds_env map env =
   let aux (f,typ1) =
     let typ' =
       try
-        let typ2 =
-          List.assoc f map
-          |@> Debug.printf "INPUT: %a@." CEGAR_print.typ
-          |> copy_attr typ1
-          |@> Debug.printf "COPY: %a@." CEGAR_print.typ
-          |> move_arg_pred
-          |@> Debug.printf "MOVE: %a@.@." CEGAR_print.typ
-          |> remove_arg_pred
-          |> remove_redundant_pred
+        let typ2 = List.assoc f map in
+        let typ2' =
+          if !Flag.assume_safe_fun_arg_pred_true then
+            typ2
+            |@> Debug.printf "INPUT: %a@." CEGAR_print.typ
+            |> copy_attr typ1
+            |@> Debug.printf "COPY: %a@." CEGAR_print.typ
+            |> move_arg_pred
+            |@> Debug.printf "MOVE: %a@.@." CEGAR_print.typ
+            |> remove_arg_pred
+            |> remove_redundant_pred
+          else
+            typ2
         in
-        merge_typ typ1 typ2
+        merge_typ typ1 typ2'
       with Not_found -> typ1
     in
     f, typ'

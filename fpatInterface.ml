@@ -346,7 +346,7 @@ let rec inv_abst_type aty =
 let inv_abst_type ty =
   ty
   |> inv_abst_type
-  |> path_to_attr
+  |&!Flag.assume_safe_fun_arg_pred_true&> path_to_attr
 
 
 let init prog =

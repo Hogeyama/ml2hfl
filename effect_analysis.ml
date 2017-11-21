@@ -54,13 +54,18 @@ let rec make_template env ty =
   in
   add_effect_typ (new_evar env) ty'
 
-let add_effect e t =
-  add_attr (AEffect e) t
+let set_effect e t =
+  let ty =
+    match t.typ with
+    | TAttr(TAEffect _::attrs, ty1) -> TAttr(TAEffect e::attrs, ty1)
+    | _ -> add_effect_typ e t.typ
+  in
+  add_attr (AEffect e) {t with typ=ty}
 
 let add_evar env t =
   let typ = make_template env t.typ in
   let e = effect_of_typ typ in
-  add_effect e {t with typ}
+  set_effect e {t with typ}
 
 let rec force_cont ty =
   let attrs,ty1 =
@@ -126,7 +131,7 @@ let rec gen_constr env tenv t =
   | Bottom ->
       let e = new_evar env in
       env.constraints <- (ECont, e) :: env.constraints;
-      add_effect e t
+      set_effect e t
   | Var x ->
       let ty =
 	try
@@ -138,14 +143,14 @@ let rec gen_constr env tenv t =
             Format.printf "%a@." Print.id x; assert false
       in
       let x' = Id.set_typ x ty in
-      add_effect ENone {desc=Var x'; typ=ty; attr=t.attr}
+      set_effect ENone {desc=Var x'; typ=ty; attr=t.attr}
   | Fun(x, t1) ->
       let x_typ = make_template env (Id.typ x) in
       let x' = Id.set_typ x x_typ in
       let tenv' = (x, x_typ) :: tenv in
       let t1' = gen_constr env tenv' t1 in
       let ty = add_effect_typ ENone @@ TFun(x',t1'.typ) in
-      add_effect ENone @@ {desc=Fun(x',t1'); typ=ty; attr=t.attr}
+      set_effect ENone @@ {desc=Fun(x',t1'); typ=ty; attr=t.attr}
   | App(t1, []) -> assert false
   | App(t1, t2::t3::ts) ->
       let typ = (make_app_raw t1 [t2]).typ in
@@ -165,7 +170,7 @@ let rec gen_constr env tenv t =
       env.constraints <- (effect_of t1', e) :: env.constraints;
       env.constraints <- (effect_of t2', e) :: env.constraints;
       flatten_sub ~ignore_top:true env t2'.typ ty_arg;
-      add_effect e @@ {(make_app_raw t1' [t2']) with attr=t.attr}
+      set_effect e @@ {(make_app_raw t1' [t2']) with attr=t.attr}
   | If(t1, t2, t3) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
@@ -176,7 +181,7 @@ let rec gen_constr env tenv t =
       flatten_sub env t2'.typ ty;
       flatten_sub env t3'.typ ty;
       if env.for_cps then env.constraints <- (ECont, e) :: env.constraints;
-      add_effect e @@ {(make_if t1' t2' t3') with typ=ty; attr=t.attr}
+      set_effect e @@ {(make_if t1' t2' t3') with typ=ty; attr=t.attr}
   | Let(bindings, t1) ->
       let tenv' =
         let make_env (f,_) = f, make_template env (Id.typ f) in
@@ -195,7 +200,7 @@ let rec gen_constr env tenv t =
       let t1' = gen_constr env tenv' t1 in
       env.constraints <- (effect_of t1', e) :: env.constraints;
       let ty = add_effect_typ e @@ elim_tattr t1'.typ in
-      add_effect e @@ {(make_let bindings' t1') with typ=ty; attr=t.attr}
+      set_effect e @@ {(make_let bindings' t1') with typ=ty; attr=t.attr}
   | BinOp(op, t1, t2) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
@@ -203,13 +208,13 @@ let rec gen_constr env tenv t =
       let e = effect_of_typ ty in
       env.constraints <- (effect_of t1', e) :: env.constraints;
       env.constraints <- (effect_of t2', e) :: env.constraints;
-      add_effect e @@ {desc=BinOp(op,t1',t2'); typ=ty; attr=t.attr}
+      set_effect e @@ {desc=BinOp(op,t1',t2'); typ=ty; attr=t.attr}
   | Not t1 ->
       let t1' = gen_constr env tenv t1 in
       let ty = make_template env t.typ in
       let e = effect_of_typ ty in
       env.constraints <- (effect_of t1', e) :: env.constraints;
-      add_effect e @@ {desc=Not t1'; typ=ty; attr=t.attr}
+      set_effect e @@ {desc=Not t1'; typ=ty; attr=t.attr}
   | Event(s,true) -> unsupported __MODULE__
   | Event(s,false) ->
       let t' = add_evar env t in
@@ -221,13 +226,13 @@ let rec gen_constr env tenv t =
       let ty = make_template env t.typ in
       let e = effect_of_typ ty in
       env.constraints <- (effect_of t1', e) :: env.constraints;
-      add_effect e @@ {desc=Proj(i,t1'); typ=ty; attr=t.attr}
+      set_effect e @@ {desc=Proj(i,t1'); typ=ty; attr=t.attr}
   | Tuple ts ->
       let ts' = List.map (gen_constr env tenv) ts in
       let ty = make_template env t.typ in
       let e = effect_of_typ ty in
       List.iter (fun t -> env.constraints <- (effect_of t, e) :: env.constraints) ts';
-      add_effect e @@ {desc=Tuple ts'; typ=ty; attr=t.attr}
+      set_effect e @@ {desc=Tuple ts'; typ=ty; attr=t.attr}
   | TryWith(t1, t2) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
@@ -235,13 +240,13 @@ let rec gen_constr env tenv t =
       let e = effect_of_typ ty in
       flatten_sub env t1'.typ ty;
       flatten_sub env t2'.typ ty;
-      add_effect e @@ {desc=TryWith(t1',t2'); typ=ty; attr=t.attr}
+      set_effect e @@ {desc=TryWith(t1',t2'); typ=ty; attr=t.attr}
   | Raise t1 ->
       let t1' = gen_constr env tenv t1 in
       let ty = make_template env t.typ in
       let e = effect_of_typ ty in
       env.constraints <- (EExcep, e) :: env.constraints;
-      add_effect e @@ {desc=Raise t1'; typ=ty; attr=t.attr}
+      set_effect e @@ {desc=Raise t1'; typ=ty; attr=t.attr}
   | _ ->
       Format.printf "%a@." Print.term t;
       assert false
