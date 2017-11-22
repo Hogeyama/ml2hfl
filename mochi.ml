@@ -566,7 +566,8 @@ let string_of_exception = function
   | Lexer.Error(err, loc) -> "Lexer.Error"
   | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
   | Fatal s -> "Fatal"
-  | TimeOut -> "TimeOut"
+  | TimeOut
+  | Assert_failure("timer.ml", _, _) -> "TimeOut"
   | Killed -> "Killed"
   | Z3native.Exception("out of memory") -> "OutOfMemory"
   | e -> Printexc.to_string e
