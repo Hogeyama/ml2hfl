@@ -361,7 +361,7 @@ and top_to_local t =
       assert false
 
 let main _ spec parsed =
-  Flag.print_only_if_id := true;
+  Flag.Print.only_if_id := true;
   (*
   if spec <> Spec.init then unsupported "Modular.main: spec";
    *)
@@ -433,12 +433,12 @@ let main _ spec parsed =
   Main_loop.print_result_delimiter ();
   match r with
   | `Typable ->
-      if !Flag.print_result then
+      if !Flag.Print.result then
         report_safe env;
-      Flag.result := "Safe";
+      Flag.Log.result := "Safe";
       true
   | `Untypable ->
-      if !Flag.print_result then
+      if !Flag.Print.result then
         report_unsafe neg_env ce_set;
-      Flag.result := "Unsafe";
+      Flag.Log.result := "Unsafe";
       false

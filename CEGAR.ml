@@ -15,11 +15,11 @@ let pre () =
   ()
 
 let post () =
-  incr Flag.cegar_loop;
-  Fpat.Global.cegar_iterations := !Flag.cegar_loop
+  incr Flag.Log.cegar_loop;
+  Fpat.Global.cegar_iterations := !Flag.Log.cegar_loop
 
 let print_non_CPS_abst abst prog =
-  if !Flag.just_print_non_CPS_abst then
+  if !Flag.Mode.just_print_non_CPS_abst then
     let result =
       try
         Some (MC.check abst prog MC.Other)
@@ -37,40 +37,40 @@ let print_non_CPS_abst abst prog =
 
 let improve_precision () =
   match () with
-  | _ when not !Flag.use_filter ->
-      if !Flag.print_progress then Format.printf "Filter option enabled.@.";
-      if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
-      Flag.use_filter := true
-  | _ when not !Flag.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred ->
-      if !Flag.print_progress then Format.printf "Negative-predicate option enabled.@.";
-      if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+  | _ when not !Flag.PredAbst.use_filter ->
+      if !Flag.Print.progress then Format.printf "Filter option enabled.@.";
+      if !Flag.Print.progress then Format.printf "Restart CEGAR-loop.@.";
+      Flag.PredAbst.use_filter := true
+  | _ when not !Flag.PredAbst.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred ->
+      if !Flag.Print.progress then Format.printf "Negative-predicate option enabled.@.";
+      if !Flag.Print.progress then Format.printf "Restart CEGAR-loop.@.";
       Fpat.PredAbst.use_neg_pred := true
-  | _ when !Fpat.PredAbst.wp_max_num < Flag.wp_max_max ->
+  | _ when !Fpat.PredAbst.wp_max_num < Flag.PredAbst.wp_max_max ->
       incr Fpat.PredAbst.wp_max_num;
       CEGAR_abst.incr_wp_max := true;
-      if !Flag.print_progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
-      if !Flag.print_progress then Format.printf "Restart CEGAR-loop.@.";
+      if !Flag.Print.progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
+      if !Flag.Print.progress then Format.printf "Restart CEGAR-loop.@.";
   | _ ->
       raise NoProgress
 
 let rec loop prog0 is_cp ces =
   pre ();
   let prog =
-    if !Flag.relative_complete
+    if !Flag.Method.relative_complete
     then
       let env,defs,main = FpatInterface.instantiate_param prog0 in
       {env; defs; main; info=init_info}
     else prog0
   in
   let pr =
-    if !Flag.expand_non_rec
+    if !Flag.PredAbst.expand_non_rec
     then CEGAR_util.print_prog_typ' prog.info.inlined
     else CEGAR_print.prog_typ
   in
-  if !Flag.print_progress
-  then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop pr prog;
-  if !Flag.print_abst_typ
-  then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.cegar_loop CEGAR_print.env prog.env;
+  if !Flag.Print.progress
+  then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop pr prog;
+  if !Flag.Print.abst_typ
+  then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop CEGAR_print.env prog.env;
   let labeled,abst = CEGAR_abst.abstract prog.info.orig_fun_list prog.info.inlined prog in
   print_non_CPS_abst abst prog;
   let spec =
@@ -78,9 +78,9 @@ let rec loop prog0 is_cp ces =
     | Some x -> MC.Fairness x
     | None -> MC.Other in
   let result = MC.check abst prog spec in
-  match result, !Flag.mode with
+  match result, !Flag.Method.mode with
   | MC.Safe env, _ ->
-      if !!Flag.print_ref_typ_debug then
+      if !!Flag.Debug.print_ref_typ then
         begin
           Format.printf "Intersection types:@.";
           List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f Inter_type.print typ) env;
@@ -92,14 +92,14 @@ let rec loop prog0 is_cp ces =
             Some (x, Type_trans.ref_of_inter (List.assoc x prog.env) ityp)
           with Not_found -> None
         in
-        if !Flag.print_certificate && Flag.(!mc <> TRecS) then
-          match Ref.tmp_set Flag.mc Flag.TRecS (fun () -> MC.check abst prog spec) with
+        if !Flag.Print.certificate && Flag.ModelCheck.(!mc <> TRecS) then
+          match Ref.tmp_set Flag.ModelCheck.mc Flag.ModelCheck.TRecS (fun () -> MC.check abst prog spec) with
           | MC.Safe env -> List.filter_map aux env
           | _ -> assert false
         else
           List.filter_map aux env
       in
-      if !!Flag.print_ref_typ_debug then
+      if !!Flag.Debug.print_ref_typ then
         begin
           Format.printf "Refinement types:@.";
           List.iter (fun (f,typ) -> Format.printf "  %s: %a@." f CEGAR_ref_type.print typ) env';
@@ -107,11 +107,11 @@ let rec loop prog0 is_cp ces =
         end;
       post ();
       prog, Safe env'
-  | MC.Unsafe (MC.CENonTerm ce_tree), Flag.NonTermination ->
+  | MC.Unsafe (MC.CENonTerm ce_tree), Flag.Method.NonTermination ->
       let prog' = CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog in
       post ();
       loop prog' is_cp ((MC.CENonTerm ce_tree)::ces)
-  | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.FairNonTermination ->
+  | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.Method.FairNonTermination ->
       begin
         let prog' = CEGAR_fair_non_term.cegar prog0 labeled is_cp ce_rules prog in
         post ();
@@ -138,7 +138,7 @@ let rec loop prog0 is_cp ces =
         | MC.CESafety ce -> ce
         | _ -> assert false
       in
-      if !Flag.print_eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_orig;
+      if !Flag.Print.eval_abst then CEGAR_trans.eval_abst_cbn prog labeled abst ce_orig;
       let ce' = CEGAR_trans.trans_ce labeled prog ce_orig None in
       let same_counterexample =
         match ces with
@@ -152,17 +152,17 @@ let rec loop prog0 is_cp ces =
           loop prog is_cp ces
         with NoProgress ->
           post ();
-          if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
+          if !Flag.Print.progress then Feasibility.print_ce_reduction ce' prog;
           raise NoProgress
           else
             begin
-              if !Flag.print_progress then Feasibility.print_ce_reduction ce' prog;
-              match Feasibility.check ce' prog, !Flag.mode with
-              | Feasibility.Feasible sol, Flag.Termination ->
+              if !Flag.Print.progress then Feasibility.print_ce_reduction ce' prog;
+              match Feasibility.check ce' prog, !Flag.Method.mode with
+              | Feasibility.Feasible sol, Flag.Method.Termination ->
                   (* termination analysis *)
                   Refine.refine_rank_fun ce' [] prog0;
                   assert false
-              | Feasibility.Feasible sol, Flag.FairTermination ->
+              | Feasibility.Feasible sol, Flag.Method.FairTermination ->
                   Refine.refine_rank_fun ce' [] prog0;
                   assert false
               | Feasibility.Feasible sol, _ ->
@@ -191,14 +191,14 @@ let rec loop prog0 is_cp ces =
 let run prog =
   if !!Debug.check then ignore @@ Typing.infer prog;
   let prog =
-    match !Flag.mode with
-    | Flag.NonTermination
-    | Flag.FairNonTermination -> CEGAR_trans.add_fail_to_end prog
+    match !Flag.Method.mode with
+    | Flag.Method.NonTermination
+    | Flag.Method.FairNonTermination -> CEGAR_trans.add_fail_to_end prog
     | _ -> prog
   in
   make_ID_map prog;
   let info =
-    if !Flag.expand_non_rec then
+    if !Flag.PredAbst.expand_non_rec then
       {prog.info with non_rec = get_non_rec CEGAR_abst_CPS.beta_reduce_term @@ snd @@ CEGAR_abst_util.add_label prog}
     else
       prog.info
@@ -207,7 +207,7 @@ let run prog =
     let is_cp = FpatInterface.is_cp prog in
     try
       snd @@ loop {prog with info} is_cp []
-    with Fpat.RefTypInfer.FailedToRefineTypes when !Flag.web ->
+    with Fpat.RefTypInfer.FailedToRefineTypes when !Flag.PrettyPrinter.web ->
       FpatInterface.parse_arg "-hccs it";
       snd @@ loop {prog with info} is_cp []
   with NoProgress | CEGAR_abst.NotRefined ->

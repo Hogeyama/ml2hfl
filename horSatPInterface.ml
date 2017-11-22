@@ -10,7 +10,7 @@ exception HorSatPVersionError
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let version () =
-  let cin,cout = Unix.open_process (Format.sprintf "%s --version" !Flag.horsatp) in
+  let cin,cout = Unix.open_process (Format.sprintf "%s --version" !Flag.ModelCheck.horsatp) in
   let v =
     try
       Some (input_line cin)
@@ -158,7 +158,7 @@ let rec verifyFile_aux filename =
   if ver < required_ver then
     (Format.printf "HorSatP: minimum version required is %s, but %s@." required_ver ver;
      raise HorSatPVersionError);
-  let cmd = Format.sprintf "%s --iter=10000 %s > %s 2>/dev/null" !Flag.horsatp filename result_file in
+  let cmd = Format.sprintf "%s --iter=10000 %s > %s 2>/dev/null" !Flag.ModelCheck.horsatp filename result_file in
   ignore @@ Sys.command cmd;
   let ic = open_in result_file in
   read_as_string ic
@@ -178,7 +178,13 @@ let verifyFile filename =
 *)
 let check target =
   let target' = trans target in
-  let input = Filename.change_extension !!Flag.mainfile "hors" in
+  let ext =
+    if !Flag.ModelCheck.rename_hors then
+      string_of_int !Flag.Log.cegar_loop ^ ".hors"
+    else
+      "hors"
+  in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     Debug.printf "%s." target';
     write_log input target';

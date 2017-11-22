@@ -159,10 +159,10 @@ let rec run predicate_que holed =
       BRA_types.preprocessForTerminationVerification := predicate_info.substToCoeffs;
 
       try
-	let result = if !Flag.separate_pred then
+	let result = if !Flag.Termination.separate_pred then
 	    let predicates = separate_to_CNF (construct_LLRF predicate_info) in
             List.for_all (verify_with holed) predicates
-	  else if !Flag.split_callsite then
+	  else if !Flag.Termination.split_callsite then
 	    let predicate = construct_LLRF predicate_info in
 	    let splited = callsite_split holed in
 	    reset_counter ();
@@ -187,7 +187,7 @@ let rec run predicate_que holed =
 	let prev_var_terms = List.map Fpat.Term.mk_var prev_vars in
 	let arg_env = List.map (fun a -> (a, Fpat.Type.mk_int)) arg_vars in
 
-	if !Flag.disjunctive then
+	if !Flag.Termination.disjunctive then
 	  (* make templates *)
 	  let linear_template = unwrap_template (Fpat.Template.mk_atom arg_env 1) in
 	  let linear_template_prev = Fpat.Term.subst (List.combine arg_vars prev_var_terms) linear_template in

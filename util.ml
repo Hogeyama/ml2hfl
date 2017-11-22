@@ -1,12 +1,12 @@
-module Verbose = Debug.Make(struct let check () = !Flag.print_progress end)
-module MVerbose = Debug.Make(struct let check () = !Flag.print_modular_progress end)
+module Verbose = Debug.Make(struct let check () = !Flag.Print.progress end)
+module MVerbose = Debug.Make(struct let check () = !Flag.Print.modular_progress end)
 
 let set_only_result () =
-  Flag.print_progress := false;
-  Flag.print_modular_progress := false
+  Flag.Print.progress := false;
+  Flag.Print.modular_progress := false
 let is_only_result () =
-  not !Flag.print_progress &&
-  not !Flag.print_modular_progress
+  not !Flag.Print.progress &&
+  not !Flag.Print.modular_progress
 
 exception Fatal of string
 exception Unsupported of string
@@ -834,18 +834,18 @@ let print_begin_end ?(fm=Format.std_formatter) =
 
 
 let make_debug_check s =
-  Flag.modules := s::!Flag.modules;
-  fun () -> List.mem s !Flag.debug_module
+  Flag.Debug.debuggable_modules := s::!Flag.Debug.debuggable_modules;
+  fun () -> List.mem s !Flag.Debug.debug_module
 
 let set_debug_modules mods =
   let modules = String.nsplit mods "," in
   let check m =
-    if not @@ List.mem m !Flag.modules then
+    if not @@ List.mem m !Flag.Debug.debuggable_modules then
       (Format.printf "Module \"%s\" is not registered for debug@." m;
        exit 1)
   in
   List.iter check modules;
-  Flag.debug_module := modules @ !Flag.debug_module
+  Flag.Debug.debug_module := modules @ !Flag.Debug.debug_module
 
 let rec fixed_point ?(eq=(=)) ?(max= -1) f init =
   let x = f init in

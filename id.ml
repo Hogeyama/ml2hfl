@@ -72,7 +72,7 @@ let print fm x =
   let s = to_string x in
   assert (s <> "");
   let s' =
-    if !Flag.print_as_ocaml then
+    if !Flag.Print.as_ocaml then
       String.sign_to_letters @@ String.uncapitalize s
     else
       s

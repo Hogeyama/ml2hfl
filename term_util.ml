@@ -71,7 +71,7 @@ let make_randint_cps b =
   {desc=Const(RandValue(TInt,true)); typ=TFun(u,TFun(k,typ_result)); attr}
 let rec make_app t ts =
   let check typ1 typ2 =
-    if not (Flag.check_typ => Type.can_unify typ1 typ2) then
+    if not (Flag.Debug.check_typ => Type.can_unify typ1 typ2) then
       begin
         Format.printf "make_app:@ %a@ <=/=>@ %a@." Print.typ typ1 Print.typ typ2;
         Format.printf "fun: %a@." Print.term t;
@@ -91,7 +91,7 @@ let rec make_app t ts =
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
   | _, typ, t2::ts when typ = typ_unknown || typ = TVar {contents=None} ->
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
-  | _ when not Flag.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
+  | _ when not Flag.Debug.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
   | _ ->
       Format.printf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
       assert false
@@ -174,8 +174,8 @@ let make_mul t1 t2 =
 let make_div t1 t2 = {desc=BinOp(Div, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
 let make_neg t = make_sub (make_int 0) t
 let make_if_ t1 t2 t3 =
-  assert (Flag.check_typ => Type.can_unify t1.typ TBool);
-  assert (Flag.check_typ => Type.can_unify t2.typ t3.typ);
+  assert (Flag.Debug.check_typ => Type.can_unify t1.typ TBool);
+  assert (Flag.Debug.check_typ => Type.can_unify t2.typ t3.typ);
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
@@ -191,7 +191,7 @@ let make_if_ t1 t2 t3 =
       in
       {desc=If(t1, t2, t3); typ=typ; attr=make_attr[t1;t2;t3]}
 let make_eq t1 t2 =
-  assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
+  assert (Flag.Debug.check_typ => Type.can_unify t1.typ t2.typ);
   match t1.desc, t2.desc with
   | Const c1, Const c2 -> make_bool (c1 = c2)
   | _ ->
@@ -199,20 +199,20 @@ let make_eq t1 t2 =
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
-  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Lt, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_gt t1 t2 =
-  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Gt, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_leq t1 t2 =
-  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Leq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_geq t1 t2 =
-  assert (true || Flag.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.check_typ => Type.can_unify t2.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
   {desc=BinOp(Geq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
 let make_binop op t1 t2 =
   let f =
@@ -243,7 +243,7 @@ let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ; attr=[]}
 let make_nil typ = {desc=Nil; typ=TApp(TList, [typ]); attr=[]}
 let make_nil2 typ = {desc=Nil; typ=typ; attr=[]}
 let make_cons t1 t2 =
-  assert (Flag.check_typ => Type.can_unify (TApp(TList, [t1.typ])) t2.typ);
+  assert (Flag.Debug.check_typ => Type.can_unify (TApp(TList, [t1.typ])) t2.typ);
   {desc=Cons(t1,t2); typ=t2.typ; attr=[]}
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
@@ -292,7 +292,7 @@ let make_trywith_simple t handler = {desc=TryWith(t, handler); typ=t.typ; attr=[
 let make_imply t1 t2 = make_or (make_not t1) t2
 
 let make_eq_dec t1 t2 =
-  assert (Flag.check_typ => Type.can_unify t1.typ t2.typ);
+  assert (Flag.Debug.check_typ => Type.can_unify t1.typ t2.typ);
   let aux t =
     match t.desc with
     | Var x -> make_var x, Std.identity
@@ -680,8 +680,8 @@ let rec merge_typ typ1 typ2 =
   | _ -> Format.printf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
 
 let make_if t1 t2 t3 =
-  assert (Flag.check_typ => Type.can_unify t1.typ TBool);
-  if Flag.check_typ && not @@ Type.can_unify t2.typ t3.typ then
+  assert (Flag.Debug.check_typ => Type.can_unify t1.typ TBool);
+  if Flag.Debug.check_typ && not @@ Type.can_unify t2.typ t3.typ then
     (Format.printf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
      assert false);
   match t1.desc with

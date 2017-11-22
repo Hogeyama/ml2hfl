@@ -300,7 +300,7 @@ let rec to_abst_typ typ =
       let x' = Id.new_var_id x in
       let typ' = to_simple_base b in
       let ps =
-        if !Flag.decomp_pred then
+        if !Flag.PredAbst.decomp_pred then
           Term_util.decomp_bexp @@ U.subst_var x x' t
         else
           [U.subst_var x x' t]

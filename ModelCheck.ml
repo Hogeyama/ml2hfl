@@ -284,9 +284,9 @@ let preprocess prog =
   |> capitalize
   |@> pr "capitalize"
   |> Typing.infer
-  |&Flag.useless_elim&> Useless_elim.elim
-  |&Flag.beta_reduce&> beta_reduce
-  |& !Flag.church_encode&> church_encode
+  |&Flag.ModelCheck.useless_elim&> Useless_elim.elim
+  |&Flag.ModelCheck.beta_reduce&> beta_reduce
+  |& !Flag.ModelCheck.church_encode&> church_encode
   |@> pr "church_encode"
 
 let preprocess_cps prog =
@@ -304,29 +304,29 @@ let preprocess_cps prog =
   |> capitalize
   |@> pr "capitalize"
   |> Typing.infer
-  |&Flag.useless_elim&> Useless_elim.elim
-  |&Flag.beta_reduce&> beta_reduce
-  |& !Flag.church_encode&> church_encode
+  |&Flag.ModelCheck.useless_elim&> Useless_elim.elim
+  |&Flag.ModelCheck.beta_reduce&> beta_reduce
+  |& !Flag.ModelCheck.church_encode&> church_encode
   |@> pr "church_encode"
 
 let check abst prog spec =
-  if !Flag.print_progress
-  then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.cegar_loop;
+  if !Flag.Print.progress
+  then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.Log.cegar_loop;
   let abst' =
     if List.mem ACPS prog.info.attr
     then preprocess_cps abst
     else preprocess abst
   in
   let result =
-    match !Flag.mc, !Flag.mode with
-    | Flag.TRecS, _ ->
+    match !Flag.ModelCheck.mc, !Flag.Method.mode with
+    | Flag.ModelCheck.TRecS, _ ->
         let spec = TrecsInterface.make_spec @@ List.length prog.defs in
         begin
           match TrecsInterface.check (abst',spec) with
           | TrecsInterface.Safe env -> Safe (uncapitalize_env env)
           | TrecsInterface.Unsafe ce -> Unsafe (CESafety ce)
         end
-    | Flag.HorSat, Flag.NonTermination ->
+    | Flag.ModelCheck.HorSat, Flag.Method.NonTermination ->
        let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
        let spec = HorSatInterface.make_spec_nonterm labels in
         begin
@@ -335,7 +335,7 @@ let check abst prog spec =
           | HorSatInterface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
           | HorSatInterface.Unsafe _ -> assert false
         end
-    | Flag.HorSat2, Flag.NonTermination ->
+    | Flag.ModelCheck.HorSat2, Flag.Method.NonTermination ->
        let labels = List.map make_randint_label @@ List.filter_map (decomp_randint_name -| fst) prog.env in
        let spec = HorSat2Interface.make_spec_nonterm labels in
         begin
@@ -344,7 +344,7 @@ let check abst prog spec =
           | HorSat2Interface.UnsafeAPT ce -> Unsafe (CENonTerm ce)
           | HorSat2Interface.Unsafe _ -> assert false
         end
-    | Flag.HorSat, _ ->
+    | Flag.ModelCheck.HorSat, _ ->
         let spec = HorSatInterface.make_spec @@ List.length prog.defs in
         begin
           match HorSatInterface.check (abst',spec) with
@@ -352,7 +352,7 @@ let check abst prog spec =
           | HorSatInterface.Unsafe ce -> Unsafe (CESafety ce)
           | HorSatInterface.UnsafeAPT _ -> assert false
         end
-    | Flag.HorSat2, _ ->
+    | Flag.ModelCheck.HorSat2, _ ->
         let spec = HorSat2Interface.make_spec @@ List.length prog.defs in
         begin
           match HorSat2Interface.check (abst',spec) with
@@ -360,7 +360,7 @@ let check abst prog spec =
           | HorSat2Interface.Unsafe ce -> Unsafe (CESafety ce)
           | HorSat2Interface.UnsafeAPT _ -> assert false
         end
-    | Flag.HorSatP, Flag.FairNonTermination ->
+    | Flag.ModelCheck.HorSatP, Flag.Method.FairNonTermination ->
        let fairness =
          match spec with
          | Fairness x -> x
@@ -378,10 +378,10 @@ let check abst prog spec =
              let rules = HorSatPInterface.read_HORS_file fname in
              Unsafe (CEFairNonTerm rules)
         end
-    | Flag.HorSatP, _ ->
+    | Flag.ModelCheck.HorSatP, _ ->
        assert false
   in
-  if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
+  if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
   result
 let check abst prog spec =
-  Time.measure_and_add Flag.time_mc (fun () -> check abst prog spec)
+  Time.measure_and_add Flag.Log.time_mc (fun () -> check abst prog spec)

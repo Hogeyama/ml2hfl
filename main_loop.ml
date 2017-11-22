@@ -52,7 +52,7 @@ let preprocess make_pps ?(fun_list=None) t spec =
     in
     let inlined = List.map CEGAR_trans.trans_var spec.Spec.inlined in
     let fairness =
-      if !Flag.mode = Flag.FairNonTermination then
+      if Flag.Method.(!mode = FairNonTermination) then
         Some spec.Spec.fairness
       else
         None
@@ -69,17 +69,17 @@ let write_annot env orig =
   |> WriteAnnot.f !!Flag.mainfile orig
 
 let report_safe env orig t0 =
-  if !Flag.write_annot && List.length !Flag.filenames = 1 then write_annot env orig;
+  if !Flag.PrettyPrinter.write_annot && List.length !Flag.filenames = 1 then write_annot env orig;
 
   let s =
-    match !Flag.mode with
-    | Flag.NonTermination -> "Non-terminating!"
-    | Flag.FairNonTermination -> "Fair Infinite Execution found!"
+    match !Flag.Method.mode with
+    | Flag.Method.NonTermination -> "Non-terminating!"
+    | Flag.Method.FairNonTermination -> "Fair Infinite Execution found!"
     | _ -> "Safe!"
   in
   Color.printf Color.Bright "%s@.@." s;
 
-  if !Flag.relative_complete then
+  if !Flag.Method.relative_complete then
     begin
       let map =
         List.map
@@ -93,7 +93,7 @@ let report_safe env orig t0 =
       Format.printf "  @[<v>%a@]@.@." Print.term t
     end;
 
-  if env <> [] && !Flag.mode <> Flag.Termination then
+  if env <> [] && Flag.Method.(!mode <> Termination) then
     begin
       Verbose.printf "Refinement Types:@.";
       let env' = List.map (Pair.map_snd Ref_type.simplify) env in
@@ -101,7 +101,7 @@ let report_safe env orig t0 =
       List.iter pr env';
       Verbose.printf "@.";
 
-      if !Flag.print_abst_typ then
+      if !Flag.Print.abst_typ then
         begin
           Verbose.printf "Abstraction Types:@.";
           let pr (f,typ) = Verbose.printf "  %s: %a@." (Id.name f) Print.typ @@ Ref_type.to_abst_typ typ in
@@ -113,7 +113,7 @@ let report_safe env orig t0 =
 
 let report_unsafe main ce set_target =
   let s =
-    if !Flag.mode = Flag.NonTermination || !Flag.ignore_non_termination then
+    if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
       "Unknown."
     else
       if !Flag.use_abst then
@@ -137,21 +137,21 @@ let rec run_cegar prog =
   try
     match CEGAR.run prog with
     | CEGAR.Safe env ->
-        Flag.result := "Safe";
+        Flag.Log.result := "Safe";
         Color.printf Color.Bright "Safe!@.@.";
         true
     | CEGAR.Unsafe _ ->
-        Flag.result := "Unsafe";
+        Flag.Log.result := "Unsafe";
         Color.printf Color.Bright "Unsafe!@.@.";
         false
   with
-  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam ->
-      Flag.insert_param_funarg := true;
+  | Fpat.RefTypInfer.FailedToRefineTypes when Flag.Method.(not !insert_param_funarg && not !no_exparam) ->
+      Flag.Method.insert_param_funarg := true;
       run_cegar prog
-  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
+  | Fpat.RefTypInfer.FailedToRefineTypes when Flag.Method.(not !relative_complete && not !no_exparam) ->
       Verbose.printf "@.REFINEMENT FAILED!@.";
       Verbose.printf "Restart with relative_complete := true@.@.";
-      Flag.relative_complete := true;
+      Flag.Method.relative_complete := true;
       run_cegar prog
   | Fpat.RefTypInfer.FailedToRefineExtraParameters ->
       Fpat.RefTypInfer.params := [];
@@ -174,13 +174,13 @@ let insert_extra_param t =
 
 let improve_precision e =
   match e with
-  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.insert_param_funarg && not !Flag.no_exparam->
-      Flag.insert_param_funarg := true
-  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.relative_complete && not !Flag.no_exparam ->
+  | Fpat.RefTypInfer.FailedToRefineTypes when Flag.Method.(not !insert_param_funarg && not !no_exparam) ->
+      Flag.Method.insert_param_funarg := true
+  | Fpat.RefTypInfer.FailedToRefineTypes when not !Flag.Method.relative_complete && not !Flag.Method.no_exparam ->
       Verbose.printf "@.REFINEMENT FAILED!@.";
       Verbose.printf "Restart with relative_complete := true@.@.";
-      Flag.relative_complete := true
-  | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.relative_complete && not !Flag.no_exparam ->
+      Flag.Method.relative_complete := true
+  | Fpat.RefTypInfer.FailedToRefineExtraParameters when !Flag.Method.relative_complete && not !Flag.Method.no_exparam ->
       Fpat.RefTypInfer.params := [];
       Fpat.RefTypInfer.prev_sol := [];
       Fpat.RefTypInfer.prev_constrs := [];
@@ -192,7 +192,7 @@ let rec loop make_pps ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_
             so that we can infer refinement types for a safe program
             with extra parameters added *)
   let set_target' =
-    if !Flag.relative_complete then
+    if !Flag.Method.relative_complete then
       insert_extra_param set_target
     else
       set_target
@@ -200,7 +200,7 @@ let rec loop make_pps ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_
   (**)
   let prog, make_get_rtyp = preprocess make_pps ~fun_list set_target' spec in
   let prog' =
-    if !Flag.mode = Flag.FairTermination && !Flag.add_closure_exparam
+    if Flag.(Method.(!mode = FairTermination) && !Termination.add_closure_exparam)
     then
       let () = if false then Format.printf "%a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol in
       let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
@@ -211,7 +211,7 @@ let rec loop make_pps ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_
     else
       prog
   in
-  if !Flag.trans_to_CPS then FpatInterface.init prog';
+  if !Flag.Mode.trans_to_CPS then FpatInterface.init prog';
   try
     let result = CEGAR.run prog' in
     result, make_get_rtyp, set_target'
@@ -254,14 +254,14 @@ let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
   print_result_delimiter ();
   match result with
   | CEGAR.Safe env ->
-      Flag.result := "Safe";
+      Flag.Log.result := "Safe";
       let env' = trans_env (Term_util.get_top_funs parsed) make_get_rtyp env in
-      if !Flag.mode = Flag.FairTermination => !!Verbose.check then
-        if !Flag.print_result then
+      if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
+        if !Flag.Print.result then
           report_safe env' orig set_target';
       true
   | CEGAR.Unsafe(sol,_) ->
-      Flag.result := "Unsafe";
-      if !Flag.print_result then
+      Flag.Log.result := "Unsafe";
+      if !Flag.Print.result then
         report_unsafe main sol set_target;
       false

@@ -26,7 +26,7 @@ let get_rtyp_lift t f rtyp =
 
 let get_rtyp_lift t f rtyp =
   let rtyp' = get_rtyp_lift t f rtyp in
-  if !!Flag.print_ref_typ_debug
+  if !!Flag.Debug.print_ref_typ
   then Format.printf "LIFT: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
@@ -102,7 +102,7 @@ let rec lift_aux post xs t =
           let aux (f,t1) =
             let ys,t1 = decomp_funs t1 in
             let fv = IdSet.inter (get_fv' t1) xs in
-            let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+            let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
             let fv = IdSet.elements fv in
             let ys' = fv @ ys in
             let f' = Id.map_typ (List.fold_right _TFun fv) f in
@@ -118,7 +118,7 @@ let rec lift_aux post xs t =
     | Let(bindings,t2) ->
         let fv = List.fold_left (fun acc (_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
-        let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+        let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
         let fv = IdSet.elements fv in
         let fs =
           let aux (f,_) =
@@ -199,7 +199,7 @@ let rec lift_aux' post xs t =
         let f = Id.new_var ~name:("f" ^ post) t.typ in
         let aux f ys t1 t2 =
           let fv = IdSet.inter (get_fv' t1) xs in
-          let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+          let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
           let fv = IdSet.elements fv in
           let ys' = fv @ ys in
           let typ = List.fold_right (fun x typ -> TFun(x,typ)) fv (Id.typ f) in
@@ -229,7 +229,7 @@ let rec lift_aux' post xs t =
         let aux (f,t1) =
           let ys,t1 = decomp_funs t1 in
           let fv = IdSet.inter (get_fv' t1) xs in
-          let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+          let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
           let fv = IdSet.elements fv in
           let ys' = fv @ ys in
           let typ = List.fold_right _TFun fv (Id.typ f) in
@@ -245,7 +245,7 @@ let rec lift_aux' post xs t =
     | Let(bindings,t2) ->
         let fv = List.fold_left (fun acc (_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
-        let fv = if !Flag.lift_fv_only then fv else filter_base xs @@@ fv in
+        let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
         let fv = IdSet.elements fv in
         let aux (f,_) =
           let f' = Id.set_typ f @@ List.fold_right _TFun fv @@ Id.typ f in

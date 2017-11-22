@@ -24,7 +24,7 @@ let get_solution env t =
   let sol' = List.map (fun (x,_) -> x, List.assoc_default 0 x sol) env in
   List.map snd @@ List.sort compare sol'
 
-let init_cont ce sat n constr env _ = assert (!Flag.mode <> Flag.FairNonTermination => (ce=[])); constr, n, env
+let init_cont ce sat n constr env _ = assert (Flag.Method.(!mode <> FairNonTermination) => (ce=[])); constr, n, env
 
 let assoc_def defs n t =
   let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
@@ -71,7 +71,7 @@ let rec check_aux pr ce sat n constr env defs t k =
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       k ce sat n constr env (make_app (Const op) [t1;t2])))
   | App _ when is_app_randint t ->
-     if !Flag.mode = Flag.FairNonTermination && !ext_ce_ref = [] then
+     if Flag.Method.(!mode = FairNonTermination) && !ext_ce_ref = [] then
        init_cont ce sat n constr env t
      else
      let t',randnum =
@@ -88,7 +88,7 @@ let rec check_aux pr ce sat n constr env defs t k =
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       if ce = [] then
-        if !Flag.mode = Flag.FairNonTermination then
+        if Flag.Method.(!mode = FairNonTermination) then
           init_cont ce sat n constr env (App (t1, t2))
         else
           assert false
@@ -125,9 +125,9 @@ let rec get_prefix ce n =
   | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce {defs; main} =
-  if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
+  if !Flag.Print.progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
   let time_tmp = Time.get () in
-  if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop;
+  if !Flag.Print.progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.Log.cegar_loop;
   if false then Format.printf "ce:	  %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
@@ -141,15 +141,15 @@ let check ce {defs; main} =
       Feasible solution
     else Infeasible prefix
   in
-  if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
-  Time.add time_tmp Flag.time_cegar;
+  if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
+  Time.add time_tmp Flag.Log.time_cegar;
   result
 
 let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   (* List.iter (fun (n, bs) -> Format.printf "C.E.: %d: %a@." n (print_list Format.pp_print_bool ",") bs) ext_ce; *)
-  if !Flag.print_progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
+  if !Flag.Print.progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
   let time_tmp = Time.get () in
-  if !Flag.print_progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.cegar_loop;
+  if !Flag.Print.progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.Log.cegar_loop;
   if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
@@ -169,10 +169,10 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
       FeasibleNonTerm (FpatInterface.implies [FpatInterface.conv_formula !rand_precond_ref] [FpatInterface.conv_formula constr], env', solution)
     else Infeasible prefix
   in
-  if !Flag.print_progress then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;
-  if !Flag.print_progress then Color.printf Color.Green "Randint constraint: %a@." CEGAR_print.term !rand_precond_ref;
-  if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
-  Time.add time_tmp Flag.time_cegar;
+  if !Flag.Print.progress then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;
+  if !Flag.Print.progress then Color.printf Color.Green "Randint constraint: %a@." CEGAR_print.term !rand_precond_ref;
+  if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
+  Time.add time_tmp Flag.Log.time_cegar;
   result
 
 

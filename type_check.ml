@@ -154,4 +154,4 @@ let rec check t typ =
       Format.printf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false
 
-let check t typ = if Flag.check_typ then check t typ
+let check t typ = if Flag.Debug.check_typ then check t typ

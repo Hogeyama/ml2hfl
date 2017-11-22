@@ -246,7 +246,7 @@ let inv_formula t = t |> Fpat.Formula.term_of |> inv_term
 let conv_event e = (***)
   match e with
   | Event(x) ->
-    if x <> "fail" && !Flag.mode <> Flag.FairNonTermination then
+    if x <> "fail" && Flag.Method.(!mode <> FairNonTermination) then
       Format.eprintf "Warning: fpat does not support general events.";
     Fpat.Term.mk_const (Fpat.Const.Event(x))
   | Branch(_) -> assert false
@@ -259,7 +259,7 @@ let conv_fdef typs (f, args, guard, events, body) =
       List.fold_right
         (fun e t ->
           let t' =
-            if e <> Event "fail" && List.mem !Flag.mode  [Flag.FairTermination; Flag.FairNonTermination] then
+            if e <> Event "fail" && Flag.Method.(List.mem !mode  [FairTermination; FairNonTermination]) then
               t
             else
               Fpat.Term.mk_const Fpat.Const.Unit in
@@ -346,7 +346,7 @@ let rec inv_abst_type aty =
 let inv_abst_type ty =
   ty
   |> inv_abst_type
-  |&!Flag.assume_safe_fun_arg_pred_true&> path_to_attr
+  |&!Flag.PredAbst.assume_safe_fun_arg_pred_true&> path_to_attr
 
 
 let init prog =
@@ -374,7 +374,7 @@ let is_cp prog =
 let infer labeled is_cp cexs ext_cexs prog =
   let fs = List.map fst prog.env in
   let defs' =
-    if !Flag.mode = Flag.FairNonTermination || !Flag.verify_ref_typ then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
+    if Flag.Method.(!mode = FairNonTermination || !verify_ref_typ) then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
       let aux f =
         if CEGAR_syntax.is_randint_var f then
           []
@@ -393,13 +393,13 @@ let infer labeled is_cp cexs ext_cexs prog =
       prog.defs in
   let prog = conv_prog {prog with defs=defs'} in
   let cexs =
-    if !Flag.mode = Flag.FairNonTermination || !Flag.verify_ref_typ then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
+    if Flag.Method.(!mode = FairNonTermination || !verify_ref_typ) then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
       List.map (flip (@) [2]) cexs
     else
       cexs in
   let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
-  Flag.time_parameter_inference :=
-    !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
+  Flag.Log.time_parameter_inference :=
+    !Flag.Log.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
   List.map (Pair.map Fpat.Idnt.base inv_abst_type) env
 
 let infer_with_ext
@@ -417,7 +417,7 @@ let infer_with_ext
   Verbose.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
   let fs = List.map fst prog.env in
   let defs' =
-    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
+    if Flag.Method.(!mode = FairNonTermination) then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
       let aux f =
         if CEGAR_syntax.is_randint_var f then
           []
@@ -438,7 +438,7 @@ let infer_with_ext
   let prog = conv_prog {prog with defs=defs'} in
 
   let cexs =
-    if !Flag.mode = Flag.FairNonTermination then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
+    if Flag.Method.(!mode = FairNonTermination) then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
       List.map (flip (@) [2]) cexs
     else
       cexs in
@@ -457,8 +457,8 @@ let infer_with_ext
   Fpat.HCCSSolver.link_dyn old_hccs_solver;
   Verbose.printf "END refinement@,@]";
 
-  Flag.time_parameter_inference :=
-    !Flag.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
+  Flag.Log.time_parameter_inference :=
+    !Flag.Log.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
   List.map (Pair.map Fpat.Idnt.base inv_abst_type) env
 
 
@@ -664,7 +664,7 @@ let insert_extra_param t =
     {t with Syntax.desc}
   in
   let res = aux [] [] [] t in
-  let _ = Time.add tmp Flag.time_parameter_inference in
+  let _ = Time.add tmp Flag.Log.time_parameter_inference in
   res
 
 let instantiate_param prog =
@@ -692,7 +692,7 @@ let instantiate_param prog =
       fdefs,
     main
   in
-  Time.add tmp Flag.time_parameter_inference;
+  Time.add tmp Flag.Log.time_parameter_inference;
   res
 
 

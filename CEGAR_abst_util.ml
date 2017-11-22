@@ -55,12 +55,12 @@ let weakest _ cond ds p =
 
 let filter_pbs env cond pbs =
   pbs
-  |& !Flag.remove_false &> List.filter_out (check_aux env cond -| fst)
+  |& !Flag.PredAbst.remove_false &> List.filter_out (check_aux env cond -| fst)
   |> List.filter_out (check_aux env cond -| make_not -| fst)
 
 let filter env cond pbs must t =
   Debug.printf "filter@.";
-  let pbs' = if !Flag.remove_false then filter_pbs env cond pbs else pbs in
+  let pbs' = if !Flag.PredAbst.remove_false then filter_pbs env cond pbs else pbs in
   Debug.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
 (*
   if debug() then Format.printf "  orig pbs: @[<hv>%a@." print_pbs pbs;
@@ -251,7 +251,7 @@ let check_exist env cond x p =
   Debug.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
   Debug.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
   let xs = List.filter_out ((=) x) @@ (get_fv_list (p::cond)) in
-  if !Flag.use_omega_first then
+  if !Flag.NonTermination.use_omega_first then
     try
       OmegaInterface.is_valid_forall_exists xs [x] cond p
       |@!!Debug.check&> Format.printf "check_exists: %b@."
@@ -265,7 +265,7 @@ let check_exist env cond x p =
         b
       with Fpat.SMTProver.Unknown ->
         Debug.printf "check_exists: FpatInterface.Unknown@.";
-        if Flag.exists_unknown_false
+        if Flag.Method.exists_unknown_false
         then false
         else raise Fpat.SMTProver.Unknown
   else
@@ -273,7 +273,7 @@ let check_exist env cond x p =
       FpatInterface.is_valid_forall_exists xs [x] cond p
       |@!!Debug.check&> Format.printf "check_exists: %b@."
     with
-    | Fpat.SMTProver.Unknown when !Flag.use_omega ->
+    | Fpat.SMTProver.Unknown when !Flag.NonTermination.use_omega ->
         Debug.printf "check_exists: Fpat.SMTProver.Unknown@.";
         Debug.printf "Try checking by omega...@.";
         begin
@@ -284,12 +284,12 @@ let check_exist env cond x p =
             b
           with OmegaInterface.Unknown ->
                Debug.printf "check_exists: OmegaInterface.Unknown@.";
-               if Flag.exists_unknown_false
+               if Flag.Method.exists_unknown_false
                then false
                else raise Fpat.SMTProver.Unknown
         end
-    | Fpat.SMTProver.Unknown when !Flag.use_omega ->
+    | Fpat.SMTProver.Unknown when !Flag.NonTermination.use_omega ->
         Debug.printf "check_exists: Fpat.SMTProver.Unknown@.";
-        if Flag.exists_unknown_false
+        if Flag.Method.exists_unknown_false
         then false
         else raise Fpat.SMTProver.Unknown

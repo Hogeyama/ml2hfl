@@ -55,10 +55,10 @@ let history = ref init_colors
 let init () =
   if Unix.isatty Unix.stdout
   then ()
-  else Flag.color := false
+  else Flag.PrettyPrinter.color := false
 
 let print ppf s =
-  if !Flag.color || !Flag.color_always
+  if !Flag.PrettyPrinter.color || !Flag.PrettyPrinter.color_always
   then Format.fprintf ppf "\027[%dm" s
 
 let set ppf c =

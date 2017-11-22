@@ -181,7 +181,7 @@ let trans_term env t =
             in
             let t1''' = make_let [b,t_b] t1'' in
             let t1'''' =
-              if !Flag.expand_set_flag
+              if !Flag.FairTermination.expand_set_flag
               then make_if (make_var set_flag')
                            (subst set_flag' true_term t1''')
                            (Trans.alpha_rename @@ subst set_flag' false_term t1''')
@@ -255,7 +255,7 @@ let trans target fairness t =
 
 
 let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
-  if !Flag.add_closure_exparam
+  if !Flag.Termination.add_closure_exparam
   then Verbose.printf "EXPARAM: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol;
   let ps = List.map Id.new_var_id prev_vars in
   let xs = List.map Id.new_var_id arg_vars in
@@ -272,14 +272,14 @@ let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   in
   Debug.printf "BEFORE:@.%a@." Print.term t''';
   Debug.printf "HEAD:@.%a@." Print.term @@ List.hd ts;
-  List.for_all (fun t -> incr Flag.fair_term_loop_count; Main_loop.run [] ~exparam_sol t) ts
+  List.for_all (fun t -> incr Flag.FairTermination.loop_count; Main_loop.run [] ~exparam_sol t) ts
 
 let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWithExparams preds_info(*need?*) t =
   try
     let result =
-      if !Flag.separate_pred then
+      if !Flag.Termination.separate_pred then
         unsupported "separte_pred"
-      else if !Flag.split_callsite then
+      else if !Flag.Termination.split_callsite then
         unsupported "split_callsite"
       else
         verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t
@@ -296,12 +296,12 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
         let prev_vars' = List.map aux prev_vars in
         Debug.printf "spc: %a@." Fpat.Formula.pr spc;
         Debug.printf "spcWithExparam: %a@." Fpat.Formula.pr spcWithExparam;
-        Fpat.RankFunInfer.lrf !Flag.add_closure_exparam spcs' spcWithExparams' (*all_vars*) arg_vars' prev_vars'
+        Fpat.RankFunInfer.lrf !Flag.Termination.add_closure_exparam spcs' spcWithExparams' (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
       let exparam_sol' = List.map (Pair.map_fst (Id.from_string -$- TInt)) @@ snd solution in
       let exparam_sol'' = List.map (fun (x,n) -> x, List.assoc_default n x exparam_sol') exparam_sol in
-      if !Flag.add_closure_exparam
+      if !Flag.Termination.add_closure_exparam
       then Debug.printf "SOLUTION: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol'';
       List.iter (Debug.printf "Found ranking function: %a@.@." @@ print_rank_fun arg_vars) rank_funs';
       let preds_info' = (rank_funs',spc)::preds_info in
@@ -331,8 +331,8 @@ let rec run spec t =
     |> remove_and_replace_event
     |@> pr "remove_and_replace_event"
     |> Encode_rec.trans
-    |&!Flag.add_closure_exparam&> insert_extra_param
-    |@!Flag.add_closure_exparam&> pr "insert extra parameters"
+    |&!Flag.Termination.add_closure_exparam&> insert_extra_param
+    |@!Flag.Termination.add_closure_exparam&> pr "insert extra parameters"
     |> normalize
     |@> pr "normalize"
     |> set_main
@@ -374,6 +374,6 @@ let rec run spec t =
   in
   try
     List.for_all verify top_funs'
-  with Fpat.RankFunInfer.LRFNotFound when !Flag.add_closure_exparam -> false
-     | Fpat.RankFunInfer.LRFNotFound -> Flag.add_closure_exparam := true; run spec t
+  with Fpat.RankFunInfer.LRFNotFound when !Flag.Termination.add_closure_exparam -> false
+     | Fpat.RankFunInfer.LRFNotFound -> Flag.Termination.add_closure_exparam := true; run spec t
      | Fpat.RankFunInfer.LLRFNotFound -> assert false

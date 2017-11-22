@@ -39,8 +39,8 @@ let rec expand_tree rules n expr =
   let get_fun f =
     List.assoc f rules in
 
-  if n < - (max 30 !Flag.expand_ce_iter_init) then
-    (Flag.break_expansion_ref := true;
+  if n < - (max 30 !Flag.FairNonTermination.expand_ce_iter_init) then
+    (Flag.FairNonTermination.break_expansion_ref := true;
      Var "end") (* 打ち切れる場所が現れないときの無限ループ防止 *)
   else match expr with
   | Var s when is_term s ->
@@ -83,7 +83,7 @@ let rec expansion_loop prog0 labeled is_cp ce_rules prog start_symbol =
   let count = !expansion_iter_count_ref in
   try
     Debug.printf "Expand counterexample: Size %d@." count;
-    Flag.break_expansion_ref := false;
+    Flag.FairNonTermination.break_expansion_ref := false;
     let ce_value = expand_tree ce_rules count (Var start_symbol) in
     let ce_tree = value2tree ce_value in
     Debug.printf "tree: %a@." (Rose_tree.print Format.pp_print_string) ce_tree;
@@ -96,7 +96,7 @@ let rec expansion_loop prog0 labeled is_cp ce_rules prog start_symbol =
       expansion_loop prog0 labeled is_cp ce_rules prog start_symbol)
 
 let cegar prog0 labeled is_cp ce_rules prog =
-  expansion_iter_count_ref := max !Flag.expand_ce_iter_init !expansion_iter_count_ref;
+  expansion_iter_count_ref := max !Flag.FairNonTermination.expand_ce_iter_init !expansion_iter_count_ref;
   (* Format.printf "RULES: %a@.@." (List.print pp_rule) ce_rules; *)
   let start_symbol = fst @@ List.hd ce_rules in
   expansion_loop prog0 labeled is_cp ce_rules prog start_symbol

@@ -219,8 +219,8 @@ let all t =
   |@> pr "MUTABLE_RECORD"
   |> record
   |@> pr "RECORD"
-  |&!Flag.ignore_exn_arg&> Trans.ignore_exn_arg
-  |@!Flag.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
+  |&!Flag.Method.ignore_exn_arg&> Trans.ignore_exn_arg
+  |@!Flag.Method.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
   |> simple_variant
   |@> pr "SIMPLE_VARIANT"
   |> recdata

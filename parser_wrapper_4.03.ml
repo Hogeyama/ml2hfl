@@ -282,7 +282,7 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
   | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] ->
       let attr =
-        if !Flag.mode = Flag.NonTermination || !Flag.mode = Flag.FairNonTermination then
+        if Flag.Method.(!mode = NonTermination || !mode = FairNonTermination) then
           AAbst_under::randint_term.attr
         else
           randint_term.attr in
@@ -523,7 +523,7 @@ let rec from_expression id_env {exp_desc; exp_loc=_; exp_type=typ; exp_env=env} 
         in
         make_seq t3 @@ make_app (make_var f) [x'']
       in
-      assert (Flag.check_typ => Type.can_unify t31.typ TBool);
+      assert (Flag.Debug.check_typ => Type.can_unify t31.typ TBool);
       let t3' = make_if t31 t32 unit_term in
       make_lets [init,t1; last,t2] @@ make_let [f, make_fun x' t3'] @@ make_app (make_var f) [make_var init]
   | Texp_send _

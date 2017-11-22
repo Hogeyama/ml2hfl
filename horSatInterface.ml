@@ -39,7 +39,7 @@ let version_aux cmd name =
   in
   match Unix.close_process (cin, cout) with
     Unix.WEXITED(_) | Unix.WSIGNALED(_) | Unix.WSTOPPED(_) -> v
-let version () = version_aux !Flag.horsat "HorSat"
+let version () = version_aux !Flag.ModelCheck.horsat "HorSat"
 
 
 let string_of_arity_map arity_map =
@@ -195,23 +195,35 @@ let write_log string_of filename target =
 
 let check_apt_aux cmd parser token target =
   let target' = trans_apt target in
-  let input = Filename.change_extension !!Flag.mainfile "hors" in
+  let ext =
+    if !Flag.ModelCheck.rename_hors then
+      string_of_int !Flag.Log.cegar_loop ^ ".hors"
+    else
+      "hors"
+  in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     Debug.printf "%s@." @@ string_of_parseresult_apt target';
     write_log string_of_parseresult_apt input target';
     verifyFile cmd parser token input
   with Failure("lex error") -> raise UnknownOutput
-let check_apt = check_apt_aux !Flag.horsat HorSat_parser.output_apt HorSat_lexer.token
+let check_apt = check_apt_aux !Flag.ModelCheck.horsat HorSat_parser.output_apt HorSat_lexer.token
 
 let check_aux cmd parser token target =
   let target' = trans target in
-  let input = Filename.change_extension !!Flag.mainfile "hors" in
+  let ext =
+    if !Flag.ModelCheck.rename_hors then
+      string_of_int !Flag.Log.cegar_loop ^ ".hors"
+    else
+      "hors"
+  in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     Debug.printf "%s@." @@ string_of_parseresult target';
     write_log string_of_parseresult input target';
     verifyFile cmd parser token input
   with Failure("lex error") -> raise UnknownOutput
-let check = check_aux !Flag.horsat HorSat_parser.output HorSat_lexer.token
+let check = check_aux !Flag.ModelCheck.horsat HorSat_parser.output HorSat_lexer.token
 
 
 let rec make_label_spec = function

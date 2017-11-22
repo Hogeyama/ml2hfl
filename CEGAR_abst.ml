@@ -134,17 +134,17 @@ let abstract orig_fun_list force ?(top_funs=[]) prog =
   let prog = CEGAR_trans.elim_assume_true prog in
   let labeled,abst =
     Time.measure_and_add
-      Flag.time_abstraction
+      Flag.Log.time_abstraction
       (fun () ->
-         if !Flag.print_progress
-         then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.cegar_loop;
+         if !Flag.Print.progress
+         then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.Log.cegar_loop;
          let labeled,abst =
            if List.mem ACPS prog.info.attr
            then CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
            else abstract orig_fun_list prog
          in
          Debug.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
-         if !Flag.print_progress then Color.printf Color.Green "DONE!@.@.";
+         if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
          labeled, abst)
   in
   let abst',_,_ = CEGAR_trans.rename_prog abst in
