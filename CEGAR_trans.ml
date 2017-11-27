@@ -166,23 +166,6 @@ and trans_typ ty =
   | Type.TInt -> typ_int
   | Type.TVar{contents=None} -> typ_int
   | Type.TVar{contents=Some typ} -> trans_typ typ
-  | Type.TFun({Id.typ=Type.TBool|Type.TAttr(_,Type.TBool)} as x,typ) ->
-      let x' = trans_var x in
-      let ps' = preds_of @@ Id.typ x in
-      let ps'' =
-        if !Flag.Method.bool_init_empty
-        then fun z -> ps' z
-        else fun z -> z :: ps' z
-      in
-      let typ1 = TBase(TBool, ps'') in
-      let typ2 = trans_typ typ in
-      TFun(typ1, fun y -> subst_typ x' y typ2)
-  | Type.TFun({Id.typ=Type.TInt|Type.TAttr(_,Type.TInt)} as x,typ) ->
-      let x' = trans_var x in
-      let ps' = preds_of @@ Id.typ x in
-      let typ1 = TBase(TInt, ps') in
-      let typ2 = trans_typ typ in
-      TFun(typ1, fun y -> subst_typ x' y typ2)
   | Type.TFun(x,typ) ->
       let typ1 = trans_typ @@ Id.typ x in
       let typ2 = trans_typ typ in
