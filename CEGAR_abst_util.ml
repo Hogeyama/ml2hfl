@@ -58,7 +58,7 @@ let filter_pbs env cond pbs =
   |& !Flag.PredAbst.remove_false &> List.filter_out (check_aux env cond -| fst)
   |> List.filter_out (check_aux env cond -| make_not -| fst)
 
-let filter env cond pbs must t =
+let filter env cond pbs t =
   Debug.printf "filter@.";
   let pbs' = if !Flag.PredAbst.remove_false then filter_pbs env cond pbs else pbs in
   Debug.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
@@ -106,7 +106,7 @@ let abst env cond pbs p =
     else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
 
 
-let assume env cond pbs t1 t2 = filter env (t1::cond) pbs None t2
+let assume env cond pbs t1 t2 = filter env (t1::cond) pbs t2
 
 
 let rec congruent env cond typ1 typ2 =

@@ -27,7 +27,7 @@ val filter :
   'a ->
   CEGAR_syntax.t list ->
   (CEGAR_syntax.t * CEGAR_syntax.t) list ->
-  'b -> CEGAR_syntax.t -> CEGAR_syntax.t
+  CEGAR_syntax.t -> CEGAR_syntax.t
 val abst :
   'a ->
   CEGAR_syntax.t list ->

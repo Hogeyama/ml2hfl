@@ -139,9 +139,10 @@ let abstract orig_fun_list force ?(top_funs=[]) prog =
          if !Flag.Print.progress
          then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.Log.cegar_loop;
          let labeled,abst =
-           if List.mem ACPS prog.info.attr
-           then CEGAR_abst_CPS.abstract orig_fun_list force prog top_funs
-           else abstract orig_fun_list prog
+           if List.mem ACPS prog.info.attr then
+             CEGAR_abst_CPS.abstract prog top_funs
+           else
+             abstract orig_fun_list prog
          in
          Debug.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
          if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";

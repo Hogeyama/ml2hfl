@@ -49,6 +49,18 @@ let rec can_move ty =
   | TFun(TFun _,ty2) -> false
   | _ -> assert false
 
+
+let make_imply' t1 t2 =
+  if false then
+    make_imply t1 t2
+  else
+    make_app (Const (Temp ";")) [make_not_s t1; t2]
+let rec decode_imply t =
+  match decomp_app t with
+  | Const (Temp ";"), ts -> ts
+  | _ -> [t]
+
+
 let rec move_arg_pred ty =
   match ty with
   | TBase _ -> ty
@@ -60,23 +72,25 @@ let rec move_arg_pred ty =
         let add b' ps' =
           let y = new_id' "y" in
           let ps'_y = ps' (Var y) in
-          let aux p1 p2 =
-            let p1',path1 = decomp_path p1 in
-            let p2',path2 = decomp_path p2 in
-            let path1',c = List.decomp_snoc path1 in
-            assert (c = 0);
-            if p1' = Const True then
-              p2
-            else
-              if List.is_prefix path1' path2 then
-                if p2' = Const True then
-                  make_not_s p1' |> compose_path path2
-                else
-                  make_imply p1' p2' |> compose_path path2
-              else
+          let ps'_y' =
+            let aux p1 p2 =
+              let p1',path1 = decomp_path p1 in
+              let p2',path2 = decomp_path p2 in
+              let path1',c = List.decomp_snoc path1 in
+              assert (c = 0);
+              if p1' = Const True then
                 p2
+              else
+                if List.is_prefix path1' path2 then
+                  if p2' = Const True then
+                    make_not_s p1' |> compose_path path2
+                  else
+                    make_imply' p1' p2' |> compose_path path2
+                else
+                  p2
+            in
+            List.map (List.fold_right aux ps_x) ps'_y
           in
-          let ps'_y' = List.map (List.fold_right aux ps_x) ps'_y in
           TBase(b', fun t -> List.map (subst y t) ps'_y')
         in
         map_base add @@ move_arg_pred @@ ty2 (Var x)
@@ -101,7 +115,7 @@ let rec remove_arg_pred ty =
         let aux t =
           match decomp_path t with
           | Const _, _ -> []
-          | t', _ -> [t']
+          | t', _ -> decode_imply t'
         in
         List.flatten_map aux ps_x
       in

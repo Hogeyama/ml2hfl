@@ -358,6 +358,7 @@ let rec arg_spec () =
      "-safe-fun-arg-pred-true",
        Arg.Unit (fun () -> Flag.PredAbst.assume_safe_fun_arg_pred_true := true; Fpat.AbsTypInfer.add_path_info := true),
        " Set predicates true for safe function arguments";
+     "-non-cartesian", Arg.Clear Flag.PredAbst.cartesian, " Do non-cartesian abstraction";
      (* higher-order model checking *)
      "", Arg.Unit ignore, "Options_for_model_checking";
      "-rename-hors", Arg.Set Flag.ModelCheck.rename_hors, " Set different name to each hors file";
