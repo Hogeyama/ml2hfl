@@ -98,27 +98,28 @@ let rec get_arg_env typ xs =
 
 
 
-let rec put_into_if_term = function
+let rec put_arg_into_if_term = function
   | Const c -> Const c
   | Var x -> Var x
   | App _ as t ->
-      let t',ts = decomp_app t in
-      if t' = Const If
-      then
-        match ts with
-        | t1::t2::t3::ts' ->
-            let t1' = put_into_if_term t1 in
-            let t2' = put_into_if_term t2 in
-            let t3' = put_into_if_term t3 in
-            let ts'' = List.map put_into_if_term ts' in
-            make_if t1' (put_into_if_term (make_app t2' ts'')) (put_into_if_term (make_app t3' ts''))
-        | _ -> Format.printf "%a@." CEGAR_print.term t; assert false
-      else
-        let ts' = List.map put_into_if_term ts in
-        make_app t' ts'
-  | Fun(x,typ,t) -> Fun(x, typ, put_into_if_term t)
-  | Let(x,t1,t2) -> Let(x, put_into_if_term t1, put_into_if_term t2)
-let put_into_if prog = map_body_prog put_into_if_term prog
+      begin
+        match decomp_app t with
+        | Const If, t1::t2::t3::ts ->
+            let ts' = List.map put_arg_into_if_term ts in
+            let t1' = put_arg_into_if_term t1 in
+            let t2' = put_arg_into_if_term @@ make_app t2 ts' in
+            let t3' = put_arg_into_if_term @@ make_app t3 ts' in
+            make_if t1' t2' t3'
+        | Const If, _ ->
+            Format.printf "%a@." CEGAR_print.term t;
+            assert false
+        | t', ts ->
+            let ts' = List.map put_arg_into_if_term ts in
+            make_app t' ts'
+      end
+  | Fun(x,typ,t) -> Fun(x, typ, put_arg_into_if_term t)
+  | Let(x,t1,t2) -> Let(x, put_arg_into_if_term t1, put_arg_into_if_term t2)
+let put_arg_into_if prog = map_body_prog put_arg_into_if_term prog
 
 
 
@@ -128,7 +129,7 @@ let eta_expand_def env (f,xs,t1,e,t2) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = List.init d (fun _ -> new_id "x") in
   let t2' = List.fold_left (fun t x -> App(t, Var x)) t2 ys in
-  f, xs@ys, t1, e, t2' (* put_into_term t2' *)
+  f, xs@ys, t1, e, t2' (* put_arg_into_term t2' *)
 
 let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}

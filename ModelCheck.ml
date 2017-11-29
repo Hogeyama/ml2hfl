@@ -295,8 +295,8 @@ let preprocess_cps prog =
   |@> pr "eta_expand"
   |> elim_non_det
   |@> pr "elim_non_det"
-  |> put_into_if
-  |@> pr "put_into_if"
+  |> put_arg_into_if
+  |@> pr "put_arg_into_if"
   |> make_bottom
   |@> pr "make_bottom"
   |> pop_main

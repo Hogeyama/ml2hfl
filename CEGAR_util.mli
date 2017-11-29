@@ -18,7 +18,7 @@ val subst_typ_map : (var * t) list -> typ -> typ
 val arg_num : typ -> int
 val pop_main : prog -> prog
 val get_arg_env : typ -> var list -> (var * typ) list
-val put_into_if : prog -> prog
+val put_arg_into_if : prog -> prog
 val eta_expand_def : env -> fun_def -> fun_def
 val eta_expand : prog -> prog
 val get_const_typ : env -> const -> typ

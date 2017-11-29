@@ -468,27 +468,28 @@ let pr s prog = Debug.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGA
 
 let abstract prog top_funs =
   let labeled,prog = add_label prog in
+  let b = not !Flag.PredAbst.no_simplification in
   prog
   |@> pr "INPUT"
-  |&not !Flag.PredAbst.no_simplification&> expand_non_rec
-  |@not !Flag.PredAbst.no_simplification&> pr "EXPAND_NONREC"
-  |&not !Flag.PredAbst.no_simplification&> CEGAR_trans.simplify_if
-  |@not !Flag.PredAbst.no_simplification&> pr "SIMPLIFY_IF"
+  |&b&> expand_non_rec
+  |@b&> pr "EXPAND_NONREC"
+  |&b&> CEGAR_trans.simplify_if
+  |@b&> pr "SIMPLIFY_IF"
   |> eta_expand
   |@> pr "ETA_EXPAND"
   |> abstract_prog
   |@> pr "ABST"
-  |&not !Flag.PredAbst.no_simplification&> CEGAR_trans.simplify_if
-  |@not !Flag.PredAbst.no_simplification&> pr "SIMPLIFY_IF"
+  |&b&> CEGAR_trans.simplify_if
+  |@b&> pr "SIMPLIFY_IF"
   |> Typing.infer -| initialize_env
   |@!Flag.Debug.abst&> eval_step_by_step
   |> CEGAR_lift.lift2
   |@> pr "LIFT"
   |> trans_eager
   |@> pr "TRANS_EAGER"
-  |&not !Flag.PredAbst.no_simplification&> put_into_if
-  |&not !Flag.PredAbst.no_simplification&> Typing.infer
-  |@not !Flag.PredAbst.no_simplification&> pr "PUT_INTO_IF"
+  |&b&> put_arg_into_if
+  |&b&> Typing.infer
+  |@b&> pr "PUT_INTO_IF"
   |> CEGAR_lift.lift2
   |@> pr "LIFT"
   |> Pair.add_left @@ Fun.const labeled

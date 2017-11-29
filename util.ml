@@ -186,6 +186,7 @@ module Fun = struct
   let const x _ = x
   let const2 x _ _ = x
   let ignore2 _ _  = ()
+  let if_ cond f1 f2 x = if cond x then f1 x else f2 x
 end
 
 module Option = struct

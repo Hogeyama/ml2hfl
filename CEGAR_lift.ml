@@ -19,7 +19,7 @@ let lift_aux lift_unused f xs t1 =
     else
       List.Set.inter xs (List.Set.diff (get_fv t1) ys)
   in
-  let ys' = List.map (rename_if @@ List.mem -$- xs) ys in
+  let ys' = List.map (Fun.if_ (List.mem -$- xs) rename_id Fun.id) ys in
   xs' @ ys',
   List.fold_right2 subst_var ys ys' t1',
   make_app (Var f) @@ List.map _Var xs'
@@ -51,9 +51,9 @@ let lift_def lift_unused (f,xs,t1,e,t2) =
   let defs2,t2'' = lift_term lift_unused xs' t2' in
   (f, xs', t1', e, t2'')::defs1@defs2
 
-let lift0 lift_unused {defs; main; info} =
-  let defs = List.rev_flatten_map (lift_def lift_unused) defs in
-  Typing.infer {env=[]; defs; main; info}
+let lift0 lift_unused prog =
+  let defs = List.rev_flatten_map (lift_def lift_unused) prog.defs in
+  Typing.infer {prog with env=[]; defs}
 
 let lift prog = lift0 true prog
 let lift2 prog = lift0 false prog
