@@ -98,10 +98,11 @@ let rec get_arg_env typ xs =
 
 
 
-let rec put_arg_into_if_term = function
+let rec put_arg_into_if_term t =
+  match t with
   | Const c -> Const c
   | Var x -> Var x
-  | App _ as t ->
+  | App _ ->
       begin
         match decomp_app t with
         | Const If, t1::t2::t3::ts ->

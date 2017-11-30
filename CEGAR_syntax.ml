@@ -135,6 +135,7 @@ let _Const c = Const c
 let _Var x = Var x
 let _App t1 t2 = App(t1,t2)
 let _Let x t1 t2 = Let(x,t1,t2)
+let _Fun x ?typ t = Fun(x, typ, t)
 
 
 let new_id name = Id.to_string (Id.new_var ~name Type.typ_unknown)
@@ -343,3 +344,17 @@ let gather_events defs =
       | _ -> assert false in
     List.map aux' es in
   List.flatten_map aux defs
+
+module Term = struct
+  let (@) = make_app
+  let (@@) = make_app
+  let true_ = Const True
+  let tt = Const True
+  let false_ = Const False
+  let ff = Const False
+  let var = _Var
+  let let_ = _Let
+  let fun_ = _Fun
+  let br = make_br
+  let if_ = make_if
+end
