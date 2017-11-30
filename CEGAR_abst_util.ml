@@ -6,12 +6,14 @@ open CEGAR_util
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let hd = function
+let hd (defs,ts) =
+  assert (defs = []);
+  match ts with
   | [] -> assert false
   | [x] -> x
   | _ -> assert false
 
-let check_aux env cond p =
+let check_aux _ cond p =
   let cond' = List.map FpatInterface.conv_formula cond in
   let p' = FpatInterface.conv_formula p in
   Fpat.SMTProver.implies_dyn cond' [p']

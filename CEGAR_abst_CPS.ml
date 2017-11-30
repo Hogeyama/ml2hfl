@@ -15,15 +15,15 @@ let abst_arg x ty =
       | [] -> []
       | [_] -> [x]
       | ps -> List.mapi (fun i _ -> add_name x @@ Format.sprintf "_%d" @@ i+1) ps
+
 let make_pts x ty =
   let xs = abst_arg x ty in
   let ps =
     match decomp_base ty with
-    | None -> [Const True]
+    | None -> [Const True] (* to match the length of ps and xs *)
     | Some(_, ps) -> ps (Var x)
   in
   List.filter (fun (p,_) -> p <> Const True) @@ List.map2 (fun p x -> p, Var x) ps xs
-
 
 let rec decomp_typ_var typ xs =
   match xs with
@@ -33,6 +33,13 @@ let rec decomp_typ_var typ xs =
       let typ',env' = decomp_typ_var typ2 xs' in
       typ', (x,typ1)::env'
 
+let rec decomp_typ_term ts typ =
+  match ts,typ with
+  | [], _ when is_typ_result typ -> []
+  | t2::ts', TFun(typ1,typ2) ->
+      typ1 :: decomp_typ_term ts' (typ2 t2)
+  | _,typ ->
+      assert false
 
 let rec beta_reduce_term = function
   | Const c -> Const c
@@ -146,8 +153,7 @@ let rec trans_eager_term env c t =
   | Let(x, t1, t2) ->
       let f = new_id "f" in
       let t2' = trans_eager_term env Fun.id t2 in
-      let test = new_id "test" in
-      let t1' = trans_eager_term env (_App (Var test)) t1 in
+      let t1' = trans_eager_term env (_App (Var f)) t1 in
       c Term.(let_ f (fun_ x t2') t1')
 
 let trans_eager_def env (f,xs,t1,e,t2) =
@@ -243,25 +249,40 @@ let rec propagate_fun_arg_typ typ t =
   | TFun(typ1, typ2), Fun(x,_,t') -> Fun(x, Some typ1, propagate_fun_arg_typ (typ2 @@ Var x) t')
   | _ -> t
 
-let rec decomp_typ_term ts typ =
-  match ts,typ with
-  | [], _ when is_typ_result typ -> []
-  | t2::ts', TFun(typ1,typ2) ->
-      typ1 :: decomp_typ_term ts' (typ2 t2)
-  | _,typ ->
-      assert false
-
 let filter_wrap env cond pts t =
   if !Flag.PredAbst.use_filter then
     filter env cond pts t
   else
     t
 
+let get (pts,defs,ts) =
+  assert (defs = []);
+  match ts with
+  | [x] -> x
+  | _ -> assert false
+
+let expand (pts, defs, ts) =
+  match ts with
+  | [t] -> List.fold_right (Fun.uncurry subst) defs t
+  | _ -> assert false
+
+let make_let' (pts,defs,ts) =
+  let t = List.get ts in
+  match defs with
+  | [] -> t
+  | [x,t1] -> subst x t1 t
+  | _ ->
+      let aux (x,t1) t =
+        match t1 with
+        | Const _ -> subst x t1 t
+        | _ -> Let(x,t1,t)
+      in
+      List.fold_right aux defs t
 
 let rec abstract_rand_int n env cond pts xs t =
   let _,preds = decomp_rand_typ ~xs:(Some xs) @@ assoc_renv n env in
   let typ' = TFun(TBase(TInt, preds), fun _ -> typ_result) in
-  let t' = hd @@ abstract_term env cond pts t typ' in
+  let t' = get @@ abstract_term env cond pts t typ' in
   let x = new_id "r" in
   let preds' = preds (Var x) in
   Debug.printf "preds': %a@." (List.print CEGAR_print.term) preds';
@@ -297,28 +318,51 @@ let rec abstract_rand_int n env cond pts xs t =
 
 (** env: type environment *)
 (** cond: assumption (environment) *)
+(** pts: enviroment for predicates
+    (e.g., [x >= 0, b] means that the abstracted variable b corresponds "x >= 0" in the original program) *)
 and abstract_term env cond pts t typ =
-  let r =
+  let pts',defs,r =
   match t with
-  | Const CPS_result -> [Const Unit]
+  | Const CPS_result -> pts, [], [Const Unit]
   | Const Bottom ->
       assert (is_typ_result typ);
-      [Const Bottom]
+      pts, [], [Const Bottom]
   | (Var _ | Const _ | App _) when is_base_term env t ->
       let btyp,ps = Option.get @@ decomp_base typ in
       if btyp = typ_result_base then
-        [Const Unit]
+        pts, [], [Const Unit]
       else
-        List.map (abst env cond pts) (ps t)
+        if !Flag.PredAbst.cartesian then
+          pts, [], List.map (abst env cond pts) (ps t)
+        else
+          let pts',defs,xs =
+            let is_var =
+              match t with
+              | Var _ -> true
+              | _ -> false
+            in
+            let rec aux p (pts,defs,xs) =
+              let x = new_id "b" in
+              let pts' =
+                if is_var then
+                  pts
+                else
+                  (p, Var x)::pts
+              in
+              pts', (x,abst env cond pts p)::defs, x::xs
+            in
+            List.fold_right aux (ps t) (pts,[],[])
+          in
+          pts', List.rev defs, List.map _Var xs
   | Var x when congruent env cond (List.assoc x env) typ ->
-      List.map _Var @@ abst_arg x typ
+      pts, [], [Var x]
   | App(App(App(Const If, t1), t2), t3) ->
-      let t1' = hd @@ abstract_term env cond pts t1 typ_bool_id in
-      let t2' = hd @@ abstract_term env (t1::cond) pts t2 typ in
-      let t3' = hd @@ abstract_term env (make_not t1::cond) pts t3 typ in
-      [make_if t1' t2' t3']
+      let t1' = expand @@ abstract_term env cond pts t1 typ_bool_id in
+      let t2' = get @@ abstract_term env (t1::cond) pts t2 typ in
+      let t3' = get @@ abstract_term env (make_not t1::cond) pts t3 typ in
+      pts, [], [make_if t1' t2' t3']
   | App(Const (Label n), t) ->
-      [make_label n (hd @@ abstract_term env cond pts t typ)]
+      pts, [], [make_label n @@ make_let' @@ abstract_term env cond pts t typ]
   | App(Const (Rand(TInt,None)), t) ->
       abstract_term env cond pts t (TFun(typ_int, fun _ -> typ))
   | App _ when is_app_randint t ->
@@ -329,32 +373,27 @@ and abstract_term env cond pts t typ =
         | _ -> assert false
       in
       let ts',t'' = List.decomp_snoc ts in
-      [abstract_rand_int n env cond pts ts' t'']
-(*
+      pts, [], [abstract_rand_int n env cond pts ts' t'']
   | App _ when not !Flag.PredAbst.cartesian ->
       let t1,ts = decomp_app t in
-      let b = t1 = Var "k_mc91_109" in
-      Format.printf "ABST_APP t1: %a@." CEGAR_print.term t1;
       let typs = decomp_typ_term ts @@ get_typ env t1 in
-      let aux env (defs,args,pts) t typ =
-        if b then Format.printf "  t: %a@." CEGAR_print.term t;
-        let x = new_id "xnc" in (* Variable for Non-Cartesian abstraction *)
-        let pts' = make_pts x typ @@@ pts in
-        let xs' = abst_arg x typ in
-        let ts' = abstract_term env cond pts t typ in
-        defs @ List.combine xs' ts',
-        args @ List.map _Var xs',
-        pts'
+      let aux t typ (pts,defs,args) =
+        let pts'',defs',ts = abstract_term env cond pts t typ in
+        pts'', defs @ defs', ts @ args
       in
       let _Let' (b,(x,t)) t' = if b then subst x t t' else Let(x,t,t') in
-      let defs,args,_ = List.fold_left2 (aux env) ([],[],pts) ts typs in
-      [List.fold_right _Let' defs @@ make_app t1 args]
- *)
+      let pts',defs,args = List.fold_right2 aux ts typs (pts,[],[]) in
+      pts', defs, [make_app t1 args]
   | App _ ->
       let t1,ts = decomp_app t in
       let typs = decomp_typ_term ts @@ get_typ env t1 in
-      let t' = make_app t1 @@ List.flatten @@ List.map2 (abstract_term env cond pts) ts typs in
-      [filter_wrap env cond pts t']
+      let ptss,defss,tss = List.split3 @@ List.map2 (abstract_term env cond pts) ts typs in
+      let pts' = List.flatten ptss in
+      let defs = List.flatten defss in
+      let tss = List.flatten tss in
+      let t' = make_app t1 tss in
+      (** there is room for improving the precision by using defs *)
+      pts', defs, [filter_wrap env cond pts t']
   | Fun _ ->
       let env',t0 = decomp_annot_fun t in
       let env' = List.map (Pair.map_snd Option.get) env' in
@@ -368,11 +407,11 @@ and abstract_term env cond pts t typ =
       let t' =
         t0
         |> abstract_term env'' cond pts'' -$- typ'
-        |> hd
+        |> make_let'
         |> filter_wrap env'' cond pts''
         |> make_fun_temp xs'
       in
-      [t']
+      pts, [], [t']
   | Var _ -> assert false
   | Const _ -> assert false
   | Let _ -> assert false
@@ -380,7 +419,7 @@ and abstract_term env cond pts t typ =
   let dbg = false && !!Debug.check in
   if dbg then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   if dbg then Format.printf "abstract_term r: %a@." (List.print CEGAR_print.term) r;
-  r
+  pts',defs,r
 
 
 
@@ -391,11 +430,11 @@ let rec abstract_typ = function
       let typ2 = typ2 (Const Unit) in
       let typs = abstract_typ typ1 in
       let aux typ1 typ2 = TFun(typ1, fun _ -> typ2) in
-      [List.fold_right aux typs @@ hd @@ abstract_typ typ2]
+      [List.fold_right aux typs @@ List.get @@ abstract_typ typ2]
   | TApp(TConstr TAssumeTrue, ty) -> abstract_typ ty
   | _ -> assert false
 
-let abstract_typ typ = hd @@ abstract_typ typ
+let abstract_typ typ = List.get @@ abstract_typ typ
 
 
 let abstract_def env (f,xs,t1,e,t2) =
@@ -408,67 +447,18 @@ let abstract_def env (f,xs,t1,e,t2) =
   if false then Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
   if Debug.check() then Flag.Print.fun_arg_typ := true;
   if false then Debug.printf "%s:: %a@." f CEGAR_print.term t2;
-  let t2' = hd (abstract_term env'' [t1] pts t2 typ) in
-  let t2'' = eta_reduce_term t2' in
+  let t2' =
+    abstract_term env'' [t1] pts t2 typ
+    |> make_let'
+    |> eta_reduce_term
+  in
   if e <> [] && t1 <> Const True then
     let g = rename_id f in
-    let fv = List.Set.diff (get_fv t2'') (List.map fst env) in
-    [g, fv, Const True, e, t2'';
+    let fv = List.Set.diff (get_fv t2') (List.map fst env) in
+    [g, fv, Const True, e, t2';
      f, xs', Const True, [], assume env' [] pts t1 @@ make_app (Var g) (List.map _Var fv)]
   else
-    [f, xs', Const True, e, assume env' [] pts t1 t2'']
-
-
-
-
-
-let make_br' t1 t2 =
-  if t1 = Const Unit then t2
-  else if t2 = Const Unit then t1
-  else make_br t1 t2
-
-type typ_cps = X | TFun1 of typ_cps | TFun2 of typ_cps * typ_cps
-
-let rec trans_typ typ =
-  match decomp_tfun typ with
-  | [], TBase(TUnit, _) -> X
-  | [typ1], TBase(TUnit, _) -> TFun1 (trans_typ typ1)
-  | [typ1;typ2], TBase(TUnit, _) -> TFun2(trans_typ typ1, trans_typ typ2)
-  | typs,typ -> Format.printf "%a@." CEGAR_print.typ typ; assert false
-
-(* Assume that
-   - a continuation is in the last position of arguments
-   - not the form of selective CPS
-   - external functions have no predicates
-*)
-
-let rec make_arg ks = function
-  | X -> []
-  | TFun1 typ -> [make_ext_fun_cps ks typ]
-  | TFun2(typ1,typ2) -> [make_ext_fun_cps ks typ1; make_ext_fun_cps ks typ2]
-
-and add_ks k typ ks = if typ = X then k::ks else ks
-
-and make_ext_fun_cps ks = function
-  | X -> List.fold_left (fun t x -> make_br' t (Var x)) (Const Unit) ks
-  | TFun1 typ ->
-      let k = new_id "k" in
-      let ks' = add_ks k typ ks in
-      Fun(k, None, make_app (Var k) (make_arg ks' typ))
-  | TFun2(typ1,typ2) ->
-      let f = new_id "f" in
-      let k = new_id "k" in
-      let ks' = ks |> add_ks f typ1 |> add_ks k typ2 in
-      let t1 = make_app (Var f) (make_arg ks' typ1) in
-      let t2 = make_app (Var k) (make_arg ks' typ2) in
-      Fun(f, None, Fun(k, None, make_br t1 t2))
-
-let add_ext_funs_cps prog =
-  let env = get_ext_fun_env prog in
-  let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun_cps [] (trans_typ typ)) env in
-  let defs' = defs @ prog.defs in
-  ignore @@ Typing.infer {env=[]; defs=defs'; main=prog.main; info=init_info};
-  {prog with defs=defs'}
+    [f, xs', Const True, e, assume env' [] pts t1 t2']
 
 let abstract_prog prog =
   let env = List.map (fun f -> f, abstract_typ @@ List.assoc f prog.env) @@ List.filter_out is_randint_var @@ get_ext_funs prog in
@@ -495,8 +485,6 @@ let abstract prog top_funs =
   |@b&> pr "SIMPLIFY_IF"
   |> Typing.infer ~fun_annot:true -| initialize_env
   |@!Flag.Debug.abst&> eval_step_by_step
-  |*> CEGAR_lift.lift2
-  |*@> pr "LIFT"
   |> trans_eager
   |@> pr "TRANS_EAGER"
   |&b&> put_arg_into_if
