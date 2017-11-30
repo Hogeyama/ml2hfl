@@ -2,8 +2,15 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+
 exception CannotUnify
 exception External
+
+let assoc_env x env =
+  try
+    List.assoc x env
+  with Not_found -> CEGAR_util.type_not_found x
 
 type typ =
   | TUnit
@@ -68,7 +75,9 @@ let rec unify typ1 typ2 =
   | typ, TVar({contents = None} as r) ->
       assert (not (occurs r typ));
       r := Some typ
-  | _ -> Format.printf "UNIFY: %a, %a@." print_typ typ1 print_typ typ2; assert false
+  | _ ->
+      Format.printf "UNIFY: %a, %a@." print_typ typ1 print_typ typ2;
+      assert false
 
 
 let nil = fun _ -> []
@@ -79,10 +88,20 @@ let rec trans_typ = function
   | TInt -> TBase(TInt,nil)
   | TVar{contents=None} -> typ_unknown
   | TVar{contents=Some typ} -> trans_typ typ
-  | TFun(typ1,typ2) -> TFun(trans_typ typ1, fun _ -> trans_typ typ2)
+  | TFun(typ1,typ2) -> TFun(trans_typ typ1, Fun.const @@ trans_typ typ2)
   | TTuple typs -> make_tapp (TConstr TTuple) (List.map trans_typ typs)
   | TAbst typ -> TBase(TAbst typ, nil)
   | TResult -> typ_result
+
+let rec annotate_fun_arg_term env t =
+  let afa = annotate_fun_arg_term env in
+  match t with
+  | Const c -> Const c
+  | Var x -> Var x
+  | App(t1, t2) -> App(afa t1, afa t2)
+  | Let(x, t1, t2) -> Let(x, afa t1, afa t2)
+  | Fun(x, None, t) -> Fun(x, Some (trans_typ @@ assoc_env x env), afa t)
+  | Fun(x, Some ty, t) -> Fun(x, Some ty, afa t)
 
 let get_typ_const = function
   | Unit -> TUnit
@@ -135,53 +154,57 @@ let get_typ_const = function
       let typs = List.make n typ in
       List.fold_right _TFun typs typ
 
-let rec infer_term env = function
+let rec infer_term fun_arg_env env = function
   | Const c -> get_typ_const c
   | Var x ->
       begin
         try
-          List.assoc x env
+          assoc_env x env
         with
-          Not_found when Fpat.RefTypInfer.is_parameter x -> TInt
-        | Not_found -> Format.printf "Not_found VAR: %s@." x; assert false
+        | CEGAR_util.Type_not_found _ when Fpat.RefTypInfer.is_parameter x -> TInt
       end
   | App(t1,t2) ->
-      let typ1 = infer_term env t1 in
-      let typ2 = infer_term env t2 in
+      let typ1 = infer_term fun_arg_env env t1 in
+      let typ2 = infer_term fun_arg_env env t2 in
       let typ = new_tvar () in
       let typ' = TFun(typ2,typ) in
       unify typ1 typ';
       typ
   | Let(x,t1,t2) ->
-      let typ1 = infer_term env t1 in
+      let typ1 = infer_term fun_arg_env env t1 in
       let env' = (x,typ1)::env in
-      let typ2 = infer_term env' t2 in
+      let typ2 = infer_term fun_arg_env env' t2 in
       typ2
   | Fun(x,_,t) ->
       let typ_x = new_tvar() in
       let env' = (x,typ_x)::env in
-      let typ1 = infer_term env' t in
+      fun_arg_env := (x,typ_x) :: !fun_arg_env;
+      let typ1 = infer_term fun_arg_env env' t in
       TFun(typ_x,typ1)
 
-let infer_def env (f,xs,t1,_,t2) =
+let infer_def fun_arg_env env (f,xs,t1,_,t2) =
   if false then Format.printf "%a@." CEGAR_print.var f;
   let typs = List.map (fun _ -> new_tvar()) xs in
   let env' = List.combine xs typs @ env in
-  let typ1 = infer_term env' t1 in
-  let typ2 = infer_term env' t2 in
-  let typ = try List.assoc f env with Not_found -> assert false in
+  let typ1 = infer_term fun_arg_env env' t1 in
+  let typ2 = infer_term fun_arg_env env' t2 in
+  let typ = assoc_env f env in
   let typ' = List.fold_right _TFun typs typ2 in
   unify typ1 TBool;
   unify typ typ'
 
-
-let infer ({defs;main;env;info} as prog) =
-  if false then Format.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
+let infer ?(fun_annot=false) ({defs;main;env;info} as prog) =
+  let fun_arg_env = ref [] in
+  Debug.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
   let ext_funs = get_ext_funs prog in
-  let ext_env = List.map (fun f -> f, from_typ (List.assoc f env)) ext_funs in
+  let ext_env = List.map (fun f -> f, from_typ (assoc_env f env)) ext_funs in
   let env = ext_env @ List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
   let main_typ = if List.mem ACPS info.attr then TResult else TUnit in
-  unify main_typ (List.assoc main env);
-  List.iter (infer_def env) defs;
-  let env' = List.map (fun (f,_) -> f, trans_typ @@ List.assoc f env) env in
-  {env=env'; defs; main; info}
+  unify main_typ (assoc_env main env);
+  List.iter (infer_def fun_arg_env env) defs;
+  let env' = List.map (fun (f,_) -> f, trans_typ @@ assoc_env f env) env in
+  let prog = {env=env'; defs; main; info} in
+  if fun_annot then
+    CEGAR_util.map_body_prog (annotate_fun_arg_term !fun_arg_env) prog
+  else
+    prog

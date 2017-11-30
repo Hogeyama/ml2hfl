@@ -75,8 +75,8 @@ CMI = $(MLI:.mli=.cmi)
 CMO = revision.cmo environment.cmo flag.cmo debug.cmo util.cmo		\
 	ext.cmo color.cmo tree.cmo rose_tree.cmo id.cmo type.cmo	\
 	syntax.cmo print.cmo term_util.cmo CEGAR_type.cmo		\
-	CEGAR_syntax.cmo CEGAR_print.cmo typing.cmo type_check.cmo	\
-	CEGAR_ref_type.cmo CEGAR_util.cmo fpatInterface.cmo		\
+	CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_util.cmo typing.cmo	\
+	type_check.cmo CEGAR_ref_type.cmo fpatInterface.cmo		\
 	ref_type.cmo ref_type_gen.cmo trans.cmo CFA.cmo uncurry.cmo	\
 	lift.cmo fair_termination_util.cmo CEGAR_lift.cmo slicer.cmo	\
 	useless_elim.cmo inter_type.cmo type_trans.cmo			\

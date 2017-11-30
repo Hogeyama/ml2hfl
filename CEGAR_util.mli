@@ -4,6 +4,9 @@ type ext_path_part = Positive | Negative | Do_not_Care
 type ext_path = ext_path_part list
 
 exception TypeBottom
+exception Type_not_found of var
+
+val type_not_found : var -> 'a
 
 val map_body_def : (t -> t) -> fun_def -> fun_def
 val map_body_prog : (t -> t) -> prog -> prog

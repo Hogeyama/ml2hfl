@@ -8,12 +8,14 @@ type ext_path_part = Positive | Negative | Do_not_Care
 type ext_path = ext_path_part list
 
 exception TypeBottom
+exception Type_not_found of var
 
 module S = Syntax
 module U = Term_util
 
 let const_of_bool b = if b then True else False
 
+let type_not_found x = raise (Type_not_found x)
 
 
 let map_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
@@ -280,9 +282,6 @@ let get_const_typ env = function
       let typs = List.make n typ in
       List.fold_right (fun typ1 typ2 -> TFun(typ1, fun _ -> typ2)) typs typ
 
-
-exception Type_not_found of var
-let type_not_found x = raise (Type_not_found x)
 
 let rec get_typ env = function
   | Const c -> get_const_typ env c

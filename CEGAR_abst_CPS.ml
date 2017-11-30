@@ -124,7 +124,13 @@ let rec trans_eager_term env c t =
   | Const (Rand(TBool,_)|And|Or|Not|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool) -> assert false
   | Const _
   | Var _ -> c t
-  | Fun(x,_,t) -> c (_Fun x @@ trans_eager_term env Fun.id t)
+  | Fun(x,ty,t) ->
+      let env' =
+        match ty with
+        | None -> env
+        | Some ty' -> (x,ty')::env
+      in
+      c (_Fun x @@ trans_eager_term env' Fun.id t)
   | App(App(App(Const If, t1), t2), t3) ->
       let x = new_id "b" in
       let f = new_id "f" in
@@ -487,10 +493,10 @@ let abstract prog top_funs =
   |@> pr "ABST"
   |&b&> CEGAR_trans.simplify_if
   |@b&> pr "SIMPLIFY_IF"
-  |> Typing.infer -| initialize_env
+  |> Typing.infer ~fun_annot:true -| initialize_env
   |@!Flag.Debug.abst&> eval_step_by_step
-  |> CEGAR_lift.lift2
-  |@> pr "LIFT"
+  |*> CEGAR_lift.lift2
+  |*@> pr "LIFT"
   |> trans_eager
   |@> pr "TRANS_EAGER"
   |&b&> put_arg_into_if
