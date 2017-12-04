@@ -336,20 +336,9 @@ and abstract_term env cond pts t typ =
           pts, [], List.map (abst env cond pts) (ps t)
         else
           let pts',defs,xs =
-            let is_var =
-              match t with
-              | Var _ -> true
-              | _ -> false
-            in
             let rec aux p (pts,defs,xs) =
               let x = new_id "b" in
-              let pts' =
-                if is_var then
-                  pts
-                else
-                  (p, Var x)::pts
-              in
-              pts', (x,abst env cond pts p)::defs, x::xs
+              (p, Var x)::pts, (x,abst env cond pts p)::defs, x::xs
             in
             List.fold_right aux (ps t) (pts,[],[])
           in
