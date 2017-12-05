@@ -37,19 +37,19 @@ let rec merge_typ env typ typ' =
         else
           ps2'
       in
-      let add env ps p =
-        let equiv env t1 t2 =
+      let add p ps =
+        let equiv t1 t2 =
           let t1' = FpatInterface.conv_formula t1 in
           let t2' = FpatInterface.conv_formula t2 in
           FpatInterface.implies [t1'] [t2'] &&
           FpatInterface.implies [t2'] [t1']
         in
-        if List.exists (equiv env p) ps then
+        if List.exists (equiv p) ps then
           ps
         else
           normalize_bool_term p :: ps
       in
-      let ps = List.fold_left (add env') ps1' ps2'' in
+      let ps = List.fold_right add ps1' ps2'' in
       let ps t = List.map (subst x t) ps in
       TBase(b1, ps)
   | TFun(TApp(TConstr TAssumeTrue, ty11),ty12), TFun(ty21,ty22)

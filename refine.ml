@@ -135,7 +135,7 @@ let rec remove_redundant_pred ty =
           match ps with
           | [] -> []
           | p::ps' ->
-              if List.exists ((=) p) ps' then
+              if List.exists ((=) p) ps' || p = Const False || p = Const True then
                 aux ps'
               else
                 p :: aux ps'
