@@ -36,7 +36,8 @@ let rec from_type typ =
   | Type.TFuns _
   | Type.TVariant _
   | Type.TRecord _
-  | Type.Type _ -> unsupported "uncurry"
+  | Type.Type _
+  | Type.TModule _ -> unsupported "uncurry"
 
 let rec decomp_tfun sol = function
   | TVar {contents = Some typ} -> decomp_tfun sol typ
@@ -111,7 +112,7 @@ let rec infer (env,counter) t =
       let typ = List.fold_right aux ts @@ get_typ env t in
       if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
       (0, Option.get !id) :: unify (get_typ env t1) typ @ constr
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let aux (f,t1) =
         let xs,t1 = decomp_funs t1 in
         List.iter (add_env_var env) (f::xs);
@@ -182,7 +183,7 @@ let uncurry_term (env,sol) t =
       let t1' = uncurry.tr2_term (env,sol) t1 in
       let ts' = List.map (uncurry.tr2_term (env,sol)) ts in
       make_app t1' @@ aux ts' @@ get_typ env t1
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let aux (f,t1) =
         let xs,t1 = decomp_funs t1 in
         let rec aux xs typ =
@@ -272,7 +273,7 @@ let to_funs_var env sol x =
 
 let to_tfuns_desc (env,sol) desc =
   match desc with
-  | Let(bindings, t) ->
+  | Local(Decl_let bindings, t) ->
       let aux (f,t) (bindings',t') =
         let xs,t = decomp_funs t in
         if false then Format.printf "f: %a@." Id.print f;
@@ -285,7 +286,7 @@ let to_tfuns_desc (env,sol) desc =
       let bindings',t' = List.fold_right aux bindings @@ ([], to_tfuns.tr2_term (env,sol) t) in
       let map = List.map2 (fun (f,_) (f',_) -> f, f') bindings bindings' in
       let bindings'' = List.map (Pair.map_snd @@ List.fold_right (Fun.uncurry subst_var) map) bindings' in
-      Let(bindings'', t')
+      Local(Decl_let bindings'', t')
   | _ -> to_tfuns.tr2_desc_rec (env,sol) desc
 
 let () = to_tfuns.tr2_desc <- to_tfuns_desc

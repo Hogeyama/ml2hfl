@@ -301,9 +301,9 @@ and from_term
       in
       let node = {nid; val_env; var_env; ce_env; nlabel = Branch tid} in
       RT.Node(node, children)
-  | Let([f,({desc=Bottom} as t1)], _) ->
+  | Local(Decl_let [f,({desc=Bottom} as t1)], _) ->
       from_term cnt fun_env var_env val_env ce_env spawned depth t1
-  | Let([f,t1], t2) ->
+  | Local(Decl_let [f,t1], t2) ->
       let xs,t1 = decomp_funs t1 in
       Debug.printf "  LET@\n";
       Debug.printf "    t: %a@\n" Print.term t;

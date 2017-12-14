@@ -492,17 +492,17 @@ let rec trans_type typ =
   List.fold_right (fun x ty -> Type.TFun(x,ty)) xs' tyret
 and trans_id x = Id.map_typ trans_type x
 
-let of_desc t = assert false (* @todo translate FPAT term to Syntax.term *)
+let of_desc t = assert false (* @todo translate FPAT term to S.term *)
 
 let insert_extra_param t =
   let tmp = Time.get() in
   Fpat.RefTypInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
-      match t.Syntax.desc with
-      | Syntax.Const c -> Syntax.Const c
-      | Syntax.Var y -> Syntax.Var (trans_id y)
-      | Syntax.Fun(y, t1) ->
+      match t.S.desc with
+      | S.Const c -> S.Const c
+      | S.Var y -> S.Var (trans_id y)
+      | S.Fun(y, t1) ->
          let y' = trans_id y in
          let ys =
            match y'.Id.typ with
@@ -528,9 +528,9 @@ let insert_extra_param t =
            List.fold_left
              (fun (f, ty) y ->
               (fun t ->
-               f {Syntax.desc=Syntax.Fun(y, t); Syntax.typ=ty; Syntax.attr=[]}),
+               f {S.desc=S.Fun(y, t); S.typ=ty; S.attr=[]}),
               match ty with Type.TFun(_, ty') -> ty' | _ -> assert false)
-             ((fun t -> t), trans_type t.Syntax.typ)
+             ((fun t -> t), trans_type t.S.typ)
              ys'
          in
          let bvs, exs =
@@ -540,13 +540,13 @@ let insert_extra_param t =
               bvs @ [y']),
            exs @ ys
          in
-         (f (aux rfs bvs exs t1)).Syntax.desc
-      | Syntax.App(t1, ts) ->
-         (match t1.Syntax.desc with Syntax.App(_, _) -> assert false | _ -> ());
+         (f (aux rfs bvs exs t1)).S.desc
+      | S.App(t1, ts) ->
+         (match t1.S.desc with S.App(_, _) -> assert false | _ -> ());
          let t1' = aux rfs bvs exs t1 in
          let recursive, xss =
-           match t1'.Syntax.desc with
-           | Syntax.Var(f) ->
+           match t1'.S.desc with
+           | S.Var(f) ->
               (try
                   let _, xxss, _ =
                     List.find
@@ -560,11 +560,11 @@ let insert_extra_param t =
                   true,
                   List.map2
                     (fun t (x, xs) ->
-                     match t.Syntax.typ with
+                     match t.S.typ with
                      | Type.TFun(_, _)
                      | Type.TTuple _(* ToDo: fix it *) ->
-                        (match t.Syntax.desc with
-                         | Syntax.Var(y) when Id.same x y ->
+                        (match t.S.desc with
+                         | S.Var(y) when Id.same x y ->
                              Debug.printf "arg %a of %a not changed@," Print.id x Print.id f;
                              xs
                          | _ -> [])
@@ -582,7 +582,7 @@ let insert_extra_param t =
          let tss =
            List.mapi
              (fun i t ->
-              match t.Syntax.typ with
+              match t.S.typ with
               | Type.TFun(_, _)
               | Type.TTuple _(* ToDo: fix it *) ->
                  let bvs =
@@ -606,10 +606,10 @@ let insert_extra_param t =
            List.flatten
              (List.map2 (fun ts t -> ts @ [t]) tss ts')
          in
-         Syntax.App(t1', ts'')
-      | Syntax.If(t1, t2, t3) ->
-         Syntax.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
-      | Syntax.Let(bindings, t2) ->
+         S.App(t1', ts'')
+      | S.If(t1, t2, t3) ->
+         S.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
+      | S.Local(S.Decl_let bindings, t2) ->
          let bvs' =
            bvs @ List.map fst bindings
          in
@@ -621,47 +621,48 @@ let insert_extra_param t =
            f', aux rfs bvs' exs t
          in
          let bindings' = List.map aux' bindings in
-         Syntax.Let
-           (bindings',
+         S.Local
+           (S.Decl_let bindings',
             aux rfs
                 (bvs @
                    List.map
                      fst
                      bindings')
                 exs t2)
-      | Syntax.BinOp(op, t1, t2) -> Syntax.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
-      | Syntax.Not t1 -> Syntax.Not (aux rfs bvs exs t1)
-      | Syntax.Event(s,b) -> Syntax.Event(s,b)
-      | Syntax.Record fields -> Syntax.Record (List.map (Pair.map_snd @@ aux rfs bvs exs) fields)
-      | Syntax.Field(t1,s) -> Syntax.Field(aux rfs bvs exs t1,s)
-      | Syntax.SetField(t1,s,t2) -> Syntax.SetField(aux rfs bvs exs t1,s,aux rfs bvs exs t2)
-      | Syntax.Nil -> Syntax.Nil
-      | Syntax.Cons(t1,t2) ->
-         Syntax.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)
-      | Syntax.Constr(s,ts) ->
-         Syntax.Constr(s, List.map (aux rfs bvs exs) ts)
-      | Syntax.Match(t1,pats) ->
+      | S.BinOp(op, t1, t2) -> S.BinOp(op, aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | S.Not t1 -> S.Not (aux rfs bvs exs t1)
+      | S.Event(s,b) -> S.Event(s,b)
+      | S.Record fields -> S.Record (List.map (Pair.map_snd @@ aux rfs bvs exs) fields)
+      | S.Field(t1,s) -> S.Field(aux rfs bvs exs t1,s)
+      | S.SetField(t1,s,t2) -> S.SetField(aux rfs bvs exs t1,s,aux rfs bvs exs t2)
+      | S.Nil -> S.Nil
+      | S.Cons(t1,t2) ->
+         S.Cons(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | S.Constr(s,ts) ->
+         S.Constr(s, List.map (aux rfs bvs exs) ts)
+      | S.Match(t1,pats) ->
          let aux' (pat, cond, t) =
            (* ToDo: need to update pat!? *)
            pat,
-           aux rfs (bvs @ Syntax.get_vars_pat pat) exs cond,
-           aux rfs (bvs @ Syntax.get_vars_pat pat) exs t
+           aux rfs (bvs @ S.get_vars_pat pat) exs cond,
+           aux rfs (bvs @ S.get_vars_pat pat) exs t
          in
-         Syntax.Match(aux rfs bvs exs t1, List.map aux' pats)
-      | Syntax.Raise t -> Syntax.Raise (aux rfs bvs exs t)
-      | Syntax.TryWith(t1,t2) -> Syntax.TryWith(aux rfs bvs exs t1, aux rfs bvs exs t2)
-      | Syntax.Tuple ts -> Syntax.Tuple (List.map (aux rfs bvs exs) ts)
-      | Syntax.Proj(i,t) -> Syntax.Proj(i, aux rfs bvs exs t)
-      | Syntax.Bottom -> Syntax.Bottom
-      | Syntax.Label(info,t) -> Syntax.Label(info, aux rfs bvs exs t)
-      | Syntax.Ref t -> Syntax.Ref(aux rfs bvs exs t)
-      | Syntax.Deref t -> Syntax.Deref(aux rfs bvs exs t)
-      | Syntax.SetRef(t1,t2) ->
-         Syntax.SetRef(aux rfs bvs exs t1, aux rfs bvs exs t2)
-      | Syntax.TNone -> Syntax.TNone
-      | Syntax.TSome t -> Syntax.TSome(aux rfs bvs exs t)
+         S.Match(aux rfs bvs exs t1, List.map aux' pats)
+      | S.Raise t -> S.Raise (aux rfs bvs exs t)
+      | S.TryWith(t1,t2) -> S.TryWith(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | S.Tuple ts -> S.Tuple (List.map (aux rfs bvs exs) ts)
+      | S.Proj(i,t) -> S.Proj(i, aux rfs bvs exs t)
+      | S.Bottom -> S.Bottom
+      | S.Label(info,t) -> S.Label(info, aux rfs bvs exs t)
+      | S.Ref t -> S.Ref(aux rfs bvs exs t)
+      | S.Deref t -> S.Deref(aux rfs bvs exs t)
+      | S.SetRef(t1,t2) ->
+         S.SetRef(aux rfs bvs exs t1, aux rfs bvs exs t2)
+      | S.TNone -> S.TNone
+      | S.TSome t -> S.TSome(aux rfs bvs exs t)
+      | S.Module decls -> unsupported "insert_extra_param Module"
     in
-    {t with Syntax.desc}
+    {t with S.desc}
   in
   let res = aux [] [] [] t in
   let _ = Time.add tmp Flag.Log.time_parameter_inference in
@@ -702,17 +703,17 @@ let instantiate_param prog =
 let simplify_term t =
 (*
   if false then
-  let _, t = CEGAR_trans.trans_term {Syntax.desc = t; Syntax.typ = Type.TBool } in
+  let _, t = CEGAR_trans.trans_term {S.desc = t; S.typ = Type.TBool } in
   let t = conv_formula t in
   let t = Fpat.FormulaSimplifier.simplify t in
   let t = inv_formula t in
-  (CEGAR_trans.trans_inv_term t).Syntax.desc
+  (CEGAR_trans.trans_inv_term t).S.desc
   else
  *)
   t
 
 let simplify_term p =
-  { p with Syntax.desc = simplify_term p.Syntax.desc }
+  { p with S.desc = simplify_term p.S.desc }
 
 let compute_strongest_post prog ce ext_cex =
   Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce ext_cex

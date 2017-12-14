@@ -18,6 +18,7 @@ and attr =
   | AEffect of Type.effect
 and term = {desc:desc; typ:typ; attr:attr list}
 and const = (* only base type constants *)
+  | End_of_definitions
   | Unit
   | True
   | False
@@ -36,7 +37,7 @@ and desc =
   | Fun of id * term
   | App of term * term list
   | If of term * term * term
-  | Let of (id * term) list * term
+  | Local of declaration * term
   | BinOp of binop * term * term
   | Not of term
   | Event of string * bool (** true denotes CPS-term *)
@@ -58,6 +59,9 @@ and desc =
   | SetRef of term * term
   | TNone
   | TSome of term
+  | Module of declaration list
+
+and declaration = Decl_let of (id * term) list
 
 and info =
   | InfoInt of int
@@ -99,112 +103,124 @@ end
 val const_attr : attr list
 
 type trans =
-  {mutable tr_term:      term      -> term;
-   mutable tr_term_rec:  term      -> term;
-   mutable tr_desc:      desc      -> desc;
-   mutable tr_desc_rec:  desc      -> desc;
-   mutable tr_typ:       typ       -> typ;
-   mutable tr_typ_rec:   typ       -> typ;
-   mutable tr_var:       id        -> id;
-   mutable tr_var_rec:   id        -> id;
-   mutable tr_pat:       pattern   -> pattern;
-   mutable tr_pat_rec:   pattern   -> pattern;
-   mutable tr_info:      info      -> info;
-   mutable tr_info_rec:  info      -> info;
-   mutable tr_const:     const     -> const;
-   mutable tr_const_rec: const     -> const;
-   mutable tr_attr:      attr list -> attr list}
+  {mutable tr_term:      term        -> term;
+   mutable tr_term_rec:  term        -> term;
+   mutable tr_desc:      desc        -> desc;
+   mutable tr_desc_rec:  desc        -> desc;
+   mutable tr_typ:       typ         -> typ;
+   mutable tr_typ_rec:   typ         -> typ;
+   mutable tr_var:       id          -> id;
+   mutable tr_var_rec:   id          -> id;
+   mutable tr_pat:       pattern     -> pattern;
+   mutable tr_pat_rec:   pattern     -> pattern;
+   mutable tr_info:      info        -> info;
+   mutable tr_info_rec:  info        -> info;
+   mutable tr_decl:      declaration -> declaration;
+   mutable tr_decl_rec:  declaration -> declaration;
+   mutable tr_const:     const       -> const;
+   mutable tr_const_rec: const       -> const;
+   mutable tr_attr:      attr list   -> attr list}
 
 type 'a trans2 =
-  {mutable tr2_term:      'a -> term      -> term;
-   mutable tr2_term_rec:  'a -> term      -> term;
-   mutable tr2_desc:      'a -> desc      -> desc;
-   mutable tr2_desc_rec:  'a -> desc      -> desc;
-   mutable tr2_typ:       'a -> typ       -> typ;
-   mutable tr2_typ_rec:   'a -> typ       -> typ;
-   mutable tr2_var:       'a -> id        -> id;
-   mutable tr2_var_rec:   'a -> id        -> id;
-   mutable tr2_pat:       'a -> pattern   -> pattern;
-   mutable tr2_pat_rec:   'a -> pattern   -> pattern;
-   mutable tr2_info:      'a -> info      -> info;
-   mutable tr2_info_rec:  'a -> info      -> info;
-   mutable tr2_const:     'a -> const     -> const;
-   mutable tr2_const_rec: 'a -> const     -> const;
-   mutable tr2_attr:      'a -> attr list -> attr list}
+  {mutable tr2_term:      'a -> term        -> term;
+   mutable tr2_term_rec:  'a -> term        -> term;
+   mutable tr2_desc:      'a -> desc        -> desc;
+   mutable tr2_desc_rec:  'a -> desc        -> desc;
+   mutable tr2_typ:       'a -> typ         -> typ;
+   mutable tr2_typ_rec:   'a -> typ         -> typ;
+   mutable tr2_var:       'a -> id          -> id;
+   mutable tr2_var_rec:   'a -> id          -> id;
+   mutable tr2_pat:       'a -> pattern     -> pattern;
+   mutable tr2_pat_rec:   'a -> pattern     -> pattern;
+   mutable tr2_info:      'a -> info        -> info;
+   mutable tr2_info_rec:  'a -> info        -> info;
+   mutable tr2_decl:      'a -> declaration -> declaration;
+   mutable tr2_decl_rec:  'a -> declaration -> declaration;
+   mutable tr2_const:     'a -> const       -> const;
+   mutable tr2_const_rec: 'a -> const       -> const;
+   mutable tr2_attr:      'a -> attr list   -> attr list}
 
 type 'a col =
-  {mutable col_term:      term    -> 'a;
-   mutable col_term_rec:  term    -> 'a;
-   mutable col_desc:      desc          -> 'a;
-   mutable col_desc_rec:  desc          -> 'a;
-   mutable col_typ:       typ           -> 'a;
-   mutable col_typ_rec:   typ           -> 'a;
-   mutable col_var:       id            -> 'a;
-   mutable col_var_rec:   id            -> 'a;
-   mutable col_pat:       pattern -> 'a;
-   mutable col_pat_rec:   pattern -> 'a;
-   mutable col_info:      info          -> 'a;
-   mutable col_info_rec:  info          -> 'a;
-   mutable col_const:     const         -> 'a;
-   mutable col_const_rec: const         -> 'a;
-   mutable col_attr:      attr list     -> 'a;
+  {mutable col_term:      term        -> 'a;
+   mutable col_term_rec:  term        -> 'a;
+   mutable col_desc:      desc        -> 'a;
+   mutable col_desc_rec:  desc        -> 'a;
+   mutable col_typ:       typ         -> 'a;
+   mutable col_typ_rec:   typ         -> 'a;
+   mutable col_var:       id          -> 'a;
+   mutable col_var_rec:   id          -> 'a;
+   mutable col_pat:       pattern     -> 'a;
+   mutable col_pat_rec:   pattern     -> 'a;
+   mutable col_info:      info        -> 'a;
+   mutable col_info_rec:  info        -> 'a;
+   mutable col_decl:      declaration -> 'a;
+   mutable col_decl_rec:  declaration -> 'a;
+   mutable col_const:     const       -> 'a;
+   mutable col_const_rec: const       -> 'a;
+   mutable col_attr:      attr list   -> 'a;
    mutable col_app:       'a -> 'a -> 'a;
    mutable col_empty:     'a}
 
 type ('a,'b) col2 =
-  {mutable col2_term:      'b -> term         -> 'a;
-   mutable col2_term_rec:  'b -> term         -> 'a;
-   mutable col2_desc:      'b -> desc         -> 'a;
-   mutable col2_desc_rec:  'b -> desc         -> 'a;
-   mutable col2_typ:       'b -> typ          -> 'a;
-   mutable col2_typ_rec:   'b -> typ          -> 'a;
-   mutable col2_var:       'b -> id           -> 'a;
-   mutable col2_var_rec:   'b -> id           -> 'a;
-   mutable col2_pat:       'b -> pattern      -> 'a;
-   mutable col2_pat_rec:   'b -> pattern      -> 'a;
-   mutable col2_info:      'b -> info         -> 'a;
-   mutable col2_info_rec:  'b -> info         -> 'a;
-   mutable col2_const:     'b -> const        -> 'a;
-   mutable col2_const_rec: 'b -> const        -> 'a;
-   mutable col2_attr:      'b -> attr list    -> 'a;
+  {mutable col2_term:      'b -> term        -> 'a;
+   mutable col2_term_rec:  'b -> term        -> 'a;
+   mutable col2_desc:      'b -> desc        -> 'a;
+   mutable col2_desc_rec:  'b -> desc        -> 'a;
+   mutable col2_typ:       'b -> typ         -> 'a;
+   mutable col2_typ_rec:   'b -> typ         -> 'a;
+   mutable col2_var:       'b -> id          -> 'a;
+   mutable col2_var_rec:   'b -> id          -> 'a;
+   mutable col2_pat:       'b -> pattern     -> 'a;
+   mutable col2_pat_rec:   'b -> pattern     -> 'a;
+   mutable col2_info:      'b -> info        -> 'a;
+   mutable col2_info_rec:  'b -> info        -> 'a;
+   mutable col2_decl:      'b -> declaration -> 'a;
+   mutable col2_decl_rec:  'b -> declaration -> 'a;
+   mutable col2_const:     'b -> const       -> 'a;
+   mutable col2_const_rec: 'b -> const       -> 'a;
+   mutable col2_attr:      'b -> attr list   -> 'a;
    mutable col2_app:       'a -> 'a -> 'a;
    mutable col2_empty:     'a}
 
 type ('a,'b) tr_col2 =
-  {mutable tr_col2_term:      'b -> term      -> 'a * term;
-   mutable tr_col2_term_rec:  'b -> term      -> 'a * term;
-   mutable tr_col2_desc:      'b -> desc      -> 'a * desc;
-   mutable tr_col2_desc_rec:  'b -> desc      -> 'a * desc;
-   mutable tr_col2_typ:       'b -> typ       -> 'a * typ;
-   mutable tr_col2_typ_rec:   'b -> typ       -> 'a * typ;
-   mutable tr_col2_var:       'b -> id        -> 'a * id;
-   mutable tr_col2_var_rec:   'b -> id        -> 'a * id;
-   mutable tr_col2_pat:       'b -> pattern   -> 'a * pattern;
-   mutable tr_col2_pat_rec:   'b -> pattern   -> 'a * pattern;
-   mutable tr_col2_info:      'b -> info      -> 'a * info;
-   mutable tr_col2_info_rec:  'b -> info      -> 'a * info;
-   mutable tr_col2_const:     'b -> const     -> 'a * const;
-   mutable tr_col2_const_rec: 'b -> const     -> 'a * const;
-   mutable tr_col2_attr:      'b -> attr list -> 'a * attr list;
+  {mutable tr_col2_term:      'b -> term        -> 'a * term;
+   mutable tr_col2_term_rec:  'b -> term        -> 'a * term;
+   mutable tr_col2_desc:      'b -> desc        -> 'a * desc;
+   mutable tr_col2_desc_rec:  'b -> desc        -> 'a * desc;
+   mutable tr_col2_typ:       'b -> typ         -> 'a * typ;
+   mutable tr_col2_typ_rec:   'b -> typ         -> 'a * typ;
+   mutable tr_col2_var:       'b -> id          -> 'a * id;
+   mutable tr_col2_var_rec:   'b -> id          -> 'a * id;
+   mutable tr_col2_pat:       'b -> pattern     -> 'a * pattern;
+   mutable tr_col2_pat_rec:   'b -> pattern     -> 'a * pattern;
+   mutable tr_col2_info:      'b -> info        -> 'a * info;
+   mutable tr_col2_info_rec:  'b -> info        -> 'a * info;
+   mutable tr_col2_decl:      'b -> declaration -> 'a * declaration;
+   mutable tr_col2_decl_rec:  'b -> declaration -> 'a * declaration;
+   mutable tr_col2_const:     'b -> const       -> 'a * const;
+   mutable tr_col2_const_rec: 'b -> const       -> 'a * const;
+   mutable tr_col2_attr:      'b -> attr list   -> 'a * attr list;
    mutable tr_col2_app:       'a -> 'a -> 'a;
    mutable tr_col2_empty:     'a}
 
 type 'a fold_tr =
-  {mutable fold_tr_term:      'a -> term      -> 'a * term;
-   mutable fold_tr_term_rec:  'a -> term      -> 'a * term;
-   mutable fold_tr_desc:      'a -> desc      -> 'a * desc;
-   mutable fold_tr_desc_rec:  'a -> desc      -> 'a * desc;
-   mutable fold_tr_typ:       'a -> typ       -> 'a * typ;
-   mutable fold_tr_typ_rec:   'a -> typ       -> 'a * typ;
-   mutable fold_tr_var:       'a -> id        -> 'a * id;
-   mutable fold_tr_var_rec:   'a -> id        -> 'a * id;
-   mutable fold_tr_pat:       'a -> pattern   -> 'a * pattern;
-   mutable fold_tr_pat_rec:   'a -> pattern   -> 'a * pattern;
-   mutable fold_tr_info:      'a -> info      -> 'a * info;
-   mutable fold_tr_info_rec:  'a -> info      -> 'a * info;
-   mutable fold_tr_const:     'a -> const     -> 'a * const;
-   mutable fold_tr_const_rec: 'a -> const     -> 'a * const;
-   mutable fold_tr_attr:      'a -> attr list -> 'a * attr list}
+  {mutable fld_term:      'a -> term        -> 'a * term;
+   mutable fld_term_rec:  'a -> term        -> 'a * term;
+   mutable fld_desc:      'a -> desc        -> 'a * desc;
+   mutable fld_desc_rec:  'a -> desc        -> 'a * desc;
+   mutable fld_typ:       'a -> typ         -> 'a * typ;
+   mutable fld_typ_rec:   'a -> typ         -> 'a * typ;
+   mutable fld_var:       'a -> id          -> 'a * id;
+   mutable fld_var_rec:   'a -> id          -> 'a * id;
+   mutable fld_pat:       'a -> pattern     -> 'a * pattern;
+   mutable fld_pat_rec:   'a -> pattern     -> 'a * pattern;
+   mutable fld_info:      'a -> info        -> 'a * info;
+   mutable fld_info_rec:  'a -> info        -> 'a * info;
+   mutable fld_decl:      'a -> declaration -> 'a * declaration;
+   mutable fld_decl_rec:  'a -> declaration -> 'a * declaration;
+   mutable fld_const:     'a -> const       -> 'a * const;
+   mutable fld_const_rec: 'a -> const       -> 'a * const;
+   mutable fld_attr:      'a -> attr list   -> 'a * attr list}
 
 
 val typ : term -> typ

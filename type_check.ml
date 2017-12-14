@@ -61,7 +61,7 @@ let rec check t typ =
       check t1 TBool;
       check t2 typ';
       check t3 typ'
-  | Let(bindings, t2), typ' ->
+  | Local(Decl_let bindings, t2), typ' ->
       List.iter (fun (f,t) -> check t @@ elim_tattr @@ Id.typ f) bindings;
       let aux' f =
         let fv = get_fv t2 in
@@ -137,7 +137,7 @@ let rec check t typ =
       check t t.typ
   | TryWith(t1,t2), typ ->
       check t1 typ;
-      check t2 @@ make_tfun (TVar (ref None)) typ
+      check t2 @@ make_tfun (TVar(ref None, None)) typ
   | Bottom, typ -> ()
   | Ref t, TApp(TRef, [typ]) ->
       check t typ
@@ -149,6 +149,7 @@ let rec check t typ =
   | TNone, TApp(TOption, _) -> ()
   | TSome t, TApp(TOption, [typ]) ->
       check t typ
+  | Module _, TModule _ -> () (* TODO *)
   | _, TData _ -> assert false
   | _ ->
       Format.printf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;

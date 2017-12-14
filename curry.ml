@@ -198,7 +198,7 @@ and remove_pair_aux t typ_opt =
       let t2' = remove_pair t2 in
       let t3' = remove_pair t3 in
       leaf (add_attrs t.attr @@ make_if t1' t2' t3')
-  | Let(bindings, t) ->
+  | Local(Decl_let bindings, t) ->
       let aux (f,t) =
         let f' = root @@ remove_pair_var f in
         let t' = root @@ remove_pair_aux t None in

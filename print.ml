@@ -21,7 +21,7 @@ and print_id_typ fm x =
     fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
 
 (* priority (low -> high)
-   10 : Let, Letrec, If, Match, TryWith
+   10 : Local, Letrec, If, Match, TryWith
    15 : Fun
    18 : Seq
    20 : Pair
@@ -53,7 +53,9 @@ and print_binop fm = function
 and print_termlist pri typ fm ts =
   print_list (print_term pri typ) "@ " fm ts
 
-and print_const fm = function
+and print_const fm c =
+  match c with
+  | End_of_definitions -> fprintf fm "EOD"
   | Unit -> fprintf fm "()"
   | True -> fprintf fm "true"
   | False -> fprintf fm "false"
@@ -179,18 +181,18 @@ and print_desc attr pri typ fm desc =
           fprintf fm "@[%a@]" (print_term p typ) t3
         end;
       fprintf fm "@]%s" s2
-  | Let([], t) ->
+  | Local(Decl_let [], t) ->
       Format.printf "@.%a@." (print_term 0 typ) t;
       assert false
-  | Let([_, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
+  | Local(Decl_let [_, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[%sassert@ false%s@]" s1 s2
-  | Let([u,t1], t2) when Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
+  | Local(Decl_let [u,t1], t2) when Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
       let p = 18 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a;@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
       let s_rec = if is_non_rec bindings then "" else " rec" in
@@ -361,6 +363,18 @@ and print_desc attr pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[Some %a@]%s" s1 (print_term p typ) t s2
+  | Module decls ->
+      let p = 10 in
+      let s1,s2 = paren pri (p+1) in
+      fprintf fm "@[%s@[<hv 2>module@ @[%a@]@]@ end%s@]" s1 (print_declaration typ) decls s2
+
+and print_declaration typ fm decls = (* TODO: fix *)
+  let t =
+    let aux (Decl_let defs) t0 = {desc=Local(Decl_let defs,t0);typ=typ_unknown;attr=[]} in
+    List.fold_right aux decls {desc=Const End_of_definitions; typ=TUnit; attr=[]}
+  in
+  print_term 0 typ fm t
+
 
 and print_info fm info =
   match info with
@@ -431,7 +445,7 @@ let rec print_term' pri fm t =
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%s@[@[if %a@]@ then @[%a@]@ else @[%a@]@]%s"
                 s1 (print_term' p) t1 (print_term' p) t2 (print_term' p) t3 s2
-    | Let(bindings, t2) ->
+    | Local(Decl_let bindings, t2) ->
         let s_rec = if is_non_rec bindings then "" else " rec" in
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
@@ -445,8 +459,8 @@ let rec print_term' pri fm t =
         let print_bindings bs = print_list print_binding "" bs in
         begin
           match t2.desc with
-          | Let _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
-                             s1 print_bindings bindings (print_term' p) t2 s2
+          | Local _ -> fprintf fm "%s@[<v>@[<hov 2>%a@]@ in@ %a@]%s"
+                               s1 print_bindings bindings (print_term' p) t2 s2
           | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
                          s1 print_bindings bindings (print_term' p) t2 s2
         end
@@ -534,7 +548,19 @@ let rec print_term' pri fm t =
         let p = 4 in
         let s1,s2 = paren pri (p+1) in
         fprintf fm "%sSome %a%s" s1 (print_term' 1) t s2
+    | Module decls ->
+        let p = 10 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "@[%s@[<hv 2>module@ @[%a@]@]@ end%s@]" s1 print_declaration' decls s2
   );fprintf fm ":@ @[%a@]@])" (Color.cyan print_typ) t.typ
+
+and print_declaration' fm decls = (* TODO: fix *)
+  let t =
+    let aux (Decl_let defs) t0 = {desc=Local(Decl_let defs,t0);typ=t0.typ;attr=[]} in
+    List.fold_right aux decls {desc=Const End_of_definitions; typ=TUnit; attr=[]}
+  in
+  print_term' 0 fm t
+
 and print_pattern' fm pat =
   let rec aux fm pat =
     match pat.pat_desc with
@@ -592,7 +618,7 @@ let string_of_constr t =
   | Fun _ -> "Fun"
   | App _ -> "App"
   | If _ -> "If"
-  | Let _ -> "Let"
+  | Local _ -> "Local"
   | BinOp _ -> "BinOp"
   | Not _ -> "Not"
   | Event _ -> "Event"
@@ -614,6 +640,7 @@ let string_of_constr t =
   | SetRef _ -> "SetRef"
   | TNone -> "TNone"
   | TSome _ -> "TSome"
+  | Module _ -> "Module"
 
 
 let typ = print_typ

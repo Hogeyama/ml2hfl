@@ -269,7 +269,7 @@ let main_loop prog ce_set cmp dep f typ =
 
 let rec last_def_to_fun t =
   match t.desc with
-  | Let([f,t1], ({desc=Const Unit} as t2)) ->
+  | Local(Decl_let [f,t1], ({desc=Const Unit} as t2)) ->
       let xs,t1 = decomp_funs t1 in
       let f',xs' =
         if xs = [] then
@@ -279,12 +279,12 @@ let rec last_def_to_fun t =
         else
           f, xs
       in
-      let desc = Let([f', make_funs xs' t1], t2) in
+      let desc = Local(Decl_let [f', make_funs xs' t1], t2) in
       {t with desc}
-  | Let(_, {desc=Const Unit}) -> unsupported "last_def_to_fun"
-  | Let(defs, t2) ->
+  | Local(Decl_let _, {desc=Const Unit}) -> unsupported "last_def_to_fun"
+  | Local(Decl_let defs, t2) ->
       let t2' = last_def_to_fun t2 in
-      {t with desc = Let(defs, t2')}
+      {t with desc = Local(Decl_let defs, t2')}
   | _ ->
       Format.printf "%a@." Print.term t;
       assert false
@@ -292,7 +292,7 @@ let rec last_def_to_fun t =
 let assert_to_fun t =
   let rec loop t =
     match t.desc with
-    | Let([u,t1], t2) when Id.typ u = TUnit ->
+    | Local(Decl_let [u,t1], t2) when Id.typ u = TUnit ->
         let u' = Id.new_var ~name:"u" TUnit in
         let f = Id.new_var @@ TFun(u', TUnit) in
         let t1',t2' =
@@ -302,7 +302,7 @@ let assert_to_fun t =
           | `Other, _ -> unsupported @@ Format.asprintf "top-level let-bindings of non-functions: %a" Print.term t1
         in
         `Lifted, make_let [f, make_fun u t1'] t2'
-    | Let(bindings, t) ->
+    | Local(Decl_let bindings, t) ->
         `Other, make_let bindings @@ snd @@ loop t
     | Const Unit -> `Unit, t
     | _ -> assert false
@@ -313,11 +313,11 @@ let rec top_to_local_aux (f,t1) t =
   match t.desc with
   | Const Unit ->
       make_let [f,t1] t
-  | Let([main,t2], {desc=Const Unit}) ->
+  | Local(Decl_let [main,t2], {desc=Const Unit}) ->
       let t2' = make_let [f,t1] t2 in
-      let desc = Let([main,t2'], unit_term) in
+      let desc = Local(Decl_let [main,t2'], unit_term) in
       top_to_local {t with desc}
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let used,bindings' =
         let aux (g,t3) =
           if Id.mem f @@ get_fv t3 then
@@ -340,7 +340,7 @@ let rec top_to_local_aux (f,t1) t =
         |> sbst_all
         |> top_to_local_aux (f,t1)
       in
-      let desc = Let(bindings'', t2') in
+      let desc = Local(Decl_let bindings'', t2') in
       top_to_local {t with desc}
   | _ ->
       assert (not @@ Id.mem f @@ get_fv t);
@@ -348,12 +348,12 @@ let rec top_to_local_aux (f,t1) t =
 
 and top_to_local t =
   match t.desc with
-  | Let([f,t1 as binding], t2) when fst (decomp_funs t1) = [] ->
+  | Local(Decl_let [f,t1 as binding], t2) when fst (decomp_funs t1) = [] ->
       top_to_local_aux binding t2
-  | Let([binding], t2) ->
-      let desc = Let([binding], top_to_local t2) in
+  | Local(Decl_let [binding], t2) ->
+      let desc = Local(Decl_let [binding], top_to_local t2) in
       {t with desc}
-  | Let(bindings, {desc=Const Unit}) ->
+  | Local(Decl_let bindings, {desc=Const Unit}) ->
       unsupported "Modular.top_to_local (let ... and)"
   | Const Unit -> t
   | _ ->

@@ -78,16 +78,13 @@ let rec move_arg_pred ty =
               let p2',path2 = decomp_path p2 in
               let path1',c = List.decomp_snoc path1 in
               assert (c = 0);
-              if p1' = Const True then
-                p2
-              else
-                if List.is_prefix path1' path2 then
-                  if p2' = Const True then
-                    make_not_s p1' |> compose_path path2
-                  else
-                    make_imply' p1' p2' |> compose_path path2
+              if List.is_prefix path1' path2 then
+                if p2' = Const True then
+                  make_not_s p1' |> compose_path path2
                 else
-                  p2
+                  make_imply' p1' p2' |> compose_path path2
+              else
+                p2
             in
             List.map (List.fold_right aux ps_x) ps'_y
           in

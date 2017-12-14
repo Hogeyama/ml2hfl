@@ -562,28 +562,34 @@ module String = struct
   let remove_char c s =
     replace_chars (fun c' -> if c = c' then "" else of_char c') s
 
+  let of_sign c =
+    match c with
+    | '!' -> Some "bang"
+    | '$' -> Some "dollar"
+    | '%' -> Some "percent"
+    | '&' -> Some "ampersand"
+    | '*' -> Some "asterisk"
+    | '+' -> Some "plus"
+    | '-' -> Some "minus"
+    | '.' -> Some "dot"
+    | '/' -> Some "slash"
+    | ':' -> Some "colon"
+    | '<' -> Some "lessthan"
+    | '=' -> Some "equal"
+    | '>' -> Some "greaterthan"
+    | '?' -> Some "question"
+    | '@' -> Some "at"
+    | '^' -> Some "caret"
+    | '|' -> Some "bar"
+    | '~' -> Some "tilde"
+    | '\'' -> Some "prime"
+    | _ -> None
+
   let sign_to_letters s =
-    let map = function
-      | '!' -> "_bang_"
-      | '$' -> "_dollar_"
-      | '%' -> "_percent_"
-      | '&' -> "_ampersand_"
-      | '*' -> "_asterisk_"
-      | '+' -> "_plus_"
-      | '-' -> "_minus_"
-      | '.' -> "_dot_"
-      | '/' -> "_slash_"
-      | ':' -> "_colon_"
-      | '<' -> "_lessthan_"
-      | '=' -> "_equal_"
-      | '>' -> "_greaterthan_"
-      | '?' -> "_question_"
-      | '@' -> "_at_"
-      | '^' -> "_caret_"
-      | '|' -> "_bar_"
-      | '~' -> "_tilde_"
-      | '\'' -> "_prime_"
-      | c -> make 1 c
+    let map c =
+      match of_sign c with
+      | None -> make 1 c
+      | Some s -> "_" ^ s ^ "_"
     in
     replace_chars map s
 

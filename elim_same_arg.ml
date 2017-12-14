@@ -109,7 +109,7 @@ let get_diff_args_desc (env,f) desc =
       in
       let diff_args = List.flatten @@ List.map (get_diff_args.col2_term (env,f)) ts in
       aux diff_args its
-  | Let([_] as bindings, t) ->
+  | Local(Decl_let ([_] as bindings), t) ->
       let aux (g,t') =
         let xs,t' = decomp_funs t' in
         let all = make_all xs in
@@ -119,7 +119,7 @@ let get_diff_args_desc (env,f) desc =
       in
       let diff_args = get_diff_args.col2_term (env,f) t in
       List.flatten (List.map aux bindings) @ diff_args
-  | Let(bindings, t) -> raise (Fatal "Not implemented (get_diff_args)")
+  | Local(Decl_let bindings, t) -> raise (Fatal "Not implemented (get_diff_args)")
   | _ -> get_diff_args.col2_desc_rec (env,f) desc
 
 let () = get_diff_args.col2_desc <- get_diff_args_desc
@@ -167,7 +167,7 @@ let trans = make_trans2 ()
 
 let trans_desc env desc =
   match desc with
-  | Let([f,t1], t2) ->
+  | Local(Decl_let [f,t1], t2) ->
       let xs,t1 = decomp_funs t1 in
       let same_args = get_same_args env f t2 @@ make_all xs in
       let same_args' =
@@ -205,7 +205,7 @@ let trans_desc env desc =
                 |> elim_arg f elim_args
                 |> subst_var f f'
       in
-      Let([f',make_funs xs' t1'], t2')
+      Local(Decl_let [f',make_funs xs' t1'], t2')
   | _ -> trans.tr2_desc_rec env desc
 
 let () = trans.tr2_desc <- trans_desc

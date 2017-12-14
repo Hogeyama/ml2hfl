@@ -38,6 +38,7 @@ type preprocess_label =
   | Eliminate_same_arguments
   | Insert_unit_param
   | Preprocessfortermination
+  | Extract_module
 
 type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
@@ -80,7 +81,7 @@ let string_of_label = function
   | Eliminate_same_arguments -> "Eliminate_same_arguments"
   | Insert_unit_param -> "Insert_unit_param"
   | Preprocessfortermination -> "Preprocessfortermination"
-
+  | Extract_module -> "Extract_module"
 
 let last acc = snd @@ List.hd acc
 let last_t acc = fst @@ last acc
@@ -102,6 +103,9 @@ let filter_out labels pps =
 
 let all spec : t list =
   [
+    Extract_module,
+      (Fun.const true,
+       map_trans Trans.extract_module);
     Eliminate_unused_let,
       (Fun.const true,
        map_trans @@ Trans.elim_unused_let ~leave_last:true);

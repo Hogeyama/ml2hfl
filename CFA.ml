@@ -59,7 +59,7 @@ let rec update map flow t =
         | _ -> false
       in
       update map flow t1 || update map flow t2 || List.fold_left (fun b t -> b || aux t) false ts1
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let b =
         let aux b (f,t1) = b || update_var flow f t1 t2 || update map flow t1 in
         List.fold_left aux false bindings

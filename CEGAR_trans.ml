@@ -28,7 +28,6 @@ let rec merge_typ env typ typ' =
   match typ,typ' with
   | TBase(b1,ps1),TBase(b2,ps2) when b1 = b2 ->
       let x = !!new_id' in
-      let env' = (x,typ)::env in
       let ps1' = ps1 (Var x) in
       let ps2' = ps2 (Var x) in
       let ps2'' =
@@ -164,8 +163,8 @@ and trans_typ ty =
   | Type.TUnit -> typ_unit
   | Type.TBool -> typ_bool ()
   | Type.TInt -> typ_int
-  | Type.TVar{contents=None} -> typ_int
-  | Type.TVar{contents=Some typ} -> trans_typ typ
+  | Type.TVar({contents=None},_) -> typ_int
+  | Type.TVar({contents=Some typ},_) -> trans_typ typ
   | Type.TFun(x,typ) ->
       let typ1 = trans_typ @@ Id.typ x in
       let typ2 = trans_typ typ in
@@ -216,6 +215,7 @@ and trans_const c typ =
   | S.Nativeint n -> Nativeint n
   | S.CPS_result -> CPS_result
   | S.RandValue _ -> assert false
+  | S.End_of_definitions -> assert false
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
@@ -280,7 +280,7 @@ and trans_term post xs env t =
       let def2 = f, typ', x::xs, make_not (Var x), [], t3' in
       let t = List.fold_left (fun t x -> App(t,Var x)) (App(Var f,t1')) xs in
       def1::def2::defs1@defs2@defs3, t
-  | S.Let _ -> assert false
+  | S.Local _ -> assert false
   | S.BinOp(S.Eq, t1, t2) ->
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
@@ -326,7 +326,7 @@ let rec formula_of t =
   | S.Var x -> Var (trans_var x)
   | S.App(t, ts) -> raise Not_found
   | S.If(t1, t2, t3) -> raise Not_found
-  | S.Let _ -> assert false
+  | S.Local _ -> assert false
   | S.BinOp(S.Eq, t1, t2) ->
       let t1' = formula_of t1 in
       let t2' = formula_of t2 in

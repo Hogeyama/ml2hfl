@@ -17,12 +17,9 @@ let const_of_bool b = if b then True else False
 
 let type_not_found x = raise (Type_not_found x)
 
-
 let map_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
 let map_def_prog f prog = {prog with defs = List.map f prog.defs}
 let map_body_prog f prog = map_def_prog (map_body_def f) prog
-
-
 
 let rec subst x t = function
   | Const c -> Const c
@@ -68,16 +65,11 @@ let rec subst_typ_map map = function
   | TFun(typ1,typ2) -> TFun(subst_typ_map map typ1, fun y -> subst_typ_map map (typ2 y))
   | _ -> assert false
 
-
-
 let rec arg_num = function
   | TBase _ -> 0
   | TFun(_,typ) -> 1 + arg_num (typ (Const Unit))
   | TApp _ -> 0
   | TConstr _ -> 0
-
-
-
 
 let rec pop_main {env;defs;main;info} =
   let compare_fun f g = compare (g = main, f) (f = main, g) in
@@ -87,18 +79,12 @@ let rec pop_main {env;defs;main;info} =
   let defs' = List.sort compare_def defs in
   {env=env'; defs=defs'; main; info}
 
-
-
-
 let rec get_arg_env typ xs =
   match typ,xs with
   | TFun(typ1,typ2), x::xs ->
       let typ2 = typ2 @@ Var x in
       (x,typ1) :: get_arg_env typ2 xs
   | _ -> []
-
-
-
 
 let rec put_arg_into_if_term t =
   match t with
@@ -124,10 +110,6 @@ let rec put_arg_into_if_term t =
   | Let(x,t1,t2) -> Let(x, put_arg_into_if_term t1, put_arg_into_if_term t2)
 let put_arg_into_if prog = map_body_prog put_arg_into_if_term prog
 
-
-
-
-
 let eta_expand_def env (f,xs,t1,e,t2) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = List.init d (fun _ -> new_id "x") in
@@ -136,7 +118,6 @@ let eta_expand_def env (f,xs,t1,e,t2) =
 
 let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
-
 
 let rec make_arg_let t =
   let desc =
@@ -157,10 +138,10 @@ let rec make_arg_let t =
         let t2' = make_arg_let t2 in
         let t3' = make_arg_let t3 in
         S.If(t1',t2',t3')
-    | S.Let(bindings,t2) ->
+    | S.Local(S.Decl_let bindings,t2) ->
         let bindings' = List.map (fun (f,t) -> f, make_arg_let t) bindings in
         let t2' = make_arg_let t2 in
-        S.Let(bindings',t2')
+        S.Local(S.Decl_let bindings',t2')
     | S.BinOp(op, t1, t2) ->
         let t1' = make_arg_let t1 in
         let t2' = make_arg_let t2 in

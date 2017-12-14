@@ -19,55 +19,48 @@ let subst_var_id =
   fun x x' t -> tr.tr2_term (x,x') t
 
 let alpha_rename ?(whole=false) =
-  let new_id cnt names x =
-    let id =
-      if whole then
-        let s = Id.name x in
-        if StringSet.mem s !names then
-          Counter.gen cnt
-        else
-          (names := StringSet.add s !names; 0)
-      else
-        Id.new_int()
-    in
-    Id.set_id x id
-  in
   let tr = make_trans2 () in
-  let alpha_rename_term (cnt,names) t =
-    match t.desc with
-    | Let(bindings, t) ->
-        let bindings' =
-          let aux (f,t) =
-            let f' = new_id cnt names f in
-            let t' =
-              t
-              |> tr.tr2_term (cnt,names)
-              |> subst_var_id f f'
-            in
-            (f', t')
-          in
-          List.map aux bindings
+  let tr_term (cnt,names) t =
+    let new_id x =
+      let id =
+        if whole then
+          let s = Id.name x in
+          if StringSet.mem s !names then
+            Counter.gen cnt
+          else
+            (names := StringSet.add s !names; 0)
+        else
+          Id.new_int()
+      in
+      Id.set_id x id
+    in
+    let t' = tr.tr2_term_rec (cnt,names) t in
+    match t'.desc with
+    | Local(Decl_let bindings, _) ->
+        let map = List.map (fun (f,_) -> f, new_id f) bindings in
+        rename map t'
+    | Fun(x, _)->
+        rename [x, new_id x] t'
+    | Match(_,pats) ->
+        let map =
+          pats
+          |> List.flatten_map (Triple.fst |- get_bound_variables_pat)
+          |> List.map (Pair.add_right new_id)
         in
-        let sbst t = List.fold_left2 (fun t' (f,_) (f',_) -> subst_var_id f f' t') t bindings bindings' in
-        let bindings'' = List.map (Pair.map_snd sbst) bindings' in
-        let t' = sbst @@ tr.tr2_term (cnt,names) t in
-        make_let bindings'' t'
-    | Fun(x, t) ->
-        let x' = new_id cnt names x in
-        make_fun x' @@ subst_var_id x x' @@ tr.tr2_term (cnt,names) t
-    | _ -> tr.tr2_term_rec (cnt,names) t
+        rename map t'
+    | _ -> t'
   in
-  tr.tr2_term <- alpha_rename_term;
+  tr.tr2_term <- tr_term;
   fun t ->
-  let cnt = !!Counter.create in
-  let names = ref StringSet.empty in
-  tr.tr2_term (cnt,names) t
+    let cnt = !!Counter.create in
+    let names = ref StringSet.empty in
+    tr.tr2_term (cnt,names) t
 
 let inst_tvar, inst_tvar_typ =
   let tr = make_trans2 () in
   let tr_typ ty typ =
     match typ with
-    | TVar({contents=None} as r) -> r := Some ty; ty
+    | TVar({contents=None} as r,_) -> r := Some ty; ty
     | _ -> tr.tr2_typ_rec ty typ
   in
   tr.tr2_typ <- tr_typ;
@@ -77,7 +70,7 @@ let rename_tvar,rename_tvar_var,rename_tvar_typ =
   let tr = make_trans2 () in
   let tr_typ map typ =
     match typ with
-    | TVar({contents=None} as x) when List.mem_assq x map -> TVar (List.assq x map)
+    | TVar({contents=None} as x,_) when List.mem_assq x map -> TVar(List.assq x map, None)
     | _ -> tr.tr2_typ_rec map typ
   in
   tr.tr2_typ <- tr_typ;
@@ -87,7 +80,7 @@ let get_tvars =
   let col = make_col [] (List.fold_left (fun xs y -> if List.memq y xs then xs else y::xs)) in
   let col_typ typ =
     match typ with
-    | TVar({contents=None} as x) -> [x]
+    | TVar({contents=None} as x,_) -> [x]
     | TAttr(_,typ) -> col.col_typ typ
     | _ -> col.col_typ_rec typ
   in
@@ -96,46 +89,47 @@ let get_tvars =
 
 let rename_poly_funs =
   let fld = make_fold_tr () in
+  let can_unify f (_,g) = Type.can_unify (Id.typ f) (Id.typ g) in
   let fld_term (f,map) t =
     match t.desc with
     | Var x when Id.same x f ->
-        if is_poly_typ t.typ
-        then fatal "Cannot occur? @ Trans.rename_poly_funs"
+        if is_poly_typ t.typ then
+          fatal "Cannot occur? @ Trans.rename_poly_funs"
         else
           let map',x' =
-            try
-              let _,x' = List.find (fun (_,f') -> Type.can_unify (Id.typ f') (Id.typ x)) map in
-              map, x'
-            with Not_found ->
-              let x' = Id.new_var_id x in
-              (x,x')::map, x'
+            match List.find_option (can_unify x) map with
+            | None ->
+                let x' = Id.new_var_id x in
+                (x,x')::map, x'
+            | Some(_,x') ->
+                map, x'
           in
           (f,map'), make_var x'
     | Var x -> (f,map), make_var x
     | Fun(x, t) ->
-        let (_,map'),t' = fld.fold_tr_term (f,map) t in
+        let (_,map'),t' = fld.fld_term (f,map) t in
         (f,map'), make_fun x t'
     | App({desc=Var x; typ=typ}, ts) when Id.same x f ->
         let x' = Id.new_var ~name:(Id.name x) typ in
         let (_,map'),ts' =
           let aux t ((_,map),ts) =
-            let (_,map'),t' = fld.fold_tr_term (f, map) t in
+            let (_,map'),t' = fld.fld_term (f, map) t in
             (f,map'), t'::ts
           in
           List.fold_right aux ts ((f,map),[])
         in
-        let check (_,f') = Type.can_unify (Id.typ f') (Id.typ x') in
-        if List.exists check map'
-        then
-          let _,x'' = List.find check map' in
-          unify (Id.typ x') (Id.typ x'');
-          (f,map'), make_app (make_var x'') ts'
-        else (f,(x,x')::map'), make_app (make_var x') ts'
-    | _ -> fld.fold_tr_term_rec (f,map) t
+        begin
+          match List.find_option (can_unify x') map' with
+          | Some (_,x'') ->
+              unify (Id.typ x') (Id.typ x'');
+              (f,map'), make_app (make_var x'') ts'
+          | None -> (f,(x,x')::map'), make_app (make_var x') ts'
+        end
+    | _ -> fld.fld_term_rec (f,map) t
   in
-  fld.fold_tr_term <- fld_term;
+  fld.fld_term <- fld_term;
   fun f t ->
-    let (_,map),t' = fld.fold_tr_term (f,[]) t in
+    let (_,map),t' = fld.fld_term (f,[]) t in
     map, t'
 
 let unify_pattern_var =
@@ -165,12 +159,12 @@ let rec define_randvalue name (env, defs as ed) typ =
     | TUnit -> (env, defs), unit_term
     | TBool -> (env, defs), randbool_unit_term
     | TInt -> (env, defs), randint_unit_term
-    | TVar({contents=None} as r) -> r := Some TInt; define_randvalue "" ed TInt
-    | TVar{contents=Some typ} -> define_randvalue "" ed typ
+    | TVar({contents=None} as r,_) -> r := Some TInt; define_randvalue "" ed TInt
+    | TVar({contents=Some typ},_) -> define_randvalue "" ed typ
     | TFun(x,typ) ->
         let ed',t = define_randvalue "" ed typ in
         ed', make_fun x t
-    | TApp(TList, [TVar({contents=None} as r)]) ->
+    | TApp(TList, [TVar({contents=None} as r,_)]) ->
         r := Some TUnit;
         define_randvalue "" ed typ
     | TApp(TList, [typ']) ->
@@ -250,11 +244,11 @@ let inst_randval =
         define_randvalue ed typ
     | Const(RandValue _) ->
         assert false
-    | _ -> fld.fold_tr_term_rec ed t
+    | _ -> fld.fld_term_rec ed t
   in
-  fld.fold_tr_term <- fld_term;
+  fld.fld_term <- fld_term;
   fun t ->
-    let (_,defs),t' = fld.fold_tr_term ([],[]) t in
+    let (_,defs),t' = fld.fld_term ([],[]) t in
     let defs' =
       let edges =
         defs
@@ -307,7 +301,7 @@ let part_eval t =
       | Var x ->
           begin
             try
-              Let([x, List.assoc x apply], make_var x)
+              Local(Decl_let [x, List.assoc x apply], make_var x)
             with Not_found -> Var x
           end
       | Fun(x, t) -> Fun(x, aux apply t)
@@ -315,7 +309,7 @@ let part_eval t =
           if List.mem_assoc f apply
           then
             match ts with
-            | [] -> Let([f, List.assoc f apply], (make_var f))
+            | [] -> Local(Decl_let [f, List.assoc f apply], (make_var f))
             | [t] -> t.desc
             | t::ts' -> App(t, ts')
           else
@@ -344,7 +338,7 @@ let part_eval t =
           if t2 = t3
           then t2.desc
           else If(aux apply t1, aux apply t2, aux apply t3)
-      | Let([f, t1], t2) ->
+      | Local(Decl_let [f, t1], t2) ->
           if is_apply t1
           then (aux ((f,t1)::apply) (aux apply t2)).desc
           else
@@ -352,9 +346,9 @@ let part_eval t =
               match is_alias t1  with
               | Some x when not @@ List.mem f @@ get_fv t1 ->
                   (subst_var f x @@ aux apply t2).desc
-              | _ -> Let([f, aux apply t1], aux apply t2)
+              | _ -> Local(Decl_let [f, aux apply t1], aux apply t2)
             end
-      | Let _ -> assert false
+      | Local _ -> assert false
       | BinOp(op, t1, t2) -> BinOp(op, aux apply t1, aux apply t2)
       | Not t -> Not (aux apply t)
       | Event(s,b) -> Event(s,b)
@@ -378,6 +372,7 @@ let part_eval t =
       | SetRef _ -> assert false
       | TNone -> assert false
       | TSome _ -> assert false
+      | Module _ -> assert false
     in
     {desc=desc; typ=t.typ; attr=[]}
   in
@@ -387,9 +382,9 @@ let trans_let =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Let([f, t1], t2) when not @@ is_fun t1 ->
+    | Local(Decl_let [f, t1], t2) when not @@ is_fun t1 ->
         App(make_fun f @@ tr.tr_term t2, [tr.tr_term t1])
-    | Let(bindings, t2) when List.exists (not -| is_fun -| snd) bindings ->
+    | Local(Decl_let bindings, t2) when List.exists (not -| is_fun -| snd) bindings ->
         assert false
     | _ -> tr.tr_desc_rec desc
   in
@@ -400,7 +395,7 @@ let propagate_typ_arg =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Let(bindings, t2) ->
+    | Local(Decl_let bindings, t2) ->
         let aux (f,t) =
           let xs,t' = decomp_funs t in
           let xs' =
@@ -420,7 +415,7 @@ let propagate_typ_arg =
         in
         let bindings' = List.map aux bindings in
         let t2' = tr.tr_term t2 in
-        Let(bindings', t2')
+        Local(Decl_let bindings', t2')
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
@@ -433,7 +428,7 @@ let replace_typ =
   let tr = make_trans2 () in
   let tr_desc env desc =
     match desc with
-    | Let(bindings, t2) ->
+    | Local(Decl_let bindings, t2) ->
         let aux (f,t) =
           let xs,t' = decomp_funs t in
           let f' = replace_typ_var env f in
@@ -459,7 +454,7 @@ let replace_typ =
         let bindings' = List.map aux bindings in
         let t2' = tr.tr2_term env t2 in
         let t2'' = List.fold_left2 (fun t (f,_) (f',_) -> subst_var f f' t) t2' bindings bindings' in
-        Let(bindings', t2'')
+        Local(Decl_let bindings', t2'')
     | _ -> tr.tr2_desc_rec env desc
   in
   tr.tr2_desc <- tr_desc;
@@ -484,7 +479,7 @@ let rec eval t =
         (eval t3).desc
     | If(t1, t2, t3) ->
         If(eval t1, eval t2, eval t3)
-    | Let _ -> assert false
+    | Local _ -> assert false
     | BinOp(Add, {desc=Const (Int 0)}, t) ->
         (eval t).desc
     | BinOp(Mult, {desc=Const (Int 1)}, t) ->
@@ -695,7 +690,7 @@ let elim_fun =
     | Fun(y, t1) ->
         let f = Id.new_var ~name:fun_name t.typ in
         make_let [f, make_fun y @@ tr.tr2_term fun_name t1] @@ make_var f
-    | Let(bindings, t2) ->
+    | Local(Decl_let bindings, t2) ->
         let aux (f,t) =
           let xs,t' = decomp_funs t in
           f, make_funs xs @@ tr.tr2_term ("f_" ^ Id.name f) t' in
@@ -786,7 +781,7 @@ let rec inlined_f inlined fs t =
              let ts' = List.map (inlined_f inlined fs) ts in
              App(t1', ts'))
     | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
-    | Let(bindings, t2) ->
+    | Local(Decl_let bindings, t2) ->
         let aux (f,t) =
           (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
           `L(f, inlined_f inlined fs t)
@@ -796,7 +791,7 @@ let rec inlined_f inlined fs t =
         if bindings' = [] then
           t2'.desc
         else
-          Let(bindings', t2')
+          Local(Decl_let bindings', t2')
     | BinOp(op, t1, t2) -> BinOp(op, inlined_f inlined fs t1, inlined_f inlined fs t2)
     | Not t1 -> Not (inlined_f inlined fs t1)
     | Event(s,b) -> Event(s,b)
@@ -828,7 +823,7 @@ let lift_fst_snd = make_trans2 ()
 let lift_fst_snd_term fs t =
   match t.desc with
   | Fun(y, t1) -> make_fun y @@ lift_fst_snd.tr2_term fs t1(* ommit the case where y is a pair *)
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let bindings' =
         List.map
           (fun (f,t) ->
@@ -980,7 +975,7 @@ let rec search_fail path t =
       in
       aux [] 0 (t1::ts)
   | If(t1, t2, t3) -> search_fail (1::path) t1 @ search_fail (2::path) t2 @ search_fail (3::path) t3
-  | Let(defs, t) ->
+  | Local(Decl_let defs, t) ->
       let rec aux acc i ts =
         match ts with
           [] -> acc
@@ -1023,6 +1018,7 @@ let rec search_fail path t =
   | SetRef _ -> assert false
   | TNone -> assert false
   | TSome _ -> assert false
+  | Module _ -> assert false
 let search_fail t = search_fail [] t
 
 let rec screen_fail path target t =
@@ -1038,10 +1034,10 @@ let rec screen_fail path target t =
     | If(t1, t2, t3) ->
         let aux i t = screen_fail (i::path) target t in
         If(aux 1 t1, aux 2 t2, aux 3 t3)
-    | Let(defs, t) ->
+    | Local(Decl_let defs, t) ->
         let aux i t = screen_fail (i::path) target t in
         let aux_def i (f,t) = f, aux i t in
-        Let(List.mapi aux_def defs, aux (List.length defs) t)
+        Local(Decl_let (List.mapi aux_def defs), aux (List.length defs) t)
     | BinOp(op, t1, t2) ->
         let aux i t = screen_fail (i::path) target t in
         BinOp(op, aux 1 t1, aux 2 t2)
@@ -1079,6 +1075,7 @@ let rec screen_fail path target t =
     | SetRef _ -> assert false
     | TNone -> assert false
     | TSome _ -> assert false
+    | Module _ -> assert false
   in
   {t with desc}
 let screen_fail target t = screen_fail [] target t
@@ -1087,7 +1084,7 @@ let remove_defs =
   let tr = make_trans2 () in
   let remove_defs_desc xs desc =
     match desc with
-    | Let(bindings, t) ->
+    | Local(Decl_let bindings, t) ->
         let bindings' = List.filter_out (fun (f,_) -> Id.mem f xs) bindings in
         (make_let bindings' @@ tr.tr2_term xs t).desc
     | _ -> tr.tr2_desc_rec xs desc
@@ -1109,11 +1106,11 @@ let rename_ext_funs =
             x'::map, x'
         in
         (funs,map'), Var x'
-    | _ -> fld.fold_tr_desc_rec (funs,map) desc
+    | _ -> fld.fld_desc_rec (funs,map) desc
   in
-  fld.fold_tr_desc <- fld_desc;
+  fld.fld_desc <- fld_desc;
   fun funs t ->
-    let (_,map),t' = fld.fold_tr_term (funs,[]) t in
+    let (_,map),t' = fld.fld_term (funs,[]) t in
     map, t'
 
 let make_ext_fun_def f =
@@ -1173,7 +1170,7 @@ let assoc_typ =
   let col = make_col2 [] (@@@) in
   let col_desc f desc =
     match desc with
-    | Let(bindings, t1) ->
+    | Local(Decl_let bindings, t1) ->
         let aux (g,t) =
           let typs1 = if Id.same f g then [Id.typ g] else [] in
           typs1 @@@ col.col2_term f t
@@ -1192,9 +1189,9 @@ let inline_no_effect =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Let([x,t], {desc=Var y}) when Id.same x y && not @@ Id.mem x @@ get_fv t ->
+    | Local(Decl_let [x,t], {desc=Var y}) when Id.same x y && not @@ Id.mem x @@ get_fv t ->
         (tr.tr_term t).desc
-    | Let([x,t], t2) when Id.mem x (get_fv t2) && has_no_effect t && not @@ Id.mem x @@ get_fv t ->
+    | Local(Decl_let [x,t], t2) when Id.mem x (get_fv t2) && has_no_effect t && not @@ Id.mem x @@ get_fv t ->
         let t' = tr.tr_term t in
         let t2' = tr.tr_term t2 in
         (subst x t' t2').desc
@@ -1238,7 +1235,7 @@ let rec diff_terms t1 t2 =
       diff_terms t1' t2'
   | If(t11,t12,t13), If(t21,t22,t23) ->
       diff_terms t11 t21 @ diff_terms t12 t22 @ diff_terms t13 t23
-  | Let(bindings1,t1), Let(bindings2,t2) -> [t1,t2]
+  | Local(Decl_let bindings1,t1), Local(Decl_let bindings2,t2) -> [t1,t2]
   | BinOp(op1,t11,t12), BinOp(op2,t21,t22) ->
       if op1 = op2
       then diff_terms t11 t21 @ diff_terms t12 t22
@@ -1267,10 +1264,10 @@ let subst_let_xy =
   let tr_desc desc =
     let desc' = tr.tr_desc_rec desc in
     match desc with
-    | Let(bindings, t) when is_non_rec bindings ->
+    | Local(Decl_let bindings, t) when is_non_rec bindings ->
         let bindings',t' =
           match desc' with
-          | Let(bindings', t') when is_non_rec bindings' -> bindings', t'
+          | Local(Decl_let bindings', t') when is_non_rec bindings' -> bindings', t'
           | _ -> assert false
         in
         let sbst bind t =
@@ -1297,11 +1294,11 @@ let flatten_let =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Let([x,t1], t2) when is_non_rec [x,t1] ->
+    | Local(Decl_let [x,t1], t2) when is_non_rec [x,t1] ->
         let t1' = tr.tr_term t1 in
         let t2' = tr.tr_term t2 in
         begin match t1'.desc with
-        | Let _ ->
+        | Local _ ->
             let fbindings,t12 = decomp_lets t1' in
             let fbindings' = fbindings @ [[x,t12]] in
             List.fold_right make_let fbindings' t2'
@@ -1371,7 +1368,7 @@ let inline_var =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Let([x,({desc=Var _} as t1)], t2) ->
+    | Local(Decl_let [x,({desc=Var _} as t1)], t2) ->
         subst x t1 @@ tr.tr_term t2
     | _ -> tr.tr_term_rec t
   in
@@ -1389,7 +1386,7 @@ let inline_var_const =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Let([x,t1], t2) when is_const t1 ->
+    | Local(Decl_let [x,t1], t2) when is_const t1 ->
         subst x t1 @@ tr.tr_term t2
     | _ -> tr.tr_term_rec t
   in
@@ -1444,7 +1441,7 @@ let elim_unused_let =
     let desc' =
       let flag = List.mem ADoNotInline t.attr in
       match t.desc with
-      | Let(bindings, t) when not flag ->
+      | Local(Decl_let bindings, t) when not flag ->
           let t' = tr.tr2_term (leave,cbv) t in
           let bindings' = List.map (Pair.map_snd @@ tr.tr2_term (leave,cbv)) bindings in
           let fv2 = get_fv t' in
@@ -1455,7 +1452,7 @@ let elim_unused_let =
           in
           let bindings'' = List.filter used bindings' in
           (make_let bindings'' t').desc
-      | Let(bindings, t) when not flag ->
+      | Local(Decl_let bindings, t) when not flag ->
           let t' = tr.tr2_term (leave,cbv) t in
           let bindings' = List.map (Pair.map_snd @@ tr.tr2_term (leave,cbv)) bindings in
           let fv = get_fv t' in
@@ -1486,7 +1483,7 @@ let subst_with_rename =
     match desc with
     | Var y when Id.same x y -> (alpha_rename t).desc
     | Fun(y, t1) when Id.same x y -> desc
-    | Let(bindings, t2) when is_non_rec bindings ->
+    | Local(Decl_let bindings, t2) when is_non_rec bindings ->
         let aux (f,t1) = tr.tr2_var (x,t) f, tr.tr2_term (x,t) t1 in
         let bindings' = List.map aux bindings in
         let t2' =
@@ -1494,16 +1491,16 @@ let subst_with_rename =
           then t2
           else tr.tr2_term (x,t) t2
         in
-        Let(bindings', t2')
-    | Let(bindings, t2) when List.exists (Id.same x -| fst) bindings -> desc
-    | Let(bindings, t2) ->
+        Local(Decl_let bindings', t2')
+    | Local(Decl_let bindings, t2) when List.exists (Id.same x -| fst) bindings -> desc
+    | Local(Decl_let bindings, t2) ->
         let aux (f,t1) =
           tr.tr2_var (x,t) f,
           tr.tr2_term (x,t) t1
         in
         let bindings' = List.map aux bindings in
         let t2' = tr.tr2_term (x,t) t2 in
-        Let(bindings', t2')
+        Local(Decl_let bindings', t2')
     | Match(t1,pats) ->
         let aux (pat,cond,t1) =
           let xs = get_vars_pat pat in
@@ -1536,7 +1533,7 @@ let inline_simple_exp =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Let([x,t1],t2) when is_simple_aexp t1 || is_simple_bexp t1 ->
+    | Local(Decl_let [x,t1],t2) when is_simple_aexp t1 || is_simple_bexp t1 ->
         tr.tr_term @@ subst x t1 t2
     | _ -> tr.tr_term_rec t
   in
@@ -1605,7 +1602,7 @@ let expand_let_val =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Let(bindings, t2) ->
+    | Local(Decl_let bindings, t2) ->
         let bindings' = List.map (Pair.map_snd tr.tr_term) bindings in
         let t2' = tr.tr_term t2 in
         let bindings2,bindings1 = List.partition (is_fun -| snd) bindings' in
@@ -1667,7 +1664,7 @@ let beta_reduce =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Let([x,{desc=Var y}], t1) ->
+    | Local(Decl_let [x,{desc=Var y}], t1) ->
         tr.tr_term @@ subst_with_rename ~check:true x (make_var y) t1
     | App(t1, []) ->
         tr.tr_term t1
@@ -1694,9 +1691,9 @@ let replace_bottom_def =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Let([f,t1], t2) when is_bottom_def f t1 ->
+    | Local(Decl_let [f,t1], t2) when is_bottom_def f t1 ->
         let xs,t1 = decomp_funs t1 in
-        Let([f, make_funs xs @@ make_bottom t1.typ], tr.tr_term t2)
+        Local(Decl_let [f, make_funs xs @@ make_bottom t1.typ], tr.tr_term t2)
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
@@ -1768,7 +1765,7 @@ let rec is_in_redex x t =
       let rs = List.map (is_in_redex x) ts in
       List.fold_right (fun r acc -> match acc with None -> None | Some b -> Option.map ((||) b) r) rs (Some false)
   | Proj(i,t1) -> is_in_redex x t1
-  | Let(bindings, t1) when List.for_all (function (_,{desc=Fun _}) -> true | _ -> false) bindings ->
+  | Local(Decl_let bindings, t1) when List.for_all (function (_,{desc=Fun _}) -> true | _ -> false) bindings ->
       is_in_redex x t1
   | _ -> None
 
@@ -1780,7 +1777,7 @@ let inline_next_redex =
   in
   let tr_term t =
     match t.desc with
-    | Let([x,t1], t2) when is_non_rec [x,t1] ->
+    | Local(Decl_let [x,t1], t2) when is_non_rec [x,t1] ->
         let t1' = tr.tr_term t1 in
         let t2' = tr.tr_term t2 in
         if can_inline x t2'
@@ -1795,7 +1792,7 @@ let beta_var_tuple =
   let tr = make_trans2 () in
   let tr_term env t =
     match t.desc with
-    | Let([x,({desc=Tuple ts} as t1)], t2) when is_non_rec [x,t1] ->
+    | Local(Decl_let [x,({desc=Tuple ts} as t1)], t2) when is_non_rec [x,t1] ->
         let xs = List.map (function {desc=Var x} -> Some x | _ -> None) ts in
         if List.for_all Option.is_some xs then
           let xs' = List.map Option.get xs in
@@ -1812,7 +1809,7 @@ let beta_no_effect_tuple =
   let tr = make_trans2 () in
   let tr_term env t =
     match t.desc with
-    | Let([x,({desc=Tuple ts} as t1)], t2) when is_non_rec [x,t1] ->
+    | Local(Decl_let [x,({desc=Tuple ts} as t1)], t2) when is_non_rec [x,t1] ->
         if List.for_all has_no_effect ts
         then make_let [x,t1] @@ tr.tr2_term ((x,ts)::env) t2
         else tr.tr2_term_rec env t
@@ -1827,7 +1824,7 @@ let reduce_bottom =
   let tr_term t =
     let t' = tr.tr_term_rec t in
     match t'.desc with
-    | Let([x,{desc=Bottom}], _) -> make_bottom t.typ
+    | Local(Decl_let [x,{desc=Bottom}], _) -> make_bottom t.typ
     | _ -> t'
   in
   tr.tr_term <- tr_term;
@@ -1837,7 +1834,7 @@ let merge_bound_var_typ =
   let tr = make_trans2 () in
   let tr_typ_desc map desc =
     match desc with
-    | Let(bindings,t) ->
+    | Local(Decl_let bindings,t) ->
         let aux (f,t) =
           let f' =
             try
@@ -1850,7 +1847,7 @@ let merge_bound_var_typ =
         in
         let bindings' = List.map aux bindings in
         let t' = tr.tr2_term map t in
-        Let(bindings', t')
+        Local(Decl_let bindings', t')
     | _ -> tr.tr2_desc_rec map desc
   in
   tr.tr2_desc <- tr_typ_desc;
@@ -1861,56 +1858,67 @@ let merge_bound_var_typ =
 
 let copy_poly_funs =
   let fld = make_fold_tr () in
-  let tr_desc map desc =
+  let fld_desc map desc =
     match desc with
-    | Let([f, t1], t2) when is_poly_typ (Id.typ f) ->
+    | Local(Decl_let [f, t1], t2) when is_poly_typ (Id.typ f) ->
         let tvars = get_tvars (Id.typ f) in
         assert (tvars <> []);
-        let map2,t2' = fld.fold_tr_term map t2 in
+        let map2,t2' = fld.fld_term map t2 in
+        Format.printf "  f = %a: %a@." Id.print f Print.typ @@ Id.typ f;
         let t2'' = inst_tvar TInt t2' in
+        Format.printf "  f = %a: %a@." Id.print f Print.typ @@ Id.typ f;
         let map_rename,t2''' = rename_poly_funs f t2'' in
         Debug.printf "COPY: @[";
         List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
         Debug.printf "@.";
         if map_rename = [] then
-          let map1,t1' = fld.fold_tr_term map2 t1 in
+          let map1,t1' = fld.fld_term map2 t1 in
           (f,f)::map1, (inst_tvar TInt @@ make_let [f, t1'] t2').desc
         else
           let aux (map',t) (_,f') =
             let tvar_map = List.map (fun v -> v, ref None) tvars in
-            Type.unify (rename_tvar_typ tvar_map @@ Id.typ f) (Id.typ f');
-            let t1 = rename_tvar tvar_map t1 in
-            let t1 = subst_var f f' t1 in
-            let map'', t1 = fld.fold_tr_term map' t1 in
-            let t1 = alpha_rename t1 in
-            (f,f')::map'', make_let [f', t1] t
+            let ty' = (rename_tvar_typ tvar_map @@ Id.typ f) in
+            Format.printf "  f = %a: %a@." Id.print f Print.typ @@ Id.typ f;
+            Format.printf "  f' = %a: %a@." Id.print f' Print.typ @@ Id.typ f';
+            Format.printf "  ty': %a@." Print.typ ty';
+            Type.unify ty' (Id.typ f');
+            let map'',t1' =
+              t1
+              |> rename_tvar tvar_map
+              |> subst_var f f'
+              |> fld.fld_term map'
+            in
+            (f,f')::map'', make_let [f', t1'] t
           in
           let map',t = List.fold_left aux (map2,t2''') map_rename in
           map', t.desc
-    | Let(defs, t) ->
+    | Local(Decl_let defs, t) ->
         if List.for_all (not -| is_poly_typ -| Id.typ -| fst) defs then
           let map',defs' =
             let aux (map,defs) (f,t) =
-              let map',t' = fld.fold_tr_term map t in
+              let map',t' = fld.fld_term map t in
               map', defs@[f,t']
             in
             List.fold_left aux (map,[]) defs
           in
-          let map'',t' = fld.fold_tr_term map' t in
-          List.map (fun (f,_) -> f,f) defs @ map'', Let(defs', t')
+          let map'',t' = fld.fld_term map' t in
+          List.map (fun (f,_) -> f,f) defs @ map'', Local(Decl_let defs', t')
         else
           fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations."
-    | _ -> fld.fold_tr_desc_rec map desc
+    | _ -> fld.fld_desc_rec map desc
   in
-  fld.fold_tr_desc <- tr_desc;
+  fld.fld_desc <- fld_desc;
   fun t ->
     unify_pattern_var t;
-    let map,t' = fld.fold_tr_term [] t in
+    Format.printf "ZZZ: @[%a@." Print.term' t;
+    let map,t' = fld.fld_term [] t in
     let t'' =
       t'
+      |@> Format.printf "AAA: @[%a@." Print.term'
       |@> Type_check.check -$- Type.TUnit
       |> flatten_tvar
       |> inline_var_const
+      |@> Format.printf "BBB: @[%a@." Print.term'
       |@> Type_check.check -$- Type.TUnit
     in
     let make_get_rtyp get_rtyp f =
@@ -1922,47 +1930,50 @@ let copy_poly_funs =
 
 let rec map_main f t =
   match t.desc with
-  | Let(bindings, t2) ->
-      let desc = Let(bindings, map_main f t2) in
+  | Local(Decl_let bindings, t2) ->
+      let desc = Local(Decl_let bindings, map_main f t2) in
       {t with desc}
   | _ -> f t
 
 let rec replace_main ?(force=false) main t =
   match t.desc with
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       make_let bindings @@ replace_main ~force main t2
   | _ ->
-      assert (force || t.desc = Const Unit);
+      assert (force || t.desc = Const End_of_definitions);
       main
 
 let set_main t =
-  let defs, body = decomp_prog t in
-  if defs = [] then
-    let u = Id.new_var ~name:"main" t.typ in
-    None, make_let [u, t] unit_term
-  else
-    let f = fst @@ List.last @@ List.last defs in
-    let xs = get_args (Id.typ f) in
-    let t' =
-      if xs = [] && Id.typ f = TUnit then
-        replace_main (make_var f) t
-      else
-        let bindings =
-          let aux i x =
-            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-            let t = make_randvalue_unit @@ Id.typ x in
-            x', t
+  match get_last_definition t with
+  | None ->
+      let u = Id.new_var ~name:"main" t.typ in
+      None, make_let [u, t] unit_term
+  | Some f ->
+      let xs = get_args (Id.typ f) in
+      let t' =
+        if xs = [] && Id.typ f = TUnit then
+          replace_main (make_var f) t
+        else
+          let bindings =
+            let aux i x =
+              let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+              let t = make_randvalue_unit @@ Id.typ x in
+              x', t
+            in
+            List.mapi aux xs
           in
-          List.mapi aux xs
-        in
-        let main = make_app (make_var f) @@ List.map make_var @@ List.map fst bindings in
-        let main = make_lets bindings main in
-        let u = Id.new_var ~name:"main" main.typ in
-        let main = make_let [u, main] unit_term in
-        replace_main main t
-    in
-    let t'' = inst_randval t' in
-    Some (Id.name f, List.length xs), t''
+          let main =
+            bindings
+            |> List.map fst
+            |> List.map make_var
+            |> make_app (make_var f)
+            |> make_lets bindings
+          in
+          let u = Id.new_var ~name:"main" main.typ in
+          replace_main (make_let [u, main] unit_term) t
+      in
+      let t'' = inst_randval t' in
+      Some (Id.name f, List.length xs), t''
 
 let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
   let typ_exn =
@@ -2022,7 +2033,7 @@ let beta_reduce_trivial =
             else raise Not_found
           with Not_found -> tr.tr2_term_rec env t
         end
-    | Let(bindings, t1) ->
+    | Local(Decl_let bindings, t1) ->
         let env' =
           let aux (f,t) =
             let xs,t = decomp_funs t in
@@ -2060,7 +2071,7 @@ let ignore_non_termination =
     match desc with
     | App({desc=Var f}, ts) when Id.mem f fail_free && Type.can_unify TUnit (make_app (make_var f) ts).typ->
         Const Unit
-    | Let(bindings, t1) ->
+    | Local(Decl_let bindings, t1) ->
         let bindings' = List.map (Pair.map_snd @@ tr.tr2_term fail_free) bindings in
         let fv = get_fv t1 in
         let check f t =
@@ -2111,7 +2122,7 @@ let beta_affine_fun =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Let([f, ({desc=Fun _} as t1)], t2) when is_non_rec [f,t1]  ->
+    | Local(Decl_let [f, ({desc=Fun _} as t1)], t2) when is_non_rec [f,t1]  ->
         let xs,t1 = decomp_funs t1 in
         let t1' = tr.tr_term t1 in
         begin
@@ -2134,7 +2145,7 @@ let beta_affine_fun =
                   |> tr.tr_term
                 in
                 if Id.mem f @@ get_fv t2'
-                then Let([f, make_funs xs t1'], t2')
+                then Local(Decl_let [f, make_funs xs t1'], t2')
                 else t2'.desc
               else tr.tr_desc_rec desc
           | _ -> tr.tr_desc_rec desc
@@ -2189,7 +2200,7 @@ let reconstruct =
       | Fun(x, t) -> make_fun x @@ tr.tr_term t
       | App(t1, ts) -> make_app (tr.tr_term t1) @@ List.map tr.tr_term ts
       | If(t1, t2, t3) -> make_if (tr.tr_term t1) (tr.tr_term t2) (tr.tr_term t3)
-      | Let(bindings, t) -> make_let (List.map (Pair.map_snd tr.tr_term) bindings) @@ tr.tr_term t
+      | Local(Decl_let bindings, t) -> make_let (List.map (Pair.map_snd tr.tr_term) bindings) @@ tr.tr_term t
       | BinOp(op, t1, t2) -> make_binop op (tr.tr_term t1) (tr.tr_term t2)
       | Not t -> make_not @@ tr.tr_term t
       | Tuple ts -> make_tuple @@ List.map tr.tr_term ts
@@ -2413,7 +2424,7 @@ let reduce_fail_unit =
   let tr_term t =
     let t' = tr.tr_term_rec t in
     match t'.desc with
-    | Let([x,t''], _) when t''.desc = fail_unit_term.desc -> t''
+    | Local(Decl_let [x,t''], _) when t''.desc = fail_unit_term.desc -> t''
     | _ -> t'
   in
   tr.tr_term <- tr_term;
@@ -2490,8 +2501,8 @@ let name_read_int =
   let tr_term t =
     let desc' =
       match t.desc with
-      | Let([x,{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings, t) ->
-          Let(bindings, tr.tr_term t)
+      | Local(Decl_let ([x,{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings), t) ->
+          Local(Decl_let bindings, tr.tr_term t)
       | App({desc=Const(RandValue(TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
           let x = Id.new_var ~name:"r" TInt in
           (make_let [x,t] @@ make_var x).desc
@@ -2507,8 +2518,8 @@ let reduce_size_by_beta =
   let tr_term t =
     let desc =
       match t.desc with
-      | Let([x,{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings, t) ->
-          Let(bindings, tr.tr_term t)
+      | Local(Decl_let ([x,{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings), t) ->
+          Local(Decl_let bindings, tr.tr_term t)
       | App({desc=Const(RandValue(TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
           let x = Id.new_var ~name:"r" TInt in
           (make_let [x,t] @@ make_var x).desc
@@ -2564,16 +2575,16 @@ let elim_redundant_arg =
   let tr = make_trans2 () in
   let tr_desc vars desc =
     match desc with
-    | Let([f,t1], t) when not @@ is_non_rec [f,t1] ->
+    | Local(Decl_let [f,t1], t) when not @@ is_non_rec [f,t1] ->
         let xs,t1 = decomp_funs t1 in
         let fixed_args = find_fixed_args f xs t1 in
         if fixed_args = [] then
-          Let([f, make_funs xs @@ tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
+          Local(Decl_let [f, make_funs xs @@ tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
         else
           let ixs = List.filter_mapi (fun i x -> if Id.mem x fixed_args then Some (i,x) else None) xs in
           begin
             match col_app_args f t with
-            | [] -> Let([f, make_funs xs @@ tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
+            | [] -> Local(Decl_let [f, make_funs xs @@ tr.tr2_term_rec (xs@vars) t1], tr.tr2_term_rec vars t)
             | args::argss ->
                 let args' = List.map decomp_var args in
                 let argss' = List.map (List.map decomp_var) argss in
@@ -2610,11 +2621,11 @@ let elim_redundant_arg =
                   |> tr.tr2_term vars
                   |> trans_if remove_arg
                 in
-                Let([f',make_funs xs' t1'], t')
+                Local(Decl_let [f',make_funs xs' t1'], t')
           end
-    | Let(bindings, t) ->
+    | Local(Decl_let bindings, t) ->
         let bindings' = List.map (fun (f,t1) -> f, tr.tr2_term_rec vars t1) bindings in
-        Let(bindings', tr.tr2_term_rec vars t)
+        Local(Decl_let bindings', tr.tr2_term_rec vars t)
     | _ -> tr.tr2_desc_rec vars desc
   in
   tr.tr2_desc <- tr_desc;
@@ -2624,15 +2635,15 @@ let split_let =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Let((f,t1)::bindings, t2) when is_non_rec [f,t1] ->
-        let desc = tr.tr_desc_rec @@ Let([f,t1], make_let bindings t2) in
+    | Local(Decl_let ((f,t1)::bindings), t2) when is_non_rec [f,t1] ->
+        let desc = tr.tr_desc_rec @@ Local(Decl_let [f,t1], make_let bindings t2) in
         {t with desc}
-    | Let(_::_::_ as bindings, t2) ->
+    | Local(Decl_let (_::_::_ as bindings), t2) ->
         let bindings' = List.map (Pair.map_snd tr.tr_term) bindings in
         let fvs = List.flatten_map (snd |- get_fv) bindings' in
         let desc =
           let recs,non_recs = List.partition (fun (f,_) -> Id.mem f fvs) bindings' in
-          Let(recs, make_lets non_recs @@ tr.tr_term t2)
+          Local(Decl_let recs, make_lets non_recs @@ tr.tr_term t2)
         in
         {t with desc}
     | _ -> tr.tr_term_rec t
@@ -2656,4 +2667,25 @@ let remove_effect_attribute =
   in
   tr.tr_attr <- tr_attr;
   tr.tr_typ <- tr_typ;
+  tr.tr_term
+
+let assign_id_to_tvar =
+  let fld = make_fold_tr () in
+  let fld_typ cnt ty =
+    match ty with
+    | TVar({contents=None}, _) -> cnt+1, TVar({contents=None}, Some cnt)
+    | ty -> fld.fld_typ_rec cnt ty
+  in
+  fld.fld_typ <- fld_typ;
+  snd -| fld.fld_term 0
+
+let extract_module =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match tr.tr_desc_rec desc with
+    | Module decls ->
+        assert false
+    | desc' -> desc'
+  in
+  tr.tr_desc <- tr_desc;
   tr.tr_term

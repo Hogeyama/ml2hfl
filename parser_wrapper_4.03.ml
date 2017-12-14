@@ -7,17 +7,9 @@ open Syntax
 open Term_util
 open Type
 
-
 module Debug = Debug.Make(struct let check = make_debug_check "Parser_wrapper" end)
 
-type declaration =
-  | Decl_let of rec_flag * (id * term) list
-  | Decl_type of (string * (typ list * type_kind)) list
-  | Decl_exc of string * typ list
-
-
 let () = Compmisc.init_path false
-
 
 let exc_init : (string * typ list) list = []
 (*
@@ -44,10 +36,7 @@ let prim_typs =
    "int", TInt;
    "Pervasives.format", TData "string";
    "CamlinternalFormatBasics.fmt", TData "string";
-   "exn", TData "exn";
-(*
-   "Pervasives.in_channel", TUnit
-*)]
+   "exn", TData "exn"]
 
 
 let venv = ref []
@@ -71,7 +60,7 @@ let rec from_type_expr rec_env tenv typ =
         try
           List.assoc typ'.Types.id !venv
         with Not_found ->
-          let x = TVar (ref None) in
+          let x = TVar(ref None, Some (List.length !venv)) in
           venv := (typ'.Types.id, x)::!venv;
           x
       end
@@ -136,39 +125,16 @@ let from_rec_flag = function
   | Asttypes.Nonrecursive -> Nonrecursive
   | Asttypes.Recursive -> Recursive
 
-
-
 let sign_to_letters s =
-  let is_op s = String.contains "!$%&*+-./:<=>?@^|~" s.[0] in
-  let map = function
-    | '!' -> "_bang"
-    | '$' -> "_dollar"
-    | '%' -> "_percent"
-    | '&' -> "_ampersand"
-    | '*' -> "_asterisk"
-    | '+' -> "_plus"
-    | '-' -> "_minus"
-    | '.' -> "_dot"
-    | '/' -> "_slash"
-    | ':' -> "_colon"
-    | '<' -> "_lessthan"
-    | '=' -> "_equal"
-    | '>' -> "_greaterthan"
-    | '?' -> "_question"
-    | '@' -> "_at"
-    | '^' -> "_caret"
-    | '|' -> "_bar"
-    | '~' -> "_tilde"
-    | c -> String.make 1 c
-  in
-  if is_op s
-  then "op" ^ String.join "" @@ List.map map @@ String.explode s
-  else s
+  if String.contains "!$%&*+-./:<=>?@^|~" s.[0] then
+    "op" ^ String.join "_" @@ List.map (Option.get -| String.of_sign) @@ String.explode s
+  else
+    s
 
 let from_ident_aux name binding_time attr typ =
   let name = sign_to_letters name in
   let name = if name.[0] = '_' then "u" ^ name else name in
-  Id.make binding_time name attr typ
+  Id.make 0 name attr typ
 
 let from_ident x typ =
   from_ident_aux (Ident.name x) (Ident.binding_time x) [] typ
@@ -556,36 +522,24 @@ let rec from_module_binding id_env mb =
   match mb.mb_expr.mod_desc with
   | Tmod_structure struc ->
       let id_env', decls = from_structure id_env struc in
-      let prefix = Ident.name mb.mb_id ^ "." in
-      let map =
-        let aux = function
-          | Decl_let(_, defs) -> List.map fst defs
-          | _ -> []
-        in
-        let fs = List.flatten_map aux decls in
-        List.map (fun f -> Format.printf "id_env: %a@." Id.print f ;f, Id.add_name_before prefix f) fs
+      let mdl = make_module decls in
+      let m = from_ident mb.mb_id mdl.typ in
+      let id_env'' =
+        let map = List.flatten_map (fun (Decl_let defs) -> List.map fst defs) decls in
+        map @ id_env'
       in
-      let decls' =
-        let rename decl =
-          match decl with
-          | Decl_let(flag, defs) ->
-              let aux (f,t) =
-                Id.assoc f map, List.fold_right (Fun.uncurry subst_var) map t
-              in
-              Decl_let(flag, List.map aux defs)
-          | _ -> decl
-        in
-        List.map rename decls
-      in
-      let id_env'' = List.map snd map @ id_env' in
-      id_env'', decls'
-  | _ -> unsupported "module"
+      id_env'', [Decl_let [m, mdl]]
+  | Tmod_ident _ -> unsupported "Tmod_ident"
+  | Tmod_functor _ -> unsupported "Tmod_functor"
+  | Tmod_apply _ -> unsupported "Tmod_apply"
+  | Tmod_constraint _ -> unsupported "Tmod_constraint"
+  | Tmod_unpack _ -> unsupported "Tmod_unpack"
 
 and from_str_item id_env str_item =
   match str_item.str_desc with
   | Tstr_eval(e,_) ->
       let t = from_expression id_env e in
-      id_env, [Decl_let(Nonrecursive, [Id.new_var ~name:"u" t.typ, t])]
+      id_env, [Decl_let[Id.new_var ~name:"u" t.typ, t]]
   | Tstr_value(rec_flag,pats) ->
       let flag = from_rec_flag rec_flag in
       let aux {vb_pat;vb_expr} =
@@ -598,7 +552,7 @@ and from_str_item id_env str_item =
         | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
         | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
       in
-      id_env, [Decl_let(flag, List.map aux pats)]
+      id_env, [Decl_let (List.map aux pats)]
   | Tstr_primitive _ -> id_env, []
   | Tstr_type _ -> id_env, []
   | Tstr_typext _ -> unsupported "typext"
@@ -615,9 +569,10 @@ and from_str_item id_env str_item =
   | Tstr_attribute _ -> id_env, []
 
 and from_structure id_env struc =
+  Format.printf "struc: @[%a@." Printtyped.implementation struc;
   let aux (id_env,decls) str_item =
     let id_env',decls' = from_str_item id_env str_item in
-    id_env', decls' @@@ decls
+    id_env', decls' @ decls
   in
   List.fold_left aux (id_env,[]) struc.str_items
 
@@ -626,20 +581,16 @@ let from_top_level_phrase (tenv,id_env,decls) = function
   | Parsetree.Ptop_def struc ->
       let struc',_,tenv' = Typemod.type_structure tenv struc Location.none in
       let id_env',decls' = from_structure id_env struc' in
-      tenv', id_env', decls' @@@ decls
+      tenv', id_env', decls' @ decls
 
 let from_use_file ast =
   let env = Compmisc.initial_env () in
   init_exc_env ();
-  let aux t = function
-    | Decl_let(_, defs) -> make_let defs t
-    | Decl_type _ -> t
-    | Decl_exc _ -> t
-  in
   ast
   |> List.fold_left from_top_level_phrase (env,[],[])
   |> Triple.trd
-  |> List.fold_left aux unit_term
+  |> List.fold_left (Fun.flip make_local) end_of_definitions
+  |@> Debug.printf "orig: %a@." Print.term
   |> subst_data_type_term "exn" !!exc_typ
   |> Trans.rename_bound_module
   |> Trans.split_let
@@ -647,4 +598,4 @@ let from_use_file ast =
   |> Trans.alpha_rename ~whole:true
   |@> Debug.printf "after alpha: %a@." Print.term'
   |@> Debug.printf "after alpha: %a@." Print.term
-  |@> Id.set_counter -| succ -| Term_util.get_max_var_id
+  |@> Id.set_counter -| succ -| get_max_var_id

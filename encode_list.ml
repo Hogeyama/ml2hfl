@@ -137,7 +137,7 @@ let abst_list = make_trans2 ()
 
 let abst_list_typ post typ =
   match typ with
-  | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
+  | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
   | TApp(TList, [typ]) ->
       let l = Id.new_var ~name:"l" TInt in
       TTuple[l; Id.new_var @@ pureTFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
@@ -222,7 +222,7 @@ let abst_list_term post t =
       let t2' = abst_list.tr2_term post t2 in
       make_app (make_snd t1') [t2']
   | App({desc=Var x}, [t]) when Id.same x (make_length_var typ_unknown) -> make_fst @@ abst_list.tr2_term post t
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let aux (f,t) =
         let post' = "_" ^ Id.name f in
         abst_list.tr2_var post f, abst_list.tr2_term post' t
@@ -404,7 +404,7 @@ let abst_list_opt = make_trans ()
 
 let abst_list_opt_typ typ =
   match typ with
-  | TVar{contents=None} -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_opt_typ)")
+  | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_opt_typ)")
   | TApp(TList, [typ]) -> TFun(Id.new_var ~name:"i" TInt, opt_typ @@ abst_list_opt.tr_typ typ)
   | _ -> abst_list_opt.tr_typ_rec typ
 

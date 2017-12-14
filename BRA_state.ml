@@ -14,7 +14,7 @@ and default_val' =
     | TData _ -> invalid_arg "default_val: not yet implemented syntax(Tconstr)"
     | TApp _ -> invalid_arg "default_val: not yet implemented syntax(TApp)"
     | TTuple _ -> invalid_arg "default_val: not yet implemented syntax(TTuple)"
-    | TVar t ->
+    | TVar(t,_) ->
       begin
 	match !t with
 	  | None -> raise (Invalid_argument "default_val: not yet implemented syntax(TVar None)")
@@ -24,6 +24,7 @@ and default_val' =
     | TRecord _ -> invalid_arg "default_val: not yet implemented syntax(TRecord)"
     | TVariant _ -> invalid_arg "default_val: not yet implemented syntax(TVariant)"
     | Type _ -> invalid_arg "default_val: not yet implemented syntax(Type)"
+    | TModule _ -> invalid_arg "default_val: not yet implemented syntax(TModule)"
 
 let state_transducer trans_prev_statevar trans_statevar trans_argvars state =
   {state with

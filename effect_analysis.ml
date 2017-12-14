@@ -51,6 +51,7 @@ let rec make_template env ty =
     | Type _ -> unsupported __MODULE__
     | TApp _ -> unsupported __MODULE__
     | TAttr(attrs, ty1) -> TAttr(attrs, make_template env ty1)
+    | TModule _ -> unsupported __MODULE__
   in
   add_effect_typ (new_evar env) ty'
 
@@ -88,6 +89,7 @@ let rec force_cont ty =
     | Type _ -> unsupported __MODULE__
     | TApp _ -> unsupported __MODULE__
     | TAttr _ -> assert false
+    | TModule _ -> unsupported __MODULE__
   in
   TAttr(attrs, ty1')
 
@@ -113,6 +115,7 @@ let rec flatten_sub ?(ignore_top=false) env ty1 ty2 =
   | Type _, _ -> unsupported __MODULE__
   | TApp _, _ -> unsupported __MODULE__
   | TAttr _, _ -> assert false
+  | TModule _, _ -> unsupported __MODULE__
 
 let get_tfun_effect ty =
   match elim_tattr ty with
@@ -182,7 +185,7 @@ let rec gen_constr env tenv t =
       flatten_sub env t3'.typ ty;
       if env.for_cps then env.constraints <- (ECont, e) :: env.constraints;
       set_effect e @@ {(make_if t1' t2' t3') with typ=ty; attr=t.attr}
-  | Let(bindings, t1) ->
+  | Local(Decl_let bindings, t1) ->
       let tenv' =
         let make_env (f,_) = f, make_template env (Id.typ f) in
         List.map make_env bindings @@@ tenv

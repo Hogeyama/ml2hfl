@@ -114,7 +114,7 @@ let trans_term env t =
       Debug.printf "t2': %a@." Print.term t2';
       Debug.printf "t3': %a@." Print.term t3';
       join vs2 vs3, make_if v1 t2' t3'
-  | Let([x,t1], t2) when not @@ Id.same x env.target && [] = fst @@ decomp_funs t1 ->
+  | Local(Decl_let [x,t1], t2) when not @@ Id.same x env.target && [] = fst @@ decomp_funs t1 ->
       Debug.printf "START@.";
       Debug.printf "t1: %a@." Print.term t1;
       let vs1,t1' = trans.tr_col2_term env t1 in
@@ -125,7 +125,7 @@ let trans_term env t =
       let _,x' = trans.tr_col2_var env x in
       Debug.printf "sx: %a@." Print.id_typ sx;
       join vs1 vs2, make_lets [sx,t1'; s',make_fst(make_var sx); x',make_snd(make_var sx)] t2'
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let aux (g,t1) =
         let xs,t1 = decomp_funs t1 in
         if xs = [] then unsupported @@ Format.asprintf "fair termination!? %a" Print.id g;
@@ -228,7 +228,7 @@ let () = trans.tr_col2_term <- trans_term
 
 let rec get_top_fun_typ f t =
   match t.desc with
-  | Let(bindings, t1) ->
+  | Local(Decl_let bindings, t1) ->
       begin
         try
           let _,t = List.find (fst |- Id.same f) bindings in

@@ -69,7 +69,7 @@ let remove_and_replace_event_desc desc =
         | [{desc = Const (String s)}] -> (make_event_unit s).desc
         | _ -> unsupported "the argument of event must be a constant"
       end
-  | Let([f, _], t') when is_event_fun_var f -> (remove_and_replace_event.tr_term t').desc
+  | Local(Decl_let [f, _], t') when is_event_fun_var f -> (remove_and_replace_event.tr_term t').desc
   | _ -> remove_and_replace_event.tr_desc_rec desc
 let () = remove_and_replace_event.tr_desc <- remove_and_replace_event_desc
 let remove_and_replace_event = remove_and_replace_event.tr_term
@@ -138,14 +138,14 @@ let insert_extra_param_desc vars desc =
       let ex = !!new_exparam in
       let vars' = ex :: (if Id.typ x' = TInt then [x'] else []) @ vars in
       Fun(ex, make_fun x' @@ insert_extra_param.tr2_term vars' t)
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let aux (f,t) =
         let f' = insert_extra_param.tr2_var vars f in
         f', insert_extra_param.tr2_term vars t
       in
       let bindings' = List.map aux bindings in
       let vars' = List.filter_map (fun (x,_) -> if Id.typ x = TInt then Some x else None) bindings @ vars in
-      Let(bindings', insert_extra_param.tr2_term vars' t2)
+      Local(Decl_let bindings', insert_extra_param.tr2_term vars' t2)
   | App(t1, ts) ->
       let t1' = insert_extra_param.tr2_term vars t1 in
       let ts' = List.map (insert_extra_param.tr2_term vars) ts in

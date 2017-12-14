@@ -89,7 +89,7 @@ let rec trans f i n t =
                   | S t3' -> S (make_if t1 t2 t3')
                   | N i''' -> N i'''
         end
-    | Let(defs, t) ->
+    | Local(Decl_let defs, t) ->
         let rec aux i defs =
           match defs with
           | [] -> N i

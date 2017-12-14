@@ -62,7 +62,7 @@ let get_fv' = make_col2 IdSet.empty IdSet.union
 let get_fv'_term vars t =
   match t.desc with
   | Var x -> if IdSet.mem x vars then IdSet.empty else IdSet.singleton x
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let vars' = List.fold_left (fun vars (f,_) -> IdSet.add f vars) vars bindings in
       let aux fv (_,t) = fv @@@ get_fv'.col2_term vars' t in
       let fv_t2 = get_fv'.col2_term vars' t2 in
@@ -97,7 +97,7 @@ let rec lift_aux post xs t =
         let defs2,t2' = lift_aux post xs t2 in
         let defs3,t3' = lift_aux post xs t3 in
         defs1 @ defs2 @ defs3, If(t1',t2',t3')
-    | Let(bindings,t2) when is_non_rec bindings  ->
+    | Local(Decl_let bindings,t2) when is_non_rec bindings  ->
         let defss,fs =
           let aux (f,t1) =
             let ys,t1 = decomp_funs t1 in
@@ -115,7 +115,7 @@ let rec lift_aux post xs t =
         let subst_f t = List.fold_left2 (fun t f'' (f,_) -> subst f f'' t) t fs bindings in
         let defs2,t2' = lift_aux post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
-    | Let(bindings,t2) ->
+    | Local(Decl_let bindings,t2) ->
         let fv = List.fold_left (fun acc (_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
         let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
@@ -221,11 +221,11 @@ let rec lift_aux' post xs t =
         let defs2,t2' = lift_aux' post xs t2 in
         let defs3,t3' = lift_aux' post xs t3 in
         defs1 @ defs2 @ defs3, If(t1',t2',t3')
-    | Let([x, t1],t2) when is_non_rec [x,t1] ->
+    | Local(Decl_let [x, t1],t2) when is_non_rec [x,t1] ->
         let defs1, t1' = lift_aux' post xs t1 in
 	let defs2, t2' = lift_aux' post (IdSet.add x xs) t2 in
-        defs1 @ defs2, Let([x, t1'],t2')
-    | Let(bindings,t2) when is_non_rec bindings ->
+        defs1 @ defs2, Local(Decl_let [x, t1'],t2')
+    | Local(Decl_let bindings,t2) when is_non_rec bindings ->
         let aux (f,t1) =
           let ys,t1 = decomp_funs t1 in
           let fv = IdSet.inter (get_fv' t1) xs in
@@ -242,7 +242,7 @@ let rec lift_aux' post xs t =
         let subst_f t = List.fold_left2 (fun t f'' (f,_) -> subst f f'' t) t fs bindings in
         let defs2,t2' = lift_aux' post xs (subst_f t2) in
         List.flatten defss @ defs2, t2'.desc
-    | Let(bindings,t2) ->
+    | Local(Decl_let bindings,t2) ->
         let fv = List.fold_left (fun acc (_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
         let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in

@@ -176,11 +176,13 @@ let make_and t1 t2 =
   match t1,t2 with
   | Const True, t
   | t, Const True -> t
+  | Const False, _ -> Const False
   | _ -> make_app (Const And) [t1; t2]
 let make_or t1 t2 =
   match t1,t2 with
   | Const False, t
   | t, Const False -> t
+  | Const True, _ -> Const True
   | Var _, _ when t1 = t2 -> t1
   | _ -> make_app (Const Or) [t1; t2]
 let make_not t = App(Const Not, t)

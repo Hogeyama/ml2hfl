@@ -9,10 +9,10 @@ let remove_ext_def = make_trans2 ()
 
 let remove_ext_def_desc ext desc =
   match desc with
-  | Let(bindings, t) ->
+  | Local(Decl_let bindings, t) ->
       let bindings' = List.filter_out (fun (f,_) -> Id.mem f ext) bindings in
       let t' = remove_ext_def.tr2_term ext t in
-      if bindings' = [] then t'.desc else Let(bindings', t')
+      if bindings' = [] then t'.desc else Local(Decl_let bindings', t')
   | _ -> remove_ext_def.tr2_desc_rec ext desc
 
 let () = remove_ext_def.tr2_desc <- remove_ext_def_desc

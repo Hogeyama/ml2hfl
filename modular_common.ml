@@ -74,10 +74,10 @@ let rec is_simple_term t =
 let inline_simple_fun = make_trans2 ()
 let inline_simple_fun_desc env desc =
   match desc with
-  | Let(bindings, t) ->
+  | Local(Decl_let bindings, t) ->
       let bindings' = List.map (Pair.map_snd @@ inline_simple_fun.tr2_term env) bindings in
       let env' = List.filter (snd |- is_simple_term) bindings' @ env in
-      Let(bindings', inline_simple_fun.tr2_term env' t)
+      Local(Decl_let bindings', inline_simple_fun.tr2_term env' t)
   | App({desc=Var f}, ts) when List.exists (fun (g,t) -> Id.same g f && List.length (fst @@ decomp_funs t) = List.length ts) env && List.for_all is_simple_term ts ->
       let _,t = List.find (fst |- Id.same f) env in
       let xs,t' = decomp_funs t in

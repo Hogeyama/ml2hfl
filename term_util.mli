@@ -14,6 +14,7 @@ val typ_exn : typ
 val make_attr : ?attrs:attr list -> term list -> attr list
 
 (** {6 Term constructor} *)
+val end_of_definitions : term
 val unit_term : term
 val true_term : term
 val false_term : term
@@ -39,6 +40,7 @@ val make_randint_cps : bool -> term
 val make_app : term -> term list -> term
 val make_app_raw : term -> term list -> term (** Does not merge arguments *)
 val make_fail : typ -> term
+val make_local : declaration -> term -> term
 val make_let : (id * term) list -> term -> term
 val make_lets : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
@@ -108,7 +110,7 @@ val make_trywith_simple : term -> term -> term
 val make_length_var : typ -> id
 val make_length : term -> term
 val new_var_of_term : term -> id
-
+val make_module : declaration list -> term
 
 
 (** {6 Term destructor / Inspector} *)
@@ -139,6 +141,7 @@ val is_randbool_unit : term -> bool
 val effect_of_typ : typ -> Type.effect
 val effect_of : term -> Type.effect
 val is_fun : term -> bool
+val defs_of_term : term -> (id * term) list list
 
 (** {6 Misc} *)
 val subst : id -> term -> term -> term
@@ -188,6 +191,7 @@ val col_id : term -> int list
 val replace_id : int -> int -> term -> term
 val remove_attr : attr -> term -> term
 val get_bound_variables : term -> id list
+val get_bound_variables_pat : pattern -> id list
 val get_id : term -> int
 val get_id_option : term -> int option
 val get_id_map : term -> (int, term) Hashtbl.t
@@ -203,6 +207,7 @@ val col_app_args : id -> term -> term list list
 val find_fixed_args : id -> id list -> term -> id list
 val trans_if : (term -> term option) -> term -> term
 val get_max_var_id : term -> int
+val rename : (id * id) list -> term -> term
 
 
 module Term : sig

@@ -67,7 +67,7 @@ let add_proj_info = make_trans ()
 
 let add_proj_info_term t =
   match t.desc with
-  | Let([x,({desc=Tuple ts} as t1)], t2) when is_non_rec [x,t1] ->
+  | Local(Decl_let [x,({desc=Tuple ts} as t1)], t2) when is_non_rec [x,t1] ->
       begin
         try
           let ys = List.mapi (fun i t -> match t.desc with Var x -> i,x | _ -> raise Not_found) ts in
@@ -93,11 +93,11 @@ let pair_eta_reduce = make_trans2 ()
 
 let pair_eta_reduce_term env t =
   match t.desc with
-  | Let([x,{desc=Proj(0,{desc=Var y})}], t2) ->
+  | Local(Decl_let [x,{desc=Proj(0,{desc=Var y})}], t2) ->
       pair_eta_reduce.tr2_term_rec ((x, Some y, None)::env) t
-  | Let([x,{desc=Proj(1,{desc=Var y})}], t2) ->
+  | Local(Decl_let [x,{desc=Proj(1,{desc=Var y})}], t2) ->
       pair_eta_reduce.tr2_term_rec ((x, None, Some y)::env) t
-  | Let([x,{desc=Tuple[{desc=Var y}; {desc=Var z}]}], t2) ->
+  | Local(Decl_let [x,{desc=Tuple[{desc=Var y}; {desc=Var z}]}], t2) ->
       begin
         match get_same_pair env y z with
         | None -> pair_eta_reduce.tr2_term_rec env t
@@ -113,7 +113,7 @@ let pair_eta_reduce = pair_eta_reduce.tr2_term []
 let rec make_deep_pair t rhs =
   match t.desc with
   | If(t1,t2,t3) -> make_if t1 (make_deep_pair t2 rhs) (make_deep_pair t3 rhs)
-  | Let(bindings,t) -> make_let bindings @@ make_deep_pair t rhs
+  | Local(Decl_let bindings,t) -> make_let bindings @@ make_deep_pair t rhs
   | Label(info, t) -> make_label info (make_deep_pair t rhs)
   | _ -> make_pair t (make_var rhs)
 
@@ -136,7 +136,7 @@ let subst_label_term (map,env) t =
       then t'
       else subst_label.tr2_term (map,env) t'
   | Fun(x,t) -> make_fun x @@ subst_label.tr2_term (map,x::env) t
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let env' = List.map fst bindings @ env in
       let bindings' = List.map (Pair.map_snd @@ subst_label.tr2_term (map,env')) bindings in
       make_let bindings' @@ subst_label.tr2_term (map,env') t2
@@ -178,7 +178,7 @@ let trans_typ funargs typ =
 
 let trans_term funargs t =
   match t.desc with
-  | Let([x,{desc=App({desc=Var x1}, [{desc=Var x2}])}] as bindings, t1) when is_higher x2 && is_non_rec bindings ->
+  | Local(Decl_let ([x,{desc=App({desc=Var x1}, [{desc=Var x2}])}] as bindings), t1) when is_higher x2 && is_non_rec bindings ->
       let x' = trans.tr2_var funargs x in
       let x1' = trans.tr2_var funargs x1 in
       let x2' = trans.tr2_var funargs x2 in
@@ -190,7 +190,7 @@ let trans_term funargs t =
       make_lets [p, t;
                  x', make_fst @@ make_var p;
                  x2'', make_snd @@ make_var p] t1''
-  | Let([x,{desc=App({desc=Var f}, [{desc=Var y}])}] as bindings ,t1) when Id.mem f funargs && is_non_rec bindings ->
+  | Local(Decl_let ([x,{desc=App({desc=Var f}, [{desc=Var y}])}] as bindings) ,t1) when Id.mem f funargs && is_non_rec bindings ->
       let x' = trans.tr2_var funargs x in
       let f' = trans.tr2_var funargs f in
       let y' = trans.tr2_var funargs y in
@@ -204,7 +204,7 @@ let trans_term funargs t =
       let x' = trans.tr2_var funargs x in
       let t' = trans.tr2_term funargs' t in
       make_fun x' @@ make_deep_pair t' x'
-  | Let(bindings,t) ->
+  | Local(Decl_let bindings,t) ->
       let aux (f,t) =
         trans.tr2_var funargs f,
         trans.tr2_term funargs t

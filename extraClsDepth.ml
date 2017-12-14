@@ -62,7 +62,7 @@ let rec closureDepth varToDepth expr =
       dynamicGreaterThan (closureDepth varToDepth f) (incrementDepth (maxDepthOf (List.map (closureDepth varToDepth) args)))
     | If (predicate, thenClause, elseClause) ->
       make_if predicate (closureDepth varToDepth thenClause) (closureDepth varToDepth elseClause)
-    | Let (_, _) -> assert false (* TODO *)
+    | Local (_, _) -> assert false (* TODO *)
     | BinOp (_, _, _) -> make_int 0
     | Not _ -> make_int 0
     | _ -> assert false (* unimplemented *)
@@ -93,7 +93,7 @@ let rec insertClsDepth varToDepth expr =
 	desc = If ((insertClsDepth varToDepth predicate),
 		   (insertClsDepth varToDepth thenClause),
 		   (insertClsDepth varToDepth elseClause))}
-    | Let (bindings, e) ->
+    | Local(Decl_let bindings, e) ->
       let makeBaseEnv varToDepth = function
 	| (x, body) when is_base_typ (Id.typ x) -> varToDepth
 	| (x, body) when not @@ is_fun body && is_fun_typ (Id.typ x) ->
@@ -139,7 +139,7 @@ let rec insertClsDepth varToDepth expr =
 	List.fold_left (insertClsDepthBinding varToDepth') (varToDepth, []) bindings
       in
       { expr with
-	desc = Let (bindings, insertClsDepth varToDepth e)}
+	desc = Local(Decl_let bindings, insertClsDepth varToDepth e)}
     | BinOp (op, expr1, expr2) ->
       { expr with
 	desc = BinOp (op, insertClsDepth varToDepth expr1, insertClsDepth varToDepth expr2)}

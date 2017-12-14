@@ -2,7 +2,7 @@ type 'a t =
     TUnit
   | TBool
   | TInt
-  | TVar of 'a t option ref
+  | TVar of 'a t option ref * int option
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)
   | TTuple of 'a t Id.t list
@@ -12,6 +12,7 @@ type 'a t =
   | Type of (string * 'a t) list * string
   | TApp of constr * 'a t list
   | TAttr of 'a attr list * 'a t
+  | TModule of (string * 'a t) list
 and mutable_flag = Immutable | Mutable
 and constr =
   | TList
@@ -34,6 +35,7 @@ val data_occurs : string -> 'a t -> bool
 val same_shape : 'a t -> 'a t -> bool
 val has_pred : 'a t -> bool
 val is_mutable_record : 'a t -> bool
+val is_tvar : 'a t -> bool
 
 val typ_unknown : 'a t
 val elim_tattr : 'a t -> 'a t

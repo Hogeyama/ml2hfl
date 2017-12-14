@@ -798,7 +798,7 @@ let lift_arg =
             | Fun _ ->
                 let x = new_var_of_term t in
                 [x,t], make_var x
-            | Let(bindings, t') ->
+            | Local(Decl_let bindings, t') ->
                 bindings, t'
             | _ -> [], t
           in

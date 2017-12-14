@@ -20,9 +20,9 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
       match desc with
 	| App (func, args) -> App (ev func, List.map ev args)
 	| If (cond_expr, then_expr, else_expr) -> If (ev cond_expr, ev then_expr, ev else_expr)
-	| Let (bindings, e) ->
+	| Local(Decl_let bindings, e) ->
 	  let fmap (ident, body) = (ident, ev body) in
-	  Let (List.map fmap bindings, ev e)
+	  Local(Decl_let (List.map fmap bindings), ev e)
 	| BinOp (op, e1, e2) -> BinOp (op, ev e1, ev e2)
 	| Not e -> Not (ev e)
 	| Fun (f, body) -> Fun (f, ev body)
@@ -69,8 +69,8 @@ and show_desc = function
   | App ({desc=Event("fail", _)}, _) -> "assert false"
   | App (f, args) -> show_term f ^ List.fold_left (fun acc a -> acc ^ " " ^ parens (show_term a)) "" args
   | If (t1, t2, t3) -> "if " ^ show_term t1 ^ " then " ^ show_term t2 ^ " else " ^ show_term t3
-  | Let ([], _) -> assert false
-  | Let (b::bs, t) ->
+  | Local(Decl_let [], _) -> assert false
+  | Local(Decl_let (b::bs), t) ->
     let show_bind (x, body) =
       let args,body = decomp_funs body in
       modify_id x
@@ -109,8 +109,8 @@ let restore_ids =
     with _ -> orig
   in
   let sub = function
-    | {desc = Let (bindings, cont); typ = t} ->
-      {desc = Let (List.map (fun (f, body) -> (trans_id f, body)) bindings, cont); typ = t; attr=[]}
+    | {desc = Local(Decl_let bindings, cont); typ = t} ->
+      {desc = Local(Decl_let (List.map (fun (f, body) -> (trans_id f, body)) bindings), cont); typ = t; attr=[]}
     | {desc = Fun (f, body); typ = t} -> {desc = Fun (trans_id f, body); typ = t; attr=[]}
     | {desc = Var v; typ = t} -> {desc = Var (trans_id v); typ = t; attr=[]}
     | t -> t
@@ -144,7 +144,7 @@ let extract_functions (target_program : term) =
   in
   let rec iter t =
     match t.desc with
-      | Let (bindings, body) -> List.fold_left ext [] bindings @ iter body
+      | Local(Decl_let bindings, body) -> List.fold_left ext [] bindings @ iter body
       | t -> []
   in
   let extracted = iter target_program in
@@ -156,7 +156,7 @@ let rec transform_function_definitions f term =
     if args <> [] then f binding else binding
   in
   match term with
-    | {desc = Let (bindings, cont)} as t -> { t with desc = Let (List.map sub bindings, transform_function_definitions f cont) }
+    | {desc = Local(Decl_let bindings, cont)} as t -> { t with desc = Local(Decl_let (List.map sub bindings), transform_function_definitions f cont) }
     | t -> t
 
 let rec transform_main_expr f term =
@@ -165,7 +165,7 @@ let rec transform_main_expr f term =
     if args = [] then (id, everywhere_expr f body) else binding
   in
   match term with
-    | {desc = Let (bindings, body)} as t -> { t with desc = Let (List.map sub bindings, transform_main_expr f body) }
+    | {desc = Local(Decl_let bindings, body)} as t -> { t with desc = Local(Decl_let (List.map sub bindings), transform_main_expr f body) }
     | t -> everywhere_expr f t
 
 (*
@@ -192,7 +192,7 @@ let randomized_application f t =
   in aux f [] t
 
 let rec find_main_function = function
-  | {desc = Let (bindings, body)} ->
+  | {desc = Local(Decl_let bindings, body)} ->
     let rec aux = function
       | [] -> find_main_function body
       | ({Id.name = "main"} as main_func , _) :: _ -> Some main_func
@@ -201,7 +201,7 @@ let rec find_main_function = function
   | _ -> None
 
 let remove_unit_wraping = function
-  | {desc = Let ([{Id.name="u"}, t], {desc = Const Unit; typ = TUnit})} -> t
+  | {desc = Local(Decl_let [{Id.name="u"}, t], {desc = Const Unit; typ = TUnit})} -> t
   | t -> t
 
 let rec lambda_lift t =
@@ -211,9 +211,9 @@ let rec lambda_lift t =
     (id, make_funs args body') :: List.map (fun (a, (b, c)) -> (a, make_funs b c)) sub_bindings
   in
   match t with
-    | {desc = Let (bindings, rest)} ->
+    | {desc = Local(Decl_let bindings, rest)} ->
       let next_bindings = BRA_util.concat_map lift_binding bindings in
-      {t with desc = Let (next_bindings, lambda_lift rest)}
+      {t with desc = Local(Decl_let next_bindings, lambda_lift rest)}
     | _ -> t
 
 (* regularization of program form *)
@@ -222,7 +222,7 @@ let rec regularization e =
     | Some ({Id.name = "main"} as f) ->
       let main_expr = randomized_application {desc = Var f; typ = Id.typ f; attr=[]} (Id.typ f) in
       let rec aux = function
-	| {desc = Let (bindings, rest)} as t -> {t with desc = Let (bindings, aux rest)}
+	| {desc = Local(Decl_let bindings, rest)} as t -> {t with desc = Local(Decl_let bindings, aux rest)}
 	| {desc = Const Unit} -> main_expr
 	| _ -> assert false
       in
@@ -385,9 +385,9 @@ let to_holed_programs (target_program : term) =
     in
 
     { typed with desc = match typed.desc with
-      | Let (bindings, body) ->
+      | Local(Decl_let bindings, body) ->
 	let bindings' = BRA_util.concat_map sub bindings in
-	Let (bindings', body)
+	Local(Decl_let bindings', body)
       | t -> t
     }
   in

@@ -75,7 +75,7 @@ let rec eval_print fm rands t =
       Format.fprintf fm "@\nif %b then ... ->" b;
       let t' = if b then t2 else t3 in
       eval_print fm rands' t'
-  | Let(bindings, t2) ->
+  | Local(Decl_let bindings, t2) ->
       let aux (rands,vs) (f,t) =
         let rands',v = eval_print fm rands t in
         rands', vs@[f,v]

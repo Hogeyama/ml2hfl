@@ -265,7 +265,7 @@ let rec infer_effect env tenv t =
       env.constraints <- CGeq(e, ECont) :: env.constraints; (* for TRecS *)
       unify env typed2.typ_cps typed3.typ_cps;
       {t_orig=t; t_cps=IfCPS(typed1,typed2,typed3); typ_cps=typed2.typ_cps; effect=e}
-  | Let(bindings, t1) ->
+  | Local(Decl_let bindings, t1) ->
       let make_env (f,_) = Id.to_string f, infer_effect_typ env (Id.typ f) in
       let tenv_f = List.map make_env bindings in
       let tenv' = tenv_f @@@ tenv in
@@ -422,10 +422,10 @@ let rec add_preds_cont_aux k t =
         let _,ts' = List.fold_right aux ts (t1.typ,[]) in
         App(add_preds_cont_aux k t1, ts')
     | If(t1, t2, t3) -> If(add_preds_cont_aux k t1, add_preds_cont_aux k t2, add_preds_cont_aux k t3)
-    | Let(bindings, t2) ->
+    | Local(Decl_let bindings, t2) ->
         let bindings' = List.map (fun (f,t) -> f, add_preds_cont_aux k t) bindings in
         let t2' = add_preds_cont_aux k t2 in
-        Let(bindings', t2')
+        Local(Decl_let bindings', t2')
     | BinOp(op, t1, t2) -> BinOp(op, add_preds_cont_aux k t1, add_preds_cont_aux k t2)
     | Not t1 -> Not (add_preds_cont_aux k t1)
     | Event(s,b) -> Event(s,b)
@@ -1444,7 +1444,7 @@ let make_get_rtyp sol typ_exn typed get_rtyp f =
 let exists_let = make_col false (||)
 let exists_let_desc desc =
   match desc with
-  | Let _ -> true
+  | Local(Decl_let _, _) -> true
   | _ -> exists_let.col_desc_rec desc
 
 let () = exists_let.col_desc <- exists_let_desc

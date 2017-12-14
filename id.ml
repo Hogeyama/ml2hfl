@@ -61,6 +61,7 @@ let add_attr attr x = {x with attr=attr::x.attr}
 let mem x xs = List.mem ~eq x xs
 let assoc x xs = List.assoc ~eq x xs
 let mem_assoc x xs = List.mem_assoc ~eq x xs
+let assoc_option x xs = List.assoc_option ~eq x xs
 
 let map_name f x = {x with name = f x.name}
 let map_typ f x = {x with typ = f x.typ}
@@ -84,3 +85,5 @@ let print fm x =
       s'
   in
   Format.fprintf fm "@[%s@]" s''
+
+let in_module x ~m = add_name_before (name m ^ ".") x

@@ -129,7 +129,7 @@ and eval
                   |> append_paths paths'
                 with Exception(ans, ce, paths) -> raise (Exception(ans, ce, merge_paths paths' paths))
           end
-      | Let([f,t1], t2) when is_non_rec [f,t1] ->
+      | Local(Decl_let [f,t1], t2) when is_non_rec [f,t1] ->
           let ans, ce, paths = eval val_env ce t1 in
           if ans = Fail then
             (ans, ce, paths)
@@ -141,7 +141,7 @@ and eval
                 |> append_paths paths
               with Exception(ans', ce', paths') -> raise (Exception(ans', ce', merge_paths paths paths'))
             end
-      | Let([f,({desc=Fun _} as t1)], t2) ->
+      | Local(Decl_let [f,({desc=Fun _} as t1)], t2) ->
           let rec val_env' = (f, Closure(val_env', t1))::val_env in
           eval val_env' ce t2
       | Raise t ->
@@ -240,7 +240,7 @@ let complete_ce_set f t ce =
   let let_fun_var = make_col [] (@@@) in
   let let_fun_var_desc desc =
     match desc with
-    | Let(bindings,t) ->
+    | Local(Decl_let bindings,t) ->
         let aux (f,t) =
           let xs,t = decomp_funs t in
           let fs = let_fun_var.col_term t in

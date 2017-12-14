@@ -73,7 +73,7 @@ let rec insertExparam scope expr =
 	desc = If ((insertExparam scope predicate),
 		   (insertExparam scope thenClause),
 		   (insertExparam scope elseClause))}
-    | Let (bindings, e) ->
+    | Local(Decl_let bindings, e) ->
       let rec extend sc = function
 	| [] -> sc
 	| (x, body) :: bs when (Id.typ x) = TInt -> extend (x :: sc) bs
@@ -99,7 +99,7 @@ let rec insertExparam scope expr =
 	({x with Id.typ = transType x.Id.typ}, make_funs args @@ insertExparam scope body)
       in
       { expr with
-	desc = Let (List.map insertExparamBinding bindings, insertExparam (extend scope bindings) e)}
+	desc = Local(Decl_let (List.map insertExparamBinding bindings), insertExparam (extend scope bindings) e)}
     | BinOp (op, expr1, expr2) ->
       { expr with
 	desc = BinOp (op, insertExparam scope expr1, insertExparam scope expr2)}
@@ -109,7 +109,7 @@ let rec insertExparam scope expr =
     | _ -> assert false (* unimplemented *)
 
 let rec removeDummySubstitutions = function
-  | { desc = Let ([id, {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
+  | { desc = Local(Decl_let [id, {desc = Const (Int 0)}], e) } -> removeDummySubstitutions e
   | e -> e
 
 let substituteZero e =
