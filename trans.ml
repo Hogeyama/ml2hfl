@@ -51,6 +51,7 @@ let alpha_rename ?(whole=false) =
     | _ -> t'
   in
   tr.tr2_term <- tr_term;
+  tr.tr2_typ <- Fun.snd;
   fun t ->
     let cnt = !!Counter.create in
     let names = ref StringSet.empty in
@@ -139,9 +140,10 @@ let unify_pattern_var =
     | Match(t, pats) ->
         let aux1 (pat,t1,t2) =
           let aux2 x =
+            let ty = Id.typ x in
             get_fv t1 @@@ get_fv t2
             |> List.filter (Id.same x)
-            |> List.iter (fun y -> unify (Id.typ x) (Id.typ y))
+            |> List.iter (unify ty -| Id.typ)
           in
           List.iter aux2 @@ get_vars_pat pat
         in
@@ -151,7 +153,7 @@ let unify_pattern_var =
   col.col_term <- col_term;
   col.col_term
 
-let rec define_randvalue name (env, defs as ed) typ =
+let rec define_randvalue ?(name="") (env, defs as ed) typ =
   if List.mem_assoc typ env then
     (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
   else
@@ -159,33 +161,33 @@ let rec define_randvalue name (env, defs as ed) typ =
     | TUnit -> (env, defs), unit_term
     | TBool -> (env, defs), randbool_unit_term
     | TInt -> (env, defs), randint_unit_term
-    | TVar({contents=None} as r,_) -> r := Some TInt; define_randvalue "" ed TInt
-    | TVar({contents=Some typ},_) -> define_randvalue "" ed typ
+    | TVar({contents=None} as r,_) -> r := Some TInt; define_randvalue ed TInt
+    | TVar({contents=Some typ},_) -> define_randvalue ed typ
     | TFun(x,typ) ->
-        let ed',t = define_randvalue "" ed typ in
+        let ed',t = define_randvalue ed typ in
         ed', make_fun x t
     | TApp(TList, [TVar({contents=None} as r,_)]) ->
         r := Some TUnit;
-        define_randvalue "" ed typ
+        define_randvalue ed typ
     | TApp(TList, [typ']) ->
         let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
-        let (env'',defs'),t_typ' = define_randvalue "" (env', defs) typ' in
+        let (env'',defs'),t_typ' = define_randvalue (env', defs) typ' in
         let t_typ = make_br (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term])) in
         (env'', (f,make_fun u t_typ)::defs'), make_app (make_var f) [unit_term]
     | TTuple xs ->
         let aux x (ed,ts) =
-          let ed',t = define_randvalue "" ed @@ Id.typ x in
+          let ed',t = define_randvalue ed @@ Id.typ x in
           ed', t::ts
         in
         let (env', defs'), ts = List.fold_right aux xs ((env,defs),[]) in
         (env', defs'), make_tuple ts
     | TApp(TRef, [typ]) ->
-        let ed',t = define_randvalue "" ed typ in
+        let ed',t = define_randvalue ed typ in
         ed', make_ref t
     | TApp(TArray, [typ]) ->
-        let ed',t = define_randvalue "" ed @@ make_tlist typ in
+        let ed',t = define_randvalue ed @@ make_tlist typ in
         ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" ~attr:[Id.External] @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
     | TData s -> (env, defs), make_randvalue_unit typ
     | TVariant labels ->
@@ -195,7 +197,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         let n = List.length labels in
         let aux1 (s,typs) (ed,itss,i) =
           let aux2 typ (ed,ts) =
-            let ed',t = define_randvalue "" ed typ in
+            let ed',t = define_randvalue ed typ in
             ed', t::ts
           in
           let ed',ts' = List.fold_right aux2 typs (ed,[]) in
@@ -214,7 +216,7 @@ let rec define_randvalue name (env, defs as ed) typ =
         let env' = (TData name,f)::(typ,f)::env in
         let (env'',defs'),t =
           let aux (field,(flag,typ)) (ed,sfts) =
-            let ed', t = define_randvalue "" ed typ in
+            let ed', t = define_randvalue ed typ in
             ed', (field,t)::sfts
           in
           let ed',sfts = List.fold_right aux fields ((env',defs),[]) in
@@ -222,17 +224,17 @@ let rec define_randvalue name (env, defs as ed) typ =
         in
         (env'', (f,make_fun u t)::defs'), make_app (make_var f) [unit_term]
     | Type(decls, s) ->
-        let aux (s,typ') ed =
-          fst @@ define_randvalue s ed @@ subst_data_type s typ typ'
+        let aux (name,typ') ed =
+          fst @@ define_randvalue ~name ed @@ subst_data_type s typ typ'
         in
         let env', defs' = List.fold_right aux decls (env,defs) in
-        (env', defs'), snd @@ define_randvalue "" (env',defs') (TData s)
+        (env', defs'), snd @@ define_randvalue (env',defs') (TData s)
     | TApp(TOption, [typ']) ->
-        let (env',defs'),t_typ' = define_randvalue "" (env,defs) typ' in
+        let (env',defs'),t_typ' = define_randvalue (env,defs) typ' in
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
         (env',defs'), t
     | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
-let define_randvalue ed typ = define_randvalue "" ed typ
+let define_randvalue ed typ = define_randvalue ~name:"" ed typ
 
 let inst_randval =
   let fld = make_fold_tr () in
@@ -983,6 +985,7 @@ let rec search_fail path t =
       in
       let ts = List.map (fun (_,t) -> t) defs in
       aux [] 0 (ts@[t])
+  | Local(Decl_type _, t) -> search_fail path t
   | BinOp(_, t1, t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
   | Not t -> search_fail path t
   | Event("fail",_) -> [path]
@@ -1038,6 +1041,8 @@ let rec screen_fail path target t =
         let aux i t = screen_fail (i::path) target t in
         let aux_def i (f,t) = f, aux i t in
         Local(Decl_let (List.mapi aux_def defs), aux (List.length defs) t)
+    | Local(Decl_type decls, t) ->
+        Local(Decl_type decls, screen_fail path target t)
     | BinOp(op, t1, t2) ->
         let aux i t = screen_fail (i::path) target t in
         BinOp(op, aux 1 t1, aux 2 t2)
@@ -1864,9 +1869,7 @@ let copy_poly_funs =
         let tvars = get_tvars (Id.typ f) in
         assert (tvars <> []);
         let map2,t2' = fld.fld_term map t2 in
-        Format.printf "  f = %a: %a@." Id.print f Print.typ @@ Id.typ f;
         let t2'' = inst_tvar TInt t2' in
-        Format.printf "  f = %a: %a@." Id.print f Print.typ @@ Id.typ f;
         let map_rename,t2''' = rename_poly_funs f t2'' in
         Debug.printf "COPY: @[";
         List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
@@ -1878,9 +1881,6 @@ let copy_poly_funs =
           let aux (map',t) (_,f') =
             let tvar_map = List.map (fun v -> v, ref None) tvars in
             let ty' = (rename_tvar_typ tvar_map @@ Id.typ f) in
-            Format.printf "  f = %a: %a@." Id.print f Print.typ @@ Id.typ f;
-            Format.printf "  f' = %a: %a@." Id.print f' Print.typ @@ Id.typ f';
-            Format.printf "  ty': %a@." Print.typ ty';
             Type.unify ty' (Id.typ f');
             let map'',t1' =
               t1
@@ -1910,15 +1910,12 @@ let copy_poly_funs =
   fld.fld_desc <- fld_desc;
   fun t ->
     unify_pattern_var t;
-    Format.printf "ZZZ: @[%a@." Print.term' t;
     let map,t' = fld.fld_term [] t in
     let t'' =
       t'
-      |@> Format.printf "AAA: @[%a@." Print.term'
       |@> Type_check.check -$- Type.TUnit
       |> flatten_tvar
       |> inline_var_const
-      |@> Format.printf "BBB: @[%a@." Print.term'
       |@> Type_check.check -$- Type.TUnit
     in
     let make_get_rtyp get_rtyp f =
@@ -1939,6 +1936,8 @@ let rec replace_main ?(force=false) main t =
   match t.desc with
   | Local(Decl_let bindings, t2) ->
       make_let bindings @@ replace_main ~force main t2
+  | Local(Decl_type decls, t2) ->
+      make_let_type decls @@ replace_main ~force main t2
   | _ ->
       assert (force || t.desc = Const End_of_definitions);
       main
@@ -2485,17 +2484,6 @@ let eta_reduce =
   tr.tr_desc <- tr_desc;
   tr.tr_term
 
-let rename_bound_module =
-  let tr = make_trans () in
-  let tr_var x =
-    if not @@ Id.is_external x && Char.is_uppercase (Id.name x).[0] then
-      Id.map_name (String.map (function '.' -> '_' | c -> c)) x
-    else
-      x
-  in
-  tr.tr_var <- tr_var;
-  tr.tr_term
-
 let name_read_int =
   let tr = make_trans () in
   let tr_term t =
@@ -2649,6 +2637,7 @@ let split_let =
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
+  tr.tr_typ <- Fun.id;
   tr.tr_term
 
 let remove_effect_attribute =
@@ -2682,10 +2671,20 @@ let assign_id_to_tvar =
 let extract_module =
   let tr = make_trans () in
   let tr_desc desc =
-    match tr.tr_desc_rec desc with
-    | Module decls ->
-        assert false
-    | desc' -> desc'
+    match desc with
+    | Local(Decl_let[m,{desc=Module decls}], t) ->
+        let aux decl t =
+          match decl with
+          | Decl_let defs ->
+              let defs' = List.map (Pair.map (Id.in_module ~m) tr.tr_term) defs in
+              make_let defs' t
+          | Decl_type decls ->
+              make_let_type decls t
+        in
+        let t' = tr.tr_term t in
+        (List.fold_right aux decls t').desc
+    | Module _ -> unsupported "extract_module"
+    | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
   tr.tr_term

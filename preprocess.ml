@@ -37,7 +37,7 @@ type preprocess_label =
   | Add_cps_preds
   | Eliminate_same_arguments
   | Insert_unit_param
-  | Preprocessfortermination
+  | PreprocessForTermination
   | Extract_module
 
 type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
@@ -48,40 +48,40 @@ type t = preprocess_label * ((results -> bool) * (results -> tr_result))
 
 let string_of_label = function
   | Init -> "Init"
-  | Eliminate_unused_let -> "Eliminate_unused_let"
-  | Replace_const -> "Replace_const"
-  | Encode_mutable_record -> "Encode_mutable_record"
-  | Encode_record -> "Encode_record"
-  | Encode_array -> "Encode_array"
-  | Abst_ref -> "Abst_ref"
-  | Make_fun_tuple -> "Make_fun_tuple"
-  | Make_ext_funs -> "Make_ext_funs"
-  | Copy_poly -> "Copy_poly"
-  | Ignore_non_termination -> "Ignore_non_termination"
-  | Beta_reduce_trivial -> "Beta_reduce_trivial"
-  | Eliminate_redundant_arguments -> "Eliminate_redundant_arguments"
-  | Recover_const_attr -> "Recover_const_attr"
-  | Decomp_pair_eq -> "Decomp_pair_eq"
-  | Add_preds -> "Add_preds"
-  | Replace_fail_with_raise -> "Replace_fali_with_raise"
-  | Ignore_excep_arg -> "Ignore_excep_arg"
-  | Encode_simple_variant -> "Encode_simple_variant"
-  | Encode_recdata -> "Encode_recdata"
-  | Replace_base_with_int -> "Replace_base_with_int"
-  | Encode_list -> "Encode_list"
-  | Ret_fun -> "Ret_fun"
-  | Ref_trans -> "Ref_trans"
+  | Eliminate_unused_let -> "Eliminate unused let"
+  | Replace_const -> "Replace const"
+  | Encode_mutable_record -> "Encode mutable record"
+  | Encode_record -> "Encode record"
+  | Encode_array -> "Encode array"
+  | Abst_ref -> "Abst ref"
+  | Make_fun_tuple -> "Make fun tuple"
+  | Make_ext_funs -> "Make ext funs"
+  | Copy_poly -> "Copy poly"
+  | Ignore_non_termination -> "Ignore non termination"
+  | Beta_reduce_trivial -> "Beta reduce trivial"
+  | Eliminate_redundant_arguments -> "Eliminate redundant arguments"
+  | Recover_const_attr -> "Recover const attr"
+  | Decomp_pair_eq -> "Decomp pair eq"
+  | Add_preds -> "Add preds"
+  | Replace_fail_with_raise -> "Replace fail with raise"
+  | Ignore_excep_arg -> "Ignore excep arg"
+  | Encode_simple_variant -> "Encode simple variant"
+  | Encode_recdata -> "Encode recdata"
+  | Replace_base_with_int -> "Replace base with int"
+  | Encode_list -> "Encode list"
+  | Ret_fun -> "Ret fun"
+  | Ref_trans -> "Ref trans"
   | Tupling -> "Tupling"
   | Inline -> "Inline"
-  | Mark_safe_fun_arg -> "Mark_safe_fun_arg"
+  | Mark_safe_fun_arg -> "Mark safe fun arg"
   | CPS -> "CPS"
-  | Remove_pair -> "Remove_pair"
-  | Replace_bottom_def -> "Replace_bottom_def"
-  | Add_cps_preds -> "Add_cps_preds"
-  | Eliminate_same_arguments -> "Eliminate_same_arguments"
-  | Insert_unit_param -> "Insert_unit_param"
-  | Preprocessfortermination -> "Preprocessfortermination"
-  | Extract_module -> "Extract_module"
+  | Remove_pair -> "Remove pair"
+  | Replace_bottom_def -> "Replace bottom def"
+  | Add_cps_preds -> "Add cps preds"
+  | Eliminate_same_arguments -> "Eliminate same arguments"
+  | Insert_unit_param -> "Insert unit param"
+  | PreprocessForTermination -> "Preprocessfortermination"
+  | Extract_module -> "Extract module"
 
 let last acc = snd @@ List.hd acc
 let last_t acc = fst @@ last acc
@@ -199,7 +199,7 @@ let all spec : t list =
     Insert_unit_param,
       (Fun.const !Flag.Method.insert_param_funarg,
        map_trans Trans.insert_param_funarg);
-    Preprocessfortermination,
+    PreprocessForTermination,
       (Fun.const Flag.Method.(!mode = Termination),
        map_trans !BRA_types.preprocessForTerminationVerification);
   ]

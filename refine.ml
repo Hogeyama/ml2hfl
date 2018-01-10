@@ -57,7 +57,7 @@ let make_imply' t1 t2 =
     make_app (Const (Temp ";")) [make_not_s t1; t2]
 let rec decode_imply t =
   match decomp_app t with
-  | Const (Temp ";"), ts -> ts
+  | Const (Temp ";"), ts -> List.flatten_map decode_imply ts
   | _ -> [t]
 
 

@@ -24,6 +24,7 @@ and constr =
   | TRef
   | TOption
   | TArray
+  | TLazy
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
   | TAPureFun
@@ -218,16 +219,16 @@ let rec print occur print_pred fm typ =
         else
           Format.fprintf fm "@[%s of %a@]" s (print_list print' "@ *@ ") typs
       in
-      Format.fprintf fm "(@[%a@])" (print_list pr "@ |@ ") labels
+      Format.fprintf fm "(@[%a@])" (print_list pr "@ | ") labels
   | TRecord fields ->
       let pr fm (s, (f, typ)) =
         let sf = if f = Mutable then "mutable " else "" in
         Format.fprintf fm "@[%s%s: %a@]" sf s print' typ
       in
-      Format.fprintf fm "{@[%a@]}" (print_list pr "@ |@ ") fields
+      Format.fprintf fm "{@[%a@]}" (print_list pr ";@ ") fields
   | Type(decls, s) ->
       let pr fm (s, typ) =
-        Format.fprintf fm "@[%s = %a@]" s print' typ
+        Format.fprintf fm "@[%s =@ %a@]" s print' typ
       in
       Format.fprintf fm "(@[type %a in %s@])" (print_list pr "@ and@ ") decls s
   | TModule _ -> Format.fprintf fm "@[sig ...@ end@]"
@@ -235,6 +236,7 @@ let rec print occur print_pred fm typ =
   | TApp(TList, [typ]) -> Format.fprintf fm "@[%a list@]" print' typ
   | TApp(TOption, [typ]) -> Format.fprintf fm "@[%a option@]" print' typ
   | TApp(TArray, [typ]) -> Format.fprintf fm "@[%a array@]" print' typ
+  | TApp(TLazy, [typ]) -> Format.fprintf fm "@[%a Lazy.t@]" print' typ
   | TApp _ -> assert false
 
 let print ?(occur=fun _ _ -> false) print_pred fm typ =
@@ -273,6 +275,8 @@ let rec can_unify typ1 typ2 =
   | TRecord fields1, TRecord fields2 ->
       List.for_all2 (fun (s1,(f1,typ1')) (s2,(f2,typ2')) -> s1 = s2 && f1 = f2 && can_unify typ1' typ2') fields1 fields2
   | TModule _, TModule _ -> true
+  | TModule _, TData _ -> true
+  | TData _, TModule _ -> true
   | _ -> false
 
 

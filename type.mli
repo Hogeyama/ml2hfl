@@ -19,6 +19,7 @@ and constr =
   | TRef
   | TOption
   | TArray
+  | TLazy
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list
   | TAPureFun

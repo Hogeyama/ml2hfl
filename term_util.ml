@@ -106,6 +106,11 @@ let make_let bindings t2 =
     t2
   else
     make_local (Decl_let bindings) t2
+let make_let_type decls t2 =
+  if decls = [] then
+    t2
+  else
+    make_local (Decl_type decls) t2
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
 let make_seq t1 t2 =
@@ -326,7 +331,14 @@ let make_length t =
   {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
 
 let make_module decls =
-  let typ = TModule(List.flatten_map (fun (Decl_let defs) -> List.map (fun (x,_) -> Id.name x, Id.typ x) defs) decls) in
+  let typ =
+    let aux decl =
+      match decl with
+      | Decl_let defs -> List.map (fun (x,_) -> Id.name x, Id.typ x) defs
+      | _ -> []
+    in
+    TModule(List.flatten_map aux decls)
+  in
   {desc=Module decls; typ; attr=[]}
 
 let rec make_term typ =
@@ -923,6 +935,8 @@ let rec get_last_definition def t =
   | Local(Decl_let bindings, t2) ->
       let f,t = List.last bindings in
       get_last_definition (Some (f,t)) t2
+  | Local(Decl_type _, t2) ->
+      get_last_definition def t2
   | Module decls ->
       let Decl_let defs = List.last decls in
       Some (fst @@ List.last defs)
@@ -1186,6 +1200,7 @@ let rename =
     | Some y -> Id.set_typ y @@ Id.typ x
   in
   tr.tr2_var <- tr_var;
+  tr.tr2_typ <- Fun.snd;
   tr.tr2_term
 
 let get_max_var_id =

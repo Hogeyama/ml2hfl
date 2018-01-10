@@ -44,6 +44,7 @@ val make_local : declaration -> term -> term
 val make_let : (id * term) list -> term -> term
 val make_lets : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
+val make_let_type : (string * typ) list -> term -> term
 val make_fun : id -> term -> term
 val make_funs : id list -> term -> term
 val make_not : term -> term

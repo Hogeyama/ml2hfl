@@ -225,6 +225,22 @@ and print_desc attr pri typ fm desc =
       in
       let print_bindings bs = print_list print_binding "@ " ~last:true bs in
       fprintf fm "%s@[<v>@[<hv>%a@]in@ @[<hov>%a@]@]%s" s1 print_bindings bindings (print_term p typ) t2 s2
+  | Local(Decl_type decls, t) ->
+      let p = 10 in
+      let s1,s2 = paren pri (p+1) in
+      let b = ref true in
+      let print_decl fm (name,ty) =
+        let pre =
+          if !b then
+            "let type" ^ (if List.mem ADoNotInline attr && not !Flag.Print.as_ocaml then "!" else "")
+          else
+            "and"
+        in
+        fprintf fm "@[<hov 2>%s @[<hov 2>%s@] =@ %a@]" pre name print_typ ty;
+        b := false
+      in
+      let print_decls bs = print_list print_decl "@ " ~last:true bs in
+      fprintf fm "%s@[<v>@[<hv>%a@]in@ @[<hov>%a@]@]%s" s1 print_decls decls (print_term p typ) t s2
   | Not{desc = BinOp(Eq, t1, t2)} ->
       let p = 50 in
       let s1,s2 = paren pri p in
@@ -336,7 +352,7 @@ and print_desc attr pri typ fm desc =
   | Proj(i,t) when !Flag.Print.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      let s = "fun (" ^ String.join "," (List.init (Option.get @@ tuple_num t.typ ) (fun j -> if i = j then "x" else "_") ) ^ ") -> x" in
+      let s = "fun (" ^ String.join "," (List.init (Option.get @@ tuple_num t.typ) (fun j -> if i = j then "x" else "_") ) ^ ") -> x" in
       fprintf fm "%s@[(%s)@ %a@]%s" s1 s (print_term p typ) t s2
   | Proj(i,t) ->
       let p = 80 in
@@ -370,7 +386,7 @@ and print_desc attr pri typ fm desc =
 
 and print_declaration typ fm decls = (* TODO: fix *)
   let t =
-    let aux (Decl_let defs) t0 = {desc=Local(Decl_let defs,t0);typ=typ_unknown;attr=[]} in
+    let aux decl t0 = {desc=Local(decl,t0);typ=typ_unknown;attr=[]} in
     List.fold_right aux decls {desc=Const End_of_definitions; typ=TUnit; attr=[]}
   in
   print_term 0 typ fm t
@@ -464,6 +480,11 @@ let rec print_term' pri fm t =
           | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
                          s1 print_bindings bindings (print_term' p) t2 s2
         end
+    | Local(Decl_type((name,_)::_), t) ->
+        let p = 10 in
+        let s1,s2 = paren pri (p+1) in
+        fprintf fm "@[<hov 2>%slet type %s@ = ... in@ %a%s@]" s1 name (print_term' p) t s2
+    | Local(Decl_type [], _) -> assert false
     | BinOp(op, t1, t2) ->
         let p = match op with Add|Sub|Mult|Div -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
         let s1,s2 = paren pri p in
@@ -556,7 +577,7 @@ let rec print_term' pri fm t =
 
 and print_declaration' fm decls = (* TODO: fix *)
   let t =
-    let aux (Decl_let defs) t0 = {desc=Local(Decl_let defs,t0);typ=t0.typ;attr=[]} in
+    let aux decl t0 = {desc=Local(decl,t0);typ=t0.typ;attr=[]} in
     List.fold_right aux decls {desc=Const End_of_definitions; typ=TUnit; attr=[]}
   in
   print_term' 0 fm t

@@ -61,7 +61,9 @@ and desc =
   | TSome of term
   | Module of declaration list
 
-and declaration = Decl_let of (id * term) list
+and declaration =
+  | Decl_let of (id * term) list
+  | Decl_type of (string * typ) list
 
 and info =
   | InfoInt of int

@@ -66,7 +66,9 @@ and desc =
   | TSome of term
   | Module of declaration list
 
-and declaration = Decl_let of (id * term) list
+and declaration =
+  | Decl_let of (id * term) list
+  | Decl_type of (string * typ) list
 
 and info =
   | InfoInt of int
@@ -218,6 +220,7 @@ let trans_const trans c =
 let trans_decl tr decl =
   match decl with
   | Decl_let defs -> Decl_let (List.map (Pair.map tr.tr_var tr.tr_term) defs)
+  | Decl_type decls -> Decl_type (List.map (Pair.map_snd tr.tr_typ) decls)
 
 let trans_desc trans = function
   | Const c -> Const(trans.tr_const c)
@@ -390,6 +393,7 @@ let trans2_gen_const tr env c =
 let trans2_gen_decl tr env decl =
   match decl with
   | Decl_let defs -> Decl_let (List.map (Pair.map (tr.tr2_var env) (tr.tr2_term env)) defs)
+  | Decl_type decls -> Decl_type (List.map (Pair.map_snd @@ tr.tr2_typ env) decls)
 
 let trans2_gen_desc tr env desc =
   match desc with
@@ -492,6 +496,9 @@ type 'a col =
    mutable col_app: 'a -> 'a -> 'a;
    mutable col_empty: 'a}
 
+let col_list col ?(init=col.col_empty) f xs =
+  List.fold_left (fun acc typ -> col.col_app acc @@ f typ) init xs
+
 let col_typ col typ =
   let (-@-) = col.col_app in
   match typ with
@@ -501,9 +508,9 @@ let col_typ col typ =
   | TVar({contents=None},_) -> col.col_empty
   | TVar({contents=Some typ},_) -> col.col_typ typ
   | TFun(x,typ) -> col.col_typ (Id.typ x) -@- col.col_typ typ
-  | TFuns(xs,typ) -> List.fold_left (fun acc x -> acc -@- col.col_var x) col.col_empty xs -@- col.col_typ typ
-  | TApp(_, typs) -> List.fold_left (fun acc typ -> acc -@- col.col_typ typ) col.col_empty typs
-  | TTuple xs -> List.fold_left (fun acc x -> acc -@- col.col_var x) col.col_empty xs
+  | TFuns(xs,typ) -> col_list col ~init:(col.col_typ typ) col.col_var xs
+  | TApp(_, typs) -> col_list col col.col_typ typs
+  | TTuple xs -> col_list col col.col_var xs
   | TData s -> col.col_empty
   | TAttr(attr, typ) ->
       let aux acc a =
@@ -516,10 +523,10 @@ let col_typ col typ =
         | TAAssumePredTrue -> acc
       in
       List.fold_left aux (col.col_typ typ) attr
-  | TVariant labels -> List.fold_left (fun acc (_,typs) -> List.fold_left (fun acc' typ -> acc' -@- col.col_typ typ) acc typs) col.col_empty labels
-  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc -@- col.col_typ typ) col.col_empty fields
-  | Type(decls, _) -> List.fold_left (fun acc (_,typ) -> acc -@- col.col_typ typ) col.col_empty decls
-  | TModule sgn -> List.fold_left (fun acc (_,typ) -> acc -@- col.col_typ typ) col.col_empty sgn
+  | TVariant labels -> List.fold_left (fun init (_,typs) -> col_list col col.col_typ ~init typs) col.col_empty labels
+  | TRecord fields -> col_list col (snd |- snd |- col.col_typ) fields
+  | Type(decls, _) -> col_list col (snd |- col.col_typ) decls
+  | TModule sgn -> col_list col (snd |- col.col_typ) sgn
 
 let col_var col x = col.col_typ (Id.typ x)
 
@@ -531,19 +538,20 @@ let col_pat col p =
     | PVar x -> col.col_var x
     | PAlias(p,x) -> col.col_app (col.col_pat p) (col.col_var x)
     | PConst t -> col.col_term t
-    | PConstruct(s,ps) -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_pat p) col.col_empty ps
+    | PConstruct(s,ps) -> col_list col col.col_pat ps
     | PNil -> col.col_empty
     | PCons(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
-    | PTuple ps -> List.fold_left (fun acc p -> col.col_app acc @@ col.col_pat p) col.col_empty ps
-    | PRecord pats -> List.fold_left (fun acc (s,p) -> col.col_app acc @@ col.col_pat p) col.col_empty pats
+    | PTuple ps -> col_list col col.col_pat ps
+    | PRecord pats -> col_list col (snd |- col.col_pat) pats
     | POr(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
     | PNone -> col.col_empty
     | PSome p -> col.col_pat p
   in
   col.col_app r1 r2
 
-let col_info col = function
-    InfoInt n -> col.col_empty
+let col_info col info =
+  match info with
+  | InfoInt n -> col.col_empty
   | InfoString s -> col.col_empty
   | InfoId x -> col.col_var x
   | InfoTerm t -> col.col_term t
@@ -562,23 +570,24 @@ let col_decl col decl =
         col.col_app (col.col_var x) (col.col_term t)
       in
       List.fold_left aux col.col_empty defs
+  | Decl_type decls -> col_list col (snd |- col.col_typ) decls
 
 let col_desc col = function
   | Const c -> col.col_const c
   | Var y -> col.col_var y
   | Fun(y, t) -> col.col_app (col.col_var y) (col.col_term t)
-  | App(t1, ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) (col.col_term t1) ts
+  | App(t1, ts) -> col_list col col.col_term ~init:(col.col_term t1) ts
   | If(t1, t2, t3) -> col.col_app (col.col_term t1) @@ col.col_app (col.col_term t2) (col.col_term t3)
   | Local(decl, t2) -> col.col_app (col.col_term t2) (col.col_decl decl)
   | BinOp(op, t1, t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Not t1 -> col.col_term t1
   | Event(s,b) -> col.col_empty
-  | Record fields -> List.fold_left (fun acc (_,t1) -> col.col_app acc @@ col.col_term t1) col.col_empty fields
+  | Record fields -> col_list col (snd |- col.col_term) fields
   | Field(t1,s) -> col.col_term t1
   | SetField(t1,_,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | Nil -> col.col_empty
   | Cons(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
-  | Constr(s,ts) -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) col.col_empty ts
+  | Constr(s,ts) -> col_list col col.col_term ts
   | Match(t1,pats) ->
       let aux acc (pat,cond,t1) =
         col.col_app acc @@
@@ -589,7 +598,7 @@ let col_desc col = function
       List.fold_left aux (col.col_term t1) pats
   | Raise t -> col.col_term t
   | TryWith(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
-  | Tuple ts -> List.fold_left (fun acc t -> col.col_app acc @@ col.col_term t) col.col_empty ts
+  | Tuple ts -> col_list col col.col_term ts
   | Proj(i,t) -> col.col_term t
   | Bottom -> col.col_empty
   | Label(info, t) -> col.col_app (col.col_info info) (col.col_term t)
@@ -598,7 +607,7 @@ let col_desc col = function
   | SetRef(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
   | TNone -> col.col_empty
   | TSome t -> col.col_term t
-  | Module decls -> List.fold_left (fun acc decl -> col.col_app acc @@ col.col_decl decl) col.col_empty decls
+  | Module decls -> col_list col col.col_decl decls
 
 let col_term col t = col.col_app (col.col_desc t.desc) (col.col_typ t.typ)
 
@@ -670,6 +679,9 @@ type ('a,'b) col2 =
    mutable col2_app: 'a -> 'a -> 'a;
    mutable col2_empty: 'a}
 
+let col2_list col ?(init=col.col2_empty) f xs =
+  List.fold_left (fun acc typ -> col.col2_app acc @@ f typ) init xs
+
 let col2_typ col env typ =
   let (-@-) = col.col2_app in
   match typ with
@@ -679,22 +691,22 @@ let col2_typ col env typ =
   | TVar({contents=None},_) -> col.col2_empty
   | TVar({contents=Some typ},_) -> col.col2_typ env typ
   | TFun(x,typ) -> col.col2_var env x -@- col.col2_typ env typ
-  | TFuns(xs,typ) -> List.fold_left (fun acc x -> acc -@- col.col2_var env x) col.col2_empty xs -@- col.col2_typ env typ
-  | TApp(_,typs) -> List.fold_left (fun acc typ -> acc -@- col.col2_typ env typ) col.col2_empty typs
-  | TTuple xs -> List.fold_left (fun acc x -> acc -@- col.col2_var env x) col.col2_empty xs
+  | TFuns(xs,typ) -> col2_list col (col.col2_var env) ~init:(col.col2_typ env typ) xs
+  | TApp(_,typs) -> col2_list col (col.col2_typ env) typs
+  | TTuple xs -> col2_list col (col.col2_var env) xs
   | TData s -> col.col2_empty
   | TAttr(attr, typ) ->
       let aux acc a =
         match a with
         | TAPred(x,ps) ->
-            let acc' = col.col2_var env x -@- acc in
-            List.fold_left (fun acc p -> acc -@- col.col2_term env p) acc' ps
+            let init = col.col2_var env x -@- acc in
+            col2_list col (col.col2_term env) ~init ps
         | TAPureFun -> acc
         | TAEffect _ -> acc
         | TAAssumePredTrue -> acc
       in
       List.fold_left aux (col.col2_typ env typ) attr
-  | TVariant labels -> List.fold_left (fun acc (_, typs) -> List.fold_left (fun acc' typ -> acc -@- col.col2_typ env typ) acc typs) col.col2_empty labels
+  | TVariant labels -> List.fold_left (fun init (_,typs) -> col2_list col (col.col2_typ env) ~init typs) col.col2_empty labels
   | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc -@- col.col2_typ env typ) col.col2_empty fields
   | Type(decls, s) -> List.fold_left (fun acc (_,typ) -> acc -@- col.col2_typ env typ) col.col2_empty decls
   | TModule sgn -> List.fold_left (fun acc (_,typ) -> acc -@- col.col2_typ env typ) col.col2_empty sgn
@@ -740,6 +752,7 @@ let col2_decl col env decl =
         col.col2_app (col.col2_var env x) (col.col2_term env t)
       in
       List.fold_left aux col.col2_empty defs
+  | Decl_type decls -> col2_list col (snd |- col.col2_typ env) decls
 
 let col2_desc col env desc =
   let (-@-) = col.col2_app in
@@ -1006,6 +1019,13 @@ let tr_col2_decl tc env decl =
       in
       let acc,defs' = tr_col2_list tc aux env defs in
       acc, Decl_let defs'
+  | Decl_type decls ->
+      let aux env (name,ty) =
+        let acc, ty' = tc.tr_col2_typ env ty in
+        acc, (name, ty')
+      in
+      let acc,decls' = tr_col2_list tc aux env decls in
+      acc, Decl_type decls'
 
 let tr_col2_desc tc env desc =
   match desc with
@@ -1338,6 +1358,13 @@ let fold_tr_decl fld env decl =
       in
       let env',defs' = fold_tr_list aux env defs in
       env', Decl_let defs'
+  | Decl_type decls ->
+      let aux env (name,ty) =
+        let env',ty' = fld.fld_typ env ty in
+        env', (name, ty')
+      in
+      let env',decls' = fold_tr_list aux env decls in
+      env', Decl_type decls'
 
 let fold_tr_desc fld env = function
   | Const c ->

@@ -404,7 +404,7 @@ let main _ spec parsed =
   let _,(main,_) = List.decomp_snoc fun_env in
   let typ = Ref_type.of_simple @@ Id.typ main in
   let cmp,dep =
-    let edges = List.flatten_map (fun (f,t) -> let xs,t = decomp_funs t in List.map (fun g -> g, f) @@ List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)) fun_env in
+    let edges = List.flatten_map (fun (f,t) -> let xs,t = decomp_funs t in List.map (Pair.pair -$- f) @@ List.Set.diff ~eq:Id.eq (get_fv t) (f::xs)) fun_env in
     Compare.topological ~eq:Id.eq ~dom:(List.map fst fun_env) edges,
     transitive_closure ~eq:Id.eq edges
   in

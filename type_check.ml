@@ -18,6 +18,7 @@ let rec check t typ =
   match t.desc, elim_tattr t.typ with
   | _, TFuns _ -> ()
   | Label(_, t), _ -> check t typ
+  | Const End_of_definitions, TUnit -> ()
   | Const Unit, TUnit -> ()
   | Const CPS_result, typ when typ = typ_result -> ()
   | Const(True|False), TBool -> ()
@@ -68,6 +69,8 @@ let rec check t typ =
         List.iter (fun f' -> assert (Id.same f f' => Type.can_unify (Id.typ f) (Id.typ f'))) fv
       in
       List.iter (aux' -| Pair.fst) bindings;
+      check t2 typ'
+  | Local(Decl_type _, t2), typ' ->
       check t2 typ'
   | BinOp(Eq,t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);

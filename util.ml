@@ -54,7 +54,11 @@ let raise_assert_failure loc =
 let assert_ ?__LOC__ f x =
   try
     assert (f x)
-  with Assert_failure _ when __LOC__ <> None -> raise_assert_failure (Option.get __LOC__)
+  with
+  | Assert_failure loc as e ->
+      match __LOC__ with
+      | None -> raise e
+      | Some loc -> raise_assert_failure loc
 let assert_false ?__LOC__ _ =
   match __LOC__ with
   | None -> fatal "assert_false"
@@ -69,7 +73,7 @@ let rec print_list_aux print punc last fm xs =
   | x::xs ->
       Format.fprintf fm "@[%a@]" print x;
       Format.fprintf fm punc;
-      Format.fprintf fm "@,%a" (print_list_aux print punc last) xs
+      Format.fprintf fm "%a" (print_list_aux print punc last) xs
 
 let print_list print ?(first=false) ?(last=false) punc fm xs =
   let punc' = format_of_string punc in
@@ -507,10 +511,10 @@ module List = struct
 end
 
 
-let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
-  let rec loop eq edges roots xs rev_acc =
+let topological_sort ?(eq=(=)) edges =
+  let rec loop edges roots xs rev_acc =
     match roots with
-    | [] -> List.rev rev_acc
+    | [] -> xs @@@ List.rev rev_acc
     | r::roots' ->
         let edges1,edges2 = List.partition (fst |- eq r) edges in
         let roots'' =
@@ -519,11 +523,11 @@ let topological_sort ?(eq=fun x y -> compare x y = 0) edges =
         in
         let xs' = List.filter_out (eq r) xs in
         let rev_acc' = r::rev_acc in
-        loop eq edges2 roots'' xs' rev_acc'
+        loop edges2 roots'' xs' rev_acc'
   in
   let xs = List.unique ~eq @@ List.flatten_map Pair.to_list edges in
-  let roots = List.filter (fun x -> not @@ List.exists (snd |- eq x) edges) xs in
-  loop eq edges roots xs []
+  let roots = List.filter_out (fun x -> List.exists (snd |- eq x) edges) xs in
+  loop edges roots xs []
 
 module Compare = struct
   let on ?(cmp=compare) f x y = cmp (f x) (f y)
@@ -809,6 +813,9 @@ module Time = struct
 
   let string_of_tm {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
     Format.sprintf "%04d/%02d/%02d %02d:%02d:%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec
+
+  let print fm =
+    Format.pp_print_string fm @@ string_of_tm @@ Unix.localtime !!get
 end
 
 

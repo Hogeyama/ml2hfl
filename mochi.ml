@@ -225,7 +225,7 @@ let main cin =
     let orig = Parse.use_file lb in
     Id.set_counter (Ident.current_time () + 1000);
     let parsed = Parser_wrapper.from_use_file orig in
-    Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term parsed;
+    Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
     if !Flag.NonTermination.randint_refinement_log
     then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
