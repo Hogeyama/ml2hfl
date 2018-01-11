@@ -140,7 +140,7 @@ let from_ident_aux name binding_time attr typ =
     else
       name
   in
-  Id.make 0 name attr typ
+  Id.make binding_time name attr typ
 
 let from_ident x typ =
   from_ident_aux (Ident.name x) (Ident.binding_time x) [] typ
