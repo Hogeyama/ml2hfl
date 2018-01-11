@@ -350,6 +350,7 @@ let gather_events defs =
 module Term = struct
   let (@) = make_app
   let (@@) = make_app
+  let unit = Const Unit
   let true_ = Const True
   let tt = Const True
   let false_ = Const False

@@ -432,10 +432,12 @@ let event_of_temp {env;defs;main;info} =
           [], [f, xs, t1, [Event s], App(t2', Const Unit)]
       | App(Const (Temp s), t2') ->
           let g = new_id s in
-          [g, TFun(typ_bool(),fun _ -> TFun(TFun(typ_unit, fun _ -> typ_result), fun _ -> typ_result))],
-          (* cannot refute if b is eliminated, because k cannot have predicates in current impl. *)
-          [g, ["b"; "k"], Const True, [Event s], App(Var "k", Const Unit);
-           f, xs, t1, [], App(App(Var g, Const True), t2')]
+          let u = new_id "u" in
+          let k = new_id "k" in
+          [g, TFun(typ_unit,fun _ -> TFun(TFun(typ_unit, fun _ -> typ_result), fun _ -> typ_result))],
+          (* cannot refute if u is eliminated, because k cannot have predicates in current impl. *)
+          [g, [u; k], Const True, [Event s], App(Var k, Const Unit);
+           f, xs, t1, [], Term.(Var g @ [unit; t2'])]
       | _ -> [], [f, xs, t1, [], t2]
     in
     let envs,defss = List.split_map make_event defs in
