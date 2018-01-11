@@ -1,4 +1,3 @@
-
 open Util
 open Syntax
 open Term_util
@@ -97,28 +96,11 @@ let rec lift_aux post xs t =
         let defs2,t2' = lift_aux post xs t2 in
         let defs3,t3' = lift_aux post xs t3 in
         defs1 @ defs2 @ defs3, If(t1',t2',t3')
-    | Local(Decl_let bindings,t2) when is_non_rec bindings  ->
-        let defss,fs =
-          let aux (f,t1) =
-            let ys,t1 = decomp_funs t1 in
-            let fv = IdSet.inter (get_fv' t1) xs in
-            let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
-            let fv = IdSet.elements fv in
-            let ys' = fv @ ys in
-            let f' = Id.map_typ (List.fold_right _TFun fv) f in
-            let f'' = make_app (make_var f') @@ List.map make_var fv in
-            let defs1,t1' = lift_aux ("_" ^ Id.name f) (set_of_list ys') t1 in
-            (f',(ys', t1'))::defs1,  f''
-          in
-          List.split_map aux bindings
-        in
-        let subst_f t = List.fold_left2 (fun t f'' (f,_) -> subst f f'' t) t fs bindings in
-        let defs2,t2' = lift_aux post xs (subst_f t2) in
-        List.flatten defss @ defs2, t2'.desc
     | Local(Decl_let bindings,t2) ->
         let fv = List.fold_left (fun acc (_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
         let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
+        let fv = IdSet.diff fv (set_of_list @@ List.map fst bindings) in
         let fv = IdSet.elements fv in
         let fs =
           let aux (f,_) =
@@ -225,23 +207,6 @@ let rec lift_aux' post xs t =
         let defs1, t1' = lift_aux' post xs t1 in
 	let defs2, t2' = lift_aux' post (IdSet.add x xs) t2 in
         defs1 @ defs2, Local(Decl_let [x, t1'],t2')
-    | Local(Decl_let bindings,t2) when is_non_rec bindings ->
-        let aux (f,t1) =
-          let ys,t1 = decomp_funs t1 in
-          let fv = IdSet.inter (get_fv' t1) xs in
-          let fv = if !Flag.Method.lift_fv_only then fv else filter_base xs @@@ fv in
-          let fv = IdSet.elements fv in
-          let ys' = fv @ ys in
-          let typ = List.fold_right _TFun fv (Id.typ f) in
-          let f' = Id.set_typ f typ in
-          let f'' = make_app (make_var f') @@ List.map make_var fv in
-          let defs1,t1' = lift_aux' ("_" ^ Id.name f) (set_of_list ys') t1 in
-          (f',(ys',t1'))::defs1,  f''
-        in
-        let defss,fs = List.split_map aux bindings in
-        let subst_f t = List.fold_left2 (fun t f'' (f,_) -> subst f f'' t) t fs bindings in
-        let defs2,t2' = lift_aux' post xs (subst_f t2) in
-        List.flatten defss @ defs2, t2'.desc
     | Local(Decl_let bindings,t2) ->
         let fv = List.fold_left (fun acc (_,t) -> acc @@@ get_fv' t) IdSet.empty bindings in
         let fv = IdSet.inter fv xs in
