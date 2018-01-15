@@ -51,10 +51,14 @@ let rec can_move ty =
 
 
 let make_imply' t1 t2 =
-  if true then
-    make_imply t1 t2
-  else
-    make_app (Const (Temp ";")) [make_not_s t1; t2]
+  match !Flag.PredAbst.shift_pred with
+  | None -> assert false
+  | Some 0 -> make_imply t1 t2
+  | Some 1 -> make_app (Const (Temp ";")) [make_not_s t1; t1; t2]
+  | Some 2 -> make_app (Const (Temp ";")) [make_not_s t1; make_and t1 t2]
+  | Some 3 -> make_app (Const (Temp ";")) [t1; make_imply t1 t2]
+  | Some 4 -> make_app (Const (Temp ";")) [make_not t1; make_imply t1 t2]
+  | Some _ -> assert false
 let rec decode_imply t =
   match decomp_app t with
   | Const (Temp ";"), ts -> List.flatten_map decode_imply ts
@@ -150,7 +154,7 @@ let add_preds_env map env =
       try
         let typ2 = List.assoc f map in
         let typ2' =
-          if !Flag.PredAbst.assume_safe_fun_arg_pred_true then
+          if !Flag.PredAbst.shift_pred <> None then
             typ2
             |@> Debug.printf "INPUT: %a@." CEGAR_print.typ
             |> copy_attr typ1

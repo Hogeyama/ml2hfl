@@ -179,7 +179,7 @@ let all spec : t list =
       (Fun.const true,
        (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
     Mark_safe_fun_arg,
-      (Fun.const !Flag.PredAbst.assume_safe_fun_arg_pred_true,
+      (Fun.const (!Flag.PredAbst.shift_pred <> None),
        map_trans Effect_analysis.mark_safe_fun_arg);
     CPS,
       (Fun.const !Flag.Mode.trans_to_CPS,
