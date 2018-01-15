@@ -363,26 +363,18 @@ and abstract_term env cond pts t typ =
       in
       let ts',t'' = List.decomp_snoc ts in
       pts, [], [abstract_rand_int n env cond pts ts' t'']
-  | App _ when not !Flag.PredAbst.cartesian ->
-      let t1,ts = decomp_app t in
-      let typs = decomp_typ_term ts @@ get_typ env t1 in
-      let aux t typ (pts,defs,args) =
-        let pts'',defs',ts = abstract_term env cond pts t typ in
-        pts'', defs @ defs', ts @ args
-      in
-      let _Let' (b,(x,t)) t' = if b then subst x t t' else Let(x,t,t') in
-      let pts',defs,args = List.fold_right2 aux ts typs (pts,[],[]) in
-      pts', defs, [make_app t1 args]
   | App _ ->
       let t1,ts = decomp_app t in
       let typs = decomp_typ_term ts @@ get_typ env t1 in
-      let ptss,defss,tss = List.split3 @@ List.map2 (abstract_term env cond pts) ts typs in
-      let pts' = List.flatten ptss in
-      let defs = List.flatten defss in
-      let tss = List.flatten tss in
-      let t' = make_app t1 tss in
+      let pts',defs,args =
+        let aux t typ (pts,defs,args) =
+          let pts',defs',ts = abstract_term env cond pts t typ in
+          pts', defs @ defs', ts @ args
+        in
+        List.fold_right2 aux ts typs (pts,[],[])
+      in
       (** there is room for improving the precision by using defs *)
-      pts', defs, [filter_wrap env cond pts t']
+      pts', defs, [filter_wrap env cond pts' @@ make_app t1 args]
   | Fun _ ->
       let env',t0 = decomp_annot_fun t in
       let env' = List.map (Pair.map_snd Option.get) env' in

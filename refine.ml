@@ -51,7 +51,7 @@ let rec can_move ty =
 
 
 let make_imply' t1 t2 =
-  if false then
+  if true then
     make_imply t1 t2
   else
     make_app (Const (Temp ";")) [make_not_s t1; t2]
