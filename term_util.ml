@@ -54,27 +54,11 @@ let make_event_cps s = {desc=Event(s,true); typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
 let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
 let make_string s = {desc=Const(String s); typ=TData "string"; attr=const_attr}
-let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
-let make_randvalue_unit typ =
-  match typ with
-  | TUnit -> unit_term
-  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
-let make_randvalue_cps typ =
-  let u = Id.new_var TUnit in
-  let r = Id.new_var typ in
-  let k = Id.new_var @@ TFun(r,typ_result) in
-  {desc=Const(RandValue(typ,true)); typ=TFun(u,TFun(k,typ_result)); attr=[]}
-let make_randint_cps b =
-  let u = Id.new_var TUnit in
-  let r = Id.new_var TInt in
-  let k = Id.new_var @@ TFun(r,typ_result) in
-  let attr = if b then [AAbst_under] else [] in
-  {desc=Const(RandValue(TInt,true)); typ=TFun(u,TFun(k,typ_result)); attr}
 let rec make_app t ts =
   let check typ1 typ2 =
     if not (Flag.Debug.check_typ => Type.can_unify typ1 typ2) then
       begin
-        Format.printf "make_app:@ %a@ <=/=>@ %a@." Print.typ typ1 Print.typ typ2;
+        Format.printf "make_app:@[@ %a@ <=/=>@ %a@." Print.typ typ1 Print.typ typ2;
         Format.printf "fun: %a@." Print.term t;
         Format.printf "arg: %a@." Print.term @@ List.hd ts;
         assert false
@@ -253,10 +237,16 @@ let make_nil2 typ = {desc=Nil; typ=typ; attr=[]}
 let make_cons t1 t2 =
   assert (Flag.Debug.check_typ => Type.can_unify (TApp(TList, [t1.typ])) t2.typ);
   {desc=Cons(t1,t2); typ=t2.typ; attr=[]}
+let rec make_list ts =
+  match ts with
+  | [] -> make_nil typ_unknown
+  | [t1] -> make_cons t1 @@ make_nil t1.typ
+  | t1::ts' -> make_cons t1 @@ make_list ts'
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
 let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
 let make_ppair p1 p2 = {pat_desc=PTuple[p1;p2]; pat_typ=make_tpair p1.pat_typ p2.pat_typ}
+let make_ptuple ps = {pat_desc=PTuple ps; pat_typ=make_ttuple @@ List.map (fun p -> p.pat_typ) ps}
 let make_pnil typ = {pat_desc=PNil; pat_typ=make_tlist typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
@@ -340,6 +330,27 @@ let make_module decls =
     TModule(List.flatten_map aux decls)
   in
   {desc=Module decls; typ; attr=[]}
+
+let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
+
+let make_randvalue_unit typ =
+  match typ with
+  | TUnit -> unit_term
+  | TTuple [] -> make_tuple []
+  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
+
+let make_randvalue_cps typ =
+  let u = Id.new_var TUnit in
+  let r = Id.new_var typ in
+  let k = Id.new_var @@ TFun(r,typ_result) in
+  {desc=Const(RandValue(typ,true)); typ=TFun(u,TFun(k,typ_result)); attr=[]}
+
+let make_randint_cps b =
+  let u = Id.new_var TUnit in
+  let r = Id.new_var TInt in
+  let k = Id.new_var @@ TFun(r,typ_result) in
+  let attr = if b then [AAbst_under] else [] in
+  {desc=Const(RandValue(TInt,true)); typ=TFun(u,TFun(k,typ_result)); attr}
 
 let rec make_term typ =
   match elim_tattr typ with
@@ -695,7 +706,6 @@ let rec merge_typ typ1 typ2 =
       in
       TTuple (List.fold_right2 aux xs1 xs2 [])
   | TData _, TData _ -> assert (typ1 = typ2); typ1
-  | Type(_,s1), Type(_,s2) -> assert (s1 = s2); typ1
   | TVariant labels1, TVariant labels2 ->
       let labels = List.map2 (fun (s1,typs1) (s2,typs2) -> assert (s1=s2); s1, List.map2 merge_typ typs1 typs2) labels1 labels2 in
       TVariant labels
@@ -938,8 +948,12 @@ let rec get_last_definition def t =
   | Local(Decl_type _, t2) ->
       get_last_definition def t2
   | Module decls ->
-      let Decl_let defs = List.last decls in
-      Some (fst @@ List.last defs)
+      begin
+        match List.rev @@ List.filter (function Decl_let _ -> true | _ -> false) decls with
+        | [] -> unsupported "get_last_definition"
+        | Decl_let defs :: _ -> Some (fst @@ List.last defs)
+        | _ -> assert false
+      end
   | Fun _ -> None
   | _ ->
       match def with
@@ -1055,51 +1069,6 @@ let subst_data_type_typ (s,typ1) typ2 =
 let () = subst_data_type.tr2_typ <- subst_data_type_typ
 let subst_data_type_term s typ t = subst_data_type.tr2_term (s,typ) t
 let subst_data_type s typ1 typ2 = subst_data_type.tr2_typ (s,typ1) typ2
-
-let unfold_data_type typ =
-  match typ with
-  | Type(decls, s) -> subst_data_type s typ @@ List.assoc s decls
-  | _ -> invalid_arg "unfold_data_type"
-
-let get_type_decls_map = make_col [] (@@@)
-let get_type_decls_map_typ typ =
-  match typ with
-  | Type(decls, s) ->
-      let acc = List.flatten_map (snd |- get_type_decls_map.col_typ) decls in
-      let map =
-        let aux (s',typ') =
-          match typ' with
-          | TVariant labels -> List.map (fun (c,_) -> c, Type(decls, s')) labels
-          | TRecord fields -> List.map (fun (l,_) -> l, Type(decls, s')) fields
-          | _ -> invalid_arg "get_type_decls_map"
-        in
-        List.flatten_map aux decls
-      in
-      map @ acc
-  | _ -> get_type_decls_map.col_typ_rec typ
-let () = get_type_decls_map.col_typ <- get_type_decls_map_typ
-let get_type_decls_map = get_type_decls_map.col_typ
-
-let fold_data_type typ =
-  match typ with
-  | TVariant ((s,_)::_)
-  | TRecord ((s,(_,_))::_) ->
-      List.assoc_default typ s @@ get_type_decls_map typ
-  | _ -> typ
-
-(*
-let get_ground_types = make_col [] (@@@)
-let get_ground_types_typ typ =
-  match typ with
-  | TBool
-  | TInt -> [typ]
-  | _ -> get_ground_types.tr2_typ_rec (s,typ1) typ2
-let () = get_ground_types.tr2_typ <- get_ground_types_typ
-let get_ground_types_term s typ t = get_ground_types.tr2_term (s,typ) t
-let get_ground_types s typ1 typ2 = get_ground_types.tr2_typ (s,typ1) typ2
- *)
-
-
 
 let find_exn_typ = make_col [] (@)
 let find_exn_typ_term t =
@@ -1227,6 +1196,16 @@ let effect_of t =
       Format.printf "%a@." Print.term t;
       invalid_arg "effect_of"
 
+let get_data_type =
+  let col = make_col [] (@@@) in
+  let col_typ ty =
+    match ty with
+    | TData s -> [s]
+    | _ -> col.col_typ_rec ty
+  in
+  col.col_typ <- col_typ;
+  col.col_typ
+
 module Term = struct
   let unit = unit_term
   let tt = true_term
@@ -1236,6 +1215,7 @@ module Term = struct
   let fail = fail_unit_term
   let randi = randint_unit_term
   let randb = randbool_unit_term
+  let rand = make_randvalue_unit
   let bot = make_bottom
   let var = make_var
   let int = make_int
@@ -1243,6 +1223,7 @@ module Term = struct
   let (@) = make_app
   let (@@) = make_app
   let let_ = make_let
+  let lets = make_lets
   let fun_ = make_fun
   let not = make_not
   let (&&) = make_and
@@ -1268,11 +1249,29 @@ module Term = struct
   let proj = make_proj
   let nil = make_nil
   let cons = make_cons
+  let list = make_list
   let seq = make_seq
   let ignore = make_ignore
   let assume = make_assume
   let none = make_none
   let some = make_some
+  let match_ = make_match
   let length = make_length
   let (|->) = subst
+end
+
+module Pat = struct
+  let __ = make_pany
+  let const_ = make_pconst
+  let unit = const_ unit_term
+  let int = const_ -| make_int
+  let bool = const_ -| make_bool
+  let true_ = bool true
+  let false_ = bool false
+  let var = make_pvar
+  let pair = make_ppair
+  let tuple = make_ptuple
+  let nil = make_pnil
+  let nil2 = make_pnil2
+  let cons = make_pcons
 end

@@ -611,6 +611,7 @@ let insert_extra_param t =
          S.App(t1', ts'')
       | S.If(t1, t2, t3) ->
          S.If(aux rfs bvs exs t1, aux rfs bvs exs t2, aux rfs bvs exs t3)
+      | S.Local(S.Decl_type decls, t2) -> S.Local(S.Decl_type decls, aux rfs bvs exs t2)
       | S.Local(S.Decl_let bindings, t2) ->
          let bvs' =
            bvs @ List.map fst bindings

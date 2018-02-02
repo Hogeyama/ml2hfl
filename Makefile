@@ -8,7 +8,7 @@ MOCHI_BIN_DIR = mochi_bin
 
 WARN_FLAGS = -w -52-58
 OCAMLCFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
-OCAMLOPTFLAGS = -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
+OCAMLOPTFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
 
 DOC = doc
 

@@ -413,7 +413,7 @@ and print_pattern fm pat =
   | PVar x -> print_id fm x
   | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
   | PConst c -> print_term 1 false fm c
-  | PConstruct(c,pats) ->
+  | PConstr(c,pats) ->
       let aux' = function
           [] -> ()
         | [pat] -> fprintf fm "(%a)" print_pattern pat
@@ -589,7 +589,7 @@ and print_pattern' fm pat =
     | PVar x -> print_id_typ fm x
     | PAlias(p,x) -> fprintf fm "(%a as %a)" aux p print_id x
     | PConst c -> print_term' 1 fm c
-    | PConstruct(c,pats) ->
+    | PConstr(c,pats) ->
         let aux' = function
             [] -> ()
           | [pat] -> fprintf fm "(%a)" aux pat

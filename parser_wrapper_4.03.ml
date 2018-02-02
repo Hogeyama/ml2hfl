@@ -26,8 +26,7 @@ let add_exc_env name typs =
       ()
   else
     exc_env := (name,typs) :: !exc_env
-let exc_typ () =
-  Type(["exn", TVariant !exc_env], "exn")
+let exc_typ () = TVariant !exc_env
 
 
 let prim_typs =
@@ -55,8 +54,10 @@ let prim_typ_cons =
    "array", TArray;
    "Lazy.t", TLazy]
 
-let rec from_type_expr typ =
-  let typ' = Ctype.repr typ in
+let rec from_type_expr env typ =
+  let typ' = (*Ctype.repr*)Ctype.full_expand env typ in
+  Debug.printf "%a@." Printtyp.type_expr typ';
+  Debug.printf "%a@." Printtyp.raw_type_expr typ';
   match typ'.Types.desc with
   | Tvar _ ->
       begin
@@ -68,16 +69,16 @@ let rec from_type_expr typ =
           x
       end
   | Tarrow(_, typ1, typ2, _) ->
-      let typ1' = from_type_expr typ1 in
-      let typ2' = from_type_expr typ2 in
+      let typ1' = from_type_expr env typ1 in
+      let typ2' = from_type_expr env typ2 in
       let x = Id.new_var typ1' in
       TFun(x, typ2')
   | Ttuple typs ->
-      make_ttuple @@ List.map from_type_expr typs
+      make_ttuple @@ List.map (from_type_expr env) typs
   | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
       List.assoc (Path.name path) prim_typs
   | Tconstr(path, typs, _) when List.mem_assoc (Path.name path) prim_typ_cons ->
-      TApp(List.assoc (Path.name path) prim_typ_cons, List.map from_type_expr typs)
+      TApp(List.assoc (Path.name path) prim_typ_cons, List.map (from_type_expr env) typs)
   | Tconstr(path, typs, _) ->
       TData (Path.name path)
   | Tobject _ -> unsupported "Tobject"
@@ -85,12 +86,29 @@ let rec from_type_expr typ =
   | Tnil -> unsupported "Tnil"
   | Tlink _ -> unsupported "Tlink"
   | Tsubst _ -> unsupported "Tsubst"
-  | Tvariant _ -> unsupported "Tvariant"
+  | Tvariant row_desc ->
+      let decls =
+        let tr field =
+          match field with
+          | Rpresent None -> []
+          | Rpresent (Some type_expr) ->
+              begin
+                match from_type_expr env type_expr with
+                | TTuple xs -> List.map Id.typ xs
+                | ty -> [ty]
+              end
+          | Reither(true,[],_,_) -> []
+          | Reither _ -> assert false
+          | Rabsent -> assert false
+        in
+        List.map (Pair.map_snd tr) row_desc.row_fields
+      in
+      TVariant decls
   | Tunivar _ -> unsupported "Tunivar"
-  | Tpoly(typ,[]) -> from_type_expr typ
+  | Tpoly(typ,[]) -> from_type_expr env typ
   | Tpoly _ -> unsupported "Tpoly"
   | Tpackage _ -> unsupported "Tpackage"
-and from_type_declaration decl =
+and from_type_declaration env decl =
   let open Typedtree in
   let ty =
     match decl.typ_kind with
@@ -98,20 +116,20 @@ and from_type_declaration decl =
         begin
           match decl.typ_manifest with
           | None -> unsupported "Ttype_abstract"
-          | Some ty -> from_type_expr ty.ctyp_type
+          | Some ty -> from_type_expr env ty.ctyp_type
         end
     | Ttype_variant decls ->
         let aux ({cd_id;cd_args}) =
           match cd_args with
           | Cstr_tuple args ->
               Ident.name cd_id,
-              List.map (fun arg -> from_type_expr arg.ctyp_type) args
+              List.map (fun arg -> from_type_expr env arg.ctyp_type) args
           | Cstr_record _ -> unsupported "Cstr_record"
         in
         TVariant (List.map aux decls)
     | Ttype_record decls ->
         let aux {ld_id;ld_mutable;ld_type} =
-          Ident.name ld_id, (from_mutable_flag ld_mutable, from_type_expr ld_type.ctyp_type)
+          Ident.name ld_id, (from_mutable_flag ld_mutable, from_type_expr env ld_type.ctyp_type)
         in
         TRecord (List.map aux decls)
     | Ttype_open -> unsupported "Type_open"
@@ -178,12 +196,12 @@ let add_exc_env_from_constr cstr_desc env =
   | Tconstr(path,_,_) ->
       if Path.name path = "exn" then
         let name = get_constr_name cstr_desc cstr_desc.cstr_res env in
-        let typs = List.map from_type_expr cstr_desc.cstr_args in
+        let typs = List.map (from_type_expr env) cstr_desc.cstr_args in
         add_exc_env name typs
   | _ -> assert false
 
 let rec from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
-  let typ' = from_type_expr typ in
+  let typ' = from_type_expr env typ in
   let desc =
     match desc with
     | Tpat_any -> PAny
@@ -208,8 +226,17 @@ let rec from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
     | Tpat_construct(_, cstr_desc, ps) ->
         let name = get_constr_name cstr_desc typ env in
         add_exc_env_from_constr cstr_desc env;
-        PConstruct(name, List.map from_pattern ps)
-    | Tpat_variant _ -> unsupported "pattern match (variant)"
+        PConstr(name, List.map from_pattern ps)
+    | Tpat_variant(name, pat, _) ->
+        let pats =
+          match pat with
+          | None -> []
+          | Some pat' ->
+              match from_pattern pat' with
+              | {pat_desc=PTuple ts} -> ts
+              | pat -> [pat]
+        in
+        PConstr(name, pats)
     | Tpat_record(pats,_) ->
         let aux1 (_,lbl,p) = get_label_name lbl env, from_pattern p in
         PRecord (List.map aux1 pats)
@@ -313,7 +340,7 @@ let is_var_case case =
   | _ -> false
 
 let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
-  let typ' = from_type_expr typ in
+  let typ' = from_type_expr env typ in
   match exp_desc with
   | Texp_ident(path, _, _) ->
       make_var @@ from_ident_path id_env path typ'
@@ -428,8 +455,20 @@ let ts = List.mapi aux es in
             Debug.printf "   typ: %a@." Printtyp.type_expr typ;
             Constr(name, List.map (from_expression id_env) es)
       in
-      {desc=desc; typ=typ'; attr=[]}
-  | Texp_variant _ -> unsupported "expression (variant)"
+      {desc; typ=typ'; attr=[]}
+  | Texp_variant(name, expr) ->
+      let desc =
+        let ts =
+          match expr with
+          | None -> []
+          | Some expr' ->
+              match from_expression id_env expr' with
+              | {desc=Tuple ts} -> ts
+              | t -> [t]
+        in
+        Constr(name, ts)
+      in
+      {desc; typ=typ'; attr=[]}
   | Texp_record(fields, None) ->
       let fields' = List.sort (fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
       let aux (_,label,e) = get_label_name label env, from_expression id_env e in
@@ -445,7 +484,7 @@ let ts = List.mapi aux es in
             let _,_,e = List.find (fun (_,lbl',_) -> lbl.lbl_name = lbl'.lbl_name) fields in
             name, from_expression id_env e
           with Not_found ->
-            name, {desc=Field(make_var r,name); typ=from_type_expr lbl.lbl_arg; attr=[]}
+            name, {desc=Field(make_var r,name); typ=from_type_expr env lbl.lbl_arg; attr=[]}
         in
         List.map aux labels
       in
@@ -531,7 +570,7 @@ and from_case id_env {c_lhs;c_guard;c_rhs} =
 let from_exception_declaration = List.map from_type_expr
 
 
-let rec from_module_binding id_env mb =
+let rec from_module_binding id_env tenv mb =
   let id_env',mdl = from_module_expr id_env mb.mb_expr in
   let m = from_ident mb.mb_id mdl.typ in
   id_env', [Decl_let [m,mdl]]
@@ -547,7 +586,7 @@ and from_module_type mty =
 and from_module_expr id_env mb_expr =
   match mb_expr.mod_desc with
   | Tmod_structure struc ->
-      let id_env', decls = from_structure id_env struc in
+      let id_env', decls = from_structure id_env mb_expr.mod_env struc in
       let mdl = make_module @@ List.rev decls in
       let id_env'' =
         let map =
@@ -583,7 +622,7 @@ and from_module_expr id_env mb_expr =
   | Tmod_constraint(expr, _, _, _) -> from_module_expr id_env expr
   | Tmod_unpack _ -> unsupported "Tmod_unpack"
 
-and from_str_item id_env str_item =
+and from_str_item id_env tenv str_item =
   match str_item.str_desc with
   | Tstr_eval(e,_) ->
       let t = from_expression id_env e in
@@ -605,10 +644,10 @@ and from_str_item id_env str_item =
   | Tstr_type(rec_flag,decls) ->
       let flag = from_rec_flag rec_flag in
       if flag = Nonrecursive then unsupported "Non recursive type declaration";
-      id_env, [Decl_type (List.map from_type_declaration decls)]
+      id_env, [Decl_type (List.map (from_type_declaration tenv) decls)]
   | Tstr_typext _ -> unsupported "typext"
   | Tstr_exception _ -> id_env, []
-  | Tstr_module mb -> from_module_binding id_env mb
+  | Tstr_module mb -> from_module_binding id_env tenv mb
   | Tstr_recmodule _
   | Tstr_modtype _ -> id_env, []
   | Tstr_open _ -> id_env, []
@@ -617,10 +656,10 @@ and from_str_item id_env str_item =
   | Tstr_include _ -> id_env, []
   | Tstr_attribute _ -> id_env, []
 
-and from_structure id_env struc =
+and from_structure id_env tenv struc =
   Debug.printf "struc: @[%a@." Printtyped.implementation struc;
   let aux (id_env,decls) str_item =
-    let id_env',decls' = from_str_item id_env str_item in
+    let id_env',decls' = from_str_item id_env tenv str_item in
     id_env', decls' @ decls
   in
   List.fold_left aux (id_env,[]) struc.str_items
@@ -629,7 +668,7 @@ let from_top_level_phrase (tenv,id_env,decls) = function
   | Parsetree.Ptop_dir _ -> unsupported "toplevel_directive"
   | Parsetree.Ptop_def struc ->
       let struc',_,tenv' = Typemod.type_structure tenv struc Location.none in
-      let id_env',decls' = from_structure id_env struc' in
+      let id_env',decls' = from_structure id_env tenv struc' in
       tenv', id_env', decls' @ decls
 
 let from_use_file ast =

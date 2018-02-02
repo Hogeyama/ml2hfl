@@ -18,6 +18,17 @@ let subst_var_id =
   tr.tr2_desc <- tr_desc;
   fun x x' t -> tr.tr2_term (x,x') t
 
+(* not capture-avoiding *)
+let subst_tdata =
+  let tr = make_trans2 () in
+  let tr_typ (s,ty1) ty2 =
+    match ty2 with
+    | TData s' when s = s' -> ty1
+    | _ -> tr.tr2_typ_rec (s,ty1) ty2
+  in
+  tr.tr2_typ <- tr_typ;
+  fun x x' t -> tr.tr2_term (x,x') t
+
 let alpha_rename ?(whole=false) =
   let tr = make_trans2 () in
   let tr_term (cnt,names) t =
@@ -223,12 +234,6 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
           ed', {desc=Record sfts; typ=typ; attr=[]}
         in
         (env'', (f,make_fun u t)::defs'), make_app (make_var f) [unit_term]
-    | Type(decls, s) ->
-        let aux (name,typ') ed =
-          fst @@ define_randvalue ~name ed @@ subst_data_type s typ typ'
-        in
-        let env', defs' = List.fold_right aux decls (env,defs) in
-        (env', defs'), snd @@ define_randvalue (env',defs') (TData s)
     | TApp(TOption, [typ']) ->
         let (env',defs'),t_typ' = define_randvalue (env,defs) typ' in
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
@@ -783,6 +788,7 @@ let rec inlined_f inlined fs t =
              let ts' = List.map (inlined_f inlined fs) ts in
              App(t1', ts'))
     | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
+    | Local(Decl_type decls, t2) -> Local(Decl_type decls, inlined_f inlined fs t2)
     | Local(Decl_let bindings, t2) ->
         let aux (f,t) =
           (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
@@ -2518,47 +2524,6 @@ let reduce_size_by_beta =
   tr.tr_term <- tr_term;
   tr.tr_term
 
-let ignore_exn_arg =
-  let tr = make_trans2 () in
-  let tr_typ decl typ =
-    match typ with
-    | Type(["exn", TVariant labels], "exn") ->
-        let labels' = List.map (Pair.map_snd @@ Fun.const []) labels in
-        if List.exists (snd |- (<>) []) labels then Flag.use_abst := true;
-        Type(["exn", TVariant labels'], "exn")
-    | Type(_, "exn") -> unsupported "type \"exn\""
-    | _ -> tr.tr2_typ_rec decl typ
-  in
-  let tr_term decl t =
-    let typ = tr_typ decl t.typ in
-    let desc =
-      match t.desc, t.typ with
-      | Constr(s,ts), Type(_, "exn") ->
-          if ts <> [] then Flag.use_abst := true;
-          Constr(s,[])
-      | _ -> tr.tr2_desc_rec decl t.desc
-    in
-    {t with desc; typ}
-  in
-  let tr_pat decl p =
-    match p.pat_desc with
-    | PConstruct(c, ts) when List.mem_assoc c decl ->
-        if ts <> [] then Flag.use_abst := true;
-        let pat_desc = PConstruct(c, []) in
-        let pat_typ = tr_typ decl p.pat_typ in
-        {pat_desc; pat_typ}
-    | _ -> tr.tr2_pat_rec decl p
-  in
-  tr.tr2_term <- tr_term;
-  tr.tr2_pat <- tr_pat;
-  tr.tr2_typ <- tr_typ;
-  fun t ->
-    match find_exn_typ t with
-    | None -> t
-    | Some(Type(["exn", TVariant decl], "exn")) ->
-        tr.tr2_term decl t
-    | Some _ -> assert false
-
 let elim_redundant_arg =
   let tr = make_trans2 () in
   let tr_desc vars desc =
@@ -2683,8 +2648,34 @@ let extract_module =
         in
         let t' = tr.tr_term t in
         (List.fold_right aux decls t').desc
+    | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
+        Flag.use_abst := true;
+        t.desc
     | Module _ -> unsupported "extract_module"
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
   tr.tr_term
+
+let inline_record_type =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Local(Decl_type decls, t) ->
+        let decls1,decls2 = List.partition (function (_,TRecord _) -> true | _ -> false) decls in
+        let t' =
+          t
+          |> tr.tr_term
+          |> List.fold_right (Fun.uncurry subst_tdata) decls1 (* TODO *)
+        in
+        if decls2 = [] then
+          t'.desc
+        else
+          Local(Decl_type decls2, t')
+    | Module _ -> unsupported "extract_module"
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
+let ignore_exn_arg t = assert false

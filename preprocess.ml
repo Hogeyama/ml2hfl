@@ -7,6 +7,7 @@ type preprocess_label =
   | Init
   | Eliminate_unused_let
   | Replace_const
+  | Inline_record_type
   | Encode_mutable_record
   | Encode_record
   | Encode_array
@@ -50,6 +51,7 @@ let string_of_label = function
   | Init -> "Init"
   | Eliminate_unused_let -> "Eliminate unused let"
   | Replace_const -> "Replace const"
+  | Inline_record_type -> "Inline record type"
   | Encode_mutable_record -> "Encode mutable record"
   | Encode_record -> "Encode record"
   | Encode_array -> "Encode array"
@@ -115,6 +117,9 @@ let all spec : t list =
     Copy_poly,
       (Fun.const true,
        Trans.copy_poly_funs -| last_t);
+    Inline_record_type,
+      (Fun.const true,
+       map_trans Trans.inline_record_type);
     Encode_mutable_record,
       (Fun.const true,
        map_trans Encode.mutable_record);

@@ -19,7 +19,7 @@ let rec is_filled_pattern p =
     | PAlias(p1,x) ->
         Some (Option.default (make_var x) @@ is_filled_pattern p1)
     | PConst c -> Some c
-    | PConstruct(c, ps) ->
+    | PConstr(c, ps) ->
         let ts = List.map is_filled_pattern ps in
         Some (make_construct c (List.map Option.get ts) p.pat_typ)
     | PNil -> Some (make_nil @@ list_typ p.pat_typ)
@@ -417,7 +417,7 @@ let rec get_match_bind_cond t p =
       (abst_list_opt.tr_var x, t)::bind, cond
   | PConst {desc=Const Unit} -> [], true_term
   | PConst t' -> [], make_eq t t'
-  | PConstruct _ -> assert false
+  | PConstr _ -> assert false
   | PNil -> [], make_is_none (make_app t [make_int 0])
   | PCons _ ->
       let rec decomp = function

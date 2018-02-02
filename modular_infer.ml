@@ -870,7 +870,7 @@ let add_context for_infer prog f typ =
   if dbg then Debug.printf "ADD_CONTEXT: %a :? %a@." Print.id f Ref_type.print typ;
   let t' =
     let af = "Assert_failure" in
-    let etyp = Type(["exn", TVariant (prog.exn_decl@[af,[]])], "exn") in
+    let etyp = TVariant (prog.exn_decl@[af,[]]) in
     let typ_exn = Encode.typ_of Encode.all etyp in
     let make_fail typ =
       make_raise (make_construct af [] etyp) typ

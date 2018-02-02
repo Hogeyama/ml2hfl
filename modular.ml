@@ -418,7 +418,7 @@ let main _ spec parsed =
     let exn_decl =
       match find_exn_typ parsed with
       | None -> []
-      | Some(Type(["exn", TVariant decl], "exn")) -> decl
+      | Some(TVariant decl) -> decl
       | Some _ -> assert false
     in
     {fun_typ_env=env_init; fun_typ_neg_env; fun_def_env=fun_env; exn_decl}

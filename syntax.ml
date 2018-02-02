@@ -92,7 +92,7 @@ and pat_desc =
   | PVar of id
   | PAlias of pattern * id
   | PConst of term
-  | PConstruct of string * pattern list
+  | PConstr of string * pattern list
   | PNil
   | PCons of pattern * pattern
   | PTuple of pattern list
@@ -170,7 +170,6 @@ let trans_typ trans = function
       TAttr(List.map tr attr, trans.tr_typ typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd trans.tr_typ) fields)
-  | Type(decls, s) -> Type(List.map (Pair.map_snd trans.tr_typ) decls, s)
   | TModule decls -> TModule (List.map (Pair.map_snd trans.tr_typ) decls)
 
 let trans_var trans x = Id.map_typ trans.tr_typ x
@@ -183,7 +182,7 @@ let trans_pat trans p =
     | PVar x -> PVar (trans.tr_var x)
     | PAlias(p,x) -> PAlias(trans.tr_pat p, trans.tr_var x)
     | PConst t -> PConst (trans.tr_term t)
-    | PConstruct(s,ps) -> PConstruct(s, List.map trans.tr_pat ps)
+    | PConstr(s,ps) -> PConstr(s, List.map trans.tr_pat ps)
     | PNil -> PNil
     | PCons(p1,p2) -> PCons(trans.tr_pat p1, trans.tr_pat p2)
     | PTuple ps -> PTuple (List.map trans.tr_pat ps)
@@ -342,7 +341,6 @@ let trans2_gen_typ tr env = function
       TAttr(List.map aux attr, tr.tr2_typ env typ)
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ tr.tr2_typ env) fields)
-  | Type(decls, s) -> Type(List.map (Pair.map_snd @@ tr.tr2_typ env) decls, s)
   | TModule sgn -> TModule (List.map (Pair.map_snd (tr.tr2_typ env)) sgn)
 
 
@@ -356,7 +354,7 @@ let trans2_gen_pat tr env p =
     | PVar x -> PVar (tr.tr2_var env x)
     | PAlias(p,x) -> PAlias(tr.tr2_pat env p, tr.tr2_var env x)
     | PConst t -> PConst (tr.tr2_term env t)
-    | PConstruct(s,ps) -> PConstruct(s, List.map (tr.tr2_pat env) ps)
+    | PConstr(s,ps) -> PConstr(s, List.map (tr.tr2_pat env) ps)
     | PNil -> PNil
     | PCons(p1,p2) -> PCons(tr.tr2_pat env p1, tr.tr2_pat env p2)
     | PTuple ps -> PTuple (List.map (tr.tr2_pat env) ps)
@@ -525,7 +523,6 @@ let col_typ col typ =
       List.fold_left aux (col.col_typ typ) attr
   | TVariant labels -> List.fold_left (fun init (_,typs) -> col_list col col.col_typ ~init typs) col.col_empty labels
   | TRecord fields -> col_list col (snd |- snd |- col.col_typ) fields
-  | Type(decls, _) -> col_list col (snd |- col.col_typ) decls
   | TModule sgn -> col_list col (snd |- col.col_typ) sgn
 
 let col_var col x = col.col_typ (Id.typ x)
@@ -538,7 +535,7 @@ let col_pat col p =
     | PVar x -> col.col_var x
     | PAlias(p,x) -> col.col_app (col.col_pat p) (col.col_var x)
     | PConst t -> col.col_term t
-    | PConstruct(s,ps) -> col_list col col.col_pat ps
+    | PConstr(s,ps) -> col_list col col.col_pat ps
     | PNil -> col.col_empty
     | PCons(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
     | PTuple ps -> col_list col col.col_pat ps
@@ -708,7 +705,6 @@ let col2_typ col env typ =
       List.fold_left aux (col.col2_typ env typ) attr
   | TVariant labels -> List.fold_left (fun init (_,typs) -> col2_list col (col.col2_typ env) ~init typs) col.col2_empty labels
   | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc -@- col.col2_typ env typ) col.col2_empty fields
-  | Type(decls, s) -> List.fold_left (fun acc (_,typ) -> acc -@- col.col2_typ env typ) col.col2_empty decls
   | TModule sgn -> List.fold_left (fun acc (_,typ) -> acc -@- col.col2_typ env typ) col.col2_empty sgn
 
 let col2_var col env x = col.col2_typ env (Id.typ x)
@@ -721,7 +717,7 @@ let col2_pat col env p =
     | PVar x -> col.col2_var env x
     | PAlias(p,x) -> col.col2_app (col.col2_pat env p) (col.col2_var env x)
     | PConst t -> col.col2_term env t
-    | PConstruct(s,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
+    | PConstr(s,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
     | PNil -> col.col2_empty
     | PCons(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
     | PTuple ps -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
@@ -921,15 +917,6 @@ let tr_col2_typ tc env = function
         tr_col2_list tc aux env fields
       in
       acc, TRecord fields'
-  | Type(decls, s) ->
-      let acc,decls' =
-        let aux env' (s,typ) =
-          let acc,typ' = tc.tr_col2_typ env typ in
-          acc, (s,typ')
-        in
-        tr_col2_list tc aux env decls
-      in
-      acc, Type(decls', s)
   | TModule sgn ->
       let acc,sgn' =
         let aux env' (x,typ) =
@@ -959,9 +946,9 @@ let tr_col2_pat tc env p =
     | PConst t ->
         let acc,t' = tc.tr_col2_term env t in
         acc, PConst t'
-    | PConstruct(s,ps) ->
+    | PConstr(s,ps) ->
         let acc,ps' = tr_col2_list tc tc.tr_col2_pat env ps in
-        acc, PConstruct(s,ps')
+        acc, PConstr(s,ps')
     | PNil -> tc.tr_col2_empty, PNil
     | PCons(p1,p2) ->
         let acc1,p1' = tc.tr_col2_pat env p1 in
@@ -1259,15 +1246,6 @@ let fold_tr_typ fld env ty =
         fold_tr_list aux env fields
       in
       env, TRecord fields'
-  | Type(decls, s) ->
-      let env,decls' =
-        let aux env' (s,typ) =
-          let env,typ' = fld.fld_typ env typ in
-          env, (s,typ')
-        in
-        fold_tr_list aux env decls
-      in
-      env, Type(decls', s)
   | TModule sgn ->
       let env,sgn' =
         let aux env' (s,typ) =
@@ -1298,9 +1276,9 @@ let fold_tr_pat fld env p =
     | PConst t ->
         let env'',t' = fld.fld_term env' t in
         env'', PConst t'
-    | PConstruct(s,ps) ->
+    | PConstr(s,ps) ->
         let env'',ps' = fold_tr_list fld.fld_pat env ps in
-        env'', PConstruct(s,ps')
+        env'', PConstr(s,ps')
     | PNil -> env', PNil
     | PCons(p1,p2) ->
         let env'',p1' = fld.fld_pat env' p1 in
@@ -1524,7 +1502,7 @@ let rec get_vars_pat pat =
   | PVar x -> [x]
   | PAlias(p,x) -> x :: get_vars_pat p
   | PConst _ -> []
-  | PConstruct(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@@ acc) [] pats
+  | PConstr(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@@ acc) [] pats
   | PRecord pats -> List.fold_left (fun acc (_,pat) -> get_vars_pat pat @@@ acc) [] pats
   | POr(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
   | PTuple ps -> List.fold_left (fun acc p -> get_vars_pat p @@@ acc) [] ps

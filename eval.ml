@@ -75,6 +75,7 @@ let rec eval_print fm rands t =
       Format.fprintf fm "@\nif %b then ... ->" b;
       let t' = if b then t2 else t3 in
       eval_print fm rands' t'
+  | Local(Decl_type _, t2) -> eval_print fm rands t2
   | Local(Decl_let bindings, t2) ->
       let aux (rands,vs) (f,t) =
         let rands',v = eval_print fm rands t in
@@ -150,7 +151,7 @@ let rec eval_print fm rands t =
               | None -> None
               | Some f -> Some (f -| subst x v)
             end
-        | Constr(s, vs), PConstruct(s', ps) ->
+        | Constr(s, vs), PConstr(s', ps) ->
             if s <> s'
             then None
             else
@@ -228,7 +229,9 @@ let rec eval_print fm rands t =
       in
       Format.fprintf fm "@]";
       r
-  | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
+  | _ ->
+      Format.printf "@.eval_print: %a@." Print.constr t;
+      assert false
 
 exception Unsound
 

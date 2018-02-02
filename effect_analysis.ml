@@ -48,7 +48,6 @@ let rec make_template env ty =
     | TData _ -> unsupported __MODULE__
     | TVariant _ -> unsupported __MODULE__
     | TRecord _ -> unsupported __MODULE__
-    | Type _ -> unsupported __MODULE__
     | TApp _ -> unsupported __MODULE__
     | TAttr(attrs, ty1) -> TAttr(attrs, make_template env ty1)
     | TModule _ -> unsupported __MODULE__
@@ -86,7 +85,6 @@ let rec force_cont ty =
     | TData _ -> unsupported __MODULE__
     | TVariant _ -> unsupported __MODULE__
     | TRecord _ -> unsupported __MODULE__
-    | Type _ -> unsupported __MODULE__
     | TApp _ -> unsupported __MODULE__
     | TAttr _ -> assert false
     | TModule _ -> unsupported __MODULE__
@@ -112,7 +110,6 @@ let rec flatten_sub ?(ignore_top=false) env ty1 ty2 =
   | TData _, _ -> unsupported __MODULE__
   | TVariant _, _ -> unsupported __MODULE__
   | TRecord _, _ -> unsupported __MODULE__
-  | Type _, _ -> unsupported __MODULE__
   | TApp _, _ -> unsupported __MODULE__
   | TAttr _, _ -> assert false
   | TModule _, _ -> unsupported __MODULE__

@@ -99,14 +99,14 @@ let rec check t typ =
       check t t.typ
   | Record fields, TRecord tfields ->
       List.iter (fun (s,t) -> check t @@ snd @@ List.assoc s tfields) fields
-  | Record fields, Type(decls, name) ->
-      let typ = List.assoc name decls in
-      check {t with typ} typ
   | Field(t,s), typ ->
       begin
         match t.typ with
         | TRecord tfields -> assert (Type.can_unify typ @@ snd @@ List.assoc s tfields)
-        | _ -> assert false
+        | TData _ -> ()
+        | _ ->
+            Format.printf "%a@." Print.typ typ;
+            assert false
       end;
       check t t.typ
   | SetField(t1,s,t2), typ ->
@@ -117,6 +117,7 @@ let rec check t typ =
             let f,typ' = List.assoc s tfields in
             assert (f = Mutable);
             check t2 typ'
+        | TData _ -> ()
         | _ -> assert false
       end;
       check t1 t1.typ
@@ -126,9 +127,6 @@ let rec check t typ =
       check t2 typ
   | Constr(s,ts), TVariant labels ->
       List.iter2 check ts @@ List.assoc s labels
-  | Constr _, Type(decls, name) ->
-      let typ' = List.assoc name decls in
-      check {t with typ=typ'} typ'
   | Match(t,pats), typ' ->
       let aux (p,cond,t) =
         check cond TBool;
@@ -153,7 +151,8 @@ let rec check t typ =
   | TSome t, TApp(TOption, [typ]) ->
       check t typ
   | Module _, TModule _ -> () (* TODO *)
-  | _, TData _ -> assert false
+  | Constr _, TData _ -> () (* TODO *)
+  | Record _, TData _ -> () (* TODO *)
   | _ ->
       Format.printf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false

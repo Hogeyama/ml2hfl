@@ -74,6 +74,7 @@ val make_tuple : term list -> term
 val make_nil : typ -> term
 val make_nil2 : typ -> term
 val make_cons : term -> term -> term
+val make_list : term list -> term
 val make_match : term -> (pattern * term * term) list -> term
 val make_single_match : ?total:bool -> term -> pattern -> term -> term
 val make_seq : term -> term -> term
@@ -85,6 +86,7 @@ val make_pany : typ -> pattern
 val make_pvar : id -> pattern
 val make_pconst : term -> pattern
 val make_ppair : pattern -> pattern -> pattern
+val make_ptuple : pattern list -> pattern
 val make_pnil : typ -> pattern
 val make_pnil2 : typ -> pattern
 val make_pcons : pattern -> pattern -> pattern
@@ -115,7 +117,6 @@ val make_module : declaration list -> term
 
 
 (** {6 Term destructor / Inspector} *)
-val is_none : term -> bool
 val decomp_some : term -> term option
 val decomp_is_none : term -> term option
 val decomp_get_val : term -> term option
@@ -132,6 +133,10 @@ val tuple_of_term : term -> term list
 val list_of_term : term -> term list
 val get_opt_typ : typ -> typ
 val opt_typ : typ -> typ
+val effect_of_typ : typ -> Type.effect
+val effect_of : term -> Type.effect
+val defs_of_term : term -> (id * term) list list
+
 val is_base_var : id -> bool
 val is_fun_var : id -> bool
 val is_list_literal : term -> bool
@@ -139,20 +144,15 @@ val is_var : term -> bool
 val is_fail : term -> bool
 val is_randint_unit : term -> bool
 val is_randbool_unit : term -> bool
-val effect_of_typ : typ -> Type.effect
-val effect_of : term -> Type.effect
+val is_none : term -> bool
 val is_fun : term -> bool
-val defs_of_term : term -> (id * term) list list
+val is_value : term -> bool
+val is_simple_aexp : term -> bool
+val is_simple_bexp : term -> bool
+val is_poly_typ : typ -> bool
+val is_id_unique : term -> bool
+val is_bottom_def : id -> Syntax.term -> bool
 
-(** {6 Misc} *)
-val subst : id -> term -> term -> term
-val subst_int : int -> term -> term -> term
-val subst_map : (id * term) list -> term -> term
-val subst_type : id -> term -> typ -> typ
-val subst_type_var : id -> id -> typ -> typ
-val subst_var : id -> id -> term -> term
-val subst_data_type : string -> typ -> typ -> typ
-val subst_data_type_term : string -> typ -> term -> term
 val get_int : term -> int list
 val get_args : typ -> id list
 val get_argvars : typ -> id list
@@ -161,15 +161,37 @@ val get_top_funs : term -> id list
 val get_top_rec_funs : term -> id list
 val get_vars_pat : pattern -> id list
 val get_fv : ?eq:(id -> id -> bool) -> term -> id list
+val get_bound_variables : term -> id list
+val get_bound_variables_pat : pattern -> id list
+val get_id : term -> int
+val get_id_option : term -> int option
+val get_id_map : term -> (int, term) Hashtbl.t
+val get_last_definition : term -> id option
+val get_body : term -> term
+val get_data_type : typ -> string list
+val get_tapred : typ -> (id * term list) option
+val get_max_var_id : term -> int
 val arg_num : typ -> int
+val col_same_term : term -> term -> term list
+val col_info_id : term -> id list
+val col_id : term -> int list
+val col_typ_var : term -> typ option ref list
+val col_app_args : id -> term -> term list list
+
+(** {6 Substitution} *)
+val subst : id -> term -> term -> term
+val subst_int : int -> term -> term -> term
+val subst_map : (id * term) list -> term -> term
+val subst_type : id -> term -> typ -> typ
+val subst_type_var : id -> id -> typ -> typ
+val subst_var : id -> id -> term -> term
+val subst_data_type : string -> typ -> typ -> typ
+val subst_data_type_term : string -> typ -> term -> term
+
+(** {6 Misc} *)
 val subst_rev : term -> id -> term -> term
 val replace_term : term -> term -> term -> term
 val max_pat_num : term -> int
-val is_value : term -> bool
-val is_simple_aexp : term -> bool
-val is_simple_bexp : term -> bool
-val is_poly_typ : typ -> bool
-val is_id_unique : term -> bool
 val occur : id -> typ -> bool
 val has_no_effect : term -> bool
 val same_term : term -> term -> bool
@@ -177,37 +199,20 @@ val same_term' : term -> term -> bool
 val var_name_of_term : term -> string
 val var_of_term : term -> id
 val make_term : typ -> term
-val col_same_term : term -> term -> term list
-val col_info_id : term -> id list
-val is_bottom_def : id -> Syntax.term -> bool
 val merge_typ : typ -> typ -> typ
-val get_last_definition : term -> id option
-val get_body : term -> term
 val count_occurrence : id -> term -> int
 val add_attr : attr -> term -> term
 val add_attrs : attr list -> term -> term
 val add_comment : string -> term -> term
 val add_id : int -> term -> term
-val col_id : term -> int list
 val replace_id : int -> int -> term -> term
 val remove_attr : attr -> term -> term
-val get_bound_variables : term -> id list
-val get_bound_variables_pat : pattern -> id list
-val get_id : term -> int
-val get_id_option : term -> int option
-val get_id_map : term -> (int, term) Hashtbl.t
 val from_fpat_term : Fpat.Term.t -> term
 val from_fpat_formula : Fpat.Formula.t -> term
-val unfold_data_type : typ -> typ
-val fold_data_type : typ -> typ
 val find_exn_typ : term -> typ option
-val col_typ_var : term -> typ option ref list
 val add_tapred : id -> term list -> typ -> typ
-val get_tapred : typ -> (id * term list) option
-val col_app_args : id -> term -> term list list
 val find_fixed_args : id -> id list -> term -> id list
 val trans_if : (term -> term option) -> term -> term
-val get_max_var_id : term -> int
 val rename : (id * id) list -> term -> term
 
 
@@ -220,6 +225,7 @@ module Term : sig
   val fail : term
   val randi : term
   val randb : term
+  val rand : typ -> term
   val bot : typ -> term
   val var : id -> term
   val int : int -> term
@@ -227,6 +233,7 @@ module Term : sig
   val (@) : term -> term list -> term
   val (@@) : term -> term list -> term
   val let_ : (id * term) list -> term -> term
+  val lets : (id * term) list -> term -> term
   val fun_ : id -> term -> term
   val not : term -> term
   val (&&) : term -> term -> term
@@ -253,10 +260,28 @@ module Term : sig
   val proj : int -> term -> term
   val nil : term Type.t -> term
   val cons : term -> term -> term
+  val list : term list -> term
   val seq : term -> term -> term
   val ignore : term -> term
   val assume : term -> term -> term
   val none : typ -> term
   val some : term -> term
+  val match_ : term -> (pattern * term * term) list -> term
   val length : term -> term
+end
+
+module Pat : sig
+  val __ : typ -> pattern
+  val const_ : term -> pattern
+  val unit : pattern
+  val int : int -> pattern
+  val bool : bool -> pattern
+  val true_ : pattern
+  val false_ : pattern
+  val var : id -> pattern
+  val pair : pattern -> pattern -> pattern
+  val tuple : pattern list -> pattern
+  val nil : typ -> pattern
+  val nil2 : typ -> pattern
+  val cons : pattern -> pattern -> pattern
 end

@@ -85,7 +85,7 @@ and pat_desc =
   | PVar of id
   | PAlias of pattern * id
   | PConst of term
-  | PConstruct of string * pattern list
+  | PConstr of string * pattern list
   | PNil
   | PCons of pattern * pattern
   | PTuple of pattern list

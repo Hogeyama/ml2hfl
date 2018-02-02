@@ -23,7 +23,6 @@ and default_val' =
     | TFuns _ -> invalid_arg "default_val: not yet implemented syntax(TFuns)"
     | TRecord _ -> invalid_arg "default_val: not yet implemented syntax(TRecord)"
     | TVariant _ -> invalid_arg "default_val: not yet implemented syntax(TVariant)"
-    | Type _ -> invalid_arg "default_val: not yet implemented syntax(Type)"
     | TModule _ -> invalid_arg "default_val: not yet implemented syntax(TModule)"
 
 let state_transducer trans_prev_statevar trans_statevar trans_argvars state =

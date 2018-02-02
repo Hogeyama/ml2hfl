@@ -14,7 +14,6 @@ type 'a t =
   | TData of string
   | TVariant of (string * 'a t list) list
   | TRecord of (string * (mutable_flag * 'a t)) list
-  | Type of (string * 'a t) list * string
   | TApp of constr * 'a t list
   | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
@@ -118,7 +117,6 @@ let rec elim_tattr_all ty =
   | TFuns _ -> unsupported "elim_tattr_all"
   | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ elim_tattr_all) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ elim_tattr_all) fields)
-  | Type(decls, s) -> Type(List.map (Pair.map_snd @@ elim_tattr_all) decls, s)
   | TModule sgn -> TModule (List.map (Pair.map_snd @@ elim_tattr_all) sgn)
 
 let rec decomp_tfun typ =
@@ -174,7 +172,8 @@ let rec print occur print_pred fm typ =
   | TFun _ ->
       let rec aux fm (xs, typ) =
         match xs with
-        | [] -> print' fm typ
+        | [] ->
+            print' fm typ
         | x::xs' ->
             if occur x typ || List.exists (occur x) (List.map Id.typ xs)
             then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
@@ -194,7 +193,7 @@ let rec print occur print_pred fm typ =
   | TTuple xs ->
       let pr fm x =
         if occur x typ then Format.fprintf fm "%a:" Id.print x;
-        Format.fprintf fm "%a" print' (Id.typ x)
+        print' fm @@ Id.typ x
       in
       Format.fprintf fm "(@[<hov 2>%a@])" (print_list pr "@ *@ ") xs
   | TData s -> Format.pp_print_string fm s
@@ -202,8 +201,8 @@ let rec print occur print_pred fm typ =
   | TAttr(TAPred(x,ps)::preds, typ) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (TAttr(preds,typ)) Id.print x print_preds ps
   | TAttr([TAPureFun], TFun(x,typ)) ->
       if occur x typ
-      then Format.fprintf fm "@[<hov 2>%a:%a -+>@ %a@]" Id.print x print' (Id.typ x) print' typ
-      else Format.fprintf fm "@[<hov 2>%a -+>@ %a@]" print' (Id.typ x) print' typ
+      then Format.fprintf fm "(@[<hov 2>%a:%a -+>@ %a@])" Id.print x print' (Id.typ x) print' typ
+      else Format.fprintf fm "(@[<hov 2>%a -+>@ %a@])" print' (Id.typ x) print' typ
   | TAttr([TAEffect e], typ) ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
   | TAttr([TAAssumePredTrue], typ) ->
@@ -226,11 +225,6 @@ let rec print occur print_pred fm typ =
         Format.fprintf fm "@[%s%s: %a@]" sf s print' typ
       in
       Format.fprintf fm "{@[%a@]}" (print_list pr ";@ ") fields
-  | Type(decls, s) ->
-      let pr fm (s, typ) =
-        Format.fprintf fm "@[%s =@ %a@]" s print' typ
-      in
-      Format.fprintf fm "(@[type %a in %s@])" (print_list pr "@ and@ ") decls s
   | TModule _ -> Format.fprintf fm "@[sig ...@ end@]"
   | TApp(TRef, [typ]) -> Format.fprintf fm "@[%a ref@]" print' typ
   | TApp(TList, [typ]) -> Format.fprintf fm "@[%a list@]" print' typ
@@ -241,7 +235,7 @@ let rec print occur print_pred fm typ =
 
 let print ?(occur=fun _ _ -> false) print_pred fm typ =
   Format.fprintf fm "@[%a@]" (print occur print_pred) typ
-let print_typ_init typ = print (fun _ -> assert false) typ
+let print_init typ = print (fun _ -> assert false) typ
 
 let rec can_unify typ1 typ2 =
   match elim_tattr typ1, elim_tattr typ2 with
@@ -264,12 +258,7 @@ let rec can_unify typ1 typ2 =
   | TFun _, TData "event" -> true
   | TVar({contents=None},_), _ -> true
   | _, TVar({contents=None},_) -> true
-  | TData s1, TData s2
-  | Type(_, s1), Type(_, s2)
-  | TData s1, Type(_, s2)
-  | Type(_, s1), TData s2 -> s1 = s2
-  | Type(decls, s), typ
-  | typ, Type(decls, s) -> can_unify (List.assoc s decls) typ
+  | TData s1, TData s2 -> s1 = s2
   | TVariant labels1, TVariant labels2 ->
       List.for_all2 (fun (s1,typs1) (s2,typs2) -> s1 = s2 && List.for_all2 can_unify typs1 typs2) labels1 labels2
   | TRecord fields1, TRecord fields2 ->
@@ -301,7 +290,6 @@ let rec occurs r typ =
   | TFuns _ -> unsupported ""
   | TVariant labels -> List.exists (snd |- List.exists @@ occurs r) labels
   | TRecord fields -> List.exists (snd |- snd |- occurs r) fields
-  | Type(decls, s) -> List.exists (snd |- occurs r) decls
   | TModule sgn -> List.exists (snd |- occurs r) sgn
 
 let rec data_occurs s typ =
@@ -318,7 +306,6 @@ let rec data_occurs s typ =
   | TFuns _ -> unsupported ""
   | TVariant labels -> List.exists (snd |- List.exists @@ data_occurs s) labels
   | TRecord fields -> List.exists (snd |- snd |- data_occurs s) fields
-  | Type(decls, _) -> List.exists (snd |- data_occurs s) decls
   | TModule sgn -> List.exists (snd |- data_occurs s) sgn
 
 
@@ -337,16 +324,15 @@ let rec unify typ1 typ2 =
   | TVar({contents = None} as r,_), typ
   | typ, TVar({contents = None} as r,_) ->
       if occurs r typ then
-        (Format.printf "occurs check failure: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+        (Format.printf "occurs check failure: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
          raise CannotUnify)
       else
         r := Some typ
   | TData s1, TData s2 -> assert (s1 = s2)
-  | Type(_,s1), Type(_,s2) -> assert (s1 = s2)
   | TVariant labels1, TVariant labels2 -> List.iter2 (fun (s1,typs1) (s2,typs2) -> assert (s1 = s2); List.iter2 unify typs1 typs2) labels1 labels2
   | TRecord fields1, TRecord fields2 -> List.iter2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1 = s2 && f1 = f2); unify typ1 typ2) fields1 fields2
   | _ ->
-      Format.printf "unification error: %a, %a@." print_typ_init (flatten typ1) print_typ_init (flatten typ2);
+      Format.printf "unification error: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
       raise CannotUnify
 
 
@@ -363,7 +349,6 @@ let rec same_shape typ1 typ2 =
       List.length xs1 = List.length xs2
       && List.for_all2 (fun x1 x2 -> same_shape (Id.typ x1) (Id.typ x2)) xs1 xs2
   | TData s1, TData s2 -> s1 = s2
-  | Type(_, s1), Type(_, s2) -> s1 = s2
   | TVariant labels1, TVariant labels2 ->
       List.eq ~eq:(Compare.eq_on snd ~eq:(List.eq ~eq:same_shape)) labels1 labels2
   | TRecord fields1, TRecord fields2 -> unsupported "same_shape"
@@ -395,7 +380,7 @@ let proj_typ i typ =
   match elim_tattr typ with
   | TTuple xs -> Id.typ @@ List.nth xs i
   | typ when typ = typ_unknown -> typ_unknown
-  | typ' -> invalid_arg @@ Format.asprintf "proj_typ %d (%a)" i print_typ_init typ'
+  | typ' -> invalid_arg @@ Format.asprintf "proj_typ %d (%a)" i print_init typ'
 
 let fst_typ typ = proj_typ 0 typ
 let snd_typ typ = proj_typ 1 typ
@@ -439,7 +424,6 @@ let rec has_pred = function
   | TFuns _ -> unsupported ""
   | TVariant labels -> List.exists (snd |- List.exists has_pred) labels
   | TRecord fields -> List.exists (snd |- snd |- has_pred) fields
-  | Type(decls, _) -> List.exists (snd |- has_pred) decls
   | TModule sgn -> List.exists (snd |- has_pred) sgn
 
 let rec to_id_string = function
@@ -463,7 +447,6 @@ let rec to_id_string = function
   | TFuns _ -> unsupported ""
   | TVariant labels -> String.join "_" @@ List.map fst labels
   | TRecord fields -> String.join "_" @@ List.map fst fields
-  | Type(_, s) -> s
   | TModule _ -> "module"
 
 
@@ -496,11 +479,20 @@ let decomp_ttuple typ =
   | TTuple xs -> List.map Id.typ xs
   | _ -> invalid_arg "decomp_ttuple"
 
-let rec decomp_trecord typ =
+let decomp_trecord typ =
   match typ with
   | TRecord fields -> fields
-  | Type(decls, s) -> decomp_trecord @@ List.assoc s decls
-  | _ -> invalid_arg "decomp_trecord"
+  | _ ->
+      Format.printf "%a@." print_init typ;
+      invalid_arg "decomp_trecord"
+
+let decomp_tvariant ty =
+  match ty with
+  | TVariant labels ->
+      labels
+  | _ ->
+      Format.printf "%a@." print_init ty;
+      invalid_arg "decomp_tvariant"
 
 
 
@@ -519,7 +511,6 @@ let rec get_free_data_name typ =
   | TFuns _ -> unsupported "elim_tattr_all"
   | TVariant labels -> List.flatten_map (snd |- List.flatten_map get_free_data_name) labels
   | TRecord fields -> List.flatten_map (snd |- snd |- get_free_data_name) fields
-  | Type(decls, s) -> List.filter_out ((=) s) @@ List.flatten_map (snd |- get_free_data_name) decls
   | TModule sgn -> List.flatten_map (snd |- get_free_data_name) sgn
 let get_free_data_name typ = List.unique @@ get_free_data_name typ
 
@@ -528,7 +519,6 @@ let rec is_mutable_record typ =
   match typ with
   | TRecord fields ->
       List.exists (fun (_,(f,_)) -> f = Mutable) fields
-  | Type(decls, s) -> is_mutable_record @@ List.assoc s decls
   | _ -> invalid_arg "is_mutable_record"
 
 

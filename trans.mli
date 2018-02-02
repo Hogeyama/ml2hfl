@@ -100,3 +100,5 @@ val elim_redundant_arg : term -> term
 val split_let : term -> term
 val remove_effect_attribute : term -> term
 val extract_module : term -> term
+val subst_tdata : string -> typ -> term -> term
+val inline_record_type : term -> term

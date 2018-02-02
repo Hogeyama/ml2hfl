@@ -9,7 +9,6 @@ type 'a t =
   | TData of string
   | TVariant of (string * 'a t list) list
   | TRecord of (string * (mutable_flag * 'a t)) list
-  | Type of (string * 'a t) list * string
   | TApp of constr * 'a t list
   | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
@@ -66,6 +65,7 @@ val list_typ : 'a t -> 'a t
 val option_typ : 'a t -> 'a t
 val arg_var : 'a t -> 'a t Id.t
 val result_typ : 'a t -> 'a t
+val decomp_tvariant : 'a t -> (string * 'a t list) list
 val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
 val get_free_data_name : 'a t -> string list
@@ -93,5 +93,5 @@ val make_tarray : 'a t -> 'a t
 val print :
   ?occur:('a t Id.t -> 'a t -> bool) ->
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
-val print_typ_init : Format.formatter -> 'a t -> unit
+val print_init : Format.formatter -> 'a t -> unit
 val print_effect : Format.formatter -> effect -> unit

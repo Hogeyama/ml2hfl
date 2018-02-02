@@ -23,7 +23,11 @@ let encode_mutable_record_term t =
           let t' = encode_mutable_record.tr_term t in
           s, if f = Mutable then make_ref t' else t'
         in
+        try
         List.map2 aux fields @@ decomp_trecord t.typ
+ with _ ->
+                  Format.printf "t: %a@." Print.term t;
+                  assert false
       in
       make_record fields' @@ encode_mutable_record.tr_typ t.typ
   | SetField(t1,s,t2) ->
@@ -32,7 +36,11 @@ let encode_mutable_record_term t =
       make_setref (make_field t1' s) t2'
   | Field(t1,s) ->
       let t1' = encode_mutable_record.tr_term t1 in
-      let f,_ = List.assoc s @@ decomp_trecord t1.typ in
+      let f,_ = try List.assoc s @@ decomp_trecord t1.typ with _ ->
+                  Format.printf "s: %s@." s;
+                  Format.printf "t: %a@." Print.term t;
+                  Format.printf "t1.typ: %a@." Print.typ t1.typ;
+                  assert false in
       let t' = make_field t1' s in
       if f = Mutable then
         make_deref t'
@@ -129,10 +137,10 @@ let array = encode_array.tr_term
 
 
 let encode_record = make_trans ()
-let encode_record_typ typ =
-  match fold_data_type typ with
+let rec encode_record_typ typ =
+  match typ with
   | TRecord fields ->
-      make_ttuple @@ List.map (fun (s,(f,typ)) -> if f = Mutable then unsupported "mutable record"; typ) fields
+      make_ttuple @@ List.map (fun (s,(f,typ)) -> if f = Mutable then unsupported "mutable record"; encode_record_typ typ) fields
   | _ -> encode_record.tr_typ_rec typ
 
 let rec encode_record_pat p =
@@ -153,7 +161,13 @@ let encode_record_term t =
       let fields = decomp_trecord t.typ in
       if is_mutable_record t.typ then
         unsupported "Mutable records";
-      make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ encode_record.tr_term t
+      let t' = encode_record.tr_term t in
+      (try
+         make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) t'
+       with _ ->
+Format.printf "t': %a@." Print.term t';
+Format.printf "t'.typ: %a@." Print.typ t'.typ;
+         assert false)
   | SetField _ -> unsupported "Mutable records"
   | _ -> encode_record.tr_term_rec t
 
@@ -167,13 +181,11 @@ let record = encode_record.tr_term
 let rec is_simple_variant typ =
   match typ with
   | TVariant labels -> List.for_all (snd |- (=) []) labels
-  | Type([s, typ], s') -> assert (s = s'); is_simple_variant typ
   | _ -> false
 
 let rec position c typ =
   match typ with
   | TVariant labels -> List.find_pos (fun _ (c',_) -> c = c') labels
-  | Type([s, typ], s') -> assert (s = s'); position c typ
   | _ -> invalid_arg "position"
 
 let encode_simple_variant = make_trans ()
@@ -185,7 +197,7 @@ let encode_simple_variant_typ typ =
 
 let encode_simple_variant_pat p =
   match p.pat_desc with
-  | PConstruct(c, ts) when is_simple_variant p.pat_typ ->
+  | PConstr(c, ts) when is_simple_variant p.pat_typ ->
       assert (ts = []);
       make_pconst (make_int @@ position c p.pat_typ)
   | _ -> encode_simple_variant.tr_pat_rec p

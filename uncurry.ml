@@ -36,7 +36,6 @@ let rec from_type typ =
   | Type.TFuns _
   | Type.TVariant _
   | Type.TRecord _
-  | Type.Type _
   | Type.TModule _ -> unsupported "uncurry"
 
 let rec decomp_tfun sol = function
