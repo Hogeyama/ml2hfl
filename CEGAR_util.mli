@@ -46,3 +46,4 @@ val merge_similar_paths : ('a * 'b * 'c * ('d * ext_path_part list list) list) l
 val group_by_same_branching : ('a * 'b * 'c * 'd) list -> ('a * 'b * 'c * 'd) list list
 val inlined_functions : prog -> var list
 val elim_same_arg : prog -> prog
+val rename_fun_arg : prog -> prog

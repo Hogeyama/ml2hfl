@@ -464,7 +464,7 @@ let abstract prog top_funs =
   |@> pr "ABST"
   |&b&> CEGAR_trans.simplify_if
   |@b&> pr "SIMPLIFY_IF"
-  |> Typing.infer ~fun_annot:true -| initialize_env
+  |> Typing.infer ~fun_annot:true ~rename:true -| initialize_env
   |@!Flag.Debug.abst&> eval_step_by_step
   |> trans_eager
   |@> pr "TRANS_EAGER"

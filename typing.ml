@@ -193,7 +193,8 @@ let infer_def fun_arg_env env (f,xs,t1,_,t2) =
   unify typ1 TBool;
   unify typ typ'
 
-let infer ?(fun_annot=false) ({defs;main;env;info} as prog) =
+let infer ?(fun_annot=false) ?(rename=false) prog =
+  let {defs;main;env;info} = if rename then CEGAR_util.rename_fun_arg prog else prog in
   let fun_arg_env = ref [] in
   Debug.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
   let ext_funs = get_ext_funs prog in

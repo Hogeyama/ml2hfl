@@ -289,7 +289,11 @@ let rec get_typ env = function
       begin
         match get_typ env t1 with
         | TFun(_,typ) -> typ t2
-        | _ -> assert false
+        | ty ->
+            Format.printf "t1.ty: %a@." CEGAR_print.typ ty;
+            Format.printf "t1: %a@." CEGAR_print.term t1;
+            Format.printf "t2: %a@." CEGAR_print.term t2;
+            assert false
       end
   | Let(x,t1,t2) ->
       let typ = get_typ env t1 in
@@ -305,7 +309,10 @@ let rec get_typ env = function
       TFun(typ1, fun _ -> typ2)
 *)
 
-
+let get_typ env t =
+try
+  get_typ env t
+with _ ->   Format.printf "get_typ: %a@." CEGAR_print.term t;assert false
 
 
 let rec get_arg_num = function
@@ -895,3 +902,17 @@ let elim_same_arg prog =
   let defs' = elim_args_def prog.defs same_args in
   let env' = elim_args_env prog.env same_args in
   {prog with defs=defs'; env=env'}
+
+let rename_fun_arg =
+  let rec tr t =
+    match t with
+    | Const c -> Const c
+    | Var y -> Var y
+    | App(t1,t2) -> App(tr t1, tr t2)
+    | Let(y,t1,t2) -> Let(y, tr t1, tr t2)
+    | Fun(y,typ,t1) ->
+        let y' = new_id y in
+        let t1' = subst_var y y' @@ tr t1 in
+        Fun(y', typ, t1')
+  in
+  map_body_prog tr
