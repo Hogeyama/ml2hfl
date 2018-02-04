@@ -289,11 +289,7 @@ let rec get_typ env = function
       begin
         match get_typ env t1 with
         | TFun(_,typ) -> typ t2
-        | ty ->
-            Format.printf "t1.ty: %a@." CEGAR_print.typ ty;
-            Format.printf "t1: %a@." CEGAR_print.term t1;
-            Format.printf "t2: %a@." CEGAR_print.term t2;
-            assert false
+        | _ -> assert false
       end
   | Let(x,t1,t2) ->
       let typ = get_typ env t1 in
@@ -303,16 +299,6 @@ let rec get_typ env = function
       let typ' = get_typ ((x,typ)::env) t in
       TFun(typ, fun y -> subst_typ x y typ')
   | Fun(x,_,t) -> assert false
-(*
-      let typ1 = List.assoc x env in
-      let typ2 = get_typ env t in
-      TFun(typ1, fun _ -> typ2)
-*)
-
-let get_typ env t =
-try
-  get_typ env t
-with _ ->   Format.printf "get_typ: %a@." CEGAR_print.term t;assert false
 
 
 let rec get_arg_num = function
