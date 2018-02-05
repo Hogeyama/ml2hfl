@@ -419,12 +419,21 @@ let abstract_typ typ = List.get @@ abstract_typ typ
 
 
 let abstract_def env (f,xs,t1,e,t2) =
+  let xs,t1,t2 =
+    if List.exists (fun x -> x = "l0" || x = "l1") xs then
+      let xs' = List.map (fun x -> x ^ "___") xs in
+      let map = List.map2 (fun x x' -> x, Var x') xs xs' in
+      let t1' = subst_map map t1 in
+      let t2' = subst_map map t2 in
+      xs', t1', t2'
+    else
+      xs, t1, t2
+  in
   let typ,env' = decomp_typ_var (List.assoc f env) xs in
   if false then Debug.printf "%a: ENV: %a@." CEGAR_print.var f print_env env';
   let env'' = env' @@@ env in
   let pts = List.flatten_map (Fun.uncurry make_pts) env' in
   let xs' = List.flatten_map (Fun.uncurry abst_arg) env' in
-  assert (List.for_all (fun x -> x <> "l0" && x <> "l1") xs);
   if false then Debug.printf "%a: %a ===> %a@." CEGAR_print.var f CEGAR_print.term t2 CEGAR_print.term t2;
   if Debug.check() then Flag.Print.fun_arg_typ := true;
   if false then Debug.printf "%s:: %a@." f CEGAR_print.term t2;

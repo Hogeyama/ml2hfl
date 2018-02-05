@@ -31,9 +31,9 @@ let rec subst x t = function
   | Fun(y,typ,t1) when x = y -> Fun(y, typ, t1)
   | Fun(y,typ,t1) -> Fun(y, typ, subst x t t1)
 
-let subst_var x y t = subst x (Var y) t
+and subst_var x y t = subst x (Var y) t
 
-let rec subst_map map = function
+and subst_map map = function
   | Const c -> Const c
   | Var x when List.mem_assoc x map -> List.assoc x map
   | Var x -> Var x
@@ -41,14 +41,15 @@ let rec subst_map map = function
   | Let(x,t1,t2) ->
       let map' = List.filter (fun (y,_) -> x <> y) map in
       Let(x, subst_map map' t1, subst_map map' t2)
-  | Fun(x, typ,t1) ->
+  | Fun(x,typ,t1) ->
       let map' = List.filter (fun (y,_) -> x <> y) map in
-      Fun(x, typ, subst_map map' t1)
+      let typ' = Option.map (subst_typ_map map') typ in
+      Fun(x, typ', subst_map map' t1)
 
-let subst_def x t (f,xs,t1,t2) =
+and subst_def x t (f,xs,t1,t2) =
   f, xs, subst x t t1, subst x t t2
 
-let rec subst_typ x t = function
+and subst_typ x t = function
   | TBase(b,ps) ->
       (** ASSUME: y does not contain x **)
       let ps' y = List.map (subst x t) (ps y) in
@@ -57,7 +58,7 @@ let rec subst_typ x t = function
   | TApp(typ1, typ2) -> TApp(subst_typ x t typ1, subst_typ x t typ2)
   | TConstr c -> TConstr c
 
-let rec subst_typ_map map = function
+and subst_typ_map map = function
   | TBase(b,ps) ->
       (** ASSUME: y does not contain an element in Dom(map) **)
       let ps' y = List.map (subst_map map) (ps y) in

@@ -137,7 +137,7 @@ let abst_list = make_trans2 ()
 
 let abst_list_typ post typ =
   match typ with
-  | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_typ)")
+  | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Encode_list.abst_list_typ)")
   | TApp(TList, [typ]) ->
       let l = Id.new_var ~name:"l" TInt in
       TTuple[l; Id.new_var @@ pureTFun(Id.new_var  ~name:"i" TInt, abst_list.tr2_typ post typ)]
@@ -150,8 +150,8 @@ let print_bind fm bind =
 
 let add_bind bind t =
   Debug.printf "add_bind bind: %a@." print_bind bind;
-  Debug.printf "add_bind t: %a@." Print.term t;
-  List.fold_left (fun t' (x,t) -> if Id.mem x @@ get_fv t' then make_let [x,t] t' else t') t bind
+  Debug.printf "add_bind t: %a@.@." Print.term t;
+  List.fold_right (fun (x,t) t' -> make_let [x,t] t') bind t
 
 (* "t" must have no side-effects *)
 let rec get_match_bind_cond t p =
@@ -280,6 +280,7 @@ let () = abst_list.tr2_typ <- abst_list_typ
 let trans t =
   let t' =
     t
+    |@> Debug.printf "abst_list::@. @[%a@.@." Print.term'
     |> abst_list.tr2_term ""
     |@> Debug.printf "abst_list::@. @[%a@.@." Print.term_typ
     |> Trans.inline_var_const
@@ -404,7 +405,7 @@ let abst_list_opt = make_trans ()
 
 let abst_list_opt_typ typ =
   match typ with
-  | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Abstract.abst_list_opt_typ)")
+  | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Encode_list.abst_list_opt_typ)")
   | TApp(TList, [typ]) -> TFun(Id.new_var ~name:"i" TInt, opt_typ @@ abst_list_opt.tr_typ typ)
   | _ -> abst_list_opt.tr_typ_rec typ
 

@@ -2588,17 +2588,11 @@ let split_let =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | Local(Decl_let ((f,t1)::bindings), t2) when is_non_rec [f,t1] ->
-        let desc = tr.tr_desc_rec @@ Local(Decl_let [f,t1], make_let bindings t2) in
-        {t with desc}
-    | Local(Decl_let (_::_::_ as bindings), t2) ->
+    | Local(Decl_let bindings, t2) ->
         let bindings' = List.map (Pair.map_snd tr.tr_term) bindings in
         let fvs = List.flatten_map (snd |- get_fv) bindings' in
-        let desc =
-          let recs,non_recs = List.partition (fun (f,_) -> Id.mem f fvs) bindings' in
-          Local(Decl_let recs, make_lets non_recs @@ tr.tr_term t2)
-        in
-        {t with desc}
+        let recs,non_recs = List.partition (fun (f,_) -> Id.mem f fvs) bindings' in
+        make_let recs @@ make_lets non_recs @@ tr.tr_term t2
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;

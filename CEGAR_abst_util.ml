@@ -132,7 +132,11 @@ let rec is_base_term env = function
   | Const (Unit | True | False | Int _ | Rand _ | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> true
   | Const _ -> false
   | Var x ->
-      is_base @@ Option.get @@ List.assoc_opt x env
+      (try
+          is_base @@ List.assoc x env
+        with Not_found ->
+          Format.printf "%s not found@." x;
+          assert false)
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|CmpPoly _|Add|Sub|Mul|Div),t1),t2) ->
       assert (is_base_term env t1);
       assert (is_base_term env t2);
