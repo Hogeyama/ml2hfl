@@ -45,6 +45,7 @@ val make_let : (id * term) list -> term -> term
 val make_lets : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
 val make_let_type : (string * typ) list -> term -> term
+val make_lets_type : (string * typ) list list -> term -> term
 val make_fun : id -> term -> term
 val make_funs : id list -> term -> term
 val make_not : term -> term
@@ -177,6 +178,8 @@ val col_info_id : term -> id list
 val col_id : term -> int list
 val col_typ_var : term -> typ option ref list
 val col_app_args : id -> term -> term list list
+
+val has_pnondet : pattern -> bool
 
 (** {6 Substitution} *)
 val subst : id -> term -> term -> term

@@ -15,6 +15,7 @@ let rec is_filled_pattern p =
   try
     match p.pat_desc with
     | PAny -> None
+    | PNondet -> None
     | PVar x -> Some (make_var x)
     | PAlias(p1,x) ->
         Some (Option.default (make_var x) @@ is_filled_pattern p1)
@@ -180,7 +181,7 @@ let rec get_match_bind_cond t p =
             let t' = make_app (make_snd t) [make_int i] in
             let x = new_var_of_term t' in
             let bind',cond' = get_match_bind_cond (make_var x) p in
-            aux (bind'@@@[x,t']@@@bind) (make_and cond @@ add_bind [x,t'] cond') (i+1) ps
+            aux (bind@[x,t']@bind') (make_and cond @@ add_bind [x,t'] cond') (i+1) ps
       in
       let len = List.length ps in
       let bind, cond = get_match_bind_cond (make_tl len t) p' in

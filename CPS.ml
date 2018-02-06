@@ -333,7 +333,7 @@ let rec infer_effect env tenv t =
       env.constraints <- CGeq(e, EExcep) :: env.constraints;
       {t_orig=t; t_cps=RaiseCPS typed; typ_cps=infer_effect_typ env t.typ; effect=e}
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.printf "t: @[%a@." Print.term t;
       assert false
 
 

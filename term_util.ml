@@ -95,6 +95,8 @@ let make_let_type decls t2 =
     t2
   else
     make_local (Decl_type decls) t2
+let make_lets_type declss t2 =
+  List.fold_right make_let_type declss t2
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
 let make_seq t1 t2 =
@@ -1205,6 +1207,16 @@ let get_data_type =
   in
   col.col_typ <- col_typ;
   col.col_typ
+
+let has_pnondet =
+  let col = make_col false (||) in
+  let col_pat p =
+    match p.pat_desc with
+    | PNondet -> true
+    | _ -> col.col_pat_rec p
+  in
+  col.col_pat <- col_pat;
+  col.col_pat
 
 module Term = struct
   let unit = unit_term

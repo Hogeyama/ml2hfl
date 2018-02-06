@@ -82,6 +82,7 @@ and pred = desc
 and pattern = {pat_desc:pat_desc; pat_typ:typ}
 and pat_desc =
   | PAny
+  | PNondet (* match non-deterministically *)
   | PVar of id
   | PAlias of pattern * id
   | PConst of term

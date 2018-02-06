@@ -316,6 +316,7 @@ let rec arg_spec () =
      "-tupling", Arg.Unit (fun () -> Flag.Method.tupling := not !Flag.Method.tupling), " Toggle tupling";
      "-elim-same-arg", Arg.Set Flag.Method.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.Method.base_to_int, " Replace primitive base types with int";
+     "-data-to-int", Arg.Set Flag.Method.data_to_int, " Replace data types with int";
      (* verification *)
      "", Arg.Unit ignore, "Options_for_verifier";
      "-modular",
@@ -605,6 +606,7 @@ let print_error = function
   | Sys_error s ->
       Format.printf "%s@." s
   | TimeOut
+  | Fpat.Timer.Timeout
   | Assert_failure("timer.ml", _, _) ->
       Format.printf "Verification failed (time out)@."
   | Z3native.Exception("out of memory") ->

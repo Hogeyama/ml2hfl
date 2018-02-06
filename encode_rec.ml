@@ -72,6 +72,7 @@ let rec abst_recdata_pat env p =
   let desc,cond,bind =
     match p.pat_desc with
     | PAny -> PAny, true_term, []
+    | PNondet -> PNondet, true_term, []
     | PVar x -> PVar (abst_recdata.tr2_var env x), true_term, []
     | PAlias(p,x) ->
         let p',cond,bind = abst_recdata_pat env p in
@@ -267,69 +268,10 @@ let () = abst_recdata.tr2_term <- abst_recdata_term
 let () = abst_recdata.tr2_typ <- abst_recdata_typ
 
 
-let rec exists_pconstr p =
-  match p.pat_desc with
-  | PAny -> false
-  | PVar _ -> false
-  | PAlias(p, _) -> exists_pconstr p
-  | PConst _ -> false
-  | PConstr(_, ps) -> List.exists exists_pconstr ps
-  | PNil -> false
-  | PCons(p1,p2) -> exists_pconstr p1 || exists_pconstr p2
-  | PTuple ps -> List.exists exists_pconstr ps
-  | PRecord fields -> List.exists (snd |- exists_pconstr) fields
-  | PNone -> false
-  | PSome p -> exists_pconstr p
-  | POr(p1,p2) -> exists_pconstr p1 || exists_pconstr p2
-
 let typ_in_env ty tys =
   match ty with
   | TData s -> List.mem s tys
   | _ -> false
-
-let abst_ext_recdata =
-  let tr = make_trans2 () in
-  let tr_term tys t =
-    let desc =
-      match t.desc with
-      | Local(Decl_type decls, t) ->
-          let t' = tr.tr2_term (List.map fst decls @ tys) t in
-          Local(Decl_type decls, t')
-      | Match(t1, pats) ->
-          let t1',pats' =
-            match tr.tr2_desc_rec tys t.desc with
-            | Match(t',pats') -> t', pats'
-            | _ -> assert false
-          in
-          let pats'' =
-            let aux (p1,_,_) (p2,cond,t) =
-              let cond' = if exists_pconstr p1 then Term.(randb && cond) else cond in
-              p2, cond', t
-            in
-            List.map2 aux pats pats'
-          in
-          Match(t1', pats'')
-      | Constr _ when not (typ_in_env t.typ tys) ->
-          Term.randi.desc
-      | _ -> tr.tr2_desc_rec tys t.desc
-    in
-    let typ = tr.tr2_typ tys t.typ in
-    {desc; typ; attr=t.attr}
-  in
-  let tr_typ tys ty =
-    match ty with
-    | TData s when not (List.mem s tys) -> TInt
-    | _ -> tr.tr2_typ_rec tys ty
-  in
-  let tr_pat tys p =
-    match p.pat_desc with
-    | PConstr _ when not (typ_in_env p.pat_typ tys) -> {pat_desc=PAny; pat_typ=TInt}
-    | _ -> tr.tr2_pat_rec tys p
-  in
-  tr.tr2_term <- tr_term;
-  tr.tr2_typ <- tr_typ;
-  tr.tr2_pat <- tr_pat;
-  fun t -> tr.tr2_term [] t
 
 let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term_typ t
 
@@ -341,7 +283,7 @@ let trans t =
   |*> Trans.remove_top_por
   |*@> pr "remove_top_por"
   |*@> Type_check.check -$- t.typ
-  |> abst_ext_recdata
+  |> Trans.abst_ext_recdata
   |@> Type_check.check -$- typ
   |@> pr "abst_ext_rec"
   |> abst_recdata.tr2_term []

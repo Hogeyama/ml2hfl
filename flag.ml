@@ -60,6 +60,7 @@ module Method = struct
   let ignore_non_termination = ref false
   let fail_as_exception = ref false
   let ignore_exn_arg = ref false
+  let data_to_int = ref false
 end
 
 module Print = struct

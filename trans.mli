@@ -34,6 +34,7 @@ val diff_terms : term -> term -> (term * term) list
 val remove_label : ?label:string -> term -> term
 val alpha_rename : ?whole:bool -> term -> term
 val replace_base_with_int : term -> term
+val replace_data_with_int : term -> term
 val remove_top_por : term -> term
 val replace_bottom_def : term -> term
 val merge_bound_var_typ : (id * typ) list -> term -> term
@@ -52,7 +53,10 @@ val replace_fail_with : desc -> term -> term
 val remove_defs : id list -> term -> term
 val subst_let_xy : term -> term
 val ignore_exn_arg : term -> term
-
+val abst_ext_recdata : term -> term
+val col_type_decl : term -> (string * typ) list list
+val remove_type_decl : term -> term
+val lift_type_decl : term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc
@@ -102,3 +106,4 @@ val remove_effect_attribute : term -> term
 val extract_module : term -> term
 val subst_tdata : string -> typ -> term -> term
 val inline_record_type : term -> term
+val inline_type_decl : term -> term

@@ -7,6 +7,7 @@ type preprocess_label =
   | Init
   | Eliminate_unused_let
   | Replace_const
+  | Lift_type_decl
   | Inline_record_type
   | Encode_mutable_record
   | Encode_record
@@ -26,6 +27,8 @@ type preprocess_label =
   | Encode_simple_variant
   | Encode_recdata
   | Replace_base_with_int
+  | Replace_data_with_int
+  | Inline_type_decl
   | Encode_list
   | Ret_fun
   | Ref_trans
@@ -51,6 +54,7 @@ let string_of_label = function
   | Init -> "Init"
   | Eliminate_unused_let -> "Eliminate unused let"
   | Replace_const -> "Replace const"
+  | Lift_type_decl ->  "Lift type decl"
   | Inline_record_type -> "Inline record type"
   | Encode_mutable_record -> "Encode mutable record"
   | Encode_record -> "Encode record"
@@ -70,6 +74,8 @@ let string_of_label = function
   | Encode_simple_variant -> "Encode simple variant"
   | Encode_recdata -> "Encode recdata"
   | Replace_base_with_int -> "Replace base with int"
+  | Replace_data_with_int -> "Replace data with int"
+  | Inline_type_decl -> "Inline type decl"
   | Encode_list -> "Encode list"
   | Ret_fun -> "Ret fun"
   | Ref_trans -> "Ref trans"
@@ -114,6 +120,9 @@ let all spec : t list =
     Replace_const,
       (Fun.const !Flag.Method.replace_const,
        map_trans CFA.replace_const);
+    Lift_type_decl,
+      (Fun.const true,
+       map_trans Trans.lift_type_decl);
     Copy_poly,
       (Fun.const true,
        Trans.copy_poly_funs -| last_t);
@@ -163,11 +172,17 @@ let all spec : t list =
       (Fun.const true,
        map_trans Encode.simple_variant);
     Replace_base_with_int,
-      (Fun.const !Flag.Method.base_to_int,
+      (Fun.const (!Flag.Method.base_to_int || !Flag.Method.data_to_int),
        map_trans Trans.replace_base_with_int);
+    Replace_data_with_int,
+      (Fun.const !Flag.Method.data_to_int,
+       map_trans Trans.replace_data_with_int);
     Encode_recdata,
       (Fun.const true,
        map_trans Encode.recdata);
+    Inline_type_decl,
+      (Fun.const true,
+       map_trans Trans.inline_type_decl);
     Encode_list,
       (Fun.const true,
        Encode.list -| last_t);

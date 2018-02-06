@@ -410,6 +410,7 @@ and print_info fm info =
 and print_pattern fm pat =
   match pat.pat_desc with
   | PAny -> pp_print_string fm "_"
+  | PNondet -> pp_print_string fm "*"
   | PVar x -> print_id fm x
   | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
   | PConst c -> print_term 1 false fm c
@@ -586,6 +587,7 @@ and print_pattern' fm pat =
   let rec aux fm pat =
     match pat.pat_desc with
     | PAny -> pp_print_string fm "_"
+    | PNondet -> pp_print_string fm "*"
     | PVar x -> print_id_typ fm x
     | PAlias(p,x) -> fprintf fm "(%a as %a)" aux p print_id x
     | PConst c -> print_term' 1 fm c

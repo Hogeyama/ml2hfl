@@ -1570,8 +1570,14 @@ let replace_base_with_int =
     | TData s when is_base_typ s -> TInt
     | _ -> tr.tr_typ_rec typ
   in
+  let tr_pat p =
+    match p.pat_desc with
+    | PConst {desc=Const(Char _|String _|Float _|Int32 _|Int64 _|Nativeint _)} -> {pat_desc=PNondet; pat_typ=TInt}
+    | _ -> tr.tr_pat_rec p
+  in
   tr.tr_desc <- tr_desc;
   tr.tr_typ <- tr_typ;
+  tr.tr_pat <- tr_pat;
   tr.tr_term
 
 let remove_top_por =
@@ -2673,3 +2679,143 @@ let inline_record_type =
   tr.tr_term
 
 let ignore_exn_arg t = assert false
+
+
+let col_type_decl =
+  let col = make_col [] (@) in
+  let col_desc desc =
+    match desc with
+    | Local(Decl_type decls, t1) -> decls :: col.col_term t1
+    | _ -> col.col_desc_rec desc
+  in
+  col.col_desc <- col_desc;
+  col.col_term
+
+let remove_type_decl =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Local(Decl_type decls, t1) -> tr.tr_desc t1.desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
+let lift_type_decl t =
+  let decls = col_type_decl t in
+  List.flatten decls
+  |> List.fold_left (fun acc (s,_) -> if List.mem s acc then unsupported "lift_type_decl"; s::acc) []
+  |> ignore;
+  make_lets_type decls (remove_type_decl t)
+
+
+let remove_pnondet =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc, tr.tr_desc_rec desc with
+    | Match(_,pats), Match(t',pats') ->
+        let pats'' =
+          let aux (p,_,_) (p',cond',t') =
+            let cond'' =
+              if has_pnondet p then
+                Term.(randb && cond')
+              else
+                cond'
+            in
+            p', cond'', t'
+          in
+          List.map2 aux pats pats'
+        in
+        Match(t', pats'')
+    | _, desc' -> desc'
+  in
+  let tr_pat p =
+    let p' = tr.tr_pat_rec p in
+    match p'.pat_desc with
+    | PNondet -> {p' with pat_desc=PAny}
+    | POr({pat_desc=PAny},{pat_desc=PAny}) -> {p' with pat_desc=PAny}
+    | _ -> p'
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_pat <- tr_pat;
+  tr.tr_term
+
+let abst_recdata =
+  let tr = make_trans2 () in
+  let tr_term (check,tys) t =
+    let desc =
+      match t.desc with
+      | Local(Decl_type decls, t) ->
+          let t' = tr.tr2_term (check, List.map fst decls @ tys) t in
+          let decls' = List.map (fun (s,ty) -> s, tr.tr2_typ (check,tys) ty) decls in
+          Local(Decl_type decls', t')
+      | Match(t1, pats) ->
+          let t1',pats' =
+            match tr.tr2_desc_rec (check,tys) t.desc with
+            | Match(t',pats') -> t', pats'
+            | _ -> assert false
+          in
+          let pats'' =
+            let aux (p1,_,_) (p2,cond,t) =
+              let t' =
+                let make x =
+                  let ty = tr.tr2_typ (check,tys) @@ Id.typ x in
+                  Id.set_typ x ty, make_randvalue_unit ty
+                in
+                get_bound_variables_pat p1
+                |> List.Set.diff ~eq:Id.eq -$- (get_bound_variables_pat p2)
+                |> List.map make
+                |> make_lets -$- t
+              in
+              p2, cond, t'
+            in
+            List.map2 aux pats pats'
+          in
+          Match(t1', pats'')
+      | Constr _ when check t.typ tys ->
+          Term.randi.desc
+      | _ -> tr.tr2_desc_rec (check,tys) t.desc
+    in
+    let typ = tr.tr2_typ (check,tys) t.typ in
+    {desc; typ; attr=t.attr}
+  in
+  let tr_typ (check,tys) ty =
+    match ty with
+    | TData s when check ty tys -> TInt
+    | _ -> tr.tr2_typ_rec (check,tys) ty
+  in
+  let tr_pat (check,tys) p =
+    match p.pat_desc with
+    | PConstr _ when check p.pat_typ tys -> {pat_desc=PNondet; pat_typ=TInt}
+    | _ -> tr.tr2_pat_rec (check,tys) p
+  in
+  tr.tr2_term <- tr_term;
+  tr.tr2_typ <- tr_typ;
+  tr.tr2_pat <- tr_pat;
+  fun check t -> tr.tr2_term (check,[]) t
+
+let abst_ext_recdata =
+  let typ_not_in_env ty tys =
+    match ty with
+    | TData s -> not (List.mem s tys)
+    | _ -> true
+  in
+  abst_recdata typ_not_in_env
+  |- remove_pnondet
+
+let replace_data_with_int =
+  abst_recdata (fun _ _ -> true)
+  |- remove_pnondet
+
+(* ASSUME: there is no recursive types *)
+let inline_type_decl =
+  let tr = make_trans () in
+  let tr_term t =
+    let t' = tr.tr_term_rec t in
+    match t'.desc with
+    | Local(Decl_type decls, t1) ->
+        List.fold_right (Fun.uncurry subst_data_type_term) decls t1
+    | _ -> t'
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_term

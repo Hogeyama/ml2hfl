@@ -89,6 +89,7 @@ and pred = desc
 and pattern = {pat_desc:pat_desc; pat_typ:typ}
 and pat_desc =
   | PAny
+  | PNondet (* match non-deterministically *)
   | PVar of id
   | PAlias of pattern * id
   | PConst of term
@@ -179,6 +180,7 @@ let trans_pat trans p =
   let desc =
     match p.pat_desc with
     | PAny -> PAny
+    | PNondet -> PNondet
     | PVar x -> PVar (trans.tr_var x)
     | PAlias(p,x) -> PAlias(trans.tr_pat p, trans.tr_var x)
     | PConst t -> PConst (trans.tr_term t)
@@ -351,6 +353,7 @@ let trans2_gen_pat tr env p =
   let desc =
     match p.pat_desc with
     | PAny -> PAny
+    | PNondet -> PNondet
     | PVar x -> PVar (tr.tr2_var env x)
     | PAlias(p,x) -> PAlias(tr.tr2_pat env p, tr.tr2_var env x)
     | PConst t -> PConst (tr.tr2_term env t)
@@ -532,6 +535,7 @@ let col_pat col p =
   let r2 =
     match p.pat_desc with
     | PAny -> col.col_empty
+    | PNondet -> col.col_empty
     | PVar x -> col.col_var x
     | PAlias(p,x) -> col.col_app (col.col_pat p) (col.col_var x)
     | PConst t -> col.col_term t
@@ -714,6 +718,7 @@ let col2_pat col env p =
   let r2 =
     match p.pat_desc with
     | PAny -> col.col2_empty
+    | PNondet -> col.col2_empty
     | PVar x -> col.col2_var env x
     | PAlias(p,x) -> col.col2_app (col.col2_pat env p) (col.col2_var env x)
     | PConst t -> col.col2_term env t
@@ -936,6 +941,7 @@ let tr_col2_pat tc env p =
   let acc2,desc =
     match p.pat_desc with
     | PAny -> tc.tr_col2_empty, PAny
+    | PNondet -> tc.tr_col2_empty, PNondet
     | PVar x ->
         let acc,x' = tc.tr_col2_var env x in
         acc, PVar x'
@@ -1266,6 +1272,7 @@ let fold_tr_pat fld env p =
   let env'',desc =
     match p.pat_desc with
     | PAny -> env', PAny
+    | PNondet -> env', PNondet
     | PVar x ->
         let env'',x' = fld.fld_var env' x in
         env'', PVar x'
@@ -1499,6 +1506,7 @@ let make_fold_tr () =
 let rec get_vars_pat pat =
   match pat.pat_desc with
   | PAny -> []
+  | PNondet -> []
   | PVar x -> [x]
   | PAlias(p,x) -> x :: get_vars_pat p
   | PConst _ -> []
