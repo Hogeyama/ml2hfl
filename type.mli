@@ -28,6 +28,8 @@ and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
 
+val prim_base_types : string list
+
 val is_fun_typ : 'a t -> bool
 val is_base_typ : 'a t -> bool
 val can_unify : 'a t -> 'a t -> bool
@@ -49,7 +51,6 @@ val to_id_string : 'a t -> string
 val order : 'a t -> int
 val arity : 'a t -> int
 val var_name_of : 'a t -> string
-val primitives : string list
 val remove_arg_at : int -> 'a t -> 'a t
 
 (** {6 destructor} *)

@@ -59,7 +59,9 @@ let trans_const = function
   | c -> Format.printf "trans_const: %a@." CEGAR_print.term (Const c); assert false
 
 
-let rec trans_id x = String.sign_to_letters x
+let rec trans_id x =
+  let x' = String.sign_to_letters x in
+  if x'.[0] = '_' then "under_score" ^ x' else x'
 
 let rec trans_term br = function
   | Const c -> trans_const c

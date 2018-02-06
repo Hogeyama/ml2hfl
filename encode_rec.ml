@@ -50,23 +50,23 @@ let abst_recdata_typ env typ =
 
 let is_rec_type env ty =
   match ty with
-  | TData s -> Triple.snd @@ List.assoc s env
+  | TData s when not @@ List.mem s prim_base_types -> Triple.snd @@ List.assoc s env
   | _ -> false
 
 let expand_typ env ty =
   match ty with
-  | TData s -> Triple.fst @@ List.assoc s env
+  | TData s when not @@ List.mem s prim_base_types -> Triple.fst @@ List.assoc s env
   | _ -> ty
 
 let expand_enc_typ env ty =
   match ty with
-  | TData s -> Triple.trd @@ List.assoc s env
+  | TData s when not @@ List.mem s prim_base_types -> Triple.trd @@ List.assoc s env
   | _ -> ty
 
 let rec abst_recdata_pat env p =
   let typ =
     match abst_recdata.tr2_typ env p.pat_typ with
-    | TData s -> Triple.trd @@ List.assoc s env
+    | TData s when not @@ List.mem s prim_base_types -> Triple.trd @@ List.assoc s env
     | typ -> typ
   in
   let desc,cond,bind =
@@ -280,12 +280,9 @@ let trans t =
   let typ = trans_typ t.typ in
   t
   |@> pr "input"
-  |*> Trans.remove_top_por
-  |*@> pr "remove_top_por"
-  |*@> Type_check.check -$- t.typ
   |> Trans.abst_ext_recdata
-  |@> Type_check.check -$- typ
   |@> pr "abst_ext_rec"
+  |@> Type_check.check -$- typ
   |> abst_recdata.tr2_term []
   |@> pr "abst_rec"
   |@> Type_check.check -$- typ

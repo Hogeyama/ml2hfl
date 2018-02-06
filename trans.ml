@@ -1553,8 +1553,7 @@ let inline_simple_exp =
 
 let replace_base_with_int =
   let tr = make_trans () in
-  let base_types = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"; "Format.format"; "Format.formatter"] in
-  let is_base_typ s = List.mem s base_types in
+  let is_base_typ s = List.mem s prim_base_types in
   let tr_desc desc =
     match desc with
     | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) ->
@@ -2782,7 +2781,7 @@ let abst_recdata =
   in
   let tr_typ (check,tys) ty =
     match ty with
-    | TData s when check ty tys -> TInt
+    | TData s when not (List.mem s prim_base_types) && check ty tys -> TInt
     | _ -> tr.tr2_typ_rec (check,tys) ty
   in
   let tr_pat (check,tys) p =

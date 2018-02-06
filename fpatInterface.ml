@@ -64,7 +64,7 @@ let conv_const c =
      Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
   | Int(n) -> Fpat.Const.Int(n)
   | Rand(TInt, _) -> Fpat.Const.RandInt
-  | Rand(typ, _) -> assert false
+  | Rand(typ, _) -> unsupported @@ Format.asprintf "Rand[%a]" CEGAR_print.typ_base typ
   | Add -> Fpat.Const.Add Fpat.Type.mk_int
   | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
   | Mul -> Fpat.Const.Mul Fpat.Type.mk_int

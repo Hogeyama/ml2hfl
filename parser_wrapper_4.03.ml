@@ -352,21 +352,22 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
       let t1 = from_expression id_env vb_expr in
       let t2 = from_expression id_env e2 in
       make_single_match t1 p' t2
-  | Texp_let(rec_flag, pats, e) ->
-      let flag = from_rec_flag rec_flag in
+  | Texp_let(Asttypes.Recursive, pats, e) ->
       let aux {vb_pat;vb_expr} =
         let p' = from_pattern vb_pat in
         let e' = from_expression id_env vb_expr in
         match p'.pat_desc with
         | PVar x -> x, e'
-        | _ ->
-            if flag = Recursive
-            then unsupported "Only variables are allowed as left-hand side of 'let rec'"
-            else unsupported "Only variables are allowed as left-hand side of 'let ... and ...'"
+        | _ -> unsupported "Only variables are allowed as left-hand side of 'let rec ... and ...'"
       in
       let bindings = List.map aux pats in
       let t = from_expression id_env e in
       make_let bindings t
+  | Texp_let(Asttypes.Nonrecursive, pats, e) ->
+      let aux {vb_pat;vb_expr} = from_pattern vb_pat, from_expression id_env vb_expr in
+      let ps,ts = List.split_map aux pats in
+      let t = from_expression id_env e in
+      make_match (make_tuple ts) [make_ptuple ps, true_term, t]
   | Texp_function(_,[case],Total) when is_var_case case ->
       begin
         match from_case id_env case with

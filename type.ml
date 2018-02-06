@@ -522,7 +522,7 @@ let rec is_mutable_record typ =
   | _ -> invalid_arg "is_mutable_record"
 
 
-let primitives = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"; "Format.format"; "Format.formatter"]
+let prim_base_types = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"; "Format.format"; "Format.formatter"]
 
 
 let rec remove_arg_at i typ =
