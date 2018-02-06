@@ -571,6 +571,7 @@ let string_of_exception = function
   | CEGAR_syntax.NoProgress -> "CEGAR_syntax.NoProgress"
   | Fatal s -> "Fatal"
   | TimeOut
+  | Fpat.Timer.Timeout
   | Assert_failure("timer.ml", _, _) -> "TimeOut"
   | Killed -> "Killed"
   | Z3native.Exception("out of memory") -> "OutOfMemory"
