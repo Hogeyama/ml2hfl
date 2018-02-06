@@ -2746,8 +2746,9 @@ let abst_recdata =
     let desc =
       match t.desc with
       | Local(Decl_type decls, t) ->
-          let t' = tr.tr2_term (check, List.map fst decls @ tys) t in
-          let decls' = List.map (fun (s,ty) -> s, tr.tr2_typ (check,tys) ty) decls in
+          let tys' = List.map fst decls @ tys in
+          let t' = tr.tr2_term (check, tys') t in
+          let decls' = List.map (fun (s,ty) -> s, tr.tr2_typ (check,tys') ty) decls in
           Local(Decl_type decls', t')
       | Match(t1, pats) ->
           let t1',pats' =
