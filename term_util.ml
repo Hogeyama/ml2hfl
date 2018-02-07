@@ -255,6 +255,7 @@ let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
 let make_match t1 pats =
   match pats with
   | [{pat_desc=PAny}, {desc=Const True}, t2] -> make_seq t1 t2
+  | [{pat_desc=PVar x}, {desc=Const True}, t2] -> make_let [x,t1] t2
   | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
 let make_single_match ?(total=false) t1 p t2 =
   if total || p.pat_desc = PAny
@@ -962,7 +963,7 @@ let rec get_last_definition def t =
       | None -> None
       | Some (m, {desc=Module decls}) ->
           let f = get_last_definition None (make_local (List.last decls) end_of_definitions) in
-          Option.map (Id.in_module ~m) f
+          Option.map (Id.add_module_prefix ~m) f
       | Some (f,_) -> Some f
 let get_last_definition t = get_last_definition None t
 

@@ -48,8 +48,16 @@ let uncapitalize_env env = List.map (Pair.map_fst uncapitalize_var) env
 
 let capitalize {env;defs;main;info} =
   let env' = List.map (Pair.map_fst capitalize_var) env in
-  let map = List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
-  let aux (f,xs,t1,e,t2) = capitalize_var f, xs, subst_map map t1, e, subst_map map t2 in
+  let sbst1 = subst_map @@ List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
+  let aux (f,xs,t1,e,t2) =
+    let xs' = List.map uncapitalize_var xs in
+    let sbst2 = subst_map @@ List.map2 (fun x x' -> x, Var x') xs xs' in
+    capitalize_var f,
+    xs',
+    sbst1 @@ sbst2 t1,
+    e,
+    sbst1 @@ sbst2 t2
+  in
   let defs' = List.map aux defs in
   let main' = capitalize_var main in
   {env=env'; defs=defs'; main=main'; info}

@@ -90,4 +90,6 @@ let print fm x =
   in
   Format.fprintf fm "@[%s@]" s''
 
-let in_module x ~m = add_name_before (name m ^ ".") x
+let prefix_for_module m = name m ^ "."
+let add_module_prefix_to_string m s = prefix_for_module m ^ s
+let add_module_prefix x ~m = add_name_before (prefix_for_module m) x

@@ -343,7 +343,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
   let typ' = from_type_expr env typ in
   match exp_desc with
   | Texp_ident(path, _, _) ->
-      make_var @@ from_ident_path id_env path typ'
+      make_var @@ (from_ident_path id_env path typ' |@> (fun x-> if Id.name x = "matches" then Format.printf "MATCHES: %a, %s, %d@." Id.print x (Path.name path) (Path.binding_time path)))
   | Texp_constant c ->
       {desc = Const (from_constant c); typ = typ'; attr=[]}
   | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
@@ -353,21 +353,35 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
       let t2 = from_expression id_env e2 in
       make_single_match t1 p' t2
   | Texp_let(Asttypes.Recursive, pats, e) ->
-      let aux {vb_pat;vb_expr} =
-        let p' = from_pattern vb_pat in
-        let e' = from_expression id_env vb_expr in
-        match p'.pat_desc with
+      let ps = List.map (fun {vb_pat} -> from_pattern vb_pat) pats in
+      let id_env' = List.fold_right (fun p env -> get_bound_variables_pat p @ env) ps id_env in
+      let aux p {vb_expr} =
+        let e' = from_expression id_env' vb_expr in
+        match p.pat_desc with
         | PVar x -> x, e'
         | _ -> unsupported "Only variables are allowed as left-hand side of 'let rec ... and ...'"
       in
-      let bindings = List.map aux pats in
+      let bindings = List.map2 aux ps pats in
       let t = from_expression id_env e in
       make_let bindings t
   | Texp_let(Asttypes.Nonrecursive, pats, e) ->
       let aux {vb_pat;vb_expr} = from_pattern vb_pat, from_expression id_env vb_expr in
       let ps,ts = List.split_map aux pats in
-      let t = from_expression id_env e in
-      make_match (make_tuple ts) [make_ptuple ps, true_term, t]
+      let p =
+        match ps with
+        | [p] -> p
+        | _ -> make_ptuple ps
+      in
+      let t1 =
+        match ts with
+        | [t] -> t
+        | _ -> make_tuple ts
+      in
+      let t2 =
+        let id_env' = get_bound_variables_pat p @ id_env in
+        from_expression id_env' e
+      in
+      make_match t1 [p, true_term, t2]
   | Texp_function(_,[case],Total) when is_var_case case ->
       begin
         match from_case id_env case with
@@ -415,7 +429,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
         match a,b with
         | _, None -> unsupported "expression (optional)"
         | Optional _, Some e ->
-            (* I don't know why, but the type environment of e is not appropriate for it *)
+            (* I don't know why, but the type environment of e is not appropriate for this context *)
             from_expression id_env {e with exp_env=env}
         | _, Some e -> from_expression id_env e
       in
@@ -563,9 +577,13 @@ let ts = List.mapi aux es in
   | Texp_extension_constructor _ -> unsupported "Texp_extension_constructor"
 
 and from_case id_env {c_lhs;c_guard;c_rhs} =
-  from_pattern c_lhs,
-  Option.map_default (from_expression id_env) true_term c_guard,
-  from_expression id_env c_rhs
+  let p = from_pattern c_lhs in
+  let cond = Option.map_default (from_expression id_env) true_term c_guard in
+  let t =
+    let id_env' = get_bound_variables_pat p @ id_env in
+    from_expression id_env' c_rhs
+  in
+  p, cond, t
 
 
 let from_exception_declaration = List.map from_type_expr

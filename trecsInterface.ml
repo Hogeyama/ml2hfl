@@ -31,13 +31,8 @@ let trans_const = function
 
 
 let trans_id x =
-  let map = function
-    | '\'' -> "_prime_"
-    | '.' -> "_dot_"
-    | '&' -> "_et_"
-    | c -> String.make 1 c
-  in
-  String.replace_chars map x
+  let x' = String.sign_to_letters x in
+  if x'.[0] = '_' then "under_score" ^ x' else x'
 
 let rec trans_term = function
   | Const c -> trans_const c

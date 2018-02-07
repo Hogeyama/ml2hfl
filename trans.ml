@@ -2640,17 +2640,22 @@ let extract_module =
         let aux decl t =
           match decl with
           | Decl_let defs ->
-              let defs' = List.map (Pair.map (Id.in_module ~m) tr.tr_term) defs in
+              let defs' = List.map (Pair.map (Id.add_module_prefix ~m) Fun.id) defs in
               make_let defs' t
+              |> List.fold_right2 (fun (x,_) (x',_) t -> subst_var x x' t) defs defs'
           | Decl_type decls ->
-              make_let_type decls t
+              let decls' = List.map (Pair.map (Id.add_module_prefix_to_string m) Fun.id) decls in
+              make_let_type decls' t
+              |> List.fold_right2 (fun (s,_) (s',_) t -> subst_data_type_term s (TData s') t) decls decls'
         in
         let t' = tr.tr_term t in
-        (List.fold_right aux decls t').desc
+        (tr.tr_term @@ List.fold_right aux decls t').desc
     | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
         Flag.use_abst := true;
         t.desc
-    | Module _ -> unsupported "extract_module"
+    | Module _ ->
+        Format.printf "%a@." Print.desc desc;
+        unsupported "extract_module"
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
@@ -2671,7 +2676,7 @@ let inline_record_type =
           t'.desc
         else
           Local(Decl_type decls2, t')
-    | Module _ -> unsupported "extract_module"
+    | Module _ -> unsupported "inline_record_type"
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
