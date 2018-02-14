@@ -563,6 +563,8 @@ let subst_var_without_typ =
   in
   tr.tr2_desc <- tr_desc;
   fun x y t -> tr.tr2_term (x,y) t
+let subst_var_map_without_typ map t =
+  List.fold_right (Fun.uncurry subst_var_without_typ) map t
 
 
 let make_match t1 pats =

@@ -56,18 +56,18 @@ let alpha_rename ?(whole=false) =
     match desc' with
     | Local(Decl_let bindings, t1) ->
         let map = List.map (fun (f,_) -> f, new_id f) bindings in
-        let bindings' = List.map2 (fun (f,t) (_,f') -> f', subst_var_map map t) bindings map in
-        Local(Decl_let bindings', subst_var_map map t1)
+        let bindings' = List.map2 (fun (f,t) (_,f') -> f', subst_var_map_without_typ map t) bindings map in
+        Local(Decl_let bindings', subst_var_map_without_typ map t1)
     | Fun(x, t1)->
         let x' = new_id x in
-        Fun(x', subst_var x x' t1)
+        Fun(x', subst_var_without_typ x x' t1)
     | Match(t1,pats) ->
         let map =
           pats
           |> List.flatten_map (Triple.fst |- get_bv_pat)
           |> List.map (Pair.add_right new_id)
         in
-        Match(t1, List.map (Triple.map_trd @@ subst_var_map map) pats)
+        Match(t1, List.map (Triple.map_trd @@ subst_var_map_without_typ map) pats)
     | _ -> desc'
   in
   tr.tr2_desc <- tr_desc;

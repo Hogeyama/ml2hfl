@@ -189,6 +189,7 @@ val subst_var_map : (id * id) list -> term -> term
 val subst_data_type : string -> typ -> typ -> typ
 val subst_data_type_term : string -> typ -> term -> term
 val subst_var_without_typ : id -> id -> term -> term
+val subst_var_map_without_typ : (id * id) list -> term -> term
 
 (** {6 Misc} *)
 val subst_rev : term -> id -> term -> term
