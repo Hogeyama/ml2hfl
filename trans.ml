@@ -67,7 +67,12 @@ let alpha_rename ?(whole=false) =
           |> List.flatten_map (Triple.fst |- get_bv_pat)
           |> List.map (Pair.add_right new_id)
         in
-        Match(t1, List.map (Triple.map_trd @@ subst_var_map_without_typ map) pats)
+        let pats' =
+          pats
+          |> List.map (Triple.map_trd @@ subst_var_map_without_typ map)
+          |> List.map (Triple.map_fst @@ rename_pat map)
+        in
+        Match(t1, pats')
     | _ -> desc'
   in
   tr.tr2_desc <- tr_desc;

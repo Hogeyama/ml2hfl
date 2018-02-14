@@ -217,6 +217,7 @@ val add_tapred : id -> term list -> typ -> typ
 val find_fixed_args : id -> id list -> term -> id list
 val trans_if : (term -> term option) -> term -> term
 val rename : (id * id) list -> term -> term
+val rename_pat : (id * id) list -> pattern -> pattern
 val set_id_counter_to_max : term -> unit
 
 module Term : sig

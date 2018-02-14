@@ -1177,7 +1177,7 @@ let trans_if =
   tr.tr2_term <- trans_if_term;
   tr.tr2_term
 
-let rename =
+let rename,rename_pat =
   let tr = make_trans2 () in
   let tr_var map x =
     match Id.assoc_option x map with
@@ -1186,7 +1186,7 @@ let rename =
   in
   tr.tr2_var <- tr_var;
   tr.tr2_typ <- Fun.snd;
-  tr.tr2_term
+  tr.tr2_term, tr.tr2_pat
 
 let get_max_var_id =
   let col = make_col (-1) max in
