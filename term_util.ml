@@ -251,15 +251,6 @@ let make_ptuple ps = {pat_desc=PTuple ps; pat_typ=make_ttuple @@ List.map (fun p
 let make_pnil typ = {pat_desc=PNil; pat_typ=make_tlist typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
-let make_match t1 pats =
-  match pats with
-  | [{pat_desc=PAny}, {desc=Const True}, t2] -> make_seq t1 t2
-  | [{pat_desc=PVar x}, {desc=Const True}, t2] -> make_let [x,t1] t2
-  | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
-let make_single_match ?(total=false) t1 p t2 =
-  if total || p.pat_desc = PAny
-  then make_match t1 [p, true_term, t2]
-  else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let make_label_aux info t = {desc=Label(info,t); typ=t.typ; attr=[]}
 let make_label ?(label="") info t =
   t
@@ -284,10 +275,6 @@ let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 let make_event_unit s = make_app (make_event s) [unit_term]
 let make_raise t typ = {desc=Raise t; typ; attr=[]}
-let make_trywith t x pats =
-  let handler = make_fun x @@ make_match (make_var x) pats in
-  {desc=TryWith(t, handler); typ=t.typ; attr=[]}
-let make_trywith_simple t handler = {desc=TryWith(t, handler); typ=t.typ; attr=[]}
 
 let make_imply t1 t2 = make_or (make_not t1) t2
 
@@ -578,6 +565,24 @@ let subst_var_without_typ =
   fun x y t -> tr.tr2_term (x,y) t
 
 
+let make_match t1 pats =
+  match pats with
+  | [{pat_desc=PAny}, {desc=Const True}, t2] -> make_seq t1 t2
+  | [{pat_desc=PVar x}, {desc=Const True}, t2] ->
+      if Id.mem x @@ get_fv t1 then
+        let x' = Id.new_var_id x in
+        make_let [x',t1] @@ subst_var x x' t2
+      else
+        make_let [x,t1] t2
+  | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
+let make_single_match ?(total=false) t1 p t2 =
+  if total || p.pat_desc = PAny
+  then make_match t1 [p, true_term, t2]
+  else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
+let make_trywith t x pats =
+  let handler = make_fun x @@ make_match (make_var x) pats in
+  {desc=TryWith(t, handler); typ=t.typ; attr=[]}
+let make_trywith_simple t handler = {desc=TryWith(t, handler); typ=t.typ; attr=[]}
 
 
 
