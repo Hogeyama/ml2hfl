@@ -67,6 +67,7 @@ let assoc x xs = List.assoc ~eq x xs
 let mem_assoc x xs = List.mem_assoc ~eq x xs
 let assoc_option x xs = List.assoc_option ~eq x xs
 
+let map_id f x = {x with id = f x.id}
 let map_name f x = {x with name = f x.name}
 let map_typ f x = {x with typ = f x.typ}
 
@@ -88,7 +89,13 @@ let print fm x =
     else
       s'
   in
-  Format.fprintf fm "@[%s@]" s''
+  let s''' =
+    if is_external x then
+      "$" ^ s''
+    else
+      s''
+  in
+  Format.fprintf fm "@[%s@]" s'''
 
 let prefix_for_module m = name m ^ "."
 let add_module_prefix_to_string m s = prefix_for_module m ^ s

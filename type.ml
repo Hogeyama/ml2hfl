@@ -156,6 +156,11 @@ let print_effect fm e =
   | ECont -> Format.fprintf fm "cont"
   | EExcep -> Format.fprintf fm "excep"
 
+let print_tvar fm n =
+  let c = char_of_int @@ int_of_char 'a' + n mod 26 in
+  let d = if n < 26 then "" else string_of_int (n/26) in
+  Format.fprintf fm "'%c%s" c d
+
 let rec print occur print_pred fm typ =
   let print' = print occur print_pred in
   let print_preds ps = print_list print_pred "; " ps in
@@ -165,10 +170,7 @@ let rec print occur print_pred fm typ =
   | TInt -> Format.fprintf fm "int"
   | TVar({contents=Some typ},_) -> print' fm typ
   | TVar({contents=None}, None) -> Format.fprintf fm "!!!"
-  | TVar({contents=None}, Some n) ->
-      let c = char_of_int @@ int_of_char 'a' + n mod 26 in
-      let d = if n < 26 then "" else string_of_int (n/26) in
-      Format.fprintf fm "'%c%s" c d
+  | TVar({contents=None}, Some n) -> print_tvar fm n
   | TFun _ ->
       let rec aux fm (xs, typ) =
         match xs with
@@ -321,13 +323,13 @@ let rec unify typ1 typ2 =
   | TTuple xs1, TTuple xs2 ->
       List.iter2 (fun x1 x2 -> unify (Id.typ x1) (Id.typ x2)) xs1 xs2
   | TVar(r1,_), TVar(r2,_) when r1 == r2 -> ()
-  | TVar({contents = None} as r,_), typ
-  | typ, TVar({contents = None} as r,_) ->
+  | TVar({contents = None} as r, n), typ
+  | typ, TVar({contents = None} as r, n) ->
       if occurs r typ then
         (Format.printf "occurs check failure: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
-         raise CannotUnify)
-      else
-        r := Some typ
+         raise CannotUnify);
+      Option.iter (fun n -> Debug.printf "%a := %a@." print_tvar n print_init typ);
+      r := Some typ
   | TData s1, TData s2 -> assert (s1 = s2)
   | TVariant labels1, TVariant labels2 -> List.iter2 (fun (s1,typs1) (s2,typs2) -> assert (s1 = s2); List.iter2 unify typs1 typs2) labels1 labels2
   | TRecord fields1, TRecord fields2 -> List.iter2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1 = s2 && f1 = f2); unify typ1 typ2) fields1 fields2

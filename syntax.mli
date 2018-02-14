@@ -238,8 +238,9 @@ val make_tr_col2 : 'a -> ('a -> 'a -> 'a) -> ('a,'b) tr_col2
 val make_fold_tr : unit -> 'a fold_tr
 
 val occur : id -> typ -> bool
-val get_vars_pat : pattern -> id list
 val get_fv : ?eq:(id -> id -> bool) -> term -> id list
+val get_bv : term -> id list
+val get_bv_pat : pattern -> id list
 val is_non_rec : (id * term) list -> bool
 
 val make_extra_coeff : ?name:string -> ?typ:typ -> unit -> id

@@ -43,6 +43,8 @@ type preprocess_label =
   | Insert_unit_param
   | PreprocessForTermination
   | Extract_module
+  | Mark_fv_as_external
+  | Alpha_rename
 
 type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
@@ -90,6 +92,8 @@ let string_of_label = function
   | Insert_unit_param -> "Insert unit param"
   | PreprocessForTermination -> "Preprocessfortermination"
   | Extract_module -> "Extract module"
+  | Mark_fv_as_external -> "Mark free variables as external"
+  | Alpha_rename -> "Alpha renaming"
 
 let last acc = snd @@ List.hd acc
 let last_t acc = fst @@ last acc
@@ -114,6 +118,12 @@ let all spec : t list =
     Extract_module,
       (Fun.const true,
        map_trans Trans.extract_module);
+    Mark_fv_as_external,
+      (Fun.const true,
+       map_trans Trans.mark_fv_as_external);
+    Alpha_rename,
+      (Fun.const true,
+       map_trans @@ Trans.alpha_rename ~whole:true);
     Eliminate_unused_let,
       (Fun.const true,
        map_trans @@ Trans.elim_unused_let ~leave_last:true);

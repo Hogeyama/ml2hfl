@@ -3,11 +3,30 @@ open Util
 open Type
 open Syntax
 
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+
 let rec print_typ fm t = Type.print ~occur (print_term 0 false) fm t
-and print_ids typ fm xs =
+and print_ids ?fv typ fm xs =
   if xs <> [] then
+    let xs' =
+      match fv with
+      | None -> xs
+      | Some fv ->
+          if !!Debug.check || !Flag.Print.unused_arg then
+            xs
+          else
+            let aux x =
+              if Id.mem x fv then
+                x
+              else if Id.typ x = TUnit then
+                Id.make 0 "()" [] TUnit
+              else
+                Id.make 0 "_" [] @@ Id.typ x
+            in
+            List.map aux xs
+    in
     let p_id = if typ then print_id_typ else print_id in
-    print_list p_id "@ " ~first:true fm xs
+    print_list p_id "@ " ~first:true fm xs'
 
 (*
   and print_id fm x = fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
@@ -121,23 +140,9 @@ and print_desc attr pri typ fm desc =
   | Fun _ ->
       let xs,t = decomp_funs {desc; typ=typ_unknown; attr=[]} in
       let fv = get_fv t in
-      let xs' =
-        if !Flag.Print.unused_arg then
-          xs
-        else
-          let aux x =
-            if Id.mem x fv then
-              x
-            else if Id.typ x = TUnit then
-              Id.make 0 "()" [] TUnit
-            else
-              Id.make 0 "_" [] @@ Id.typ x
-          in
-          List.map aux xs
-      in
       let p = 15 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids typ) xs' (print_term 0 typ) t s2
+      fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids ~fv typ) xs (print_term 0 typ) t s2
   | App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}]) when !Flag.Print.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
@@ -206,21 +211,7 @@ and print_desc attr pri typ fm desc =
         in
         let xs,t1' = decomp_funs t1 in
         let fv = get_fv t1' in
-        let xs' =
-          if !Flag.Print.unused_arg then
-            xs
-          else
-            let aux x =
-              if Id.mem x fv then
-                x
-              else if Id.typ x = TUnit then
-                Id.make 0 "()" [] TUnit
-              else
-                Id.make 0 "_" [] @@ Id.typ x
-            in
-            List.map aux xs
-        in
-        fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids typ) xs' (print_term 0 typ) t1';
+        fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids ~fv typ) xs (print_term 0 typ) t1';
         b := false
       in
       let print_bindings bs = print_list print_binding "@ " ~last:true bs in
@@ -246,7 +237,7 @@ and print_desc attr pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
-    | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 8 in
       let s1,s2 = paren pri p in
       if !Flag.Print.as_ocaml then

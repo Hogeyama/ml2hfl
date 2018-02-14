@@ -29,9 +29,15 @@ let subst_tdata =
   tr.tr2_typ <- tr_typ;
   fun x x' t -> tr.tr2_term (x,x') t
 
-let alpha_rename ?(whole=false) =
+let map_id =
   let tr = make_trans2 () in
-  let tr_term (cnt,names) t =
+  tr.tr2_var <- (@@);
+  tr.tr2_term
+
+let alpha_rename ?(whole=false) =
+  let prefix = '#' in
+  let tr = make_trans2 () in
+  let tr_desc (cnt,names) desc =
     let new_id x =
       let id =
         if whole then
@@ -44,29 +50,36 @@ let alpha_rename ?(whole=false) =
           Id.new_int()
       in
       Id.set_id x id
+      |> Id.add_name_before @@ String.make 1 prefix
     in
-    let t' = tr.tr2_term_rec (cnt,names) t in
-    match t'.desc with
-    | Local(Decl_let bindings, _) ->
+    let desc' = tr.tr2_desc_rec (cnt,names) desc in
+    match desc' with
+    | Local(Decl_let bindings, t1) ->
         let map = List.map (fun (f,_) -> f, new_id f) bindings in
-        rename map t'
-    | Fun(x, _)->
-        rename [x, new_id x] t'
-    | Match(_,pats) ->
+        let bindings' = List.map2 (fun (f,t) (_,f') -> f', subst_var_map map t) bindings map in
+        Local(Decl_let bindings', subst_var_map map t1)
+    | Fun(x, t1)->
+        let x' = new_id x in
+        Fun(x', subst_var x x' t1)
+    | Match(t1,pats) ->
         let map =
           pats
-          |> List.flatten_map (Triple.fst |- get_bound_variables_pat)
+          |> List.flatten_map (Triple.fst |- get_bv_pat)
           |> List.map (Pair.add_right new_id)
         in
-        rename map t'
-    | _ -> t'
+        Match(t1, List.map (Triple.map_trd @@ subst_var_map map) pats)
+    | _ -> desc'
   in
-  tr.tr2_term <- tr_term;
+  tr.tr2_desc <- tr_desc;
   tr.tr2_typ <- Fun.snd;
+  let remove_sharp = Id.map_name (fun s -> if s.[0] = prefix then String.tl s else s) in
   fun t ->
     let cnt = !!Counter.create in
     let names = ref StringSet.empty in
-    tr.tr2_term (cnt,names) t
+    t
+    |> tr.tr2_term (cnt,names)
+    |> map_id remove_sharp
+    |@whole&> set_id_counter_to_max
 
 let inst_tvar, inst_tvar_typ =
   let tr = make_trans2 () in
@@ -156,7 +169,7 @@ let unify_pattern_var =
             |> List.filter (Id.same x)
             |> List.iter (unify ty -| Id.typ)
           in
-          List.iter aux2 @@ get_vars_pat pat
+          List.iter aux2 @@ get_bv_pat pat
         in
         List.iter aux1 pats
     | _ -> col.col_term_rec t
@@ -1449,34 +1462,25 @@ let elim_unused_let =
       then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
       else has_no_effect t
     in
-    let desc' =
-      let flag = List.mem ADoNotInline t.attr in
-      match t.desc with
-      | Local(Decl_let bindings, t) when not flag ->
-          let t' = tr.tr2_term (leave,cbv) t in
-          let bindings' = List.map (Pair.map_snd @@ tr.tr2_term (leave,cbv)) bindings in
-          let fv2 = get_fv t' in
-          let used (f,t) =
-            Id.mem f leave ||
-            List.exists (fun (f,_) -> Id.mem f fv2) bindings' ||
-            cbv && not @@ has_no_effect t
-          in
-          let bindings'' = List.filter used bindings' in
-          (make_let bindings'' t').desc
-      | Local(Decl_let bindings, t) when not flag ->
-          let t' = tr.tr2_term (leave,cbv) t in
-          let bindings' = List.map (Pair.map_snd @@ tr.tr2_term (leave,cbv)) bindings in
-          let fv = get_fv t' in
-          let used (f,t) =
-            Id.mem f (leave@fv) ||
-            cbv && not @@ has_no_effect t
-          in
-          if List.exists used bindings'
-          then (make_let bindings' t').desc
-          else t'.desc
-      | _ -> tr.tr2_desc_rec (leave,cbv) t.desc
-    in
-    {t with desc=desc'}
+    let t' = tr.tr2_term_rec (leave,cbv) t in
+    let flag = List.mem ADoNotInline t.attr in
+    if flag then
+      t'
+    else
+      let desc =
+        match t'.desc with
+        | Local(Decl_let bindings, t1) ->
+            let fv2 = get_fv t1 in
+            let used (f,t) =
+              Id.mem f leave ||
+              List.exists (fun (f,_) -> Id.mem f fv2) bindings ||
+              cbv && not @@ has_no_effect t
+            in
+            let bindings' = List.filter used bindings in
+            (make_let bindings' t1).desc
+        | _ -> tr.tr2_desc_rec (leave,cbv) t.desc
+      in
+      {t' with desc}
   in
   tr.tr2_term <- tr_term;
   fun ?(leave_last=false) ?(cbv=true) t ->
@@ -1514,7 +1518,7 @@ let subst_with_rename =
         Local(Decl_let bindings', t2')
     | Match(t1,pats) ->
         let aux (pat,cond,t1) =
-          let xs = get_vars_pat pat in
+          let xs = get_bv_pat pat in
           if List.exists (Id.same x) xs
           then pat, cond, t1
           else pat, tr.tr2_term (x,t) cond, tr.tr2_term (x,t) t1
@@ -1880,14 +1884,14 @@ let copy_poly_funs =
         let tvars = get_tvars (Id.typ f) in
         assert (tvars <> []);
         let map2,t2' = fld.fld_term map t2 in
-        let t2'' = inst_tvar TInt t2' in
+        let t2'' = (*inst_tvar TInt*) t2' in
         let map_rename,t2''' = rename_poly_funs f t2'' in
         Debug.printf "COPY: @[";
         List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
         Debug.printf "@.";
         if map_rename = [] then
           let map1,t1' = fld.fld_term map2 t1 in
-          (f,f)::map1, (inst_tvar TInt @@ make_let [f, t1'] t2').desc
+          (f,f)::map1, ((*inst_tvar TInt @@*) make_let [f, t1'] t2').desc
         else
           let aux (map',t) (_,f') =
             let tvar_map = List.map (fun v -> v, ref None) tvars in
@@ -2767,8 +2771,8 @@ let abst_recdata =
                   let ty = tr.tr2_typ (check,tys) @@ Id.typ x in
                   Id.set_typ x ty, make_randvalue_unit ty
                 in
-                get_bound_variables_pat p1
-                |> List.Set.diff ~eq:Id.eq -$- (get_bound_variables_pat p2)
+                get_bv_pat p1
+                |> List.Set.diff ~eq:Id.eq -$- (get_bv_pat p2)
                 |> List.map make
                 |> make_lets -$- t
               in
@@ -2824,3 +2828,29 @@ let inline_type_decl =
   in
   tr.tr_term <- tr_term;
   tr.tr_term
+
+let mark_fv_as_external =
+  let tr = make_trans2 () in
+  let tr_desc bv desc =
+    match desc with
+    | Var x ->
+        if Id.mem x bv then
+          Var x
+        else
+          Var (Id.add_attr Id.External x)
+    | Local(Decl_let defs, _) ->
+        let bv' = List.map fst defs @ bv in
+        tr.tr2_desc_rec bv' desc
+    | Fun(x, _) ->
+        tr.tr2_desc_rec (x::bv) desc
+    | Match(t1, pats) ->
+        let t1' = tr.tr2_term_rec bv t1 in
+        let aux (p,cond,t) =
+          let bv' = get_bv_pat p in
+          p, tr.tr2_term bv' cond, tr.tr2_term bv' t
+        in
+        Match(t1', List.map aux pats)
+    | _ -> tr.tr2_desc_rec bv desc
+  in
+  tr.tr2_desc <- tr_desc;
+  tr.tr2_term []

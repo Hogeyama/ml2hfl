@@ -1500,58 +1500,49 @@ let make_fold_tr () =
 
 
 
+let get_bv,get_bv_pat =
+  let col = make_col [] (@@@) in
+  let col_desc desc =
+    match desc with
+    | Fun(x,t) -> x :: col.col_term t
+    | Local(Decl_let bindings,t) ->
+        let aux (f,t) = f :: col.col_term t in
+        col.col_term t @@@ List.rev_map_flatten aux bindings
+    | _ -> col.col_desc_rec desc
+  in
+  let col_pat p =
+    match p.pat_desc with
+    | PVar x -> [x]
+    | _ -> col.col_pat_rec p
+  in
+  col.col_desc <- col_desc;
+  col.col_pat <- col_pat;
+  col.col_term, col.col_pat
 
 
-
-let rec get_vars_pat pat =
-  match pat.pat_desc with
-  | PAny -> []
-  | PNondet -> []
-  | PVar x -> [x]
-  | PAlias(p,x) -> x :: get_vars_pat p
-  | PConst _ -> []
-  | PConstr(_,pats) -> List.fold_left (fun acc pat -> get_vars_pat pat @@@ acc) [] pats
-  | PRecord pats -> List.fold_left (fun acc (_,pat) -> get_vars_pat pat @@@ acc) [] pats
-  | POr(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
-  | PTuple ps -> List.fold_left (fun acc p -> get_vars_pat p @@@ acc) [] ps
-  | PNil -> []
-  | PCons(p1,p2) -> get_vars_pat p1 @@@ get_vars_pat p2
-  | PNone -> []
-  | PSome p -> get_vars_pat p
-
-let get_fv = make_col2 [] (@@@)
-
-let get_fv_typ vars typ = []
-(*
-  match typ with
-  | TPred(x, preds) -> List.fold_left (fun acc t -> get_fv.col2_term (x::vars) t @@@ acc) preds
-  | TFun(x, typ) -> ...
-  | TTuple xs -> ...
-  | _ -> get_fv.col2_typ_rec vars typ
-*)
-
-let get_fv_term vars t =
-  match t.desc with
-  | Var x -> if Id.mem x vars then [] else [x]
-  | Local(Decl_let bindings, t2) ->
-      let vars' = List.fold_left (fun vars (f,_) -> f::vars) vars bindings in
-      let aux fv (_,t) = get_fv.col2_term vars' t @@@ fv in
-      let fv_t2 = get_fv.col2_term vars' t2 in
-      List.fold_left aux fv_t2 bindings
-  | Fun(x,t) -> get_fv.col2_term (x::vars) t
-  | Match(t,pats) ->
-      let aux acc (pat,cond,t) =
-        let vars' = get_vars_pat pat @@@ vars in
-        get_fv.col2_term vars' cond @@@ get_fv.col2_term vars' t @@@ acc
-      in
-      List.fold_left aux (get_fv.col2_term vars t) pats
-  | _ -> get_fv.col2_term_rec vars t
-
-let () = get_fv.col2_typ <- Fun.const @@ Fun.const []
-let () = get_fv.col2_term <- get_fv_term
-let () = get_fv.col2_typ <- get_fv_typ
-let get_fv ?(eq=Id.same) t =
-  List.unique ~eq @@ get_fv.col2_term [] t
+let get_fv =
+  let col = make_col2 [] (@@@) in
+  let col_desc bv desc =
+    match desc with
+    | Var x -> if Id.mem x bv then [] else [x]
+    | Local(Decl_let bindings, t2) ->
+        let bv' = List.fold_left (fun bv (f,_) -> f::bv) bv bindings in
+        let aux fv (_,t) = col.col2_term bv' t @@@ fv in
+        let fv_t2 = col.col2_term bv' t2 in
+        List.fold_left aux fv_t2 bindings
+    | Fun(x,t) -> col.col2_term (x::bv) t
+    | Match(t,pats) ->
+        let aux acc (pat,cond,t) =
+          let bv' = get_bv_pat pat @@@ bv in
+          col.col2_term bv' cond @@@ col.col2_term bv' t @@@ acc
+        in
+        List.fold_left aux (col.col2_term bv t) pats
+    | _ -> col.col2_desc_rec bv desc
+  in
+  col.col2_desc <- col_desc;
+  col.col2_typ <- Fun.const2 [];
+  fun ?(eq=Id.same) t ->
+    List.unique ~eq @@ col.col2_term [] t
 
 
 

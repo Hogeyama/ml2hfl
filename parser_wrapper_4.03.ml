@@ -158,7 +158,8 @@ let from_ident_aux name binding_time attr typ =
     else
       name
   in
-  Id.make binding_time name attr typ
+  let id = if false then binding_time else 0 in
+  Id.make id name attr typ
 
 let from_ident x typ =
   from_ident_aux (Ident.name x) (Ident.binding_time x) [] typ
@@ -174,12 +175,8 @@ let from_ident_path id_env path typ =
   try
     Id.set_typ (List.find (Id.name |- (=) name) id_env) typ
   with Not_found ->
-    let binding_time,attr =
-      if Char.is_uppercase name.[0] then
-        0, [Id.External]
-      else
-        Path.binding_time path, []
-    in
+    let binding_time = Path.binding_time path in
+    let attr = [] in
     from_ident_aux name binding_time attr typ
 
 let get_constr_name desc typ env =
@@ -343,7 +340,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
   let typ' = from_type_expr env typ in
   match exp_desc with
   | Texp_ident(path, _, _) ->
-      make_var @@ (from_ident_path id_env path typ' |@> (fun x-> if Id.name x = "matches" then Format.printf "MATCHES: %a, %s, %d@." Id.print x (Path.name path) (Path.binding_time path)))
+      make_var @@ from_ident_path id_env path typ'
   | Texp_constant c ->
       {desc = Const (from_constant c); typ = typ'; attr=[]}
   | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
@@ -354,7 +351,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
       make_single_match t1 p' t2
   | Texp_let(Asttypes.Recursive, pats, e) ->
       let ps = List.map (fun {vb_pat} -> from_pattern vb_pat) pats in
-      let id_env' = List.fold_right (fun p env -> get_bound_variables_pat p @ env) ps id_env in
+      let id_env' = List.fold_right (fun p env -> get_bv_pat p @ env) ps id_env in
       let aux p {vb_expr} =
         let e' = from_expression id_env' vb_expr in
         match p.pat_desc with
@@ -378,7 +375,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} =
         | _ -> make_tuple ts
       in
       let t2 =
-        let id_env' = get_bound_variables_pat p @ id_env in
+        let id_env' = get_bv_pat p @ id_env in
         from_expression id_env' e
       in
       make_match t1 [p, true_term, t2]
@@ -528,7 +525,7 @@ let ts = List.mapi aux es in
       let t1 = from_expression id_env e1 in
       let t2 = from_expression id_env e2 in
       let x = Id.new_var TUnit in
-      let f = Id.new_var ~name:"while" @@ make_tfun TUnit t2.typ in
+      let f = Id.new_var ~name:"while" @@ make_tfun TUnit TUnit in
       let t2' = make_if t1 (make_seq t2 @@ make_app (make_var f) [unit_term]) unit_term in
       make_let [f, make_fun x t2'] @@ make_app (make_var f) [unit_term]
   | Texp_for(x, _, e1, e2, dir, e3) ->
@@ -580,7 +577,7 @@ and from_case id_env {c_lhs;c_guard;c_rhs} =
   let p = from_pattern c_lhs in
   let cond = Option.map_default (from_expression id_env) true_term c_guard in
   let t =
-    let id_env' = get_bound_variables_pat p @ id_env in
+    let id_env' = get_bv_pat p @ id_env in
     from_expression id_env' c_rhs
   in
   p, cond, t
@@ -700,8 +697,3 @@ let from_use_file ast =
   |@> Debug.printf "orig: %a@." Print.term
   |> subst_data_type_term "exn" !!exc_typ
   |> Trans.split_let
-  |@> Debug.printf "before alpha: %a@." Print.term'
-  |> Trans.alpha_rename ~whole:true
-  |@> Debug.printf "after alpha: %a@." Print.term'
-  |@> Debug.printf "after alpha: %a@." Print.term
-  |@> Id.set_counter -| succ -| get_max_var_id

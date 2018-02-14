@@ -5,7 +5,6 @@ open Type
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let occur = Syntax.occur
-let get_vars_pat = Syntax.get_vars_pat
 let get_fv = Syntax.get_fv
 
 (*** TERM CONSTRUCTORS ***)
@@ -501,7 +500,7 @@ let subst_term (x,t) t' =
       {t' with desc}
   | Match(t1,pats) ->
       let aux (pat,cond,t1) =
-        let xs = get_vars_pat pat in
+        let xs = get_bv_pat pat in
         if List.exists (Id.same x) xs
         then pat, cond, t1
         else pat, subst.tr2_term (x,t) cond, subst.tr2_term (x,t) t1
@@ -551,6 +550,32 @@ let subst_type x t typ = subst.tr2_typ (x,t) typ
 let subst_type_var x y typ = subst_type x (make_var y) typ
 let subst x t1 t2 = subst.tr2_term (x,t1) t2
 let subst_var x y t = subst x (make_var y) t
+let subst_var_map map t = subst_map (List.map (Pair.map_snd make_var) map) t
+
+let subst_var_without_typ =
+  let tr = make_trans2 () in
+  let tr_desc (x,y) desc =
+    match desc with
+    | Var z when Id.same x z -> Var (Id.set_typ y (Id.typ z))
+    | Fun(z, t1) when Id.same x z -> desc
+    | Local(Decl_let bindings, t2) when List.exists (fun (f,_) -> Id.same f x) bindings -> desc
+    | Local(Decl_let bindings, t2) ->
+        let aux (f,t1) = tr.tr2_var (x,y) f, tr.tr2_term (x,y) t1 in
+        let bindings' = List.map aux bindings in
+        let t2' = tr.tr2_term (x,y) t2 in
+        Local(Decl_let bindings', t2')
+    | Match(t1,pats) ->
+        let aux (pat,cond,t1) =
+          let xs = get_bv_pat pat in
+          if List.exists (Id.same x) xs
+          then pat, cond, t1
+          else pat, tr.tr2_term (x,y) cond, tr.tr2_term (x,y) t1
+        in
+        Match(tr.tr2_term (x,y) t1, List.map aux pats)
+    | _ -> tr.tr2_desc_rec (x,y) desc
+  in
+  tr.tr2_desc <- tr_desc;
+  fun x y t -> tr.tr2_term (x,y) t
 
 
 
@@ -861,28 +886,9 @@ let replace_term t1 t2 t3 =
   subst x t2 @@ subst_rev t1 x t3
 
 
-let get_bound_variables,get_bound_variables_pat =
-  let col = make_col [] (@@@) in
-  let col_desc desc =
-    match desc with
-    | Fun(x,t) -> x :: col.col_term t
-    | Local(Decl_let bindings,t) ->
-        let aux (f,t) = f :: col.col_term t in
-        col.col_term t @@@ List.rev_map_flatten aux bindings
-    | _ -> col.col_desc_rec desc
-  in
-  let col_pat p =
-    match p.pat_desc with
-    | PVar x -> [x]
-    | _ -> col.col_pat_rec p
-  in
-  col.col_desc <- col_desc;
-  col.col_pat <- col_pat;
-  col.col_term, col.col_pat
-
 (* for debug *)
 let is_id_unique t =
-  let bv = get_bound_variables t in
+  let bv = get_bv t in
   let rec check xs =
     match xs with
     | [] -> true
@@ -1218,6 +1224,9 @@ let has_pnondet =
   in
   col.col_pat <- col_pat;
   col.col_pat
+
+let set_id_counter_to_max =
+  Id.set_counter -| succ -| get_max_var_id
 
 module Term = struct
   let unit = unit_term

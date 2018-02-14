@@ -557,6 +557,9 @@ module Char = BatChar
 module String = struct
   include BatString
 
+  let tl s =
+    sub s 1 (length s - 1)
+
   let split_nth s n =
     sub s 0 n, sub s n (length s - n)
 

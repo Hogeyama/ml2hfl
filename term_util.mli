@@ -160,10 +160,7 @@ val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
 val get_top_funs : term -> id list
 val get_top_rec_funs : term -> id list
-val get_vars_pat : pattern -> id list
 val get_fv : ?eq:(id -> id -> bool) -> term -> id list
-val get_bound_variables : term -> id list
-val get_bound_variables_pat : pattern -> id list
 val get_id : term -> int
 val get_id_option : term -> int option
 val get_id_map : term -> (int, term) Hashtbl.t
@@ -188,8 +185,10 @@ val subst_map : (id * term) list -> term -> term
 val subst_type : id -> term -> typ -> typ
 val subst_type_var : id -> id -> typ -> typ
 val subst_var : id -> id -> term -> term
+val subst_var_map : (id * id) list -> term -> term
 val subst_data_type : string -> typ -> typ -> typ
 val subst_data_type_term : string -> typ -> term -> term
+val subst_var_without_typ : id -> id -> term -> term
 
 (** {6 Misc} *)
 val subst_rev : term -> id -> term -> term
@@ -217,7 +216,7 @@ val add_tapred : id -> term list -> typ -> typ
 val find_fixed_args : id -> id list -> term -> id list
 val trans_if : (term -> term option) -> term -> term
 val rename : (id * id) list -> term -> term
-
+val set_id_counter_to_max : term -> unit
 
 module Term : sig
   val unit : term

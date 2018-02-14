@@ -57,6 +57,8 @@ val abst_ext_recdata : term -> term
 val col_type_decl : term -> (string * typ) list list
 val remove_type_decl : term -> term
 val lift_type_decl : term -> term
+val mark_fv_as_external : term -> term
+val map_id : (id -> id) -> term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc
