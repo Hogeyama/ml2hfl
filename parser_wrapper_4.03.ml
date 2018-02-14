@@ -57,7 +57,7 @@ let prim_typ_cons =
 let rec from_type_expr env typ =
   let typ' = (*Ctype.repr*)Ctype.full_expand env typ in
   Debug.printf "%a@." Printtyp.type_expr typ';
-  Debug.printf "%a@." Printtyp.raw_type_expr typ';
+  Debug.printf "%a@.@." Printtyp.raw_type_expr typ';
   match typ'.Types.desc with
   | Tvar _ ->
       begin

@@ -1,3 +1,4 @@
+let print ?(out=BatIO.stdout) x = BatPervasives.print_any out x
 
 module type COND = sig
   val check : unit -> bool

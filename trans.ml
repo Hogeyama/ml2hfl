@@ -119,8 +119,7 @@ let rename_poly_funs =
     match t.desc with
     | Var x when Id.same x f ->
         if is_poly_typ t.typ then
-          fatal "Cannot occur? @ Trans.rename_poly_funs"
-        else
+          ignore @@ inst_tvar_typ TInt t.typ;
           let map',x' =
             match List.find_option (can_unify x) map with
             | None ->
@@ -1478,7 +1477,7 @@ let elim_unused_let =
             in
             let bindings' = List.filter used bindings in
             (make_let bindings' t1).desc
-        | _ -> tr.tr2_desc_rec (leave,cbv) t.desc
+        | _ -> t'.desc
       in
       {t' with desc}
   in
@@ -1932,6 +1931,7 @@ let copy_poly_funs =
       |> flatten_tvar
       |> inline_var_const
       |@> Type_check.check -$- Type.TUnit
+      |> inst_tvar TInt
     in
     let make_get_rtyp get_rtyp f =
       let fs = List.assoc_all ~eq:Id.eq f map in
