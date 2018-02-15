@@ -589,7 +589,7 @@ let from_exception_declaration = List.map from_type_expr
 let rec from_module_binding id_env tenv mb =
   let id_env',mdl = from_module_expr id_env mb.mb_expr in
   let m = from_ident mb.mb_id mdl.typ in
-  id_env', [Decl_let [m,mdl]]
+  id_env', [Nonrecursive, Decl_let [m,mdl]]
 
 and from_module_type mty =
   match mty with
@@ -603,13 +603,13 @@ and from_module_expr id_env mb_expr =
   match mb_expr.mod_desc with
   | Tmod_structure struc ->
       let id_env', decls = from_structure id_env mb_expr.mod_env struc in
-      let mdl = make_module @@ List.rev decls in
+      let mdl = make_module @@ List.rev_map snd decls in
       let id_env'' =
         let map =
-          let aux decl =
+          let aux (_,decl) =
             match decl with
             | Decl_let defs -> List.map fst defs
-            | _ -> []
+            | Decl_type _ -> []
           in
           List.flatten_map aux decls
         in
@@ -642,25 +642,35 @@ and from_str_item id_env tenv str_item =
   match str_item.str_desc with
   | Tstr_eval(e,_) ->
       let t = from_expression id_env e in
-      id_env, [Decl_let[Id.new_var ~name:"u" t.typ, t]]
-  | Tstr_value(rec_flag,pats) ->
-      let flag = from_rec_flag rec_flag in
+      id_env, [Nonrecursive, Decl_let[Id.new_var ~name:"u" t.typ, t]]
+  | Tstr_value(Asttypes.Recursive,pats) ->
       let aux {vb_pat;vb_expr} =
         let p = from_pattern vb_pat in
         let e = from_expression id_env vb_expr in
-        match p.pat_desc, flag with
-        | PVar x, _ -> x, e
-        | PConst {desc=Const Unit}, _ -> Id.new_var ~name:"u" TUnit, e
-        | PAny, _ -> new_var_of_term e, e
-        | _, Recursive -> fatal "Only variables are allowed as left-hand side of 'let rec'"
-        | _, Nonrecursive -> unsupported "Only variables are allowed as left-hand side of 'let'"
+        match p.pat_desc with
+        | PVar x -> x, e
+        | _ -> fatal "Only variables are allowed as left-hand side of 'let rec'"
       in
-      id_env, [Decl_let (List.map aux pats)]
+      id_env, [Recursive, Decl_let (List.map aux pats)]
+  | Tstr_value(Asttypes.Nonrecursive,pats) ->
+      let aux {vb_pat;vb_expr} =
+        let p = from_pattern vb_pat in
+        let t = from_expression id_env vb_expr in
+        let x,t =
+          match p.pat_desc with
+          | PVar x -> x, t
+          | PConst {desc=Const Unit} -> Id.new_var ~name:"u" TUnit, t
+          | PAny -> new_var_of_term t, t
+          | _ -> unsupported "Only variables are allowed as left-hand side of 'let'"
+        in
+        Nonrecursive, Decl_let [x,t]
+      in
+      id_env, List.map aux pats
   | Tstr_primitive _ -> id_env, []
   | Tstr_type(rec_flag,decls) ->
       let flag = from_rec_flag rec_flag in
       if flag = Nonrecursive then unsupported "Non recursive type declaration";
-      id_env, [Decl_type (List.map (from_type_declaration tenv) decls)]
+      id_env, [flag, Decl_type (List.map (from_type_declaration tenv) decls)]
   | Tstr_typext _ -> unsupported "typext"
   | Tstr_exception _ -> id_env, []
   | Tstr_module mb -> from_module_binding id_env tenv mb
@@ -687,13 +697,29 @@ let from_top_level_phrase (tenv,id_env,decls) = function
       let id_env',decls' = from_structure id_env tenv struc' in
       tenv', id_env', decls' @ decls
 
+let make_local' t (flag,decl) =
+  match flag,decl with
+  | Nonrecursive, Decl_let defs ->
+      let xs = List.map fst defs in
+      let fv = get_fv @@ make_tuple @@ List.map snd defs in
+      let xs' = List.filter (Id.mem -$- fv) xs in
+      let map = List.map (Pair.add_right Id.new_var_id) xs' in
+      let aux (x,t1) t2 =
+        let x',t2' =
+          match Id.assoc_option x map with
+          | Some x' -> x', subst_var x x' t2
+          | None -> x, t2
+        in
+        make_let [x',t1] t2'
+      in
+      List.fold_right aux defs t
+  | _ -> make_local decl t
+
 let from_use_file ast =
   let env = Compmisc.initial_env () in
   init_exc_env ();
   ast
   |> List.fold_left from_top_level_phrase (env,[],[])
   |> Triple.trd
-  |> List.fold_left (Fun.flip make_local) end_of_definitions
-  |@> Debug.printf "orig: %a@." Print.term
+  |> List.fold_left make_local' end_of_definitions
   |> subst_data_type_term "exn" !!exc_typ
-  |> Trans.split_let

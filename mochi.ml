@@ -223,7 +223,6 @@ let main cin =
     main_input_cegar lb
   else
     let orig = Parse.use_file lb in
-    Id.set_counter (Ident.current_time () + 1000);
     let parsed = Parser_wrapper.from_use_file orig in
     Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
     if !Flag.NonTermination.randint_refinement_log
