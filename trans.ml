@@ -62,17 +62,13 @@ let alpha_rename ?(whole=false) =
         let x' = new_id x in
         Fun(x', subst_var_without_typ x x' t1)
     | Match(t1,pats) ->
-        let map =
-          pats
-          |> List.flatten_map (Triple.fst |- get_bv_pat)
-          |> List.map (Pair.add_right new_id)
+        let aux (p,cond,t2) =
+          let map = List.map (Pair.add_right new_id) @@ get_bv_pat p in
+          rename_pat map p,
+          subst_var_map_without_typ map cond,
+          subst_var_map_without_typ map t2
         in
-        let pats' =
-          pats
-          |> List.map (Triple.map_trd @@ subst_var_map_without_typ map)
-          |> List.map (Triple.map_fst @@ rename_pat map)
-        in
-        Match(t1, pats')
+        Match(t1, List.map aux pats)
     | _ -> desc'
   in
   tr.tr2_desc <- tr_desc;
