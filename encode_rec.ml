@@ -19,7 +19,7 @@ let abst_recdata_leaves env typs =
 
 let encode_recdata_typ env s ty =
   match ty with
-  | TVariant labels when List.mem s @@ get_data_type ty ->
+  | TVariant(false,labels) when List.mem s @@ get_data_type ty ->
       let tys =
         let aux ty =
           match ty with
@@ -42,7 +42,7 @@ let encode_recdata_typ env s ty =
 let abst_recdata_typ env typ =
   match typ with
   | TRecord fields -> unsupported "abst_recdata_typ TRecord"
-  | TVariant labels ->
+  | TVariant(false,labels) ->
       let aux (s,tys) = make_tpair TBool @@ make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
       make_ttuple @@ List.map aux labels
   | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
@@ -95,7 +95,9 @@ let rec abst_recdata_pat env p =
               let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
               Pat.(pair false_ (__ ty))
           in
-          List.map aux @@ decomp_tvariant @@ expand_typ env p.pat_typ
+          let poly,decls = decomp_tvariant @@ expand_typ env p.pat_typ in
+          if poly then unsupported "encode_rec: polymorphic variant";
+          List.map aux decls
         in
         PTuple ps', true_term, []
     | PConstr(c,ps) ->
@@ -126,7 +128,9 @@ let rec abst_recdata_pat env p =
             List.map2 make_cond binds pcbs
           in
           let cond0 =
-            let i = List.find_pos (fun _ (c',_) -> c = c') @@ decomp_tvariant @@ expand_typ env p.pat_typ in
+            let poly,decls = decomp_tvariant @@ expand_typ env p.pat_typ in
+            if poly then unsupported "encode_rec: polymorphic variant";
+            let i = List.find_pos (fun _ (c',_) -> c = c') decls in
             Term.(fst (proj i (snd (var f) @ [nil TInt])))
           in
           make_ands (cond0 :: conds')
@@ -192,11 +196,12 @@ let abst_recdata_term env t =
           let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
           Term.(pair false_ (rand ty))
       in
-      make_tuple @@ List.map aux @@ decomp_tvariant @@ expand_typ env t.typ
+      make_tuple @@ List.map aux @@ snd @@ decomp_tvariant @@ expand_typ env t.typ
   | Constr(c,ts) ->
       let ts' = List.map (abst_recdata.tr2_term env) ts in
       let xtys = List.map2 (fun t' t -> Id.new_var @@ expand_enc_typ env t'.typ, t.typ) ts' ts in
-      let labels = decomp_tvariant @@ expand_typ env t.typ in
+      let poly,labels = decomp_tvariant @@ expand_typ env t.typ in
+      if poly then unsupported "encode_rec: polymorphic variant";
       let path = Id.new_var ~name:"path" @@ make_tlist TInt in
       let pat0 =
         let top =

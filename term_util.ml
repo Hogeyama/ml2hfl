@@ -741,9 +741,10 @@ let rec merge_typ typ1 typ2 =
       in
       TTuple (List.fold_right2 aux xs1 xs2 [])
   | TData _, TData _ -> assert (typ1 = typ2); typ1
-  | TVariant labels1, TVariant labels2 ->
+  | TVariant(poly1,labels1), TVariant(poly2,labels2) ->
+      assert (poly1 = poly2);
       let labels = List.map2 (fun (s1,typs1) (s2,typs2) -> assert (s1=s2); s1, List.map2 merge_typ typs1 typs2) labels1 labels2 in
-      TVariant labels
+      TVariant(poly1, labels)
   | TRecord fields1, TRecord fields2 ->
       let fields = List.map2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1=s2 && f1=f2); s1, (f1, merge_typ typ1 typ2)) fields1 fields2 in
       TRecord fields

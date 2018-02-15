@@ -26,7 +26,7 @@ let add_exc_env name typs =
       ()
   else
     exc_env := (name,typs) :: !exc_env
-let exc_typ () = TVariant !exc_env
+let exc_typ () = TVariant(false,!exc_env)
 
 
 let prim_typs =
@@ -103,7 +103,7 @@ let rec from_type_expr env typ =
         in
         List.map (Pair.map_snd tr) row_desc.row_fields
       in
-      TVariant decls
+      TVariant(true,decls)
   | Tunivar _ -> unsupported "Tunivar"
   | Tpoly(typ,[]) -> from_type_expr env typ
   | Tpoly _ -> unsupported "Tpoly"
@@ -126,7 +126,7 @@ and from_type_declaration env decl =
               List.map (fun arg -> from_type_expr env arg.ctyp_type) args
           | Cstr_record _ -> unsupported "Cstr_record"
         in
-        TVariant (List.map aux decls)
+        TVariant(false, List.map aux decls)
     | Ttype_record decls ->
         let aux {ld_id;ld_mutable;ld_type} =
           Ident.name ld_id, (from_mutable_flag ld_mutable, from_type_expr env ld_type.ctyp_type)

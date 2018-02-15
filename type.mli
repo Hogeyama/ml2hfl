@@ -7,7 +7,7 @@ type 'a t =
   | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)
   | TTuple of 'a t Id.t list
   | TData of string
-  | TVariant of (string * 'a t list) list
+  | TVariant of bool * (string * 'a t list) list (** true means polymorphic variant *)
   | TRecord of (string * (mutable_flag * 'a t)) list
   | TApp of constr * 'a t list
   | TAttr of 'a attr list * 'a t
@@ -66,7 +66,7 @@ val list_typ : 'a t -> 'a t
 val option_typ : 'a t -> 'a t
 val arg_var : 'a t -> 'a t Id.t
 val result_typ : 'a t -> 'a t
-val decomp_tvariant : 'a t -> (string * 'a t list) list
+val decomp_tvariant : 'a t -> bool * (string * 'a t list) list
 val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
 val get_free_data_name : 'a t -> string list

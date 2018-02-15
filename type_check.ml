@@ -125,7 +125,7 @@ let rec check t typ =
   | Cons(t1,t2), TApp(TList, [typ']) ->
       check t1 typ';
       check t2 typ
-  | Constr(s,ts), TVariant labels ->
+  | Constr(s,ts), TVariant(_,labels) ->
       List.iter2 check ts @@ List.assoc s labels
   | Match(t,pats), typ' ->
       let aux (p,cond,t) =

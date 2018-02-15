@@ -218,7 +218,7 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
         let ed',t = define_randvalue ed @@ make_tlist typ in
         ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" ~attr:[Id.External] @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
     | TData s -> (env, defs), make_randvalue_unit typ
-    | TVariant labels ->
+    | TVariant(_,labels) ->
         let u = Id.new_var TUnit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (TData name,f)::(typ,f)::env in

@@ -169,7 +169,7 @@ let trans_typ trans = function
         | TAAssumePredTrue -> TAAssumePredTrue
       in
       TAttr(List.map tr attr, trans.tr_typ typ)
-  | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
+  | TVariant(poly,labels) -> TVariant(poly, List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd trans.tr_typ) fields)
   | TModule decls -> TModule (List.map (Pair.map_snd trans.tr_typ) decls)
 
@@ -341,7 +341,7 @@ let trans2_gen_typ tr env = function
         | TAAssumePredTrue -> TAAssumePredTrue
       in
       TAttr(List.map aux attr, tr.tr2_typ env typ)
-  | TVariant labels -> TVariant (List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
+  | TVariant(poly,labels) -> TVariant(poly, List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ tr.tr2_typ env) fields)
   | TModule sgn -> TModule (List.map (Pair.map_snd (tr.tr2_typ env)) sgn)
 
@@ -524,7 +524,7 @@ let col_typ col typ =
         | TAAssumePredTrue -> acc
       in
       List.fold_left aux (col.col_typ typ) attr
-  | TVariant labels -> List.fold_left (fun init (_,typs) -> col_list col col.col_typ ~init typs) col.col_empty labels
+  | TVariant(_,labels) -> List.fold_left (fun init (_,typs) -> col_list col col.col_typ ~init typs) col.col_empty labels
   | TRecord fields -> col_list col (snd |- snd |- col.col_typ) fields
   | TModule sgn -> col_list col (snd |- col.col_typ) sgn
 
@@ -707,7 +707,7 @@ let col2_typ col env typ =
         | TAAssumePredTrue -> acc
       in
       List.fold_left aux (col.col2_typ env typ) attr
-  | TVariant labels -> List.fold_left (fun init (_,typs) -> col2_list col (col.col2_typ env) ~init typs) col.col2_empty labels
+  | TVariant(_,labels) -> List.fold_left (fun init (_,typs) -> col2_list col (col.col2_typ env) ~init typs) col.col2_empty labels
   | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc -@- col.col2_typ env typ) col.col2_empty fields
   | TModule sgn -> List.fold_left (fun acc (_,typ) -> acc -@- col.col2_typ env typ) col.col2_empty sgn
 
@@ -904,7 +904,7 @@ let tr_col2_typ tc env = function
       let acc,typ' = tc.tr_col2_typ env typ in
       let acc',attr' = tr_col2_list tc aux ~init:acc env attr in
       acc', TAttr(attr', typ')
-  | TVariant labels ->
+  | TVariant(poly,labels) ->
       let acc,labels' =
         let aux (s,typs) (acc,labels') =
           let acc',typs' = tr_col2_list tc tc.tr_col2_typ ~init:acc env typs in
@@ -912,7 +912,7 @@ let tr_col2_typ tc env = function
         in
         List.fold_right aux labels (tc.tr_col2_empty,[])
       in
-      acc, TVariant labels'
+      acc, TVariant(poly,labels')
   | TRecord fields ->
       let acc,fields' =
         let aux env' (s,(f,typ)) =
@@ -1234,7 +1234,7 @@ let fold_tr_typ fld env ty =
       let env',attr' = fold_tr_list aux env attr in
       let env'',typ' = fld.fld_typ env' typ in
       env'', TAttr(attr', typ')
-  | TVariant labels ->
+  | TVariant(poly,labels) ->
       let env,labels' =
         let aux (s,typs) (env,labels') =
           let env',typs' = fold_tr_list fld.fld_typ env typs in
@@ -1242,7 +1242,7 @@ let fold_tr_typ fld env ty =
         in
         List.fold_right aux labels (env,[])
       in
-      env, TVariant labels'
+      env, TVariant(poly,labels')
   | TRecord fields ->
       let env,fields' =
         let aux env' (s,(f,typ)) =

@@ -180,12 +180,12 @@ let record = encode_record.tr_term
 
 let rec is_simple_variant typ =
   match typ with
-  | TVariant labels -> List.for_all (snd |- (=) []) labels
+  | TVariant(_,labels) -> List.for_all (snd |- (=) []) labels
   | _ -> false
 
 let rec position c typ =
   match typ with
-  | TVariant labels -> List.find_pos (fun _ (c',_) -> c = c') labels
+  | TVariant(_,labels) -> List.find_pos (fun _ (c',_) -> c = c') labels
   | _ -> invalid_arg "position"
 
 let encode_simple_variant = make_trans ()
