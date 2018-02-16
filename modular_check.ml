@@ -294,7 +294,7 @@ let check prog f typ depth =
     |> make_lets fun_env'
     |> add_preds
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
-    |@> Type_check.check -$- TUnit
+    |@> Type_check.check ~ty:TUnit
     |> Trans.map_main (make_seq -$- unit_term) (* ??? *)
     |> Main_loop.verify ~make_pps:(Some(make_pps)) ~fun_list:(Some []) [] Spec.init
   in

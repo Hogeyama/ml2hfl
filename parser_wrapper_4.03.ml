@@ -55,7 +55,7 @@ let prim_typ_cons =
    "Lazy.t", TLazy]
 
 let rec from_type_expr env typ =
-  let typ' = (*Ctype.repr*)Ctype.full_expand env typ in
+  let typ' = (if true then Ctype.repr else Ctype.full_expand env) typ in
   Debug.printf "%a@." Printtyp.type_expr typ';
   Debug.printf "%a@.@." Printtyp.raw_type_expr typ';
   match typ'.Types.desc with
@@ -109,6 +109,7 @@ let rec from_type_expr env typ =
   | Tpoly _ -> unsupported "Tpoly"
   | Tpackage _ -> unsupported "Tpackage"
 and from_type_declaration env decl =
+  Debug.printf "decl: %a@." (Printtyp.type_declaration (Ident.create "t")) decl.typ_type;
   let open Typedtree in
   let ty =
     match decl.typ_kind with
@@ -235,8 +236,8 @@ let rec from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
         in
         PConstr(name, pats)
     | Tpat_record(pats,_) ->
-        let aux1 (_,lbl,p) = get_label_name lbl env, from_pattern p in
-        PRecord (List.map aux1 pats)
+        let aux (_,lbl,p) = get_label_name lbl env, from_pattern p in
+        PRecord (List.map aux pats)
     | Tpat_array _ -> unsupported "pattern match (array)"
     | Tpat_or(p1,p2,None) -> POr(from_pattern p1, from_pattern p2)
     | Tpat_or(_,_,Some _) -> unsupported "pattern match (or) where row = Some _"
@@ -583,7 +584,7 @@ and from_case id_env {c_lhs;c_guard;c_rhs} =
   p, cond, t
 
 
-let from_exception_declaration = List.map from_type_expr
+let from_exception_declaration decls = List.map from_type_expr decls
 
 
 let rec from_module_binding id_env tenv mb =
@@ -722,4 +723,4 @@ let from_use_file ast =
   |> List.fold_left from_top_level_phrase (env,[],[])
   |> Triple.trd
   |> List.fold_left make_local' end_of_definitions
-  |> subst_data_type_term "exn" !!exc_typ
+  |> subst_tdata "exn" !!exc_typ

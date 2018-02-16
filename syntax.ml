@@ -1546,21 +1546,21 @@ let get_fv =
 
 
 
-let occur = make_col2 false (||)
-
-let occur_typ x typ =
-  match typ with
-  | TAttr(attr, typ) ->
-      let aux a =
-        match a with
-        | TAPred(y,ps) -> List.exists (List.exists (Id.same x) -| get_fv) ps
-        | _ -> false
-      in
-      List.exists aux attr || occur.col2_typ x typ
-  | _ -> occur.col2_typ_rec x typ
-
-let () = occur.col2_typ <- occur_typ
-let occur = occur.col2_typ
+let occur_typ =
+  let col = make_col2 false (||) in
+  let occur_typ x typ =
+    match typ with
+    | TAttr(attr, typ) ->
+        let aux a =
+          match a with
+          | TAPred(y,ps) -> List.exists (List.exists (Id.same x) -| get_fv) ps
+          | _ -> false
+        in
+        List.exists aux attr || col.col2_typ x typ
+    | _ -> col.col2_typ_rec x typ
+  in
+  col.col2_typ <- occur_typ;
+  col.col2_typ
 
 
 let make_extra_coeff ?(name="c") ?(typ=TInt) () = Id.new_var ~name:name ~attr:[Id.Coefficient] typ

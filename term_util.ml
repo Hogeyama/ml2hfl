@@ -4,8 +4,10 @@ open Type
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let occur = Syntax.occur
 let get_fv = Syntax.get_fv
+
+let occur_in x t =
+  Id.mem x @@ get_fv t
 
 (*** TERM CONSTRUCTORS ***)
 
@@ -89,6 +91,9 @@ let make_let bindings t2 =
     t2
   else
     make_local (Decl_let bindings) t2
+let make_let_s bindings t2 =
+  let bindings' = List.filter (fun (f,_) -> List.exists (snd |- occur_in f) bindings || occur_in f t2) bindings in
+  make_let bindings' t2
 let make_let_type decls t2 =
   if decls = [] then
     t2
@@ -957,29 +962,49 @@ let rec list_of_term t =
   | Cons(t1,t2) -> t1 :: list_of_term t2
   | _ -> invalid_arg "list_of_term"
 
-let rec get_last_definition def t =
+
+(* not capture-avoiding *)
+let subst_tdata,subst_tdata_typ =
+  let tr = make_trans2 () in
+  let tr_typ (s,ty1) ty2 =
+    match ty2 with
+    | TData s' when s = s' -> ty1
+    | _ -> tr.tr2_typ_rec (s,ty1) ty2
+  in
+  tr.tr2_typ <- tr_typ;
+  (fun s ty' t -> tr.tr2_term (s,ty') t),
+  (fun s ty' ty -> tr.tr2_typ (s,ty') ty)
+
+(* not capture-avoiding *)
+let subst_tdata_map,subst_tdata_typ_map =
+  let tr = make_trans2 () in
+  let tr_typ map ty =
+    match ty with
+    | TData s when List.mem_assoc s map -> List.assoc s map
+    | _ -> tr.tr2_typ_rec map ty
+  in
+  tr.tr2_typ <- tr_typ;
+  tr.tr2_term, tr.tr2_typ
+
+
+let rec get_last_definition prefix env def t =
   match t.desc with
   | Local(Decl_let bindings, t2) ->
       let f,t = List.last bindings in
-      get_last_definition (Some (f,t)) t2
-  | Local(Decl_type _, t2) ->
-      get_last_definition def t2
-  | Module decls ->
-      begin
-        match List.rev @@ List.filter (function Decl_let _ -> true | _ -> false) decls with
-        | [] -> unsupported "get_last_definition"
-        | Decl_let defs :: _ -> Some (fst @@ List.last defs)
-        | _ -> assert false
-      end
+      get_last_definition prefix env (Some (env,f,t)) t2
+  | Local(Decl_type decls, t2) ->
+      let env' = List.map (fun (s,_) -> s, TData (prefix ^ s)) decls @ env in
+      get_last_definition prefix env' def t2
+  | Module decls -> unsupported "get_last_definition"
   | Fun _ -> None
   | _ ->
       match def with
       | None -> None
-      | Some (m, {desc=Module decls}) ->
-          let f = get_last_definition None (make_local (List.last decls) end_of_definitions) in
-          Option.map (Id.add_module_prefix ~m) f
-      | Some (f,_) -> Some f
-let get_last_definition t = get_last_definition None t
+      | Some (env', m, {desc=Module decls}) ->
+          List.fold_right make_local decls end_of_definitions
+          |> get_last_definition (Id.name m ^ "." ^ prefix) env None
+      | Some (env',f,_) -> Some (Id.map_typ (subst_tdata_typ_map env') f)
+let get_last_definition t = get_last_definition "" [] None t
 
 let rec get_body t =
   match t.desc with
@@ -1075,17 +1100,6 @@ let rec from_fpat_term = function
 
 let from_fpat_formula t = from_fpat_term @@ Fpat.Formula.term_of t
 
-
-
-let subst_data_type = make_trans2 ()
-let subst_data_type_typ (s,typ1) typ2 =
-  if typ2 = TData s then
-    typ1
-  else
-    subst_data_type.tr2_typ_rec (s,typ1) typ2
-let () = subst_data_type.tr2_typ <- subst_data_type_typ
-let subst_data_type_term s typ t = subst_data_type.tr2_term (s,typ) t
-let subst_data_type s typ1 typ2 = subst_data_type.tr2_typ (s,typ1) typ2
 
 let find_exn_typ = make_col [] (@)
 let find_exn_typ_term t =

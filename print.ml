@@ -5,7 +5,7 @@ open Syntax
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let rec print_typ fm t = Type.print ~occur (print_term 0 false) fm t
+let rec print_typ fm t = Type.print ~occur:occur_typ (print_term 0 false) fm t
 and print_ids ?fv typ fm xs =
   if xs <> [] then
     let xs' =
@@ -193,7 +193,7 @@ and print_desc attr pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[%sassert@ false%s@]" s1 s2
-  | Local(Decl_let [u,t1], t2) when Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
+  | Local(Decl_let [u,t1], t2) when not !!Debug.check && Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
       let p = 18 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a;@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
@@ -472,11 +472,17 @@ let rec print_term' pri fm t =
           | _ -> fprintf fm     "%s@[<v>@[<hov 2>%a@]@ @[<v 2>in@ @]@[<hov>%a@]@]%s"
                          s1 print_bindings bindings (print_term' p) t2 s2
         end
-    | Local(Decl_type((name,_)::_), t) ->
+    | Local(Decl_type decls, t) ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
-        fprintf fm "@[<hov 2>%slet type %s@ = ... in@ %a%s@]" s1 name (print_term' p) t s2
-    | Local(Decl_type [], _) -> assert false
+        let b = ref true in
+        let print_decl fm (name,ty) =
+          let pre = if !b then "let type" else "and" in
+          fprintf fm "@[<hov 2>%s @[<hov 2>%s@] =@ %a@]" pre name print_typ ty;
+          b := false
+        in
+        let print_decls bs = print_list print_decl "@ " ~last:true bs in
+        fprintf fm "%s@[<v>@[<hv>%a@]in@ @[<hov>%a@]@]%s" s1 print_decls decls (print_term' p) t s2
     | BinOp(op, t1, t2) ->
         let p = match op with Add|Sub|Mult|Div -> 6 | And -> 4 | Or -> 3 | _ -> 5 in
         let s1,s2 = paren pri p in

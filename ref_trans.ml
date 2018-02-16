@@ -576,11 +576,11 @@ let trans t = t
   |@> Debug.printf "flatten_let: %a@." Print.term_typ
   |> sort_let_pair.tr_term
   |@> Debug.printf "sort_let_pair: %a@." Print.term_typ
-  |@> Type_check.check -$- TUnit
+  |@> Type_check.check ~ty:TUnit
   |> trans.tr2_term (assert_false,[])
   |> Trans.inline_no_effect
   |@> Debug.printf "ref_trans: %a@." Print.term
-  |@> Type_check.check -$- Type.TUnit
+  |@> Type_check.check ~ty:Type.TUnit
 
 let trans t =
  trans t, fun _ _ -> raise Not_found

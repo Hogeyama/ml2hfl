@@ -152,29 +152,33 @@ let rec encode_record_pat p =
   | _ -> encode_record.tr_pat_rec p
 
 let encode_record_term t =
-  match t.desc with
-  | Record fields ->
+  match t.desc, t.typ with
+  | Record fields, _ ->
       if is_mutable_record t.typ then
         unsupported "Mutable records";
       make_tuple @@ List.map (encode_record.tr_term -| snd) fields
-  | Field(t,s) ->
+  | Local(Decl_type decls, _), _ ->
+      let tys = List.flatten_map (snd |- get_data_type) decls in
+      let check (s,ty) =
+        match ty with
+        | TRecord _ -> List.mem s tys
+        | _ -> false
+      in
+      if List.exists check decls then unsupported "recursive record types";
+      encode_record.tr_term_rec t
+  | Field(t,s), _ ->
       let fields = decomp_trecord t.typ in
       if is_mutable_record t.typ then
         unsupported "Mutable records";
       let t' = encode_record.tr_term t in
-      (try
-         make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) t'
-       with _ ->
-Format.printf "t': %a@." Print.term t';
-Format.printf "t'.typ: %a@." Print.typ t'.typ;
-         assert false)
-  | SetField _ -> unsupported "Mutable records"
+      make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) t'
+  | SetField _, _ -> unsupported "Mutable records"
   | _ -> encode_record.tr_term_rec t
 
 let () = encode_record.tr_term <- encode_record_term
 let () = encode_record.tr_pat <- encode_record_pat
 let () = encode_record.tr_typ <- encode_record_typ
-let record = encode_record.tr_term
+let record = encode_record.tr_term -| Trans.complete_precord
 
 
 

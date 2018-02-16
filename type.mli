@@ -38,6 +38,7 @@ val same_shape : 'a t -> 'a t -> bool
 val has_pred : 'a t -> bool
 val is_mutable_record : 'a t -> bool
 val is_tvar : 'a t -> bool
+val occurs : 'a t option ref -> 'a t -> bool
 
 val typ_unknown : 'a t
 val elim_tattr : 'a t -> 'a t
@@ -69,7 +70,6 @@ val result_typ : 'a t -> 'a t
 val decomp_tvariant : 'a t -> bool * (string * 'a t list) list
 val decomp_ttuple : 'a t -> 'a t list
 val decomp_trecord : 'a t -> (string * (mutable_flag * 'a t)) list
-val get_free_data_name : 'a t -> string list
 val array_typ : 'a t -> 'a t
 val decomp_tattr : 'a t -> 'a attr list * 'a t
 

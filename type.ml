@@ -240,6 +240,11 @@ let print ?(occur=fun _ _ -> false) print_pred fm typ =
   Format.fprintf fm "@[%a@]" (print occur print_pred) typ
 let print_init typ = print (fun _ -> assert false) typ
 
+let rec decomp_module s =
+  List.decomp_snoc @@ String.split_on_char '.' s
+
+let base = snd -| decomp_module
+
 let rec can_unify typ1 typ2 =
   match elim_tattr typ1, elim_tattr typ2 with
   | TVar({contents=Some typ1},_), typ2
@@ -261,15 +266,15 @@ let rec can_unify typ1 typ2 =
   | TFun _, TData "event" -> true
   | TVar({contents=None},_), _ -> true
   | _, TVar({contents=None},_) -> true
-  | TData s1, TData s2 -> s1 = s2
   | TVariant(poly1,labels1), TVariant(poly2,labels2) ->
       poly1 = poly2 &&
       (poly1 || List.for_all2 (fun (s1,typs1) (s2,typs2) -> s1 = s2 && List.for_all2 can_unify typs1 typs2) labels1 labels2)
   | TRecord fields1, TRecord fields2 ->
       List.for_all2 (fun (s1,(f1,typ1')) (s2,(f2,typ2')) -> s1 = s2 && f1 = f2 && can_unify typ1' typ2') fields1 fields2
-  | TModule _, TModule _ -> true
-  | TModule _, TData _ -> true
-  | TData _, TModule _ -> true
+  | TModule _, TModule _ -> true (* TODO *)
+  | TModule _, TData _ -> true (* TODO *)
+  | TData _, _ -> true (* TODO *)
+  | _, TData _ -> true (* TODO *)
   | _ -> false
 
 
@@ -332,9 +337,9 @@ let rec unify typ1 typ2 =
          raise CannotUnify);
       Option.iter (fun n -> Debug.printf "%a := %a@." print_tvar n print_init typ) n;
       r := Some typ
-  | TData s1, TData s2 -> assert (s1 = s2)
-  | TVariant(poly1,labels1), TVariant(poly2,labels2) ->
-      assert (poly1 = poly2);
+  | TData _, TData _ -> ()
+  | TVariant(true,labels1), TVariant(true,labels2) -> ()
+  | TVariant(false,labels1), TVariant(false,labels2) ->
       List.iter2 (fun (s1,typs1) (s2,typs2) -> assert (s1 = s2); List.iter2 unify typs1 typs2) labels1 labels2
   | TRecord fields1, TRecord fields2 -> List.iter2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1 = s2 && f1 = f2); unify typ1 typ2) fields1 fields2
   | _ ->
@@ -501,25 +506,6 @@ let decomp_tvariant ty =
       Format.printf "%a@." print_init ty;
       invalid_arg "decomp_tvariant"
 
-
-
-let rec get_free_data_name typ =
-  match typ with
-  | TUnit -> []
-  | TBool -> []
-  | TInt -> []
-  | TVar({contents=Some typ},_) -> get_free_data_name typ
-  | TVar({contents=None},_) -> []
-  | TFun(x, typ) -> get_free_data_name (Id.typ x) @ get_free_data_name typ
-  | TApp(_, typs) -> List.flatten_map get_free_data_name typs
-  | TTuple xs -> List.flatten_map (Id.typ |- get_free_data_name) xs
-  | TData s -> [s]
-  | TAttr(_,typ) -> get_free_data_name typ
-  | TFuns _ -> unsupported "elim_tattr_all"
-  | TVariant(_,labels) -> List.flatten_map (snd |- List.flatten_map get_free_data_name) labels
-  | TRecord fields -> List.flatten_map (snd |- snd |- get_free_data_name) fields
-  | TModule sgn -> List.flatten_map (snd |- get_free_data_name) sgn
-let get_free_data_name typ = List.unique @@ get_free_data_name typ
 
 
 let rec is_mutable_record typ =

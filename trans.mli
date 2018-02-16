@@ -1,6 +1,7 @@
 open Syntax
 
 val flatten_tvar : term -> term
+val flatten_tvar_typ : typ -> typ
 val inst_tvar : typ -> term -> term
 val inst_tvar_typ : typ -> typ -> typ
 val get_tvars : typ -> typ option ref list
@@ -76,7 +77,8 @@ val decomp_pair_eq : term -> term
 val eta_normal : term -> term
 val direct_from_CPS : term -> term
 val name_read_int : term -> term
-
+val complete_precord : term -> term
+val unify_app : term -> term
 
 (** {6 Simplification, Inlining, Reduction} *)
 val simplify_match : term -> term
@@ -106,6 +108,5 @@ val elim_redundant_arg : term -> term
 val split_let : term -> term
 val remove_effect_attribute : term -> term
 val extract_module : term -> term
-val subst_tdata : string -> typ -> term -> term
 val inline_record_type : term -> term
 val inline_type_decl : term -> term

@@ -255,7 +255,7 @@ let remove_pair ?(check=true) t =
     |@> pr "INPUT"
     |> remove_pair
     |@> pr "remove_pair"
-    |@check&> Type_check.check -$- typ_result
+    |@check&> Type_check.check ~ty:typ_result
     |> Trans.beta_affine_fun
     |@> pr "beta_affine_fun"
     |> Trans.beta_size1

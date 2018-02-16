@@ -1560,19 +1560,19 @@ let trans t =
     t
     |> add_attr ACPS
     |@> pr "CPS"
-    |@> Type_check.check -$- typ_result
+    |@> Type_check.check ~ty:typ_result
     |> Trans.propagate_typ_arg
     |@> pr2 "propagate_typ_arg" Print.term
-    |@> Type_check.check -$- typ_result
+    |@> Type_check.check ~ty:typ_result
     |> Trans.beta_reduce
     |@> pr "beta reduce"
-    |@> Type_check.check -$- typ_result
+    |@> Type_check.check ~ty:typ_result
     |> Trans.beta_affine_fun
     |@> pr "inline affine functions"
-    |@> Type_check.check -$- typ_result
+    |@> Type_check.check ~ty:typ_result
     |> Trans.expand_let_val
     |@> pr "expand_let_val"
-    |@> Type_check.check -$- typ_result
+    |@> Type_check.check ~ty:typ_result
     |> Trans.elim_unused_let ~cbv:false
     |> Trans.elim_unused_branch
     |@> pr "elim_unused_let"

@@ -317,7 +317,7 @@ let pr ?(check_typ=Some TUnit) s t =
   if !!Debug.check then
     begin
       Format.printf "##[%aFair_termination%t] %a:@.%a@.@." Color.set Color.Yellow Color.reset Color.s_red s Print.term_typ t;
-      Option.iter (Type_check.check t) check_typ
+      Option.iter (fun ty -> Type_check.check t ~ty) check_typ
     end
 
 let rec run spec t =

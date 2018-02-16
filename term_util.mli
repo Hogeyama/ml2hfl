@@ -42,6 +42,7 @@ val make_app_raw : term -> term list -> term (** Does not merge arguments *)
 val make_fail : typ -> term
 val make_local : declaration -> term -> term
 val make_let : (id * term) list -> term -> term
+val make_let_s : (id * term) list -> term -> term
 val make_lets : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
 val make_let_type : (string * typ) list -> term -> term
@@ -186,8 +187,10 @@ val subst_type : id -> term -> typ -> typ
 val subst_type_var : id -> id -> typ -> typ
 val subst_var : id -> id -> term -> term
 val subst_var_map : (id * id) list -> term -> term
-val subst_data_type : string -> typ -> typ -> typ
-val subst_data_type_term : string -> typ -> term -> term
+val subst_tdata : string -> typ -> term -> term
+val subst_tdata_typ : string -> typ -> typ -> typ
+val subst_tdata_map : (string * typ) list -> term -> term
+val subst_tdata_typ_map : (string * typ) list -> typ -> typ
 val subst_var_without_typ : id -> id -> term -> term
 val subst_var_map_without_typ : (id * id) list -> term -> term
 
@@ -195,7 +198,6 @@ val subst_var_map_without_typ : (id * id) list -> term -> term
 val subst_rev : term -> id -> term -> term
 val replace_term : term -> term -> term -> term
 val max_pat_num : term -> int
-val occur : id -> typ -> bool
 val has_no_effect : term -> bool
 val same_term : term -> term -> bool
 val same_term' : term -> term -> bool
@@ -203,6 +205,7 @@ val var_name_of_term : term -> string
 val var_of_term : term -> id
 val make_term : typ -> term
 val merge_typ : typ -> typ -> typ
+val occur_in : id -> term -> bool
 val count_occurrence : id -> term -> int
 val add_attr : attr -> term -> term
 val add_attrs : attr list -> term -> term

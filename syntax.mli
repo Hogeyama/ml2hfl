@@ -237,7 +237,7 @@ val make_col2 : 'a -> ('a -> 'a -> 'a) -> ('a,'b) col2
 val make_tr_col2 : 'a -> ('a -> 'a -> 'a) -> ('a,'b) tr_col2
 val make_fold_tr : unit -> 'a fold_tr
 
-val occur : id -> typ -> bool
+val occur_typ : id -> typ -> bool
 val get_fv : ?eq:(id -> id -> bool) -> term -> id list
 val get_bv : term -> id list
 val get_bv_pat : pattern -> id list

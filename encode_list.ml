@@ -152,7 +152,7 @@ let print_bind fm bind =
 let add_bind bind t =
   Debug.printf "add_bind bind: %a@." print_bind bind;
   Debug.printf "add_bind t: %a@.@." Print.term t;
-  List.fold_right (fun (x,t) t' -> make_let [x,t] t') bind t
+  List.fold_right (fun (x,t) t' -> make_let_s [x,t] t') bind t
 
 (* "t" must have no side-effects *)
 let rec get_match_bind_cond t p =
@@ -287,8 +287,8 @@ let trans t =
     |> Trans.inline_var_const
     |@> Debug.printf "abst_list::@. @[%a@.@." Print.term_typ
   in
-  let typ = abst_list.tr2_typ "" t.typ in
-  Type_check.check t' typ;
+  let ty = abst_list.tr2_typ "" t.typ in
+  Type_check.check t' ~ty;
   t', make_get_rtyp_list_of t
 
 
@@ -497,7 +497,7 @@ let trans_opt t =
   let t' = Trans.subst_let_xy t' in
 *)
   if false then Format.printf "abst_list::@. @[%a@.@." Print.term t';
-  Type_check.check t' Type.TUnit;
+  Type_check.check t' ~ty:Type.TUnit;
   t', fun _ _ -> raise Not_found
 
 
@@ -512,20 +512,20 @@ let trans t =
       trans
   in
   t
-  |@> Type_check.check -$- t.typ
+  |@> Type_check.check ~ty:t.typ
   |> inst_list_eq
   |@> pr "inst_list_eq"
   |> subst_matched_var
   |@> pr "subst_matched_var"
-  |@> Type_check.check -$- t.typ
+  |@> Type_check.check ~ty:t.typ
   |*> Trans.remove_top_por
   |*@> pr "remove_top_por"
-  |*@> Type_check.check -$- t.typ
+  |*@> Type_check.check ~ty:t.typ
   |> abst_list_literal
   |@> pr "abst_list_literal"
-  |@> Type_check.check -$- t.typ
+  |@> Type_check.check ~ty:t.typ
   |> tr
-  |@> (fun t -> Type_check.check t t.typ) -| fst
+  |@> (fun t -> Type_check.check t ~ty:t.typ) -| fst
   |@> pr "trans" -| fst
   |> Pair.map_fst Trans.inst_randval
   |@> pr "inst_randval" -| fst
@@ -533,7 +533,7 @@ let trans t =
   |@> pr "eta_tuple" -| fst
   |*> Pair.map_fst Trans.simplify_if_cond
   |*@> pr "simplify_if" -| fst
-  |*@> (fun t -> Type_check.check t t.typ) -| fst
+  |*@> (fun t -> Type_check.check t ~ty:t.typ) -| fst
 
 let trans_typ typ =
   if !Flag.Method.encode_list_opt then

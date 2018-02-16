@@ -482,24 +482,24 @@ let trans t =
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "elim_unused_branch" Print.term
   |> Trans.elim_unused_let
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "elim_unused_let" Print.term
-  |@> Type_check.check -$- Type.TUnit
+  |@> Type_check.check ~ty:Type.TUnit
   |> tupling
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "tupled" Print.term
-  |@> Type_check.check -$- Type.TUnit
+  |@> Type_check.check ~ty:Type.TUnit
   |> Trans.normalize_let
   |> Trans.flatten_let
   |> Trans.inline_no_effect
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "normalize" Print.term
   |> replace_app
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "replace_app" Print.term
-  |@> Type_check.check -$- Type.TUnit
+  |@> Type_check.check ~ty:Type.TUnit
   |> elim_sub_app
   |> elim_same_app
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "elim_unnecessary" Print.term
-  |@> Type_check.check -$- Type.TUnit
+  |@> Type_check.check ~ty:Type.TUnit
   |> Trans.inline_next_redex
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "inline_next_redex" Print.term
-  |@> Type_check.check -$- Type.TUnit
+  |@> Type_check.check ~ty:Type.TUnit
 
 let trans t =
   trans t, fun _ _ -> raise Not_found

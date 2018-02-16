@@ -264,7 +264,7 @@ let abst_recdata_term env t =
   | Local(Decl_type [s,ty], t) ->
       let ty' = encode_recdata_typ env s ty in
       let env' = (s, (ty, List.mem s @@ get_data_type ty, ty')) :: env in
-      subst_data_type_term s ty' @@ abst_recdata.tr2_term_rec env' t
+      subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t
   | Local(Decl_type decls, t) ->
       unsupported "encode_rec: Decl_type"
   | _ -> abst_recdata.tr2_term_rec env t
@@ -282,14 +282,15 @@ let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term_
 
 let trans_typ = abst_recdata.tr2_typ []
 let trans t =
-  let typ = trans_typ t.typ in
+  let ty = trans_typ t.typ in
   t
   |@> pr "input"
   |> Trans.abst_ext_recdata
   |@> pr "abst_ext_rec"
-  |@> Type_check.check -$- typ
+  |@> Type_check.check ~ty
   |> abst_recdata.tr2_term []
   |@> pr "abst_rec"
-  |@> Type_check.check -$- typ
+  |@> Type_check.check ~ty
   |> Trans.simplify_match
-  |@> Type_check.check -$- typ
+  |@> pr "simpify_match"
+  |@> Type_check.check ~ty

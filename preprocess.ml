@@ -45,6 +45,7 @@ type preprocess_label =
   | Extract_module
   | Mark_fv_as_external
   | Alpha_rename
+  | Unify_app
 
 type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
@@ -94,6 +95,7 @@ let string_of_label = function
   | Extract_module -> "Extract module"
   | Mark_fv_as_external -> "Mark free variables as external"
   | Alpha_rename -> "Alpha renaming"
+  | Unify_app -> "Unify types for function application"
 
 let last acc = snd @@ List.hd acc
 let last_t acc = fst @@ last acc
@@ -118,6 +120,9 @@ let all spec : t list =
     Extract_module,
       (Fun.const true,
        map_trans Trans.extract_module);
+    Unify_app,
+      (Fun.const true,
+       map_trans Trans.unify_app);
     Mark_fv_as_external,
       (Fun.const true,
        map_trans Trans.mark_fv_as_external);
@@ -242,6 +247,15 @@ let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ)
   let t' = proj_out r in
   if proj_in t <> t' && opt
   then Verbose.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
+  begin
+    if !!Debug.check then
+      try
+        Type_check.check t' t'.Syntax.typ
+      with e ->
+        Format.printf "%s@." @@ Printexc.to_string e;
+        Format.printf "%a@." Print.term' t';
+        assert false
+  end;
   r
 
 let run pps t =

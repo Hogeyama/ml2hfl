@@ -600,7 +600,7 @@ let trans_prog ?(spec=[]) t =
   let main = new_id "main" in
   let (defs,t_main),get_rtyp = Lift.lift t in
   Debug.printf "LIFTED:@.";
-  List.iter  (fun (f,(xs,t)) -> Debug.printf "  %a %a -> %a@." Id.print f (List.print Id.print) xs Print.term t) defs;
+  List.iter  (fun (f,(xs,t)) -> Debug.printf "  @[<hov 4>%a %a ->@ @[%a@." Id.print f (List.print Id.print) xs Print.term t) defs;
   Debug.printf "@.";
   let defs_t,t_main' = trans_term t_main in
   let is_cps = List.mem S.ACPS t.S.attr in

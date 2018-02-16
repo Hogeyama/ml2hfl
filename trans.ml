@@ -5,7 +5,9 @@ open Type
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-let flatten_tvar = !!make_trans.tr_term
+let flatten_tvar,flatten_tvar_typ =
+  let tr = !!make_trans in
+  tr.tr_term, tr.tr_typ
 
 (* not capture-avoiding *)
 let subst_var_id =
@@ -16,17 +18,6 @@ let subst_var_id =
     | _ -> tr.tr2_desc_rec (x,x') desc
   in
   tr.tr2_desc <- tr_desc;
-  fun x x' t -> tr.tr2_term (x,x') t
-
-(* not capture-avoiding *)
-let subst_tdata =
-  let tr = make_trans2 () in
-  let tr_typ (s,ty1) ty2 =
-    match ty2 with
-    | TData s' when s = s' -> ty1
-    | _ -> tr.tr2_typ_rec (s,ty1) ty2
-  in
-  tr.tr2_typ <- tr_typ;
   fun x x' t -> tr.tr2_term (x,x') t
 
 let map_id =
@@ -63,7 +54,7 @@ let alpha_rename ?(whole=false) =
         Fun(x', subst_var_without_typ x x' t1)
     | Match(t1,pats) ->
         let aux (p,cond,t2) =
-          let map = List.map (Pair.add_right new_id) @@ get_bv_pat p in
+          let map = List.map (Pair.add_right new_id) @@ List.unique ~eq:Id.eq @@ get_bv_pat p in
           rename_pat map p,
           subst_var_map_without_typ map cond,
           subst_var_map_without_typ map t2
@@ -834,7 +825,7 @@ let rec inlined_f inlined fs t =
   in
   {t with desc}
 
-let inlined_f inlined t = inlined_f inlined [] t |@> Type_check.check -$- TUnit
+let inlined_f inlined t = inlined_f inlined [] t |@> Type_check.check ~ty:TUnit
 
 
 
@@ -981,7 +972,7 @@ let insert_param_funarg =
   fun t ->
     t
     |> tr.tr_term
-    |@> Type_check.check -$- Term_util.typ_result
+    |@> Type_check.check ~ty:Term_util.typ_result
 
 let rec search_fail path t =
   match t.desc with
@@ -1928,10 +1919,10 @@ let copy_poly_funs =
     let map,t' = fld.fld_term [] t in
     let t'' =
       t'
-      |@> Type_check.check -$- Type.TUnit
+      |@> Type_check.check ~ty:Type.TUnit
       |> flatten_tvar
       |> inline_var_const
-      |@> Type_check.check -$- Type.TUnit
+      |@> Type_check.check ~ty:Type.TUnit
       |> inst_tvar TInt
     in
     let make_get_rtyp get_rtyp f =
@@ -1983,12 +1974,12 @@ let set_main t =
             |> List.map make_var
             |> make_app (make_var f)
             |> make_lets bindings
+            |> inst_randval
           in
           let u = Id.new_var ~name:"main" main.typ in
           replace_main (make_let [u, main] unit_term) t
       in
-      let t'' = inst_randval t' in
-      Some (Id.name f, List.length xs), t''
+      Some (Id.name f, List.length xs), t'
 
 let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
   let typ_exn =
@@ -2651,7 +2642,7 @@ let extract_module =
           | Decl_type decls ->
               let decls' = List.map (Pair.map (Id.add_module_prefix_to_string m) Fun.id) decls in
               make_let_type decls' t
-              |> List.fold_right2 (fun (s,_) (s',_) t -> subst_data_type_term s (TData s') t) decls decls'
+              |> List.fold_right2 (fun (s,_) (s',_) t -> subst_tdata s (TData s') t) decls decls'
         in
         let t' = tr.tr_term t in
         (tr.tr_term @@ List.fold_right aux decls t').desc
@@ -2671,6 +2662,13 @@ let inline_record_type =
   let tr_desc desc =
     match desc with
     | Local(Decl_type decls, t) ->
+        let tys = List.flatten_map (snd |- get_data_type) decls in
+        let check (s,ty) =
+          match ty with
+          | TRecord _ -> List.mem s tys
+          | _ -> false
+        in
+        if List.exists check decls then unsupported "recursive record types";
         let decls1,decls2 = List.partition (function (_,TRecord _) -> true | _ -> false) decls in
         let t' =
           t
@@ -2773,6 +2771,7 @@ let abst_recdata =
                   Id.set_typ x ty, make_randvalue_unit ty
                 in
                 get_bv_pat p1
+                |> List.unique ~eq:Id.eq
                 |> List.Set.diff ~eq:Id.eq -$- (get_bv_pat p2)
                 |> List.map make
                 |> make_lets -$- t
@@ -2824,7 +2823,7 @@ let inline_type_decl =
     let t' = tr.tr_term_rec t in
     match t'.desc with
     | Local(Decl_type decls, t1) ->
-        List.fold_right (Fun.uncurry subst_data_type_term) decls t1
+        List.fold_right (Fun.uncurry subst_tdata) decls t1
     | _ -> t'
   in
   tr.tr_term <- tr_term;
@@ -2854,4 +2853,62 @@ let mark_fv_as_external =
     | _ -> tr.tr2_desc_rec bv desc
   in
   tr.tr2_desc <- tr_desc;
+  tr.tr2_typ <- Fun.snd;
   tr.tr2_term []
+
+(** ASSUME: record types are inlined *)
+let complete_precord =
+  let tr = make_trans2 () in
+  let tr_desc decls desc =
+    match desc with
+    | Local(Decl_type decls', _) ->
+        tr.tr2_desc_rec (decls'@decls) desc
+    | _ -> tr.tr2_desc_rec decls desc
+  in
+  let tr_pat decls p =
+    match p.pat_desc with
+    | PRecord pats ->
+        let pats' =
+          let aux (s,(_,ty)) =
+            match List.assoc_option s pats with
+            | None -> s, {pat_desc=PAny; pat_typ=ty}
+            | Some p -> s, p
+          in
+          List.map aux @@ decomp_trecord @@ p.pat_typ
+        in
+        {p with pat_desc=PRecord pats'}
+    | _ -> p
+  in
+  tr.tr2_desc <- tr_desc;
+  tr.tr2_pat <- tr_pat;
+  tr.tr2_term []
+
+let unify_app =
+  let col = make_col () Fun.ignore2 in
+  let set r ty =
+    match ty with
+    | TVar(r',_) when r == r' -> ()
+    | _ -> r := Some ty
+  in
+  let col_term t =
+    col.col_term_rec t;
+    match t.desc with
+    | App(t1, ts) ->
+        let rec unify ty ts =
+          match elim_tattr ty, ts with
+          | TFun(x,ty'), t2::ts' ->
+              begin
+                match Id.typ x with
+                | TVar({contents=None} as r,_) -> set r t2.typ
+                | _ -> ()
+              end;
+              unify ty' ts'
+          | TVar ({contents=None} as r,_), [] -> set r t.typ
+          | _, [] -> ()
+          | _ -> assert false
+        in
+        unify t1.typ ts
+    | _ -> ()
+  in
+  col.col_term <- col_term;
+  fun t -> col.col_term t; t
