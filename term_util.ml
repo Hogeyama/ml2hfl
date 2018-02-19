@@ -85,20 +85,17 @@ let make_app_raw t ts =
   let t' = make_app t ts in
   {t' with desc=App(t,ts)}
 let make_local decl t =
-  {desc=Local(decl,t); typ=t.typ; attr=[]}
-let make_let bindings t2 =
-  if bindings = [] then
-    t2
+  if decl = Decl_type [] || decl = Decl_let [] then
+    t
   else
-    make_local (Decl_let bindings) t2
+    {desc=Local(decl,t); typ=t.typ; attr=[]}
+let make_let bindings t2 =
+  make_local (Decl_let bindings) t2
 let make_let_s bindings t2 =
   let bindings' = List.filter (fun (f,_) -> List.exists (snd |- occur_in f) bindings || occur_in f t2) bindings in
   make_let bindings' t2
 let make_let_type decls t2 =
-  if decls = [] then
-    t2
-  else
-    make_local (Decl_type decls) t2
+  make_local (Decl_type decls) t2
 let make_lets_type declss t2 =
   List.fold_right make_let_type declss t2
 let make_lets bindings t2 =

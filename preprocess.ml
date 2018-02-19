@@ -46,6 +46,7 @@ type preprocess_label =
   | Mark_fv_as_external
   | Alpha_rename
   | Unify_app
+  | Abst_recursive_record
 
 type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
@@ -96,6 +97,7 @@ let string_of_label = function
   | Mark_fv_as_external -> "Mark free variables as external"
   | Alpha_rename -> "Alpha renaming"
   | Unify_app -> "Unify types for function application"
+  | Abst_recursive_record -> "Abst recursive record"
 
 let last acc = snd @@ List.hd acc
 let last_t acc = fst @@ last acc
@@ -141,6 +143,9 @@ let all spec : t list =
     Copy_poly,
       (Fun.const true,
        Trans.copy_poly_funs -| last_t);
+    Abst_recursive_record,
+      (Fun.const true,
+       map_trans Encode.abst_rec_record);
     Inline_record_type,
       (Fun.const true,
        map_trans Trans.inline_record_type);

@@ -2710,10 +2710,17 @@ let remove_type_decl =
 
 let lift_type_decl t =
   let decls = col_type_decl t in
-  List.flatten decls
-  |> List.fold_left (fun acc (s,_) -> if List.mem s acc then unsupported "lift_type_decl"; s::acc) []
-  |> ignore;
-  make_lets_type decls (remove_type_decl t)
+  let aux (s,ty) acc =
+    match List.assoc_option s acc with
+    | None -> (s,ty)::acc
+    | Some ty' ->
+        if Type.same_shape ty ty' then
+          acc
+        else
+          unsupported "lift_type_decl"
+  in
+  let decls' = List.fold_right aux (List.flatten decls) [] in
+  make_let_type decls' @@ remove_type_decl t
 
 
 let remove_pnondet =

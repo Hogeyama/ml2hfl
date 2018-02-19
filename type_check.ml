@@ -10,14 +10,14 @@ let check_var x typ =
   then ()
   else (Format.printf "check_var: (%a:%a), %a@." Id.print x Print.typ (Id.typ x) Print.typ typ; assert false)
 
-let rec check t typ =
-  Debug.printf "CHECK: %a, %a@." Print.term t Print.typ typ;
+let rec check env t typ =
+  Debug.printf "CHECK: @[%a, %a@." Print.term t Print.typ typ;
   if not (Type.can_unify t.typ typ) then
     (Format.printf "check: %a, %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
      assert false);
   match t.desc, elim_tattr t.typ with
   | _, TFuns _ -> ()
-  | Label(_, t), _ -> check t typ
+  | Label(_, t), _ -> check env t typ
   | Const End_of_definitions, TUnit -> ()
   | Const Unit, TUnit -> ()
   | Const CPS_result, typ when typ = typ_result -> ()
@@ -41,13 +41,13 @@ let rec check t typ =
       check_var x typ'
   | Fun(x,t), TFun(y,typ') ->
       check_var x (Id.typ y);
-      check t typ'
+      check env t typ'
   | App(t,ts), typ' ->
       let rec aux (ts,typ) =
         match ts, elim_tattr typ with
         | [], _ -> ()
         | t::ts, TFun(x,typ) ->
-            check t (Id.typ x);
+            check env t (Id.typ x);
             aux (ts,typ)
         | [_], typ when typ = typ_event -> ()
         | _ ->
@@ -57,58 +57,58 @@ let rec check t typ =
       in
       let typ'' = List.fold_right (fun t typ -> TFun(Id.new_var t.typ, typ)) ts typ' in
       aux (ts, t.typ);
-      check t typ''
+      check env t typ''
   | If(t1,t2,t3), typ' ->
-      check t1 TBool;
-      check t2 typ';
-      check t3 typ'
+      check env t1 TBool;
+      check env t2 typ';
+      check env t3 typ'
   | Local(Decl_let bindings, t2), typ' ->
-      List.iter (fun (f,t) -> check t @@ elim_tattr @@ Id.typ f) bindings;
+      List.iter (fun (f,t) -> check env t @@ elim_tattr @@ Id.typ f) bindings;
       let aux' f =
-        let fv = get_fv t2 in
-        List.iter (fun f' -> assert (Id.same f f' => Type.can_unify (Id.typ f) (Id.typ f'))) fv
+        get_fv t2
+        |> List.iter (fun f' -> if Id.same f f' then assert (Type.can_unify (Id.typ f) (Id.typ f')))
       in
       List.iter (aux' -| Pair.fst) bindings;
-      check t2 typ'
-  | Local(Decl_type _, t2), typ' ->
-      check t2 typ'
+      check env t2 typ'
+  | Local(Decl_type decls, t2), typ' ->
+      check (decls@env) t2 typ'
   | BinOp(Eq,t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);
-      check t1 t1.typ;
-      check t2 t2.typ;
+      check env t1 t1.typ;
+      check env t2 t2.typ;
   | BinOp((Lt|Gt|Leq|Geq),t1,t2), TBool ->
       assert (Type.can_unify t1.typ t2.typ);
-      check t1 t1.typ;
-      check t2 t2.typ
+      check env t1 t1.typ;
+      check env t2 t2.typ
   | BinOp((And|Or),t1,t2), TBool ->
-      check t1 TBool;
-      check t2 TBool
+      check env t1 TBool;
+      check env t2 TBool
   | BinOp((Add|Sub|Mult|Div),t1,t2), TInt ->
-      check t1 TInt;
-      check t2 TInt
+      check env t1 TInt;
+      check env t2 TInt
   | Not t, TBool ->
-      check t TBool
+      check env t TBool
   | Event(_,false), typ' ->
       assert (Type.can_unify typ' typ_event || Type.can_unify typ' typ_event')
   | Event(s,true), typ' ->
       assert (Type.can_unify typ' typ_event_cps)
   | Tuple ts, TTuple xs ->
-      List.iter2 check ts @@ List.map Id.typ xs
+      List.iter2 (check env) ts @@ List.map Id.typ xs
   | Proj(i,t), typ ->
       assert (Type.can_unify typ @@ proj_typ i t.typ);
-      check t t.typ
+      check env t t.typ
   | Record fields, TRecord tfields ->
-      List.iter (fun (s,t) -> check t @@ snd @@ List.assoc s tfields) fields
+      List.iter (fun (s,t) -> check env t @@ snd @@ List.assoc s tfields) fields
   | Field(t,s), typ ->
       begin
         match t.typ with
         | TRecord tfields -> assert (Type.can_unify typ @@ snd @@ List.assoc s tfields)
         | TData _ -> ()
         | _ ->
-            Format.printf "%a@." Print.typ typ;
+            Format.printf "%a@." Print.term' t;
             assert false
       end;
-      check t t.typ
+      check env t t.typ
   | SetField(t1,s,t2), typ ->
       assert (Type.can_unify typ TUnit);
       begin
@@ -116,45 +116,47 @@ let rec check t typ =
         | TRecord tfields ->
             let f,typ' = List.assoc s tfields in
             assert (f = Mutable);
-            check t2 typ'
+            check env t2 typ'
         | TData _ -> ()
         | _ -> assert false
       end;
-      check t1 t1.typ
+      check env t1 t1.typ
   | Nil, TApp(TList, _) -> ()
   | Cons(t1,t2), TApp(TList, [typ']) ->
-      check t1 typ';
-      check t2 typ
+      check env t1 typ';
+      check env t2 typ
   | Constr(s,ts), TVariant(_,labels) ->
-      List.iter2 check ts @@ List.assoc s labels
+      List.iter2 (check env) ts @@ List.assoc s labels
   | Match(t,pats), typ' ->
       let aux (p,cond,t) =
-        check cond TBool;
-        check t typ'
+        check env cond TBool;
+        check env t typ'
       in
-      check t t.typ;
+      check env t t.typ;
       List.iter aux pats
   | Raise t, _ ->
-      check t t.typ
+      check env t t.typ
   | TryWith(t1,t2), typ ->
-      check t1 typ;
-      check t2 @@ make_tfun (TVar(ref None, None)) typ
+      check env t1 typ;
+      check env t2 @@ make_tfun (TVar(ref None, None)) typ
   | Bottom, typ -> ()
   | Ref t, TApp(TRef, [typ]) ->
-      check t typ
+      check env t typ
   | Deref t, typ ->
-      check t (make_tref typ)
+      check env t (make_tref typ)
   | SetRef(t1,t2), TUnit ->
-      check t1 (make_tref t2.typ);
-      check t2 t2.typ
+      check env t1 (make_tref t2.typ);
+      check env t2 t2.typ
   | TNone, TApp(TOption, _) -> ()
   | TSome t, TApp(TOption, [typ]) ->
-      check t typ
+      check env t typ
   | Module _, TModule _ -> () (* TODO *)
-  | Constr _, TData _ -> () (* TODO *)
-  | Record _, TData _ -> () (* TODO *)
+  | _, TData s when List.mem_assoc s env ->
+      let typ = List.assoc s env in
+      check env {t with typ} typ
+  | _, TData _ -> () (* externally defined types *)
   | _ ->
       Format.printf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false
 
-let check t ~ty = if Flag.Debug.check_typ then check t ty
+let check t ~ty = if Flag.Debug.check_typ then check [] t ty

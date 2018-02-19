@@ -36,11 +36,7 @@ let encode_mutable_record_term t =
       make_setref (make_field t1' s) t2'
   | Field(t1,s) ->
       let t1' = encode_mutable_record.tr_term t1 in
-      let f,_ = try List.assoc s @@ decomp_trecord t1.typ with _ ->
-                  Format.printf "s: %s@." s;
-                  Format.printf "t: %a@." Print.term t;
-                  Format.printf "t1.typ: %a@." Print.typ t1.typ;
-                  assert false in
+      let f,_ = List.assoc s @@ decomp_trecord t1.typ in
       let t' = make_field t1' s in
       if f = Mutable then
         make_deref t'
@@ -219,6 +215,53 @@ let () = encode_simple_variant.tr_typ <- encode_simple_variant_typ
 let simple_variant = encode_simple_variant.tr_term
 
 
+
+let abst_rec_record =
+  let tr = make_trans2 () in
+  let tr_term recs t =
+    match t.desc with
+    | Local(Decl_type decls, t1) ->
+        let recs' =
+          let tys = List.flatten_map (snd |- get_data_type) decls in
+          let check (s,ty) =
+            match ty with
+            | TRecord _ -> List.mem s tys
+            | _ -> false
+          in
+          List.map (fun (s,_) -> TData s) @@ List.filter check decls
+        in
+        let decls' = List.map (fun (s,ty) -> s, if List.mem (TData s) recs' then TInt else ty) decls in
+        let t1' = tr.tr2_term (recs'@recs) t1 in
+        make_local (Decl_type decls') t1'
+    | Record fields when List.mem t.typ recs ->
+        Flag.use_abst := true;
+        let bindings =
+          fields
+          |> List.map snd
+          |> List.map (tr.tr2_term recs)
+          |> List.map (Pair.add_left new_var_of_term)
+        in
+        make_lets bindings randint_unit_term
+    | SetField(t1,_,t2) when List.mem t1.typ recs ->
+        Flag.use_abst := true;
+        let t1' = tr.tr2_term recs t1 in
+        let t2' = tr.tr2_term recs t2 in
+        make_seq t1' t2'
+    | Field(t1,_) when List.mem t1.typ recs ->
+        Flag.use_abst := true;
+        let t1' = tr.tr2_term recs t1 in
+        make_seq t1' @@ make_randvalue_unit @@ tr.tr2_typ recs t.typ
+    | _ -> tr.tr2_term_rec recs t
+  in
+  let tr_typ recs ty =
+    if List.mem ty recs then
+      TInt
+    else
+      tr.tr2_typ_rec recs ty
+  in
+  tr.tr2_term <- tr_term;
+  tr.tr2_typ <- tr_typ;
+  tr.tr2_term []
 
 
 let recdata = Encode_rec.trans

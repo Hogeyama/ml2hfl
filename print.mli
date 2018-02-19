@@ -13,6 +13,10 @@ val defs : Format.formatter -> (id * (id list * term)) list -> unit
 val constr : Format.formatter -> term -> unit
 val attr : Format.formatter -> attr list -> unit
 
+val string : Format.formatter -> string -> unit
+val pair : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> Format.formatter -> ('a * 'b) -> unit
+val list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
+
 val string_of_const : const -> string
 val string_of_binop : binop -> string
 val string_of_typ : typ -> string

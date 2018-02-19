@@ -24,3 +24,5 @@ val abst_ref : term -> term
 val all : term -> term
 
 val typ_of : (term -> term) -> typ -> typ
+
+val abst_rec_record : term -> term

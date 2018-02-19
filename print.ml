@@ -223,7 +223,7 @@ and print_desc attr pri typ fm desc =
       let print_decl fm (name,ty) =
         let pre =
           if !b then
-            "let type" ^ (if List.mem ADoNotInline attr && not !Flag.Print.as_ocaml then "!" else "")
+            "type" ^ (if List.mem ADoNotInline attr && not !Flag.Print.as_ocaml then "!" else "")
           else
             "and"
         in
@@ -477,7 +477,7 @@ let rec print_term' pri fm t =
         let s1,s2 = paren pri (p+1) in
         let b = ref true in
         let print_decl fm (name,ty) =
-          let pre = if !b then "let type" else "and" in
+          let pre = if !b then "type" else "and" in
           fprintf fm "@[<hov 2>%s @[<hov 2>%s@] =@ %a@]" pre name print_typ ty;
           b := false
         in
@@ -675,3 +675,7 @@ let term_typ = print_term true
 let defs = print_defs
 let constr fm t = pp_print_string fm @@ string_of_constr t
 let attr = print_attr_list
+
+let string = Format.pp_print_string
+let pair = Pair.print
+let list = List.print
