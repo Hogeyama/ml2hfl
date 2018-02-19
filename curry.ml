@@ -123,10 +123,9 @@ let uncurry_rtyp t get_rtyp f =
   then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
-let rec remove_pair_typ = function
-  | TUnit -> leaf TUnit
-  | TBool -> leaf TBool
-  | TInt -> leaf TInt
+let rec remove_pair_typ ty =
+  match ty with
+  | TBase _ -> leaf ty
   | TVar _ -> assert false
   | TFun _ as typ ->
       let xs,typ' = decomp_tfun typ in
@@ -210,7 +209,7 @@ and remove_pair_aux t typ_opt =
   | BinOp(op, t1, t2) ->
       begin
         match op, elim_tattr t1.typ with
-        | (Eq | Lt | Gt | Leq | Geq), (TUnit | TBool | TInt | TData _) -> ()
+        | (Eq | Lt | Gt | Leq | Geq), (TBase _ | TData _) -> ()
         | (Eq | Lt | Gt | Leq | Geq), _ ->
             Format.printf "%a@." Print.typ t1.typ;
             Format.printf "%a@." Print.typ t2.typ;

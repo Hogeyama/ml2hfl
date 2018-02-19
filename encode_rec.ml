@@ -11,11 +11,11 @@ let abst_recdata_leaves env typs =
   let typs' = List.map (abst_recdata.tr2_typ env) typs in
   let r_typ =
     if typs = []
-    then TInt
-    else make_ttuple [TInt; make_ttuple typs']
+    then Ty.int
+    else Ty.(tuple [int; tuple typs'])
   in
-  make_ttuple [TUnit; (* extra-param *)
-               pureTFun(Id.new_var ~name:"path" @@ make_tlist TInt, r_typ)]
+  Ty.(tuple [unit; (* extra-param *)
+             pureTFun(Id.new_var ~name:"path" @@ list int, r_typ)])
 
 let encode_recdata_typ env s ty =
   match ty with
@@ -34,16 +34,16 @@ let encode_recdata_typ env s ty =
               else
                 unsupported "encode_variant: non-simple recursion"
         in
-        List.map (make_tpair TBool) @@ List.map (fun (_,tys) -> make_ttuple @@ List.filter_map aux tys) labels
+        List.map (make_tpair Ty.bool) @@ List.map (fun (_,tys) -> make_ttuple @@ List.filter_map aux tys) labels
       in
-      make_tpair TUnit @@ pureTFun(Id.new_var ~name:"path" @@ make_tlist TInt, make_ttuple tys)
+      Ty.(pair unit (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, tuple tys)))
   | _ -> abst_recdata.tr2_typ env ty
 
 let abst_recdata_typ env typ =
   match typ with
   | TRecord fields -> unsupported "abst_recdata_typ TRecord"
   | TVariant(false,labels) ->
-      let aux (s,tys) = make_tpair TBool @@ make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
+      let aux (s,tys) = Ty.(pair bool (tuple @@ List.map (abst_recdata.tr2_typ env) tys)) in
       make_ttuple @@ List.map aux labels
   | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
   | _ -> abst_recdata.tr2_typ_rec env typ
@@ -107,7 +107,7 @@ let rec abst_recdata_pat env p =
           let make_bind (acc,i) p (p',_,_) =
             let i',t' =
               if is_rec_type env p.pat_typ then
-                let path = Id.new_var ~name:"path" (make_tlist TInt) in
+                let path = Id.new_var ~name:"path" Ty.(list int) in
                 i+1, Term.(pair unit (* extra-param *)
                                 (fun_ path (snd (var f) @ [list [int i]])))
               else
@@ -131,7 +131,7 @@ let rec abst_recdata_pat env p =
             let poly,decls = decomp_tvariant @@ expand_typ env p.pat_typ in
             if poly then unsupported "encode_rec: polymorphic variant";
             let i = List.find_pos (fun _ (c',_) -> c = c') decls in
-            Term.(fst (proj i (snd (var f) @ [nil TInt])))
+            Term.(fst (proj i (snd (var f) @ [nil Ty.int])))
           in
           make_ands (cond0 :: conds')
         in
@@ -202,7 +202,7 @@ let abst_recdata_term env t =
       let xtys = List.map2 (fun t' t -> Id.new_var @@ expand_enc_typ env t'.typ, t.typ) ts' ts in
       let poly,labels = decomp_tvariant @@ expand_typ env t.typ in
       if poly then unsupported "encode_rec: polymorphic variant";
-      let path = Id.new_var ~name:"path" @@ make_tlist TInt in
+      let path = Id.new_var ~name:"path" Ty.(list int) in
       let pat0 =
         let top =
           let make_return ts' =
@@ -221,11 +221,11 @@ let abst_recdata_term env t =
           |> List.map (snd |- fst |- make_var)
           |> make_return
         in
-        make_pnil TInt, true_term, top
+        make_pnil Ty.int, true_term, top
       in
       let make_pat (i,acc) (x,ty) =
         if ty = t.typ then
-          let path' = Id.new_var ~name:"path'" @@ make_tlist TInt in
+          let path' = Id.new_var ~name:"path'" Ty.(list int) in
           let t = Term.(snd (var x) @ [var path']) in
           i+1, acc @ [Pat.(cons (int i) (var path')), true_term, t]
         else

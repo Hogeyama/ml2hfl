@@ -214,7 +214,7 @@ let add_context prog f xs t typ =
   let make_fail typ =
     Encode.all @@ Trans.replace_fail_with (Raise(make_construct af [] etyp)) @@ make_fail typ
   in
-  let fail_unit_desc = (make_fail TUnit).desc in
+  let fail_unit_desc = (make_fail Ty.unit).desc in
   let t' =
     unit_term
     |> Trans.ref_to_assert ~typ_exn ~make_fail @@ Ref_type.Env.of_list [f,typ]
@@ -294,7 +294,7 @@ let check prog f typ depth =
     |> make_lets fun_env'
     |> add_preds
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
-    |@> Type_check.check ~ty:TUnit
+    |@> Type_check.check ~ty:Ty.unit
     |> Trans.map_main (make_seq -$- unit_term) (* ??? *)
     |> Main_loop.verify ~make_pps:(Some(make_pps)) ~fun_list:(Some []) [] Spec.init
   in

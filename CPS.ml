@@ -179,9 +179,7 @@ let rec lift_letrec_typ env typed =
 
 let rec infer_effect_typ env typ =
   match typ with
-  | TUnit
-  | TInt
-  | TBool
+  | TBase _
   | TData _ -> TBaseCPS typ
   | TFun(x,typ2) ->
       let typ1 = Id.typ x in
@@ -200,16 +198,16 @@ let _TFunCPS env (e, typ1, typ2) =
 
 let rec infer_effect env tenv t =
   match t.desc with
-  | Const(RandValue(TInt,true)) -> assert false
-  | Const(RandValue(TInt,false)) ->
+  | Const(RandValue(TBase TInt,true)) -> assert false
+  | Const(RandValue(TBase TInt,false)) ->
       let e = new_evar () in
-      let typ = _TFunCPS env (e, TBaseCPS TUnit, TBaseCPS TInt) in
+      let typ = _TFunCPS env (e, TBaseCPS (TBase TUnit), TBaseCPS (TBase TInt)) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=RandIntCPS(List.mem AAbst_under t.attr); typ_cps=typ; effect=new_evar()}
   | Const(RandValue(typ, true)) -> assert false
   | Const(RandValue(typ, false)) ->
       let e = new_evar () in
-      let typ' = _TFunCPS env (e, TBaseCPS TUnit, TBaseCPS typ) in
+      let typ' = _TFunCPS env (e, TBaseCPS (TBase TUnit), TBaseCPS typ) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=RandValueCPS typ; typ_cps=typ'; effect=new_evar()}
   | Const c -> {t_orig=t; t_cps=ConstCPS c; typ_cps=TBaseCPS t.typ; effect=new_evar()}
@@ -222,7 +220,7 @@ let rec infer_effect env tenv t =
 	try
 	  List.assoc (Id.to_string x) tenv
 	with
-	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS(TInt)
+	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS(TBase TInt)
 	| Not_found -> Format.printf "%a@." Print.id x; assert false
       in
       {t_orig=t; t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; effect=new_evar()}
@@ -301,7 +299,7 @@ let rec infer_effect env tenv t =
   | Event(s,true) -> assert false
   | Event(s,false) ->
       let e = new_evar () in
-      let typ = _TFunCPS env (e, TBaseCPS TUnit, TBaseCPS TUnit) in
+      let typ = _TFunCPS env (e, TBaseCPS (TBase TUnit), TBaseCPS (TBase TUnit)) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=EventCPS s; typ_cps=typ; effect=new_evar()}
   | Proj(i,t1) ->
@@ -662,7 +660,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let r = Id.new_var ~name:"r" (trans_typ sol typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let k' = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var TBool in
+        let b = Id.new_var Ty.bool in
         let open Term in
         fun_ k
           (let_ [k', var k]
@@ -680,7 +678,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let r = Id.new_var ~name:"r" (trans_typ sol typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let k' = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var TBool in
+        let b = Id.new_var Ty.bool in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let h' = Id.new_var_id h in
@@ -796,13 +794,13 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
     | NotCPS t1, ECont ->
         let r = Id.new_var ~name:"r" (trans_typ sol typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var TBool in
+        let b = Id.new_var Ty.bool in
         let t1' = transform sol typ_excep k_post t1 in
         Term.(fun_ k (app (sol t1.effect) t1' ~k:(fun_ b (var k @ [not (var b)]))))
     | NotCPS t1, EExcep ->
         let r = Id.new_var ~name:"r" (trans_typ sol typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
-        let b = Id.new_var TBool in
+        let b = Id.new_var Ty.bool in
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let t1' = transform sol typ_excep k_post t1 in
@@ -1550,7 +1548,7 @@ let trans t =
       else
         transform sol typ_excep' "" typed
     in
-    let x = Id.new_var TUnit in
+    let x = Id.new_var Ty.unit in
     let e = Id.new_var ~name:"e" typ_excep' in
     let k = make_fun x cps_result in
     let h = make_fun e @@ make_app fail_term_cps [unit_term; k] in

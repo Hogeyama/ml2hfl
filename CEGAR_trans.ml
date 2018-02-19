@@ -160,9 +160,9 @@ let rec preds_of typ =
 
 and trans_typ ty =
   match ty with
-  | Type.TUnit -> typ_unit
-  | Type.TBool -> typ_bool ()
-  | Type.TInt -> typ_int
+  | Type.TBase Type.TUnit -> typ_unit
+  | Type.TBase Type.TBool -> typ_bool ()
+  | Type.TBase Type.TInt -> typ_int
   | Type.TVar({contents=None},_) -> typ_int
   | Type.TVar({contents=Some typ},_) -> trans_typ typ
   | Type.TFun(x,typ) ->
@@ -222,9 +222,9 @@ and trans_term post xs env t =
   match t.S.desc with
   | S.Const(S.RandValue _) -> assert false
   | S.Const c -> [], Const (trans_const c t.S.typ)
-  | S.App({S.desc=S.Const(S.RandValue(Type.TInt,false)); S.attr}, [{S.desc=S.Const S.Unit}]) when List.mem S.AAbst_under attr ->
+  | S.App({S.desc=S.Const(S.RandValue(Type.TBase Type.TInt,false)); S.attr}, [{S.desc=S.Const S.Unit}]) when List.mem S.AAbst_under attr ->
       unsupported "trans_term RandInt"
-  | S.App({S.desc=S.Const(S.RandValue(Type.TInt, true)); S.attr}, [t1;t2]) ->
+  | S.App({S.desc=S.Const(S.RandValue(Type.TBase Type.TInt, true)); S.attr}, [t1;t2]) ->
       let under = List.mem S.AAbst_under attr in
       assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
@@ -286,9 +286,9 @@ and trans_term post xs env t =
       let defs2,t2' = trans_term post xs env t2 in
       let op =
         match Type.elim_tattr t1.S.typ with
-        | Type.TUnit -> EqUnit
-        | Type.TBool -> EqBool
-        | Type.TInt -> EqInt
+        | Type.TBase Type.TUnit -> EqUnit
+        | Type.TBase Type.TBool -> EqBool
+        | Type.TBase Type.TInt -> EqInt
         | Type.TData typ -> CmpPoly(typ, "=")
         | typ -> Format.printf "trans_term: %a@." Print.typ typ; assert false
       in
@@ -320,8 +320,8 @@ and trans_term post xs env t =
 
 let rec formula_of t =
   match t.S.desc with
-  | S.Const(S.RandValue(Type.TInt,false)) -> raise Not_found
-  | S.Const(S.RandValue(Type.TInt,true)) -> assert false
+  | S.Const(S.RandValue(Type.TBase Type.TInt,false)) -> raise Not_found
+  | S.Const(S.RandValue(Type.TBase Type.TInt,true)) -> assert false
   | S.Const c -> Const (trans_const c t.S.typ)
   | S.Var x -> Var (trans_var x)
   | S.App(t, ts) -> raise Not_found
@@ -332,9 +332,9 @@ let rec formula_of t =
       let t2' = formula_of t2 in
       let op =
         match Type.elim_tattr t1.S.typ with
-        | Type.TUnit -> EqUnit
-        | Type.TBool -> EqBool
-        | Type.TInt -> EqInt
+        | Type.TBase Type.TUnit -> EqUnit
+        | Type.TBase Type.TBool -> EqBool
+        | Type.TBase Type.TInt -> EqInt
         | Type.TData typ -> CmpPoly(typ, "=")
         | _ -> Format.printf "%a@." Print.typ t1.S.typ; assert false
       in
@@ -561,9 +561,9 @@ module RT = Ref_type
 
 let rec revert_typ ty =
   match ty with
-  | TBase(TUnit, _) -> Type.TUnit
-  | TBase(TBool, _) -> Type.TBool
-  | TBase(TInt, _) -> Type.TInt
+  | TBase(TUnit, _) -> Type.Ty.unit
+  | TBase(TBool, _) -> Type.Ty.bool
+  | TBase(TInt, _) -> Type.Ty.int
   | TBase(TAbst s, _) -> Type.TData s
   | TConstr _ -> unsupported "CEGAR_trans.revert_typ: TConstr"
   | TApp _ -> unsupported "CEGAR_trans.revert_typ: TApp"

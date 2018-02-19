@@ -62,7 +62,7 @@ let make_init_env cmp bindings =
     let xs,_ = decomp_funs t in
     f,
     Id.typ f
-    |> Trans.inst_tvar_typ TUnit
+    |> Trans.inst_tvar_typ Ty.unit
     |> (if Id.is_external f then Ref_type.of_simple else to_weak)
     |> replace_with_top (List.length xs - 1)
   in
@@ -273,7 +273,7 @@ let rec last_def_to_fun t =
       let xs,t1 = decomp_funs t1 in
       let f',xs' =
         if xs = [] then
-          let u = Id.new_var ~name:"u" TUnit in
+          let u = Id.new_var ~name:"u" Ty.unit in
           let typ = TFun(u, Id.typ f) in
           Id.set_typ f typ, [u]
         else
@@ -292,9 +292,9 @@ let rec last_def_to_fun t =
 let assert_to_fun t =
   let rec loop t =
     match t.desc with
-    | Local(Decl_let [u,t1], t2) when Id.typ u = TUnit ->
-        let u' = Id.new_var ~name:"u" TUnit in
-        let f = Id.new_var @@ TFun(u', TUnit) in
+    | Local(Decl_let [u,t1], t2) when Id.typ u = Ty.unit ->
+        let u' = Id.new_var ~name:"u" Ty.unit in
+        let f = Id.new_var @@ TFun(u', Ty.unit) in
         let t1',t2' =
           match loop t2 with
           | `Unit, _ -> t1, t2

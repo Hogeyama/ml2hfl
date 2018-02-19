@@ -83,7 +83,7 @@ let abst_ref_term t =
 
 let abst_ref_typ typ =
   match typ with
-  | TApp(TRef, _) -> TUnit
+  | TApp(TRef, _) -> Ty.unit
   | _ -> abst_ref.tr_typ_rec typ
 
 let () = abst_ref.tr_term <- abst_ref_term
@@ -106,7 +106,7 @@ let encode_array_desc desc =
       in
       let n = List.length ts in
       let len = make_int n in
-      let i = Id.new_var ~name:"i" TInt in
+      let i = Id.new_var ~name:"i" Ty.int in
       let ti = make_var i in
       let typ' = encode_array.tr_typ @@ list_typ t1.typ in
       let its = List.mapi Pair.pair ts in
@@ -122,7 +122,7 @@ let encode_array_desc desc =
 
 let encode_array_typ typ =
   match typ with
-  | TApp(TArray, [typ]) -> make_tref @@ make_tpair TInt @@ make_tfun TInt @@ encode_array.tr_typ typ
+  | TApp(TArray, [typ]) -> Ty.(ref @@ pair int (fun_ int (encode_array.tr_typ typ)))
   | _ -> encode_array.tr_typ_rec typ
 
 let () = encode_array.tr_desc <- encode_array_desc
@@ -191,7 +191,7 @@ let rec position c typ =
 let encode_simple_variant = make_trans ()
 let encode_simple_variant_typ typ =
   if is_simple_variant typ then
-    TInt
+    Ty.int
   else
     encode_simple_variant.tr_typ_rec typ
 
@@ -230,7 +230,7 @@ let abst_rec_record =
           in
           List.map (fun (s,_) -> TData s) @@ List.filter check decls
         in
-        let decls' = List.map (fun (s,ty) -> s, if List.mem (TData s) recs' then TInt else ty) decls in
+        let decls' = List.map (fun (s,ty) -> s, if List.mem (TData s) recs' then Ty.int else ty) decls in
         let t1' = tr.tr2_term (recs'@recs) t1 in
         make_local (Decl_type decls') t1'
     | Record fields when List.mem t.typ recs ->
@@ -255,7 +255,7 @@ let abst_rec_record =
   in
   let tr_typ recs ty =
     if List.mem ty recs then
-      TInt
+      Ty.int
     else
       tr.tr2_typ_rec recs ty
   in

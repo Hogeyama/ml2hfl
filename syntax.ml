@@ -150,9 +150,7 @@ type trans =
    mutable tr_attr:      attr list -> attr list}
 
 let trans_typ trans = function
-  | TUnit -> TUnit
-  | TBool -> TBool
-  | TInt -> TInt
+  | TBase b -> TBase b
   | TVar({contents=None} as x,id) -> TVar(x,id)
   | TVar({contents=Some typ},_) -> trans.tr_typ typ
   | TFun(x,typ) -> TFun(Id.map_typ trans.tr_typ x, trans.tr_typ typ)
@@ -322,9 +320,7 @@ type 'a trans2 =
    mutable tr2_attr: 'a -> attr list -> attr list}
 
 let trans2_gen_typ tr env = function
-  | TUnit -> TUnit
-  | TBool -> TBool
-  | TInt -> TInt
+  | TBase b -> TBase b
   | TVar({contents=None} as x,id) -> TVar(x,id)
   | TVar({contents=Some typ},_) -> tr.tr2_typ env typ
   | TFun(x,typ) -> TFun(Id.map_typ (tr.tr2_typ env) x, tr.tr2_typ env typ)
@@ -503,9 +499,7 @@ let col_list col ?(init=col.col_empty) f xs =
 let col_typ col typ =
   let (-@-) = col.col_app in
   match typ with
-  | TUnit -> col.col_empty
-  | TBool -> col.col_empty
-  | TInt -> col.col_empty
+  | TBase _ -> col.col_empty
   | TVar({contents=None},_) -> col.col_empty
   | TVar({contents=Some typ},_) -> col.col_typ typ
   | TFun(x,typ) -> col.col_typ (Id.typ x) -@- col.col_typ typ
@@ -686,9 +680,7 @@ let col2_list col ?(init=col.col2_empty) f xs =
 let col2_typ col env typ =
   let (-@-) = col.col2_app in
   match typ with
-  | TUnit -> col.col2_empty
-  | TBool -> col.col2_empty
-  | TInt -> col.col2_empty
+  | TBase _ -> col.col2_empty
   | TVar({contents=None},_) -> col.col2_empty
   | TVar({contents=Some typ},_) -> col.col2_typ env typ
   | TFun(x,typ) -> col.col2_var env x -@- col.col2_typ env typ
@@ -870,9 +862,7 @@ let tr_col2_list tc tr_col ?(init=tc.tr_col2_empty) env xs =
   List.fold_right aux xs (init,[])
 
 let tr_col2_typ tc env = function
-  | TUnit -> tc.tr_col2_empty, TUnit
-  | TBool -> tc.tr_col2_empty, TBool
-  | TInt -> tc.tr_col2_empty, TInt
+  | TBase b -> tc.tr_col2_empty, TBase b
   | TVar({contents=None} as x,id) -> tc.tr_col2_empty, TVar(x,id)
   | TVar({contents=Some typ},_) -> tc.tr_col2_typ env typ
   | TFun(x,typ) ->
@@ -1204,9 +1194,7 @@ let fold_tr_list tr_col env xs =
 
 let fold_tr_typ fld env ty =
   match ty with
-  | TUnit -> env, TUnit
-  | TBool -> env, TBool
-  | TInt -> env, TInt
+  | TBase b -> env, TBase b
   | TVar({contents=None} as x,id) -> env, TVar(x,id)
   | TVar({contents=Some typ},_) -> fld.fld_typ env typ
   | TFun(x,typ) ->
@@ -1563,7 +1551,8 @@ let occur_typ =
   col.col2_typ
 
 
-let make_extra_coeff ?(name="c") ?(typ=TInt) () = Id.new_var ~name:name ~attr:[Id.Coefficient] typ
+let make_extra_coeff ?(name="c") ?(typ=TBase TInt) () =
+  Id.new_var ~name:name ~attr:[Id.Coefficient] typ
 let is_extra_coeff = List.mem Id.Coefficient -| Id.attr
 
 

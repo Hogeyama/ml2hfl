@@ -262,9 +262,9 @@ let rename typ =
 
 let rec of_simple typ =
   match T.elim_tattr typ with
-  | T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
-  | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
-  | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
+  | T.TBase T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(Int, Id.new_var typ, U.true_term)
   | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
@@ -275,9 +275,9 @@ let rec of_simple typ =
 
 let to_simple_base b =
   match b with
-  | Unit -> T.TUnit
-  | Bool -> T.TBool
-  | Int -> T.TInt
+  | Unit -> T.TBase T.TUnit
+  | Bool -> T.TBase T.TBool
+  | Int -> T.TBase T.TInt
   | Abst s -> T.TData s
 
 let rec to_simple typ =
@@ -465,8 +465,8 @@ let rec subtype env typ1 typ2 =
   | _, Exn(typ21,typ22) -> subtype env typ1 typ21
   | Exn _, _ -> false
   | List(x1,p_len1,y1,p_i1,typ1'), List(x2,p_len2,y2,p_i2,typ2') ->
-      let typ1'' = Tuple [x1,Base(Int,x1,p_len1); Id.new_var Type.TInt,Fun(y1,Base(Int,y1,p_i1),typ1')] in
-      let typ2'' = Tuple [x2,Base(Int,x2,p_len2); Id.new_var Type.TInt,Fun(y2,Base(Int,y2,p_i2),typ2')] in
+      let typ1'' = Tuple [x1,Base(Int,x1,p_len1); Id.new_var Type.Ty.int,Fun(y1,Base(Int,y1,p_i1),typ1')] in
+      let typ2'' = Tuple [x2,Base(Int,x2,p_len2); Id.new_var Type.Ty.int,Fun(y2,Base(Int,y2,p_i2),typ2')] in
       subtype env typ1'' typ2''
   | _ ->
       Format.printf "typ1: %a@." print typ1;
@@ -616,9 +616,9 @@ and simplify typ =
 
 let rec make_strongest typ =
   match T.elim_tattr typ with
-  | T.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
-  | T.TBool -> Base(Bool, Id.new_var typ, U.false_term)
-  | T.TInt -> Base(Int, Id.new_var typ, U.false_term)
+  | T.TBase T.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
+  | T.TBase T.TBool -> Base(Bool, Id.new_var typ, U.false_term)
+  | T.TBase T.TInt -> Base(Int, Id.new_var typ, U.false_term)
   | T.TData s -> Base(Abst s, Id.new_var typ, U.false_term)
   | T.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
@@ -630,9 +630,9 @@ let rec make_strongest typ =
 
 and make_weakest typ =
   match T.elim_tattr typ with
-  | T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
-  | T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
-  | T.TInt -> Base(Int, Id.new_var typ, U.true_term)
+  | T.TBase T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(Int, Id.new_var typ, U.true_term)
   | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
   | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)

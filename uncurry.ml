@@ -24,9 +24,7 @@ let rec print fm typ =
 
 let rec from_type typ =
   match typ with
-  | Type.TUnit
-  | Type.TBool
-  | Type.TInt -> TBase
+  | Type.TBase _ -> TBase
   | Type.TFun(x,typ') -> TFun(from_type @@ Id.typ x, 0, from_type typ')
   | Type.TTuple typs -> TTuple (List.map (from_type -| Id.typ) typs)
   | Type.TApp _

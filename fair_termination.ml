@@ -44,7 +44,7 @@ let make_is_fair states fairness s =
 
 let make_extra_vars states args =
   let s = Id.new_var ~name:"s" (make_s_init states).typ in
-  let flag = Id.new_var ~name:"set_flag" TBool in
+  let flag = Id.new_var ~name:"set_flag" Ty.bool in
   let args' = List.filter (is_ground_typ -| Id.typ) args in
   let ps = List.map (Id.new_var_id |- Id.add_name_before "p_") args' in
   s, flag, ps
@@ -150,12 +150,12 @@ let trans_term env t =
         let vs, t1' =
           if Id.same g env.target
           then
-            let b = Id.new_var TBool in
+            let b = Id.new_var Ty.bool in
             let s'' = Id.new_var_id s' in
             let set_flag'' = Id.new_var_id set_flag' in
             let ps'' = List.map Id.new_var_id ps' in
             let xs' = List.filter (is_ground_typ -| Id.typ) xs in
-            let rank_var = Id.new_var ~name:"rank" @@ List.fold_right _TFun (ps'@xs') TBool in
+            let rank_var = Id.new_var ~name:"rank" @@ List.fold_right _TFun (ps'@xs') Ty.bool in
             let t_rank = make_app (make_var rank_var) @@ List.map make_var (ps'@xs') in
             let t_check = make_if (make_is_fair env.states env.fairness s') (make_assert t_rank) unit_term in
             let t_b = make_if (make_var set_flag') (make_seq t_check randbool_unit_term) true_term in
@@ -299,7 +299,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
         Fpat.RankFunInfer.lrf !Flag.Termination.add_closure_exparam spcs' spcWithExparams' (*all_vars*) arg_vars' prev_vars'
       in
       let rank_funs' = List.map (fun (coeffs,const) -> {coeffs; const}) @@ fst solution in
-      let exparam_sol' = List.map (Pair.map_fst (Id.from_string -$- TInt)) @@ snd solution in
+      let exparam_sol' = List.map (Pair.map_fst (Id.from_string -$- Ty.int)) @@ snd solution in
       let exparam_sol'' = List.map (fun (x,n) -> x, List.assoc_default n x exparam_sol') exparam_sol in
       if !Flag.Termination.add_closure_exparam
       then Debug.printf "SOLUTION: %a@." (List.print @@ Pair.print Print.id Format.pp_print_int) exparam_sol'';
@@ -313,7 +313,7 @@ let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWith
 
 
 
-let pr ?(check_typ=Some TUnit) s t =
+let pr ?(check_typ=Some Ty.unit) s t =
   if !!Debug.check then
     begin
       Format.printf "##[%aFair_termination%t] %a:@.%a@.@." Color.set Color.Yellow Color.reset Color.s_red s Print.term_typ t;

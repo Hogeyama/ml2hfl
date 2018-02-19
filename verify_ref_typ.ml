@@ -42,7 +42,7 @@ let divide spec t ref_env =
   in
   let targets = List.map (fun f -> Id.to_string f, make_spec f, t) ext in
   Debug.printf "MAIN: %a@." Print.term t_main;
-  ("MAIN", make_spec (Id.new_var ~name:"MAIN" TUnit), t_main)::targets
+  ("MAIN", make_spec (Id.new_var ~name:"MAIN" Ty.unit), t_main)::targets
 
 
 let main orig spec parsed =

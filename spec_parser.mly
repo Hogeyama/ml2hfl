@@ -196,10 +196,10 @@ inlinef:
   { $2 }
 
 simple_type_core:
-| TUNIT { TUnit }
+| TUNIT { Ty.unit }
 | TRESULT { typ_result }
-| TBOOL { TBool }
-| TINT { TInt }
+| TBOOL { Ty.bool }
+| TINT { Ty.int }
 | LPAREN typ LIST RPAREN { make_tlist @@ Id.typ $2 }
 
 id_simple_type:
@@ -267,11 +267,11 @@ ref_simple:
   }
 
 index_ref:
-| LSQUAR id RSQUAR { Id.new_var ~name:(Id.name $2) TInt, true_term }
+| LSQUAR id RSQUAR { Id.new_var ~name:(Id.name $2) Ty.int, true_term }
 | LSQUAR id COLON exp RSQUAR
   {
     let x = $2 in
-    let x' = Id.new_var ~name:(Id.name x) TInt in
+    let x' = Id.new_var ~name:(Id.name x) Ty.int in
     x', subst_var x x' $4
   }
 
@@ -279,13 +279,13 @@ length_ref:
 | BAR id BAR
   {
     let x = $2 in
-    let x' = Id.new_var ~name:(Id.name x) TInt in
+    let x' = Id.new_var ~name:(Id.name x) Ty.int in
     x', true_term
   }
 | BAR id COLON exp BAR
   {
     let x = $2 in
-    let x' = Id.new_var ~name:(Id.name x) TInt in
+    let x' = Id.new_var ~name:(Id.name x) Ty.int in
     x', subst_var x x' $4
   }
 

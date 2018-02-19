@@ -6,9 +6,9 @@ let rec default_val t = {Syntax.desc = default_val' t; Syntax.typ = t; attr=[]}
 and default_val' =
   let open Syntax in
   let open Type in function
-    | TUnit -> Const Unit
-    | TBool -> Const False
-    | TInt -> Const (Int 0)
+    | TBase TUnit -> Const Unit
+    | TBase TBool -> Const False
+    | TBase TInt -> Const (Int 0)
     | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var ~name:"_" t1, default_val t2)
     | TAttr(_, typ) -> default_val' typ
     | TData _ -> invalid_arg "default_val: not yet implemented syntax(Tconstr)"
@@ -40,7 +40,7 @@ let remove_functional_vars = state_transducer (List.filter is_basetype_variable)
 
 let filter_non_integer =
   let is_integer = function
-    | {Syntax.typ = Type.TInt} -> true
+    | {Syntax.typ = Type.TBase Type.TInt} -> true
     | _ -> false
   in
   state_transducer (List.filter is_integer) (List.filter is_integer) (List.filter is_integer)
@@ -56,9 +56,9 @@ let make_statevar function_name baseId = build_var (make_statevar_name function_
 let build_record {id = {Id.name = f_name}; args = f_args} =
   let open Type in
   let record =
-    ref { update_flag    = build_var "update_flag" TBool
-	; set_flag       = build_var ("set_flag_" ^ f_name) TBool
-	; prev_set_flag  = build_var ("prev_set_flag_" ^ f_name) TBool
+    ref { update_flag    = build_var "update_flag" Ty.bool
+	; set_flag       = build_var ("set_flag_" ^ f_name) Ty.bool
+	; prev_set_flag  = build_var ("prev_set_flag_" ^ f_name) Ty.bool
 	; prev_statevars = List.map (make_prev_statevar f_name) f_args
 	; statevars      = List.map (make_statevar f_name) f_args
 	; argvars        = List.map Term_util.make_var f_args

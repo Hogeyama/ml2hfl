@@ -59,7 +59,7 @@ let make_all xs =
   let n = List.length xs in
   let aux i j =
     match Id.typ (List.nth xs i), Id.typ (List.nth xs j) with
-      TInt, TInt -> [i,j]
+    | TBase TInt, TBase TInt -> [i,j]
     | _ -> []
   in
   List.fromto 1 n
@@ -71,7 +71,7 @@ let make_env xs same_args =
     let t1 = make_var @@ List.nth xs i in
     let t2 = make_var @@ List.nth xs j in
     match t1.typ, t2.typ with
-      TInt, TInt -> [make_eq t1 t2]
+    | TBase TInt, TBase TInt -> [make_eq t1 t2]
     | _ -> []
   in
   List.flatten @@ List.map aux same_args

@@ -18,8 +18,8 @@ and print_ids ?fv typ fm xs =
             let aux x =
               if Id.mem x fv then
                 x
-              else if Id.typ x = TUnit then
-                Id.make 0 "()" [] TUnit
+              else if Id.typ x = TBase TUnit then
+                Id.make 0 "()" [] (TBase TUnit)
               else
                 Id.make 0 "_" [] @@ Id.typ x
             in
@@ -87,9 +87,9 @@ and print_const fm c =
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result -> fprintf fm "{end}"
-  | RandValue(TInt,false) when !Flag.Print.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
-  | RandValue(TInt,false) -> fprintf fm "rand_int"
-  | RandValue(TInt,true) -> fprintf fm "rand_int_cps"
+  | RandValue(TBase TInt,false) when !Flag.Print.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
+  | RandValue(TBase TInt,false) -> fprintf fm "rand_int"
+  | RandValue(TBase TInt,true) -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 
@@ -143,7 +143,7 @@ and print_desc attr pri typ fm desc =
       let p = 15 in
       let s1,s2 = paren pri (p+1) in
       fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids ~fv typ) xs (print_term 0 typ) t s2
-  | App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}]) when !Flag.Print.as_ocaml ->
+  | App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}]) when !Flag.Print.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[<hov 2>%sRandom.int 0%s@]" s1 s2
@@ -193,7 +193,7 @@ and print_desc attr pri typ fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[%sassert@ false%s@]" s1 s2
-  | Local(Decl_let [u,t1], t2) when not !!Debug.check && Id.typ u = TUnit && not @@ Id.mem u @@ get_fv t2 ->
+  | Local(Decl_let [u,t1], t2) when not !!Debug.check && Id.typ u = TBase TUnit && not @@ Id.mem u @@ get_fv t2 ->
       let p = 18 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a;@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
@@ -236,8 +236,8 @@ and print_desc attr pri typ fm desc =
       let p = 50 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TInt,false))}, [{desc=Const Unit}])}) ->
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 8 in
       let s1,s2 = paren pri p in
       if !Flag.Print.as_ocaml then
@@ -378,7 +378,7 @@ and print_desc attr pri typ fm desc =
 and print_declaration typ fm decls = (* TODO: fix *)
   let t =
     let aux decl t0 = {desc=Local(decl,t0);typ=typ_unknown;attr=[]} in
-    List.fold_right aux decls {desc=Const End_of_definitions; typ=TUnit; attr=[]}
+    List.fold_right aux decls {desc=Const End_of_definitions; typ=TBase TUnit; attr=[]}
   in
   print_term 0 typ fm t
 
@@ -576,7 +576,7 @@ let rec print_term' pri fm t =
 and print_declaration' fm decls = (* TODO: fix *)
   let t =
     let aux decl t0 = {desc=Local(decl,t0);typ=t0.typ;attr=[]} in
-    List.fold_right aux decls {desc=Const End_of_definitions; typ=TUnit; attr=[]}
+    List.fold_right aux decls {desc=Const End_of_definitions; typ=TBase TUnit; attr=[]}
   in
   print_term' 0 fm t
 

@@ -351,9 +351,9 @@ let rec decomp_fun typ =
 
 let base_of_typ typ =
   match elim_tattr typ with
-  | TUnit -> Ref_type.Unit
-  | TInt -> Ref_type.Int
-  | TBool -> Ref_type.Bool
+  | TBase TUnit -> Ref_type.Unit
+  | TBase TInt -> Ref_type.Int
+  | TBase TBool -> Ref_type.Bool
   | TData s -> Ref_type.Abst s
   | _ ->
       Format.printf "%a@." Print.typ typ;
@@ -707,13 +707,16 @@ let solve hcs =
   Debug.printf "SOLUTION: %a@." Fpat.PredSubst.pr sol;
   let sol' =
     let tr_typ typ =
-      match typ with
-      | _ when typ = Fpat.Type.mk_int -> Type.TInt
-      | _ when typ = Fpat.Type.mk_bool -> Type.TBool
-      | _ when typ = Fpat.Type.mk_unit -> Type.TUnit
-      | _ ->
-          Format.eprintf "%a@." Fpat.Type.pr typ;
-          assert false
+      let base =
+        match typ with
+        | _ when typ = Fpat.Type.mk_int -> Type.TInt
+        | _ when typ = Fpat.Type.mk_bool -> Type.TBool
+        | _ when typ = Fpat.Type.mk_unit -> Type.TUnit
+        | _ ->
+            Format.eprintf "%a@." Fpat.Type.pr typ;
+            assert false
+      in
+      TBase base
     in
     let aux p =
       Debug.printf "p: %a@." Print.id_typ p;
@@ -736,7 +739,7 @@ let solve_option hcs =
   | Fpat.HCCSSolver.Unknown
   | Fpat.HCCSSolver.NoSolution -> None
 
-let any_var = Id.make (-1) "any" [] TBool
+let any_var = Id.make (-1) "any" [] Ty.bool
 
 let rec apply_sol mode sol x vars tmp =
   let dbg = 0=0 in
@@ -745,7 +748,7 @@ let rec apply_sol mode sol x vars tmp =
   | Base(Some _)
   | PApp(Base (Some _), _) ->
       if x = None then
-        Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
+        Ref_type.Base(Ref_type.Unit, Id.new_var Ty.unit, true_term)
       else
         let base,p,ts =
           match tmp with
@@ -770,7 +773,7 @@ let rec apply_sol mode sol x vars tmp =
           with Not_found -> make_var any_var
         in
         Ref_type.Base(base, x', p)
-  | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var TUnit, true_term)
+  | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var Ty.unit, true_term)
   | Fun(y,typ1,typ2) ->
       Ref_type.Fun(y, apply_sol mode sol (Some y) vars typ1, apply_sol mode sol None (y::vars) typ2)
   | Inter(styp, []) ->
@@ -831,7 +834,7 @@ let trans_CPS env funs t =
     |> CPS.trans_as_direct
   in
   Debug.printf "trans_CPS t': %a@." Print.term t';
-  Type_check.check t' TUnit;
+  Type_check.check t' Ty.unit;
   let t'',make_get_rtyp_pair = Curry.remove_pair_direct t' in
   Debug.printf "trans_CPS t'': %a@." Print.term t'';
   let env',t_main =

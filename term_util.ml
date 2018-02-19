@@ -12,19 +12,15 @@ let occur_in x t =
 (*** TERM CONSTRUCTORS ***)
 
 let typ_result = TData "X"
-let typ_event = TFun(Id.new_var TUnit, TUnit)
-let typ_event' = TFun(Id.new_var TUnit, typ_result)
-let typ_event_cps =
-  let u = Id.new_var TUnit in
-  let r = Id.new_var TUnit in
-  let k = Id.new_var @@ TFun(r,typ_result) in
-  TFun(u, TFun(k, typ_result))
+let typ_event = Ty.(fun_ unit unit)
+let typ_event' = Ty.(fun_ unit typ_result)
+let typ_event_cps = Ty.(funs [unit; fun_ unit typ_result] typ_result)
 let typ_exn = TData "exn"
 
-let dummy_var = Id.make (-1) "" [] TInt
+let dummy_var = Id.make (-1) "" [] Ty.int
 let abst_var = Id.make (-1) "v" [] typ_unknown
-let abst_var_int = Id.set_typ abst_var TInt
-let abst_var_bool = Id.set_typ abst_var TBool
+let abst_var_int = Id.set_typ abst_var Ty.int
+let abst_var_bool = Id.set_typ abst_var Ty.bool
 
 let make_attr ?(attrs=const_attr) ts =
   let check a = List.for_all (fun {attr} -> List.mem a attr) ts in
@@ -41,10 +37,10 @@ let rec is_value t =
   | Tuple ts -> List.for_all is_value ts
   | _ -> false
 
-let end_of_definitions = {desc=Const End_of_definitions; typ=TUnit; attr=[]}
-let unit_term = {desc=Const Unit; typ=TUnit; attr=const_attr}
-let true_term = {desc=Const True; typ=TBool; attr=const_attr}
-let false_term = {desc=Const False; typ=TBool; attr=const_attr}
+let end_of_definitions = {desc=Const End_of_definitions; typ=Ty.unit; attr=[]}
+let unit_term = {desc=Const Unit; typ=Ty.unit; attr=const_attr}
+let true_term = {desc=Const True; typ=Ty.bool; attr=const_attr}
+let false_term = {desc=Const False; typ=Ty.bool; attr=const_attr}
 let cps_result = {desc=Const CPS_result; typ=typ_result; attr=const_attr}
 let fail_term = {desc=Event("fail",false); typ=typ_event; attr=[]}
 let fail_term_cps = {desc=Event("fail",true); typ=typ_event_cps; attr=[]}
@@ -53,7 +49,7 @@ let make_bottom typ = {desc=Bottom; typ=typ; attr=[]}
 let make_event s = {desc=Event(s,false); typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true); typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
-let make_int n = {desc=Const(Int n); typ=TInt; attr=const_attr}
+let make_int n = {desc=Const(Int n); typ=Ty.int; attr=const_attr}
 let make_string s = {desc=Const(String s); typ=TData "string"; attr=const_attr}
 let rec make_app t ts =
   let check typ1 typ2 =
@@ -106,7 +102,7 @@ let make_seq t1 t2 =
   else
     make_let [Id.new_var ~name:"u" t1.typ, t1] t2
 let make_ignore t =
-  if Type.can_unify t.typ TUnit then
+  if Type.can_unify t.typ (TBase TUnit) then
     t
   else
     make_seq t unit_term
@@ -118,7 +114,7 @@ let make_not t =
   match t.desc with
   | Const True -> false_term
   | Const False -> true_term
-  | _ -> {desc=Not t; typ=TBool; attr=make_attr[t]}
+  | _ -> {desc=Not t; typ=(TBase TBool); attr=make_attr[t]}
 let make_and t1 t2 =
   if t1 = false_term then
     false_term
@@ -129,7 +125,7 @@ let make_and t1 t2 =
   else if t2 = false_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
     false_term
   else
-    {desc=BinOp(And, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+    {desc=BinOp(And, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_ands ts = List.fold_right make_and ts true_term
 let make_or t1 t2 =
   if t1 = true_term then
@@ -141,7 +137,7 @@ let make_or t1 t2 =
   else if t2 = true_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
     true_term
   else
-    {desc=BinOp(Or, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+    {desc=BinOp(Or, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_ors ts = List.fold_right make_or ts false_term
 let make_add t1 t2 =
   if t2.desc = Const (Int 0) then
@@ -149,12 +145,12 @@ let make_add t1 t2 =
   else if t1.desc = Const (Int 0) then
     t2
   else
-    {desc=BinOp(Add, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+    {desc=BinOp(Add, t1, t2); typ=TBase TInt; attr=make_attr[t1;t2]}
 let make_sub t1 t2 =
   if t2.desc = Const (Int 0) then
     t1
   else
-    {desc=BinOp(Sub, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+    {desc=BinOp(Sub, t1, t2); typ=TBase TInt; attr=make_attr[t1;t2]}
 let make_mul t1 t2 =
   if t1.desc = Const (Int 0) && List.Set.subset [ANotFail;ATerminate] t2.attr then
     make_int 0
@@ -165,11 +161,11 @@ let make_mul t1 t2 =
   else if t1.desc = Const (Int 1) then
     t2
   else
-    {desc=BinOp(Mult, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
-let make_div t1 t2 = {desc=BinOp(Div, t1, t2); typ=TInt; attr=make_attr[t1;t2]}
+    {desc=BinOp(Mult, t1, t2); typ=TBase TInt; attr=make_attr[t1;t2]}
+let make_div t1 t2 = {desc=BinOp(Div, t1, t2); typ=TBase TInt; attr=make_attr[t1;t2]}
 let make_neg t = make_sub (make_int 0) t
 let make_if_ t1 t2 t3 =
-  assert (Flag.Debug.check_typ => Type.can_unify t1.typ TBool);
+  assert (Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TBool));
   assert (Flag.Debug.check_typ => Type.can_unify t2.typ t3.typ);
   match t1.desc with
   | Const True -> t2
@@ -190,25 +186,25 @@ let make_eq t1 t2 =
   match t1.desc, t2.desc with
   | Const c1, Const c2 -> make_bool (c1 = c2)
   | _ ->
-      {desc=BinOp(Eq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+      {desc=BinOp(Eq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Lt, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
+  {desc=BinOp(Lt, t1, t2); typ=(TBase TBool); attr=make_attr[t1;t2]}
 let make_gt t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Gt, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
+  {desc=BinOp(Gt, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_leq t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Leq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
+  {desc=BinOp(Leq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_geq t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ TInt);
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ TInt);
-  {desc=BinOp(Geq, t1, t2); typ=TBool; attr=make_attr[t1;t2]}
+  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
+  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
+  {desc=BinOp(Geq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_binop op t1 t2 =
   let f =
     match op with
@@ -260,7 +256,7 @@ let make_label ?(label="") info t =
   |& (label <> "") &> make_label_aux (InfoString label)
 let make_ref t = {desc=Ref t; typ=make_tref t.typ; attr=[]}
 let make_deref t = {desc=Deref t; typ=ref_typ t.typ; attr=[]}
-let make_setref r t = {desc=SetRef(r, t); typ=TUnit; attr=[]}
+let make_setref r t = {desc=SetRef(r, t); typ=TBase TUnit; attr=[]}
 let make_construct c ts typ =
   {desc=Constr(c,ts); typ; attr=[]}
 let make_record fields typ =
@@ -272,7 +268,7 @@ let make_field t s =
     |> List.assoc s
   in
   {desc=Field(t,s); typ; attr=[]}
-let randint_term = {desc=Const(RandValue(TInt,false)); typ=TFun(Id.new_var TUnit,TInt); attr=[]}
+let randint_term = {desc=Const(RandValue(TBase TInt,false)); typ=TFun(Id.new_var @@ TBase TUnit,TBase TInt); attr=[]}
 let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
 let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 let make_event_unit s = make_app (make_event s) [unit_term]
@@ -291,8 +287,7 @@ let make_eq_dec t1 t2 =
   in
   let rec make t1 t2 =
     match t1.typ with
-    | TBool
-    | TInt -> make_eq t1 t2
+    | TBase _ -> make_eq t1 t2
     | TTuple xs ->
         let n = List.length xs in
         List.fromto 0 n
@@ -306,7 +301,7 @@ let make_eq_dec t1 t2 =
 
 let make_length_var typ =
   let x = Id.make (-1) "l" [] typ in
-  Id.make (-1) "length" [] (TFun(x, TInt))
+  Id.make (-1) "length" [] (TFun(x, Ty.int))
 
 let make_length t =
   {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
@@ -322,32 +317,26 @@ let make_module decls =
   in
   {desc=Module decls; typ; attr=[]}
 
-let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=TFun(Id.new_var TUnit,typ); attr=[]}
+let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=Ty.(fun_ Ty.unit typ); attr=[]}
 
 let make_randvalue_unit typ =
   match typ with
-  | TUnit -> unit_term
+  | TBase TUnit -> unit_term
   | TTuple [] -> make_tuple []
   | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 
 let make_randvalue_cps typ =
-  let u = Id.new_var TUnit in
-  let r = Id.new_var typ in
-  let k = Id.new_var @@ TFun(r,typ_result) in
-  {desc=Const(RandValue(typ,true)); typ=TFun(u,TFun(k,typ_result)); attr=[]}
+  {desc=Const(RandValue(typ,true)); typ=Ty.(funs [unit; fun_ typ typ_result] typ_result); attr=[]}
 
 let make_randint_cps b =
-  let u = Id.new_var TUnit in
-  let r = Id.new_var TInt in
-  let k = Id.new_var @@ TFun(r,typ_result) in
   let attr = if b then [AAbst_under] else [] in
-  {desc=Const(RandValue(TInt,true)); typ=TFun(u,TFun(k,typ_result)); attr}
+  {(make_randvalue_cps Ty.int) with attr}
 
 let rec make_term typ =
   match elim_tattr typ with
-  | TUnit -> unit_term
-  | TBool -> true_term
-  | TInt -> make_int 0
+  | TBase TUnit -> unit_term
+  | TBase TBool -> true_term
+  | TBase TInt -> make_int 0
   | TFun(x,typ) -> make_fun x (make_term typ)
   | TTuple xs -> make_tuple @@ List.map (make_term -| Id.typ) xs
   | TData "X" -> cps_result
@@ -718,9 +707,7 @@ let rec merge_typ typ1 typ2 =
   | _, TVar({contents=None},_) -> typ1
   | _ when typ1 = typ_unknown -> typ2
   | _ when typ2 = typ_unknown -> typ1
-  | TUnit, TUnit -> TUnit
-  | TBool, TBool -> TBool
-  | TInt, TInt -> TInt
+  | TBase b1, TBase b2 when b1 = b2 -> TBase b1
   | TAttr(attr1,typ1), TAttr(attr2,typ2) ->
       TAttr(merge_attrs attr1 attr2, merge_typ typ1 typ2)
   | TAttr(attr, typ'), typ
@@ -753,7 +740,7 @@ let rec merge_typ typ1 typ2 =
   | _ -> Format.printf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
 
 let make_if t1 t2 t3 =
-  assert (Flag.Debug.check_typ => Type.can_unify t1.typ TBool);
+  assert (Flag.Debug.check_typ => Type.can_unify t1.typ Ty.bool);
   if Flag.Debug.check_typ && not @@ Type.can_unify t2.typ t3.typ then
     (Format.printf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
      assert false);
@@ -805,8 +792,8 @@ let has_no_effect =
 
 
 let rec is_simple_aexp t =
-  if elim_tattr t.typ <> TInt
-  then false
+  if elim_tattr t.typ <> Ty.int then
+    false
   else
     match t.desc with
     | Const _ -> true
@@ -815,8 +802,8 @@ let rec is_simple_aexp t =
     | _ -> false
 
 and is_simple_bexp t =
-  if elim_tattr t.typ <> TBool
-  then false
+  if elim_tattr t.typ <> Ty.bool then
+    false
   else
     match t.desc with
     | Const _ -> true

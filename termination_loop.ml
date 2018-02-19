@@ -91,7 +91,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
      let correspondenceExparams =
        List.map (fun (v, t) ->
                  let n = Fpat.IntTerm.int_of t in
-                 (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.TInt, Term_util.make_int n))
+                 (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.Ty.int, Term_util.make_int n))
                 (List.filter (fun (v, _) -> v |> Fpat.Idnt.is_coeff) correspondenceVars)
      in
      let substToVar = function

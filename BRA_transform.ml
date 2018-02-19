@@ -7,7 +7,7 @@ open BRA_state
 
 (***** Constants *****)
 
-let hole_term = make_var (Id.new_var ~name:"__HOLE__" TBool)
+let hole_term = make_var (Id.new_var ~name:"__HOLE__" Ty.bool)
 let stateType = ref []
 
 (***** Functions *****)
@@ -37,9 +37,9 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 let parens s = "(" ^ s ^ ")"
 let rec show_typ t =
   let rec aux = function
-    | TUnit -> ["unit"]
-    | TBool -> ["bool"]
-    | TInt -> ["int"]
+    | TBase TUnit -> ["unit"]
+    | TBase TBool -> ["bool"]
+    | TBase TInt -> ["int"]
     | TFun ({Id.typ = t1}, t2) -> !stateType @ [show_typ t1] @ aux t2
     | _ -> []
   in
@@ -62,7 +62,7 @@ and show_desc = function
   | Const True -> "true"
   | Const False -> "false"
   | Const (Int n) -> parens (string_of_int n)
-  | App ({desc=Const(RandValue(TInt,_))}, _) -> "Random.int 0"
+  | App ({desc=Const(RandValue(TBase TInt,_))}, _) -> "Random.int 0"
   | App ({desc=Var {Id.name = div}}, [n; m]) when div = "Pervasives./" -> parens (show_term n ^ " / " ^ show_term m)
   | Var v -> modify_id_typ v
   | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_term body
@@ -180,14 +180,14 @@ let randomized_application f t =
   let rec aux f args = function
     | t when is_base_typ t -> {desc = App (f, args); typ = t; attr=[]}
     | TFun ({Id.typ = t1}, t2) ->
-      let r =
-	match t1 with
-	  | TUnit -> unit_term
-	  | TBool -> randbool_unit_term
-	  | TInt -> randint_unit_term
+        let r =
+	  match t1 with
+	  | TBase TUnit -> unit_term
+	  | TBase TBool -> randbool_unit_term
+	  | TBase TInt -> randint_unit_term
 	  | _ -> assert false
-      in
-      aux f (args@[r]) t2
+        in
+        aux f (args@[r]) t2
     | _ -> assert false
   in aux f [] t
 
@@ -201,7 +201,7 @@ let rec find_main_function = function
   | _ -> None
 
 let remove_unit_wraping = function
-  | {desc = Local(Decl_let [{Id.name="u"}, t], {desc = Const Unit; typ = TUnit})} -> t
+  | {desc = Local(Decl_let [{Id.name="u"}, t], {desc = Const Unit; typ = TBase TUnit})} -> t
   | t -> t
 
 let rec lambda_lift t =
@@ -246,7 +246,7 @@ let implement_recieving ({program = program; state = state; verified = verified}
 let implement_transform_initial_application ({program = program; state = state} as holed) =
   let sub = function
     | {desc = App ({desc=Event("fail", _)}, _)}
-    | {desc = App ({desc=Const(RandValue(TInt,_))}, _)} as t -> t
+    | {desc = App ({desc=Const(RandValue(TBase TInt,_))}, _)} as t -> t
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> state.BRA_types.initial_state@[arg]) args)}
     | t -> t
   in
@@ -256,7 +256,7 @@ let implement_propagation ({program = program; state = state; verified = verifie
   let propagated = propagated_statevars holed in
   let sub = function
     | {desc = App ({desc=Event("fail", _)}, _)}
-    | {desc = App ({desc=Const(RandValue(TInt,_))}, _)} as t -> t
+    | {desc = App ({desc=Const(RandValue(TBase TInt,_))}, _)} as t -> t
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> propagated@[arg]) args)}
     | t -> t
   in
@@ -323,7 +323,7 @@ let to_holed_programs (target_program : term) =
                            fail
                in *)
             make_let
-	      [Id.new_var ~name:"_" TUnit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" Ty.unit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 
               (* let update_flag = Random.int 0 = 0 in *)
 	      (make_let
@@ -344,7 +344,7 @@ let to_holed_programs (target_program : term) =
                            fail
                in *)
             make_let
-	      [Id.new_var ~name:"_" TUnit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" Ty.unit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 
 	      (* let set_flag = true in *)
 	      (make_let
@@ -375,7 +375,7 @@ let to_holed_programs (target_program : term) =
 
 	  let app_assert =
 	    make_let
-	      [Id.new_var ~name:"_" TUnit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
+	      [Id.new_var ~name:"_" Ty.unit, make_if prev_set_flag (make_if hole_term unit_term (make_app fail_term [unit_term])) unit_term]
 	      {desc = App (make_var id', List.map make_var args'); typ = Id.typ id'; attr=[]}
 	  in
 	  (no_checking_function := Some ({id = id'; args = args} : function_info);

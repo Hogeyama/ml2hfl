@@ -38,7 +38,7 @@ let rec is_value t =
 (* The current FPAT support only int arguments for rank_fun functions *)
 let is_ground_typ typ =
   match typ with
-  | TInt -> true
+  | TBase TInt -> true
   | _ -> false
 
 
@@ -127,7 +127,7 @@ let make_extra_param xs =
       let mk = make_var -| make_extra_coeff in
       List.fold_left (fun acc x -> make_add acc @@ make_mul !!mk (make_var x)) !!mk xs
 let is_fun_var = is_fun_typ -| Id.typ
-let new_exparam () = Id.new_var ~name:"ex" TInt
+let new_exparam () = Id.new_var ~name:"ex" Ty.int
 
 let insert_extra_param = make_trans2 ()
 
@@ -136,7 +136,7 @@ let insert_extra_param_desc vars desc =
   | Fun(x, t) when is_fun_var x ->
       let x' = insert_extra_param.tr2_var vars x in
       let ex = !!new_exparam in
-      let vars' = ex :: (if Id.typ x' = TInt then [x'] else []) @ vars in
+      let vars' = ex :: (if Id.typ x' = Ty.int then [x'] else []) @ vars in
       Fun(ex, make_fun x' @@ insert_extra_param.tr2_term vars' t)
   | Local(Decl_let bindings, t2) ->
       let aux (f,t) =
@@ -144,7 +144,7 @@ let insert_extra_param_desc vars desc =
         f', insert_extra_param.tr2_term vars t
       in
       let bindings' = List.map aux bindings in
-      let vars' = List.filter_map (fun (x,_) -> if Id.typ x = TInt then Some x else None) bindings @ vars in
+      let vars' = List.filter_map (fun (x,_) -> if Id.typ x = Ty.int then Some x else None) bindings @ vars in
       Local(Decl_let bindings', insert_extra_param.tr2_term vars' t2)
   | App(t1, ts) ->
       let t1' = insert_extra_param.tr2_term vars t1 in
@@ -155,7 +155,7 @@ let insert_extra_param_desc vars desc =
 
 let insert_extra_param_typ vars typ =
   match typ with
-  | TFun(x, typ2) when is_fun_var x -> TFun(Id.new_var TInt, insert_extra_param.tr2_typ_rec vars typ)
+  | TFun(x, typ2) when is_fun_var x -> Ty.(fun_ int @@ insert_extra_param.tr2_typ_rec vars typ)
   | _ -> insert_extra_param.tr2_typ_rec vars typ
 
 let () = insert_extra_param.tr2_desc <- insert_extra_param_desc
@@ -171,8 +171,8 @@ let set_main t =
       if false then Format.printf "%a@." Print.id_typ f;
       let aux x =
         match Id.typ x with
-        | TInt -> randint_unit_term
-        | TUnit -> unit_term
+        | TBase TInt -> randint_unit_term
+        | TBase TUnit -> unit_term
         | _ -> unsupported "fair_termination: set_main"
       in
       let main = make_app (make_var f) @@ List.map aux xs in

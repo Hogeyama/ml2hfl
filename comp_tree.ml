@@ -196,7 +196,7 @@ and from_term
   | Const Unit ->
       let node = {nid; var_env; val_env; ce_env; nlabel = End} in
       RT.Node(node, [])
-  | App({desc=Const(RandValue(TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
+  | App({desc=Const(RandValue(TBase TInt, true))}, [{desc=Const Unit}; {desc=Fun(x,t2)}]) ->
       let t2' = subst_var x (rename_var nid x) t2 in
       from_term cnt fun_env var_env val_env ce_env spawned depth t2'
   | App({desc=Var f}, ts) when Id.mem_assoc f fun_env -> (* Top-level functions *)

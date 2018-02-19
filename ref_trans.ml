@@ -186,7 +186,7 @@ Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.
 
 let rec tree_of_typ typ =
   match typ with
-  | TTuple xs -> Rose_tree.Node (TUnit, List.map (tree_of_typ -| Id.typ) xs)
+  | TTuple xs -> Rose_tree.Node (Ty.unit, List.map (tree_of_typ -| Id.typ) xs)
   | _ -> Rose_tree.leaf typ
 
 let trans_typ ttbb typ =
@@ -576,11 +576,11 @@ let trans t = t
   |@> Debug.printf "flatten_let: %a@." Print.term_typ
   |> sort_let_pair.tr_term
   |@> Debug.printf "sort_let_pair: %a@." Print.term_typ
-  |@> Type_check.check ~ty:TUnit
+  |@> Type_check.check ~ty:Ty.unit
   |> trans.tr2_term (assert_false,[])
   |> Trans.inline_no_effect
   |@> Debug.printf "ref_trans: %a@." Print.term
-  |@> Type_check.check ~ty:Type.TUnit
+  |@> Type_check.check ~ty:Ty.unit
 
 let trans t =
  trans t, fun _ _ -> raise Not_found

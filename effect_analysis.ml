@@ -28,17 +28,14 @@ let add_effect_typ e ty =
 let rec make_template env ty =
   let ty' =
     match ty with
-    | TUnit
-    | TBool
-    | TInt -> ty
+    | TBase _ -> ty
     | TVar _ -> unsupported __MODULE__
     | TFun(x, ty2) ->
         let x' = Id.map_typ (make_template env) x in
         let ty2' = make_template env ty2 in
         if env.for_cps then
           match elim_tattr ty2 with
-          | TUnit | TBool | TInt ->
-              env.constraints <- (ECont, effect_of_typ ty2') :: env.constraints
+          | TBase _ -> env.constraints <- (ECont, effect_of_typ ty2') :: env.constraints
           | _ -> ()
         else
           ();
@@ -75,9 +72,7 @@ let rec force_cont ty =
   in
   let ty1' =
     match ty1 with
-    | TUnit
-    | TBool
-    | TInt -> ty
+    | TBase _ -> ty
     | TVar _ -> unsupported __MODULE__
     | TFun(x, ty2) -> TFun(Id.map_typ force_cont x, force_cont ty2)
     | TFuns _ -> unsupported __MODULE__
@@ -95,9 +90,7 @@ let rec flatten_sub ?(ignore_top=false) env ty1 ty2 =
   if not ignore_top then
     env.constraints <- (effect_of_typ ty1, effect_of_typ ty2) :: env.constraints;
   match elim_tattr ty1, elim_tattr ty2 with
-  | TUnit, _
-  | TBool, _
-  | TInt, _ -> ()
+  | TBase _, _ -> ()
   | TVar _, _ -> unsupported __MODULE__
   | TFun(x1,ty12), TFun(x2,ty22) ->
       flatten_sub ~ignore_top:true env (Id.typ x2) (Id.typ x1);
@@ -138,7 +131,7 @@ let rec gen_constr env tenv t =
 	  Id.assoc x tenv
 	with
 	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) ->
-            add_effect_typ ENone TInt
+            add_effect_typ ENone Ty.int
 	| Not_found ->
             Format.printf "%a@." Print.id x; assert false
       in

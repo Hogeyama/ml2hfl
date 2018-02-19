@@ -30,9 +30,9 @@ let exc_typ () = TVariant(false,!exc_env)
 
 
 let prim_typs =
-  ["unit", TUnit;
-   "bool", TBool;
-   "int", TInt;
+  ["unit", TBase TUnit;
+   "bool", TBase TBool;
+   "int", TBase TInt;
    "Pervasives.format", TData "string";
    "Pervasives.format4", TData "string";
    "Pervasives.format6", TData "string";
@@ -335,7 +335,7 @@ let conv_primitive_app t ts typ =
         if has_no_effect t2 then
           make_check t2
         else
-          let x = Id.new_var TInt in
+          let x = Id.new_var Ty.int in
           make_let [x,t2] @@ make_check @@ make_var x
       in
       make_div t1 t2'
@@ -357,13 +357,13 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
   | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
   | Var {Id.name="Random.int"}, [t] ->
-      let x = Id.new_var ~name:"n" TInt in
+      let x = Id.new_var ~name:"n" Ty.int in
       make_let [x, randint_unit_term] @@
         make_assume
           (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
           (make_var x)
   | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
-  | Var {Id.name="Pervasives.close_in"}, [{typ=TUnit}] -> make_event_unit "close"
+  | Var {Id.name="Pervasives.close_in"}, [{typ=TBase TUnit}] -> make_event_unit "close"
   | Var {Id.name="Pervasives.invalid_arg"}, [{desc=Const(String s)}] ->
       let c = "Invalid_argument" ^ "." ^ s in
       add_exc_env c [];
@@ -637,8 +637,8 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
     | Texp_while(e1,e2) ->
         let decls2,t1 = from_expression id_env e1 in
         let decls3,t2 = from_expression id_env e2 in
-        let x = Id.new_var TUnit in
-        let f = Id.new_var ~name:"while" @@ make_tfun TUnit TUnit in
+        let x = Id.new_var Ty.unit in
+        let f = Id.new_var ~name:"while" Ty.(fun_ unit unit) in
         let t2' = Term.(if_ t1 (seq t2 (var f @ [unit])) unit) in
         decls2 @ decls3,
         Term.(let_ [f, fun_ x t2'] (var f @ [unit]))
@@ -646,14 +646,14 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let decls2,t1 = from_expression id_env e1 in
         let decls3,t2 = from_expression id_env e2 in
         let decls4,t3 = from_expression id_env e3 in
-        let x' = from_ident x TInt in
-        if Type.can_unify t3.typ TUnit then
-          Type.unify t3.typ TUnit
+        let x' = from_ident x Ty.int in
+        if Type.can_unify t3.typ Ty.unit then
+          Type.unify t3.typ Ty.unit
         else
           unsupported "The body of a for-expression must have type unit";
-        let f = Id.new_var ~name:"for" (TFun(Id.new_var ~name:"i" TInt, TUnit)) in
-        let init = Id.new_var ~name:"init" TInt in
-        let last = Id.new_var ~name:"last" TInt in
+        let f = Id.new_var ~name:"for" Ty.(TFun(Id.new_var ~name:"i" int, unit)) in
+        let init = Id.new_var ~name:"init" Ty.int in
+        let last = Id.new_var ~name:"last" Ty.int in
         let t31 =
           match dir with
           | Upto -> make_leq (make_var x') (make_var last)
@@ -667,7 +667,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
           in
           make_seq t3 @@ make_app (make_var f) [x'']
         in
-        assert (Flag.Debug.check_typ => Type.can_unify t31.typ TBool);
+        assert (Flag.Debug.check_typ => Type.can_unify t31.typ Ty.bool);
         let t3' = make_if t31 t32 unit_term in
         decls2 @ decls3 @ decls4,
         make_lets [init,t1; last,t2] @@ make_let [f, make_fun x' t3'] @@ make_app (make_var f) [make_var init]
@@ -794,7 +794,7 @@ and from_str_item id_env tenv str_item
         let x,t =
           match p.pat_desc with
           | PVar x -> x, t
-          | PConst {desc=Const Unit} -> Id.new_var ~name:"u" TUnit, t
+          | PConst {desc=Const Unit} -> Id.new_var ~name:"u" Ty.unit, t
           | PAny -> new_var_of_term t, t
           | _ -> unsupported "Only variables are allowed as left-hand side of 'let'"
         in

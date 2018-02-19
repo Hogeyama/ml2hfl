@@ -1,12 +1,13 @@
-
 open Util
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
-type 'a t =
+type base =
   | TUnit
   | TBool
   | TInt
+and 'a t =
+  | TBase of base
   | TVar of 'a t option ref * int option
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)
@@ -49,9 +50,9 @@ let typ_unknown = TData "???"
 
 let var_name_of typ =
   match typ with
-  | TUnit -> "u"
-  | TBool -> "b"
-  | TInt -> "n"
+  | TBase TUnit -> "u"
+  | TBase TBool -> "b"
+  | TBase TInt -> "n"
   | TFun _ -> "f"
   | TTuple _ -> "p"
   | TApp(TList,_) -> "xs"
@@ -68,7 +69,7 @@ let make_ttuple typs =
 
 let make_ttuple' typs =
   match typs with
-  | [] -> TUnit
+  | [] -> TBase TUnit
   | [typ] -> typ
   | _ -> make_ttuple typs
 
@@ -91,9 +92,7 @@ let is_fun_typ typ =
   | _ -> false
 
 let rec is_base_typ = function
-  | TUnit
-  | TBool
-  | TInt
+  | TBase _
   | TData "string" -> true
   | TAttr(_,typ) -> is_base_typ typ
   | _ -> false
@@ -104,9 +103,7 @@ let tfuns_to_tfun = function
 
 let rec elim_tattr_all ty =
   match ty with
-  | TUnit -> TUnit
-  | TBool -> TBool
-  | TInt -> TInt
+  | TBase b -> TBase b
   | TVar({contents=Some typ},_) -> elim_tattr_all typ
   | TVar(r,id) -> TVar(r,id)
   | TFun(x, typ) -> TFun(Id.map_typ elim_tattr_all x, elim_tattr_all typ)
@@ -165,9 +162,9 @@ let rec print occur print_pred fm typ =
   let print' = print occur print_pred in
   let print_preds ps = print_list print_pred "; " ps in
   match typ with
-  | TUnit -> Format.fprintf fm "unit"
-  | TBool -> Format.fprintf fm "bool"
-  | TInt -> Format.fprintf fm "int"
+  | TBase TUnit -> Format.fprintf fm "unit"
+  | TBase TBool -> Format.fprintf fm "bool"
+  | TBase TInt -> Format.fprintf fm "int"
   | TVar({contents=Some typ},_) -> print' fm typ
   | TVar({contents=None}, None) -> Format.fprintf fm "!!!"
   | TVar({contents=None}, Some n) -> print_tvar fm n
@@ -250,9 +247,7 @@ let rec can_unify typ1 typ2 =
   | TVar({contents=Some typ1},_), typ2
   | typ1, TVar({contents=Some typ2},_) -> can_unify typ1 typ2
   | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
-  | TUnit,TUnit -> true
-  | TBool,TBool -> true
-  | TInt,TInt -> true
+  | TBase b1, TBase b2 -> b1 = b2
   | TFuns([], typ1), typ2 -> can_unify typ1 typ2
   | typ1, TFuns([], typ2) -> can_unify typ1 typ2
   | TFuns(x::xs, typ1), typ2 -> can_unify (TFun(x, TFuns(xs, typ1))) typ2
@@ -286,9 +281,7 @@ let rec flatten typ =
 (* just for "unify"? *)
 let rec occurs r typ =
   match flatten typ with
-  | TUnit -> false
-  | TBool -> false
-  | TInt -> false
+  | TBase _ -> false
   | TVar({contents=None} as r',_) -> r == r'
   | TVar({contents=Some typ},_) -> assert false
   | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
@@ -303,9 +296,7 @@ let rec occurs r typ =
 
 let rec data_occurs s typ =
   match flatten typ with
-  | TUnit -> false
-  | TBool -> false
-  | TInt -> false
+  | TBase _ -> false
   | TVar(r,_) -> Option.exists (data_occurs s) !r
   | TFun(x,typ) -> data_occurs s (Id.typ x) || data_occurs s typ
   | TApp(_, typs) -> List.exists (data_occurs s) typs
@@ -320,9 +311,7 @@ let rec data_occurs s typ =
 
 let rec unify typ1 typ2 =
   match flatten @@ elim_tattr typ1, flatten @@ elim_tattr typ2 with
-  | TUnit, TUnit
-  | TBool, TBool
-  | TInt, TInt -> ()
+  | TBase b1, TBase b2 -> if b1 <> b2 then raise CannotUnify
   | TFun(x1, typ1), TFun(x2, typ2) ->
       unify (Id.typ x1) (Id.typ x2);
       unify typ1 typ2
@@ -349,9 +338,7 @@ let rec unify typ1 typ2 =
 
 let rec same_shape typ1 typ2 =
   match elim_tattr typ1, elim_tattr typ2 with
-  | TUnit,TUnit -> true
-  | TBool,TBool -> true
-  | TInt,TInt -> true
+  | TBase b1, TBase b2 -> b1 = b2
   | TVar({contents=None},_), TVar({contents=None},_) -> true
   | TVar({contents=Some typ1},_),TVar({contents=Some typ2},_) -> same_shape typ1 typ2
   | TFun(x1,typ1),TFun(x2,typ2) -> same_shape (Id.typ x1) (Id.typ x2) && same_shape typ1 typ2
@@ -422,9 +409,7 @@ let array_typ typ =
   | _ -> invalid_arg "array_typ"
 
 let rec has_pred = function
-  | TUnit -> false
-  | TBool -> false
-  | TInt -> false
+  | TBase _ -> false
   | TVar({contents=None},_) -> false
   | TVar({contents=Some typ},_) -> has_pred typ
   | TFun(x,typ) -> has_pred (Id.typ x) || has_pred typ
@@ -439,9 +424,9 @@ let rec has_pred = function
   | TModule sgn -> List.exists (snd |- has_pred) sgn
 
 let rec to_id_string = function
-  | TUnit -> "unit"
-  | TBool -> "bool"
-  | TInt -> "int"
+  | TBase TUnit -> "unit"
+  | TBase TBool -> "bool"
+  | TBase TInt -> "int"
   | TVar({contents=None},_) -> "abst"
   | TVar({contents=Some typ},_) -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
@@ -465,9 +450,7 @@ let rec to_id_string = function
 (* order of simpl types *)
 let rec order typ =
   match typ with
-  | TUnit -> 0
-  | TBool -> 0
-  | TInt -> 0
+  | TBase _ -> 0
   | TData _ -> 0
   | TVar({contents=None},_) -> assert false
   | TVar({contents=Some typ},_) -> order typ
@@ -534,3 +517,18 @@ let is_tvar ty =
   match ty with
   | TVar({contents=None},_) -> true
   | _ -> false
+
+module Ty = struct
+  let unit = TBase TUnit
+  let bool = TBase TBool
+  let int = TBase TInt
+  let fun_ = make_tfun
+  let funs tys ty = List.fold_right make_tfun tys ty
+  let tuple = make_ttuple
+  let tuple' = make_ttuple'
+  let pair = make_tpair
+  let list = make_tlist
+  let ref = make_tref
+  let option = make_toption
+  let array = make_tarray
+end

@@ -33,7 +33,7 @@ let withExparam = ref (make_int 0)
 let rec transType = function
   | TFun ({Id.name=t1Name; Id.typ=t1} as t1Id, t2) when is_fun_typ t1 ->
     let t1 = transType t1 in
-    TFun (Id.new_var ~name:(t1Name^"_EXPARAM") TInt, TFun ({t1Id with Id.typ = t1}, transType t2))
+    TFun (Id.new_var ~name:(t1Name^"_EXPARAM") Ty.int, TFun ({t1Id with Id.typ = t1}, transType t2))
   | TFun (t1, t2) -> TFun (t1, transType t2)
   | t -> t
 
@@ -43,7 +43,7 @@ let nthCoefficient = ref []
 let freshCoefficient () =
   let _ = counter := !counter + 1 in
   let freshName = "c" ^ string_of_int (!counter - 1) ^ "_COEFFICIENT" in
-  let freshId = Id.new_var ~name:freshName TInt in
+  let freshId = Id.new_var ~name:freshName Ty.int in
   let _ = nthCoefficient := !nthCoefficient @ [freshId] in
   let freshCoeff = make_var freshId in
   (exCoefficients := freshCoeff :: !exCoefficients; freshCoeff)
@@ -76,17 +76,17 @@ let rec insertExparam scope expr =
     | Local(Decl_let bindings, e) ->
       let rec extend sc = function
 	| [] -> sc
-	| (x, body) :: bs when (Id.typ x) = TInt -> extend (x :: sc) bs
+	| (x, body) :: bs when (Id.typ x) = Ty.int -> extend (x :: sc) bs
 	| _ :: bs -> extend sc bs
       in
       let scope = extend scope bindings in
       let insertExparamBinding (x, body) =
         let args,body = decomp_funs body in
 	let insertExparamArgs (sc, ags) = function
-	  | t when Id.typ t = TInt -> (t::sc, ags@[t])
+	  | t when Id.typ t = Ty.int -> (t::sc, ags@[t])
 	  | t when is_base_typ (Id.typ t) -> (sc, ags@[t])
 	  | t when is_fun_typ (Id.typ t) ->
-	    let t_exparamId = Id.new_var ~name:((Id.name t) ^ "_EXPARAM") TInt in
+	    let t_exparamId = Id.new_var ~name:((Id.name t) ^ "_EXPARAM") Ty.int in
 	    (t_exparamId::sc, ags@[t_exparamId; {t with Id.typ = transType t.Id.typ}])
 	  | _ -> assert false
 	in

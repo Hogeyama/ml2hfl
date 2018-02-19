@@ -114,9 +114,9 @@ let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
 
 let rec of_typ typ =
   match Type.elim_tattr typ with
-  | Type.TUnit -> Fpat.Type.mk_unit
-  | Type.TInt -> Fpat.Type.mk_int
-  | Type.TBool -> Fpat.Type.mk_bool
+  | Type.TBase Type.TUnit -> Fpat.Type.mk_unit
+  | Type.TBase Type.TInt -> Fpat.Type.mk_int
+  | Type.TBase Type.TBool -> Fpat.Type.mk_bool
   | Type.TFun(x,typ) -> Fpat.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
   | Type.TData "string" -> Fpat.Type.mk_string
   | _ ->
@@ -138,9 +138,9 @@ let rec of_term t =
         | S.Eq ->
             begin
               match Type.elim_tattr @@ S.typ t1 with
-              | Type.TUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
-              | Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
-              | Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
+              | Type.TBase Type.TUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
+              | Type.TBase Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
+              | Type.TBase Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
               | typ when typ = Type.typ_unknown -> Fpat.Const.Eq Fpat.Type.mk_int
               | typ ->
                   Format.eprintf "t1.S.typ: %a@." Print.typ typ;
@@ -483,7 +483,7 @@ let rec trans_type typ =
               Fpat.Util.List.unfold
                 (fun i ->
                  if i < !Fpat.RefTypInfer.number_of_extra_params then
-                   Some(Id.new_var ~name:"ex" Type.TInt, i + 1)
+                   Some(Id.new_var ~name:"ex" Type.Ty.int, i + 1)
                  else
                    None)
                 0
@@ -513,7 +513,7 @@ let insert_extra_param t =
               Fpat.Util.List.unfold
                 (fun i ->
                  if i < !Fpat.RefTypInfer.number_of_extra_params then
-                   Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.TInt, i + 1)
+                   Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.Ty.int, i + 1)
                  else
                    None)
                 0
@@ -589,7 +589,7 @@ let insert_extra_param t =
               | Type.TTuple _(* ToDo: fix it *) ->
                  let bvs =
                    bvs
-                   |> List.filter (fun x -> x.Id.typ = Type.TInt)
+                   |> List.filter (fun x -> x.Id.typ = Type.Ty.int)
                    |> List.map (Id.to_string >> Fpat.Idnt.make)
                  in
                  let exs = List.map (Id.to_string >> Fpat.Idnt.make) exs in

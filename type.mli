@@ -1,7 +1,9 @@
-type 'a t =
-    TUnit
+type base =
+  | TUnit
   | TBool
   | TInt
+and 'a t =
+  | TBase of base
   | TVar of 'a t option ref * int option
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)
@@ -96,3 +98,18 @@ val print :
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 val print_init : Format.formatter -> 'a t -> unit
 val print_effect : Format.formatter -> effect -> unit
+
+module Ty : sig
+  val unit : 'a t
+  val bool : 'a t
+  val int : 'a t
+  val fun_ : 'a t -> 'a t -> 'a t
+  val funs : 'a t list -> 'a t -> 'a t
+  val tuple : 'a t list -> 'a t
+  val tuple' : 'a t list -> 'a t
+  val pair : 'a t -> 'a t -> 'a t
+  val list : 'a t -> 'a t
+  val ref : 'a t -> 'a t
+  val option : 'a t -> 'a t
+  val array : 'a t -> 'a t
+end
