@@ -19,7 +19,7 @@ let abst_recdata_leaves env typs =
 
 let encode_recdata_typ env s ty =
   match ty with
-  | TVariant(false,labels) when List.mem s @@ get_data_type ty ->
+  | TVariant(false,labels) when List.mem s @@ get_tdata ty ->
       let tys =
         let aux ty =
           match ty with
@@ -29,7 +29,7 @@ let encode_recdata_typ env s ty =
               else
                 unsupported "encode_variant: non-simple recursion"
           | _ ->
-              if get_data_type ty = [] then
+              if get_tdata ty = [] then
                 Some (abst_recdata.tr2_typ env ty)
               else
                 unsupported "encode_variant: non-simple recursion"
@@ -263,7 +263,7 @@ let abst_recdata_term env t =
   | SetField _ -> assert false
   | Local(Decl_type [s,ty], t) ->
       let ty' = encode_recdata_typ env s ty in
-      let env' = (s, (ty, List.mem s @@ get_data_type ty, ty')) :: env in
+      let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
       subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t
   | Local(Decl_type decls, t) ->
       unsupported "encode_rec: Decl_type"

@@ -331,6 +331,8 @@ let rec unify typ1 typ2 =
   | TVariant(false,labels1), TVariant(false,labels2) ->
       List.iter2 (fun (s1,typs1) (s2,typs2) -> assert (s1 = s2); List.iter2 unify typs1 typs2) labels1 labels2
   | TRecord fields1, TRecord fields2 -> List.iter2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1 = s2 && f1 = f2); unify typ1 typ2) fields1 fields2
+  | _, TData _ -> ()
+  | TData _, _ -> ()
   | _ ->
       Format.printf "unification error: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
       raise CannotUnify

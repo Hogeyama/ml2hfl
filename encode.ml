@@ -64,32 +64,28 @@ let mutable_record = encode_mutable_record.tr_term
 
 
 
-let abst_ref = make_trans ()
-
-let abst_ref_term t =
-  match t.desc with
-  | Ref t1 ->
-      make_ignore @@ abst_ref.tr_term t1
-  | Deref t1 ->
-      Flag.use_abst := true;
-      let t1' = abst_ref.tr_term t1 in
-      let typ = abst_ref.tr_typ t.typ in
-      make_seq t1' @@ make_randvalue_unit typ
-  | SetRef(t1, t2) ->
-      let t1' = abst_ref.tr_term t1 in
-      let t2' = abst_ref.tr_term t2 in
-      make_ignore @@ make_pair t1' t2'
-  | _ -> abst_ref.tr_term_rec t
-
-let abst_ref_typ typ =
-  match typ with
-  | TApp(TRef, _) -> Ty.unit
-  | _ -> abst_ref.tr_typ_rec typ
-
-let () = abst_ref.tr_term <- abst_ref_term
-let () = abst_ref.tr_typ <- abst_ref_typ
-let abst_ref t =
-  t |> abst_ref.tr_term |> Trans.inst_randval
+let abst_ref =
+  let tr = make_trans () in
+  let tr_term t =
+    let t' = tr.tr_term_rec t in
+    match t'.desc with
+    | Ref t1 ->
+        make_ignore t1 |@> Format.printf "@[%a ==> @[%a@." Print.term' t Print.term'
+    | Deref t1 ->
+        Flag.use_abst := true;
+        Term.(seq t1 (rand t'.typ))
+    | SetRef(t1, t2) ->
+        Term.(seqs [t1;t2] unit)
+    | _ -> t'
+  in
+  let tr_typ typ =
+    match typ with
+    | TApp(TRef, _) -> Ty.unit
+    | _ -> tr.tr_typ_rec typ
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_typ <- tr_typ;
+  tr.tr_term |- Trans.inst_randval
 
 
 
@@ -154,7 +150,7 @@ let encode_record_term t =
         unsupported "Mutable records";
       make_tuple @@ List.map (encode_record.tr_term -| snd) fields
   | Local(Decl_type decls, _), _ ->
-      let tys = List.flatten_map (snd |- get_data_type) decls in
+      let tys = List.flatten_map (snd |- get_tdata) decls in
       let check (s,ty) =
         match ty with
         | TRecord _ -> List.mem s tys
@@ -178,41 +174,44 @@ let record = encode_record.tr_term -| Trans.complete_precord
 
 
 
-let rec is_simple_variant typ =
+let rec is_simple_variant env typ =
   match typ with
   | TVariant(_,labels) -> List.for_all (snd |- (=) []) labels
+  | TData s when List.mem_assoc s env -> is_simple_variant env @@ List.assoc s env
   | _ -> false
 
-let rec position c typ =
+let rec position env c typ =
   match typ with
   | TVariant(_,labels) -> List.find_pos (fun _ (c',_) -> c = c') labels
+  | TData s when List.mem_assoc s env -> position env c @@ List.assoc s env
   | _ -> invalid_arg "position"
 
-let encode_simple_variant = make_trans ()
-let encode_simple_variant_typ typ =
-  if is_simple_variant typ then
-    Ty.int
-  else
-    encode_simple_variant.tr_typ_rec typ
-
-let encode_simple_variant_pat p =
-  match p.pat_desc with
-  | PConstr(c, ts) when is_simple_variant p.pat_typ ->
-      assert (ts = []);
-      make_pconst (make_int @@ position c p.pat_typ)
-  | _ -> encode_simple_variant.tr_pat_rec p
-
-let encode_simple_variant_term t =
-  match t.desc with
-  | Constr(c, ts) when is_simple_variant t.typ ->
-      assert (ts = []);
-      make_int @@ position c t.typ
-  | _ -> encode_simple_variant.tr_term_rec t
-
-let () = encode_simple_variant.tr_term <- encode_simple_variant_term
-let () = encode_simple_variant.tr_pat <- encode_simple_variant_pat
-let () = encode_simple_variant.tr_typ <- encode_simple_variant_typ
-let simple_variant = encode_simple_variant.tr_term
+let simple_variant =
+  let tr = make_trans2 () in
+  let tr_typ env typ =
+    if is_simple_variant env typ then
+      Ty.int
+    else
+      tr.tr2_typ_rec env typ
+  in
+  let tr_pat env p =
+    match p.pat_desc with
+    | PConstr(c, []) when is_simple_variant env p.pat_typ ->
+        Pat.int @@ position env c p.pat_typ
+    | _ -> tr.tr2_pat_rec env p
+  in
+  let tr_term env t =
+    match t.desc with
+    | Constr(c, []) when is_simple_variant env t.typ ->
+        make_int @@ position env c t.typ
+    | Local(Decl_type decls, _) ->
+        tr.tr2_term_rec (decls@env) t
+    | _ -> tr.tr2_term_rec env t
+  in
+  tr.tr2_term <- tr_term;
+  tr.tr2_pat <- tr_pat;
+  tr.tr2_typ <- tr_typ;
+  tr.tr2_term []
 
 
 
@@ -222,7 +221,7 @@ let abst_rec_record =
     match t.desc with
     | Local(Decl_type decls, t1) ->
         let recs' =
-          let tys = List.flatten_map (snd |- get_data_type) decls in
+          let tys = List.flatten_map (snd |- get_tdata) decls in
           let check (s,ty) =
             match ty with
             | TRecord _ -> List.mem s tys

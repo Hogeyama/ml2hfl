@@ -70,6 +70,7 @@ let assoc_option x xs = List.assoc_option ~eq x xs
 let map_id f x = {x with id = f x.id}
 let map_name f x = {x with name = f x.name}
 let map_typ f x = {x with typ = f x.typ}
+let map_attr f x = {x with attr = f x.attr}
 
 let is_external x = List.mem External x.attr
 let is_coefficient x = List.mem Coefficient x.attr

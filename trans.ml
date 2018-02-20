@@ -1128,6 +1128,11 @@ let rename_ext_funs =
     let (_,map),t' = fld.fld_term (funs,[]) t in
     map, t'
 
+let remove_ext_attr =
+  let tr = make_trans () in
+  tr.tr_var <- Id.map_attr (List.remove_all -$- Id.External);
+  tr.tr_term
+
 let make_ext_fun_def f =
   let xs,typ' = decomp_tfun @@ Id.typ f in
   let xs' = List.map Id.new_var_id xs in
@@ -1148,6 +1153,41 @@ let make_ext_fun_def f =
   let (env,defs),t = define_randvalue ([],[]) typ' in
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
   f, make_funs xs' @@ make_let defs' t'
+
+let col_type_decl =
+  let col = make_col [] (@) in
+  let col_desc desc =
+    match desc with
+    | Local(Decl_type decls, t1) -> decls :: col.col_term t1
+    | _ -> col.col_desc_rec desc
+  in
+  col.col_desc <- col_desc;
+  col.col_term
+
+let remove_type_decl =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Local(Decl_type decls, t1) -> tr.tr_desc t1.desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
+let lift_type_decl t =
+  let decls = col_type_decl t in
+  let aux (s,ty) acc =
+    match List.assoc_option s acc with
+    | None -> (s,ty)::acc
+    | Some ty' ->
+        if Type.same_shape ty ty' then
+          acc
+        else
+          unsupported "lift_type_decl"
+  in
+  let decls' = List.fold_right aux (List.flatten decls) [] in
+  make_let_type decls' @@ remove_type_decl t
+
 
 let make_ext_funs ?(fvs=[]) env t =
   let typ_exn = find_exn_typ t in
@@ -1177,9 +1217,9 @@ let make_ext_funs ?(fvs=[]) env t =
     in
     List.fold_left aux ([],[],[]) @@ Ref_type.Env.to_list env
   in
-  let defs = List.map snd (genv @ cenv) in
+  let defs = List.map snd (genv @ cenv) @ defs2 in
   Debug.printf "MEF t'': %a@." Print.term' t'';
-  make_lets defs @@ make_lets defs2 @@ make_lets defs1 t''
+  lift_type_decl @@ remove_ext_attr @@ make_lets defs @@ make_lets defs1 t''
 
 let assoc_typ =
   let col = make_col2 [] (@@@) in
@@ -2662,7 +2702,7 @@ let inline_record_type =
   let tr_desc desc =
     match desc with
     | Local(Decl_type decls, t) ->
-        let tys = List.flatten_map (snd |- get_data_type) decls in
+        let tys = List.flatten_map (snd |- get_tdata) decls in
         let check (s,ty) =
           match ty with
           | TRecord _ -> List.mem s tys
@@ -2686,41 +2726,6 @@ let inline_record_type =
   tr.tr_term
 
 let ignore_exn_arg t = assert false
-
-
-let col_type_decl =
-  let col = make_col [] (@) in
-  let col_desc desc =
-    match desc with
-    | Local(Decl_type decls, t1) -> decls :: col.col_term t1
-    | _ -> col.col_desc_rec desc
-  in
-  col.col_desc <- col_desc;
-  col.col_term
-
-let remove_type_decl =
-  let tr = make_trans () in
-  let tr_desc desc =
-    match desc with
-    | Local(Decl_type decls, t1) -> tr.tr_desc t1.desc
-    | _ -> tr.tr_desc_rec desc
-  in
-  tr.tr_desc <- tr_desc;
-  tr.tr_term
-
-let lift_type_decl t =
-  let decls = col_type_decl t in
-  let aux (s,ty) acc =
-    match List.assoc_option s acc with
-    | None -> (s,ty)::acc
-    | Some ty' ->
-        if Type.same_shape ty ty' then
-          acc
-        else
-          unsupported "lift_type_decl"
-  in
-  let decls' = List.fold_right aux (List.flatten decls) [] in
-  make_let_type decls' @@ remove_type_decl t
 
 
 let remove_pnondet =
@@ -2829,8 +2834,7 @@ let inline_type_decl =
   let tr_term t =
     let t' = tr.tr_term_rec t in
     match t'.desc with
-    | Local(Decl_type decls, t1) ->
-        List.fold_right (Fun.uncurry subst_tdata) decls t1
+    | Local(Decl_type decls, t1) -> List.fold_right (Fun.uncurry subst_tdata) decls t1
     | _ -> t'
   in
   tr.tr_term <- tr_term;
@@ -2919,3 +2923,23 @@ let unify_app =
   in
   col.col_term <- col_term;
   fun t -> col.col_term t; t
+
+let inline_simple_types =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Local(Decl_type decls, t) ->
+        let is_simple (_,ty) =
+          match ty with
+          | TBase _ | TData _ -> true
+          | _ -> get_tdata ty = [] (* TODO *)
+        in
+        let decls1,decls2 = List.partition is_simple decls in
+        if decls1 = [] then
+          tr.tr_desc_rec desc
+        else
+          (tr.tr_term @@ subst_tdata_map decls1 @@ make_local (Decl_type decls2) t).desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term

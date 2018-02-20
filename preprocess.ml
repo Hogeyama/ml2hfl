@@ -47,6 +47,7 @@ type preprocess_label =
   | Alpha_rename
   | Unify_app
   | Abst_recursive_record
+  | Inline_simple_types
 
 type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
@@ -98,6 +99,7 @@ let string_of_label = function
   | Alpha_rename -> "Alpha renaming"
   | Unify_app -> "Unify types for function application"
   | Abst_recursive_record -> "Abst recursive record"
+  | Inline_simple_types -> "Inline simple types"
 
 let last acc = snd @@ List.hd acc
 let last_t acc = fst @@ last acc
@@ -194,9 +196,15 @@ let all spec : t list =
     Replace_base_with_int,
       (Fun.const (!Flag.Method.base_to_int || !Flag.Method.data_to_int),
        map_trans Trans.replace_base_with_int);
+    Inline_simple_types,
+      (Fun.const true,
+       map_trans Trans.inline_simple_types);
     Replace_data_with_int,
       (Fun.const !Flag.Method.data_to_int,
        map_trans Trans.replace_data_with_int);
+    Inline_simple_types,
+      (Fun.const true,
+       map_trans Trans.inline_simple_types);
     Encode_recdata,
       (Fun.const true,
        map_trans Encode.recdata);
@@ -245,10 +253,10 @@ let all spec : t list =
   ]
 
 
-let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ) t =
+let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term') t =
   Debug.printf "START: %s@." desc;
   let r = f t in
-  Debug.printf "END: %s@." desc;
+  Debug.printf "END: %s@.@." desc;
   let t' = proj_out r in
   if proj_in t <> t' && opt
   then Verbose.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
@@ -257,8 +265,8 @@ let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term_typ)
       try
         Type_check.check t' t'.Syntax.typ
       with e ->
-        Format.printf "%s@." @@ Printexc.to_string e;
-        Format.printf "%a@." Print.term' t';
+        Format.printf "@.%s@." @@ Printexc.to_string e;
+        Format.printf "%a@.@." Print.term' t';
         assert false
   end;
   r

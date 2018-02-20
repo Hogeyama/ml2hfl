@@ -110,3 +110,4 @@ val remove_effect_attribute : term -> term
 val extract_module : term -> term
 val inline_record_type : term -> term
 val inline_type_decl : term -> term
+val inline_simple_types : term -> term

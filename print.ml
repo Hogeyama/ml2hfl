@@ -373,7 +373,7 @@ and print_desc attr pri typ fm desc =
   | Module decls ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "@[%s@[<hv 2>module@ @[%a@]@]@ end%s@]" s1 (print_declaration typ) decls s2
+      fprintf fm "%s@[<v>@[<v 2>module@ @[%a@]@]@ end@]%s" s1 (print_declaration typ) decls s2
 
 and print_declaration typ fm decls = (* TODO: fix *)
   let t =

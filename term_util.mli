@@ -46,7 +46,7 @@ val make_let_s : (id * term) list -> term -> term
 val make_lets : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
 val make_let_type : (string * typ) list -> term -> term
-val make_lets_type : (string * typ) list list -> term -> term
+val make_lets_type : (string * typ) list -> term -> term
 val make_fun : id -> term -> term
 val make_funs : id list -> term -> term
 val make_not : term -> term
@@ -167,7 +167,7 @@ val get_id_option : term -> int option
 val get_id_map : term -> (int, term) Hashtbl.t
 val get_last_definition : term -> id option
 val get_body : term -> term
-val get_data_type : typ -> string list
+val get_tdata : typ -> string list
 val get_tapred : typ -> (id * term list) option
 val get_max_var_id : term -> int
 val arg_num : typ -> int
@@ -269,6 +269,7 @@ module Term : sig
   val cons : term -> term -> term
   val list : term list -> term
   val seq : term -> term -> term
+  val seqs : term list -> term -> term
   val ignore : term -> term
   val assume : term -> term -> term
   val none : typ -> term

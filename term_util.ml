@@ -92,8 +92,8 @@ let make_let_s bindings t2 =
   make_let bindings' t2
 let make_let_type decls t2 =
   make_local (Decl_type decls) t2
-let make_lets_type declss t2 =
-  List.fold_right make_let_type declss t2
+let make_lets_type decls t2 =
+  List.fold_right (make_let_type -| List.singleton) decls t2
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
 let make_seq t1 t2 =
@@ -102,7 +102,7 @@ let make_seq t1 t2 =
   else
     make_let [Id.new_var ~name:"u" t1.typ, t1] t2
 let make_ignore t =
-  if Type.can_unify t.typ (TBase TUnit) then
+  if t.typ = Ty.unit then
     t
   else
     make_seq t unit_term
@@ -307,15 +307,16 @@ let make_length t =
   {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
 
 let make_module decls =
+  let decls' = List.filter_out (fun decl -> decl = Decl_type [] || decl = Decl_let []) decls in
   let typ =
     let aux decl =
       match decl with
       | Decl_let defs -> List.map (fun (x,_) -> Id.name x, Id.typ x) defs
       | _ -> []
     in
-    TModule(List.flatten_map aux decls)
+    TModule(List.flatten_map aux decls')
   in
-  {desc=Module decls; typ; attr=[]}
+  {desc=Module decls'; typ; attr=[]}
 
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=Ty.(fun_ Ty.unit typ); attr=[]}
 
@@ -1211,7 +1212,7 @@ let effect_of t =
       Format.printf "%a@." Print.term t;
       invalid_arg "effect_of"
 
-let get_data_type =
+let get_tdata =
   let col = make_col [] (@@@) in
   let col_typ ty =
     match ty with
@@ -1279,6 +1280,7 @@ module Term = struct
   let cons = make_cons
   let list = make_list
   let seq = make_seq
+  let seqs = List.fold_right make_seq
   let ignore = make_ignore
   let assume = make_assume
   let none = make_none
