@@ -2929,12 +2929,14 @@ let inline_simple_types =
   let tr_desc desc =
     match desc with
     | Local(Decl_type decls, t) ->
-        let is_simple (_,ty) =
+        let rec is_simple ?(top=true) ty =
           match ty with
-          | TBase _ | TData _ -> true
-          | _ -> get_tdata ty = [] (* TODO *)
+          | TBase _ -> true
+          | TData _ -> top
+          | TTuple xs -> List.for_all (Id.typ |- is_simple) xs
+          | _ -> false
         in
-        let decls1,decls2 = List.partition is_simple decls in
+        let decls1,decls2 = List.partition (snd |- is_simple) decls in
         if decls1 = [] then
           tr.tr_desc_rec desc
         else
