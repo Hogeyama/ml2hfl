@@ -1,5 +1,6 @@
 open Util
 
+module Debug_ty = Debug.Make(struct let check = make_debug_check (__MODULE__^".ty") end)
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
@@ -250,10 +251,13 @@ let all spec : t list =
     PreprocessForTermination,
       (Fun.const Flag.Method.(!mode = Termination),
        map_trans !BRA_types.preprocessForTerminationVerification);
+    Alpha_rename,
+      (Fun.const true,
+       map_trans @@ Trans.alpha_rename ~whole:true);
   ]
 
-
-let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=Print.term') t =
+let pr () = if !!Debug_ty.check then Print.term' else Print.term_typ
+let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=pr()) t =
   Debug.printf "START: %s@." desc;
   let r = f t in
   Debug.printf "END: %s@.@." desc;

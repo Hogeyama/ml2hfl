@@ -163,6 +163,7 @@ and trans_typ ty =
   | Type.TBase Type.TUnit -> typ_unit
   | Type.TBase Type.TBool -> typ_bool ()
   | Type.TBase Type.TInt -> typ_int
+  | Type.TBase (Type.TPrim s) -> TBase(TAbst s, nil_pred)
   | Type.TVar({contents=None},_) -> typ_int
   | Type.TVar({contents=Some typ},_) -> trans_typ typ
   | Type.TFun(x,typ) ->
@@ -861,7 +862,9 @@ let rec has_rand t =
 
 let implies env t =
   try
-    FpatInterface.implies (List.map FpatInterface.conv_formula env) [FpatInterface.conv_formula t]
+    let pre = List.map FpatInterface.conv_formula env in
+    let p = FpatInterface.conv_formula t in
+    FpatInterface.implies pre [p]
   with _ -> false
 
 let rec simplify_if_term env t =

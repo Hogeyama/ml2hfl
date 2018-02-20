@@ -9,9 +9,10 @@ and default_val' =
     | TBase TUnit -> Const Unit
     | TBase TBool -> Const False
     | TBase TInt -> Const (Int 0)
+    | TBase (TPrim s) -> invalid_arg "default_val: not yet implemented syntax(TPrim)"
     | TFun ({Id.typ = t1}, t2) -> Fun (Id.new_var ~name:"_" t1, default_val t2)
     | TAttr(_, typ) -> default_val' typ
-    | TData _ -> invalid_arg "default_val: not yet implemented syntax(Tconstr)"
+    | TData _ -> invalid_arg "default_val: not yet implemented syntax(TData)"
     | TApp _ -> invalid_arg "default_val: not yet implemented syntax(TApp)"
     | TTuple _ -> invalid_arg "default_val: not yet implemented syntax(TTuple)"
     | TVar(t,_) ->

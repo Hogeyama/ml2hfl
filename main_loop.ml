@@ -211,7 +211,6 @@ let rec loop make_pps ?(fun_list=None) exparam_sol ?(spec=Spec.init) parsed set_
     else
       prog
   in
-  if !Flag.Mode.trans_to_CPS then FpatInterface.init prog';
   try
     let result = CEGAR.run prog' in
     result, make_get_rtyp, set_target'

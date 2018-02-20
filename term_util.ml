@@ -268,9 +268,6 @@ let make_field t s =
     |> List.assoc s
   in
   {desc=Field(t,s); typ; attr=[]}
-let randint_term = {desc=Const(RandValue(TBase TInt,false)); typ=TFun(Id.new_var @@ TBase TUnit,TBase TInt); attr=[]}
-let randint_unit_term = {(make_app randint_term [unit_term]) with attr=[ANotFail;ATerminate]}
-let randbool_unit_term = make_eq randint_unit_term (make_int 0)
 let make_event_unit s = make_app (make_event s) [unit_term]
 let make_raise t typ = {desc=Raise t; typ; attr=[]}
 
@@ -320,9 +317,10 @@ let make_module decls =
 
 let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=Ty.(fun_ Ty.unit typ); attr=[]}
 
-let make_randvalue_unit typ =
+let rec make_randvalue_unit typ =
   match typ with
   | TBase TUnit -> unit_term
+  | TBase TBool -> make_eq (make_randvalue_unit Ty.int) (make_int 0)
   | TTuple [] -> make_tuple []
   | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 
@@ -332,6 +330,10 @@ let make_randvalue_cps typ =
 let make_randint_cps b =
   let attr = if b then [AAbst_under] else [] in
   {(make_randvalue_cps Ty.int) with attr}
+
+let randint_term = make_randvalue Ty.int
+let randint_unit_term = make_randvalue_unit Ty.int
+let randbool_unit_term = make_randvalue_unit Ty.bool
 
 let rec make_term typ =
   match elim_tattr typ with

@@ -65,8 +65,15 @@ let rec check env t typ =
   | Local(Decl_let bindings, t2), typ' ->
       List.iter (fun (f,t) -> check env t @@ elim_tattr @@ Id.typ f) bindings;
       let aux' f =
-        get_fv t2
-        |> List.iter (fun f' -> if Id.same f f' then assert (Type.can_unify (Id.typ f) (Id.typ f')))
+        let check f' =
+          if Id.same f f' && not @@ Type.can_unify (Id.typ f) (Id.typ f') then
+            begin
+              Format.printf "f: %a@." Print.id_typ f;
+              Format.printf "f': %a@." Print.id_typ f';
+              assert false
+            end
+        in
+        List.iter check @@ get_fv t2
       in
       List.iter (aux' -| Pair.fst) bindings;
       check env t2 typ'

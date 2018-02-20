@@ -2,6 +2,7 @@ type base =
   | TUnit
   | TBool
   | TInt
+  | TPrim of string
 and 'a t =
   | TBase of base
   | TVar of 'a t option ref * int option

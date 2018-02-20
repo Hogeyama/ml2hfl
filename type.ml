@@ -6,6 +6,7 @@ type base =
   | TUnit
   | TBool
   | TInt
+  | TPrim of string
 and 'a t =
   | TBase of base
   | TVar of 'a t option ref * int option
@@ -165,6 +166,7 @@ let rec print occur print_pred fm typ =
   | TBase TUnit -> Format.fprintf fm "unit"
   | TBase TBool -> Format.fprintf fm "bool"
   | TBase TInt -> Format.fprintf fm "int"
+  | TBase (TPrim s) -> Format.fprintf fm "%s" s
   | TVar({contents=Some typ},_) -> print' fm typ
   | TVar({contents=None}, None) -> Format.fprintf fm "!!!"
   | TVar({contents=None}, Some n) -> print_tvar fm n
@@ -429,6 +431,7 @@ let rec to_id_string = function
   | TBase TUnit -> "unit"
   | TBase TBool -> "bool"
   | TBase TInt -> "int"
+  | TBase (TPrim s) -> s
   | TVar({contents=None},_) -> "abst"
   | TVar({contents=Some typ},_) -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
@@ -500,7 +503,17 @@ let rec is_mutable_record typ =
   | _ -> invalid_arg "is_mutable_record"
 
 
-let prim_base_types = ["char"; "string"; "float"; "int32"; "int64"; "nativeint"; "format4"; "format6"; "Format.format"; "Format.formatter"]
+let prim_base_types =
+  ["char";
+   "string";
+   "float";
+   "int32";
+   "int64";
+   "nativeint";
+   "format4";
+   "format6";
+   "Format.format";
+   "Format.formatter"]
 
 
 let rec remove_arg_at i typ =

@@ -17,7 +17,6 @@ val inv_fdef :
   string * Fpat.Pattern.t list * CEGAR_syntax.t * 'a list * CEGAR_syntax.t
 val conv_prog : CEGAR_syntax.prog -> Fpat.Prog.t
 val inv_abst_type : Fpat.AbsType.t -> CEGAR_syntax.typ
-val init : CEGAR_syntax.prog -> unit
 val verify : 'a -> CEGAR_syntax.prog -> 'b
 val is_cp : CEGAR_syntax.prog -> Fpat.Idnt.t -> bool
 val infer :

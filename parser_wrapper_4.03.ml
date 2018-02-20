@@ -30,14 +30,15 @@ let exc_typ () = TVariant(false,!exc_env)
 
 
 let prim_typs =
-  ["unit", TBase TUnit;
-   "bool", TBase TBool;
-   "int", TBase TInt;
+  ["unit", Ty.unit;
+   "bool", Ty.bool;
+   "int", Ty.int;
    "Pervasives.format", TData "string";
    "Pervasives.format4", TData "string";
    "Pervasives.format6", TData "string";
    "CamlinternalFormatBasics.fmt", TData "string";
    "exn", TData "exn"]
+    @ List.map (fun s -> s, TBase (TPrim s)) prim_base_types
 
 
 let venv = ref []
@@ -69,9 +70,7 @@ and from_type_expr env tdata typ =
 *)
   Debug.printf "%a@." Printtyp.type_expr @@ Ctype.expand_head env typ;
   Debug.printf "%a@.@." Printtyp.type_expr typ';
-(*
-  Debug.printf "%a@.@." Printtyp.raw_type_expr typ';
-*)
+  if true then Debug.printf "%a@.@." Printtyp.raw_type_expr typ';
   match typ'.Types.desc with
   | Tvar _ ->
       begin
@@ -113,10 +112,10 @@ and from_type_expr env tdata typ =
   | Tlink _ -> unsupported "Tlink"
   | Tsubst _ -> unsupported "Tsubst"
   | Tvariant row_desc ->
-      let decls,constrs =
-        let tr (s,field) (decls,constrs) =
+      let from_row_desc row_desc =
+        let tr (s,field) =
           match field with
-          | Rpresent None -> decls, (s,[])::constrs
+          | Rpresent None -> [], (s,[])
           | Rpresent (Some type_expr) ->
               let decls',ty = from_type_expr env tdata type_expr in
               let tys =
@@ -124,14 +123,26 @@ and from_type_expr env tdata typ =
                 | TTuple xs -> List.map Id.typ xs
                 | ty -> [ty]
               in
-              decls'@decls, (s,tys)::constrs
-          | Reither(true,[],_,_) -> decls, (s,[])::constrs
-          | Reither _ -> assert false
+              decls', (s,tys)
+          | Reither(_,type_exprs,_,_) ->
+              let decls,tys = from_type_exprs env tdata type_exprs in
+              [], (s, tys)
           | Rabsent -> assert false
         in
-        List.fold_right tr row_desc.row_fields ([],[])
+        let declss,constrs1 = List.split_map tr row_desc.row_fields in
+        let decls,constrs2 =
+          if row_desc.row_more.desc = Tnil then
+            [], []
+          else
+            match from_type_expr env tdata row_desc.row_more with
+            | _, TVar _ -> [], []
+            | decls, TVariant(_,constrs) -> decls, constrs
+            | _ -> assert false
+        in
+        List.flatten declss, constrs1 @ constrs2
       in
-      decls, TVariant(true,constrs)
+      let decls,constrs = from_row_desc row_desc in
+      decls, TVariant(true, constrs)
   | Tunivar _ -> unsupported "Tunivar"
   | Tpoly(typ,[]) -> from_type_expr env tdata typ
   | Tpoly _ -> unsupported "Tpoly"

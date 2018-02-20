@@ -173,9 +173,7 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
     (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
   else
     match elim_tattr typ with
-    | TBase TUnit -> (env, defs), unit_term
-    | TBase TBool -> (env, defs), randbool_unit_term
-    | TBase TInt -> (env, defs), randint_unit_term
+    | TBase _ -> (env, defs), make_randvalue_unit typ
     | TVar({contents=None} as r,_) -> r := Some Ty.int; define_randvalue ed Ty.int
     | TVar({contents=Some typ},_) -> define_randvalue ed typ
     | TFun(x,typ) ->
@@ -242,7 +240,9 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
         let (env',defs'),t_typ' = define_randvalue (env,defs) typ' in
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
         (env',defs'), t
-    | _ -> Format.printf "define_randvalue: %a@." Print.typ typ; assert false
+    | _ ->
+        Format.printf "define_randvalue: %a@." Print.typ typ;
+        assert false
 let define_randvalue ed typ = define_randvalue ~name:"" ed typ
 
 let inst_randval =
@@ -1180,10 +1180,9 @@ let lift_type_decl t =
     match List.assoc_option s acc with
     | None -> (s,ty)::acc
     | Some ty' ->
-        if Type.same_shape ty ty' then
-          acc
-        else
-          unsupported "lift_type_decl"
+        if not @@ Type.same_shape ty ty' then
+          Format.printf "Assume %a is the same as %a@." Print.typ ty Print.typ ty';
+        acc
   in
   let decls' = List.fold_right aux (List.flatten decls) [] in
   make_let_type decls' @@ remove_type_decl t
@@ -1588,20 +1587,19 @@ let inline_simple_exp =
 
 let replace_base_with_int =
   let tr = make_trans () in
-  let is_base_typ s = List.mem s prim_base_types in
   let tr_desc desc =
     match desc with
     | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) ->
         Flag.use_abst := true;
         randint_unit_term.desc
-    | Const(RandValue(TData s, b)) when is_base_typ s ->
+    | Const(RandValue(TBase (TPrim _), b)) ->
         Flag.use_abst := true;
         Const (RandValue(Ty.int,b))
     | _ -> tr.tr_desc_rec desc
   in
   let tr_typ typ =
     match typ with
-    | TData s when is_base_typ s -> Ty.int
+    | TBase (TPrim _) -> Ty.int
     | _ -> tr.tr_typ_rec typ
   in
   let tr_pat p =
@@ -2931,9 +2929,12 @@ let inline_simple_types =
     | Local(Decl_type decls, t) ->
         let rec is_simple ?(top=true) ty =
           match ty with
-          | TBase _ -> true
           | TData _ -> top
-          | TTuple xs -> List.for_all (Id.typ |- is_simple) xs
+          | TBase _ -> true
+          | TFun(x,ty') -> is_simple ~top:false (Id.typ x) && is_simple ~top:false ty'
+          | TTuple xs -> List.for_all (Id.typ |- is_simple ~top:false) xs
+          | TApp(_, tys) -> List.for_all (is_simple ~top:false) tys
+          | TAttr(_, ty) -> is_simple ~top:false ty
           | _ -> false
         in
         let decls1,decls2 = List.partition (snd |- is_simple) decls in

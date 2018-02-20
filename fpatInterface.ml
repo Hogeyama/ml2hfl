@@ -351,17 +351,6 @@ let inv_abst_type ty =
   |&(!Flag.PredAbst.shift_pred<>None)&> path_to_attr
 
 
-let init prog =
-  prog
-  |> conv_prog
-  |> Fpat.RefTypJudge.mk_temp_env
-  |> List.map snd
-  |> List.concat_map Fpat.RefType.pvars
-  |> List.map
-       (Fpat.PredVar.reset_uid >> Fpat.PredVar.normalize_args)
-  |> List.unique
-  |> Fpat.HCCSSolver.init_rsrefine
-
 let verify fs (*cexs*) prog =
   let prog = conv_prog prog in
   Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
