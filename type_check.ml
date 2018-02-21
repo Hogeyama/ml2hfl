@@ -23,7 +23,7 @@ let rec check env t typ =
   | Const CPS_result, typ when typ = typ_result -> ()
   | Const(True|False), TBase TBool -> ()
   | Const(Int _), TBase TInt -> ()
-  | Const _, TData _ -> ()
+  | Const _, TBase (TPrim _) -> ()
   | Const(RandValue(TBase TInt,false)), TFun(x,TBase TInt)->
       check_var x Ty.unit
   | Const(RandValue(TBase TInt,true)), TFun(x,TFun(k,rtyp)) ->

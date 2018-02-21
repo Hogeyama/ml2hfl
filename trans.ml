@@ -2703,7 +2703,7 @@ let inline_record_type =
         let tys = List.flatten_map (snd |- get_tdata) decls in
         let check (s,ty) =
           match ty with
-          | TRecord _ -> List.mem s tys
+          | TRecord _ -> List.exists (List.mem -$- tys) @@ get_tdata ty
           | _ -> false
         in
         if List.exists check decls then unsupported "recursive record types";

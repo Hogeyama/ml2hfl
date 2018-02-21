@@ -224,7 +224,7 @@ let abst_rec_record =
           let tys = List.flatten_map (snd |- get_tdata) decls in
           let check (s,ty) =
             match ty with
-            | TRecord _ -> List.mem s tys
+            | TRecord _ -> List.exists (List.mem -$- tys) @@ get_tdata ty
             | _ -> false
           in
           List.map (fun (s,_) -> TData s) @@ List.filter check decls
