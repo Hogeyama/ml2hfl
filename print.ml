@@ -421,11 +421,11 @@ and print_pattern fm pat =
   | PRecord pats ->
       let aux' = function
           [] -> ()
-        | [_,pat] -> fprintf fm "(%a)" print_pattern pat
+        | [_,pat] -> fprintf fm "{%a}" print_pattern pat
         | (_,pat)::pats ->
-            fprintf fm "(%a" print_pattern pat;
+            fprintf fm "{%a" print_pattern pat;
             List.iter (fun (_,pat) -> fprintf fm ",%a" print_pattern pat) pats;
-            pp_print_string fm ")"
+            pp_print_string fm "}"
       in
       aux' pats
   | POr(pat1,pat2) -> fprintf fm "(%a | %a)" print_pattern pat1 print_pattern pat2
@@ -604,11 +604,11 @@ and print_pattern' fm pat =
     | PRecord pats ->
         let aux' = function
             [] -> ()
-          | [_,pat] -> fprintf fm "(%a)" aux pat
+          | [_,pat] -> fprintf fm "{%a}" aux pat
           | (_,pat)::pats ->
-              fprintf fm "(%a" aux pat;
+              fprintf fm "{%a" aux pat;
               List.iter (fun (_,pat) -> fprintf fm ",%a" aux pat) pats;
-              pp_print_string fm ")"
+              pp_print_string fm "}"
         in
         aux' pats
     | POr(pat1,pat2) -> fprintf fm "(%a | %a)" aux pat1 aux pat2
