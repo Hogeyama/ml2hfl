@@ -676,6 +676,11 @@ let defs = print_defs
 let constr fm t = pp_print_string fm @@ string_of_constr t
 let attr = print_attr_list
 
+let int = Format.pp_print_int
+let float = Format.pp_print_float
+let char = Format.pp_print_char
+let bool = Format.pp_print_bool
 let string = Format.pp_print_string
+let option = Option.print
 let pair = Pair.print
 let list = List.print

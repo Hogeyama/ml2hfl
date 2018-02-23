@@ -2682,8 +2682,7 @@ let extract_module =
               make_let_type decls' t
               |> List.fold_right2 (fun (s,_) (s',_) t -> subst_tdata s (TData s') t) decls decls'
         in
-        let t' = tr.tr_term t in
-        (tr.tr_term @@ List.fold_right aux decls t').desc
+        (tr.tr_term @@ List.fold_right aux decls t).desc
     | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
         Flag.use_abst := true;
         t.desc
@@ -2725,6 +2724,17 @@ let inline_record_type =
 
 let ignore_exn_arg t = assert false
 
+let simplify_pattern =
+  let tr = make_trans () in
+  let is_all_any ps = List.for_all (fun p -> p.pat_desc = PAny) ps in
+  let tr_pat p =
+    match tr.tr_pat_rec p with
+    | {pat_desc=POr(p1, p2)} when is_all_any [p1;p2] -> make_pany p.pat_typ
+    | {pat_desc=PTuple ps} when is_all_any ps -> make_pany p.pat_typ
+    | p' -> p'
+  in
+  tr.tr_pat <- tr_pat;
+  tr.tr_term
 
 let remove_pnondet =
   let tr = make_trans () in
@@ -2775,18 +2785,17 @@ let abst_recdata =
           in
           let pats'' =
             let aux (p1,_,_) (p2,cond,t) =
-              let t' =
-                let make x =
-                  let ty = tr.tr2_typ (check,tys) @@ Id.typ x in
-                  Id.set_typ x ty, make_randvalue_unit ty
-                in
+              let make x =
+                let ty = tr.tr2_typ (check,tys) @@ Id.typ x in
+                Id.set_typ x ty, make_randvalue_unit ty
+              in
+              let bindings =
                 get_bv_pat p1
                 |> List.unique ~eq:Id.eq
                 |> List.Set.diff ~eq:Id.eq -$- (get_bv_pat p2)
                 |> List.map make
-                |> make_lets -$- t
               in
-              p2, cond, t'
+              p2, make_lets_s bindings cond, make_lets_s bindings t
             in
             List.map2 aux pats pats'
           in
@@ -2801,6 +2810,7 @@ let abst_recdata =
   let tr_typ (check,tys) ty =
     match ty with
     | TData s when not (List.mem s prim_base_types) && check ty tys -> Ty.int
+    | TVariant _ when check ty tys -> Ty.int
     | _ -> tr.tr2_typ_rec (check,tys) ty
   in
   let tr_pat (check,tys) p =
@@ -2811,7 +2821,11 @@ let abst_recdata =
   tr.tr2_term <- tr_term;
   tr.tr2_typ <- tr_typ;
   tr.tr2_pat <- tr_pat;
-  fun check t -> tr.tr2_term (check,[]) t
+  fun check t ->
+    t
+    |> tr.tr2_term (check,[])
+    |> remove_pnondet
+    |> simplify_pattern
 
 let abst_ext_recdata =
   let typ_not_in_env ty tys =
@@ -2820,11 +2834,9 @@ let abst_ext_recdata =
     | _ -> true
   in
   abst_recdata typ_not_in_env
-  |- remove_pnondet
 
 let replace_data_with_int =
   abst_recdata (fun _ _ -> true)
-  |- remove_pnondet
 
 (* ASSUME: there is no recursive types *)
 let inline_type_decl =
@@ -2923,13 +2935,14 @@ let unify_app =
   fun t -> col.col_term t; t
 
 let inline_simple_types =
-  let tr = make_trans () in
-  let tr_desc desc =
+  let tr = make_trans2 () in
+  let tr_desc tys desc =
     match desc with
     | Local(Decl_type decls, t) ->
+        let tys' = List.map fst decls @ tys in
         let rec is_simple ?(top=true) ty =
           match ty with
-          | TData _ -> top
+          | TData s -> top || not @@ List.mem s tys'
           | TBase _ -> true
           | TFun(x,ty') -> is_simple ~top:false (Id.typ x) && is_simple ~top:false ty'
           | TTuple xs -> List.for_all (Id.typ |- is_simple ~top:false) xs
@@ -2938,11 +2951,12 @@ let inline_simple_types =
           | _ -> false
         in
         let decls1,decls2 = List.partition (snd |- is_simple) decls in
+        Format.printf "decls1: %a@." Print.(list @@ pair string typ) decls1;
         if decls1 = [] then
-          tr.tr_desc_rec desc
+          tr.tr2_desc_rec tys' desc
         else
-          (tr.tr_term @@ subst_tdata_map decls1 @@ make_local (Decl_type decls2) t).desc
-    | _ -> tr.tr_desc_rec desc
+          (tr.tr2_term tys' @@ subst_tdata_map decls1 @@ make_local (Decl_type decls2) t).desc
+    | _ -> tr.tr2_desc_rec tys desc
   in
-  tr.tr_desc <- tr_desc;
-  tr.tr_term
+  tr.tr2_desc <- tr_desc;
+  tr.tr2_term []

@@ -158,7 +158,9 @@ let rec abst_recdata_pat env p =
         let rec get_bind_map p1' p2' =
           match p1'.pat_desc, p2'.pat_desc with
           | PVar x1, PVar x2 -> [x2, x1]
-          | PTuple ps1, PTuple ps2 -> unsupported "POr1"
+          | PTuple ps1, PTuple ps2 ->
+              Format.printf"%a,%a@." Print.pattern p1' Print.pattern p2';
+              unsupported "POr1"
           | _ ->
               Format.printf"%a,%a@." Print.pattern p1' Print.pattern p2';
               unsupported "POr2"

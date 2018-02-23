@@ -7,59 +7,59 @@ open Type
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
-let encode_mutable_record = make_trans ()
-
-let encode_mutable_record_pat p =
-  match p.pat_desc with
-  | PRecord _ when List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord p.pat_typ ->
-      unsupported "Pattern matching for mutable record (encode_mutable_record_pat)"
-  | _ -> encode_mutable_record.tr_pat_rec p
-
-let encode_mutable_record_term t =
-  match t.desc with
-  | Record fields ->
-      let fields' =
+let mutable_record =
+  let tr = make_trans2 () in
+  let rec decomp env ty =
+    match ty with
+    | TData s -> decomp env @@ (try List.assoc s env with Not_found -> Format.printf "%s@." s; assert false)
+    | TRecord fields -> fields
+    | _ -> assert false
+  in
+  let tr_pat env p =
+    match p.pat_desc with
+    | PRecord _ when List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp env p.pat_typ ->
+        unsupported "Pattern matching for mutable record (tr_pat)"
+    | _ -> tr.tr2_pat_rec env p
+  in
+  let tr_term env t =
+    match t.desc with
+    | Record fields ->
         let aux (s,t) (_,(f,_)) =
-          let t' = encode_mutable_record.tr_term t in
+          let t' = tr.tr2_term env t in
           s, if f = Mutable then make_ref t' else t'
         in
-        try
-        List.map2 aux fields @@ decomp_trecord t.typ
- with _ ->
-                  Format.printf "t: %a@." Print.term t;
-                  assert false
-      in
-      make_record fields' @@ encode_mutable_record.tr_typ t.typ
-  | SetField(t1,s,t2) ->
-      let t1' = encode_mutable_record.tr_term t1 in
-      let t2' = encode_mutable_record.tr_term t2 in
-      make_setref (make_field t1' s) t2'
-  | Field(t1,s) ->
-      let t1' = encode_mutable_record.tr_term t1 in
-      let f,_ = List.assoc s @@ decomp_trecord t1.typ in
-      let t' = make_field t1' s in
-      if f = Mutable then
-        make_deref t'
-      else
-        t'
-  | _ -> encode_mutable_record.tr_term_rec t
-
-let encode_mutable_record_typ typ =
-  match typ with
-  | TRecord fields ->
-      let aux (s,(f,typ)) =
-        let typ' = encode_mutable_record.tr_typ typ in
-        let typ'' = if f = Mutable then make_tref typ' else typ' in
-        s, (Immutable, typ'')
-      in
-      TRecord (List.map aux fields)
-  | _ -> encode_mutable_record.tr_typ_rec typ
-
-let () = encode_mutable_record.tr_typ <- encode_mutable_record_typ
-let () = encode_mutable_record.tr_term <- encode_mutable_record_term
-let () = encode_mutable_record.tr_pat <- encode_mutable_record_pat
-
-let mutable_record = encode_mutable_record.tr_term
+        let fields' = List.map2 aux fields @@ decomp env t.typ in
+        make_record fields' @@ tr.tr2_typ env t.typ
+    | SetField(t1,s,t2) ->
+        let t1' = tr.tr2_term env t1 in
+        let t2' = tr.tr2_term env t2 in
+        make_setref (make_field ~ty:(make_tref t2'.typ) t1' s) t2'
+    | Field(t1,s) ->
+        let t1' = tr.tr2_term env t1 in
+        let f,ty = List.assoc s @@ decomp env t1.typ in
+        let ty' = tr.tr2_typ env ty in
+        if f = Mutable then
+          make_deref @@ make_field ~ty:(make_tref ty') t1' s
+        else
+          make_field ~ty:ty' t1' s
+    | Local(Decl_type decls, _) -> tr.tr2_term_rec (decls@env) t
+    | _ -> tr.tr2_term_rec env t
+  in
+  let tr_typ env typ =
+    match typ with
+    | TRecord fields ->
+        let aux (s,(f,typ)) =
+          let typ' = tr.tr2_typ env typ in
+          let typ'' = if f = Mutable then make_tref typ' else typ' in
+          s, (Immutable, typ'')
+        in
+        TRecord (List.map aux fields)
+    | _ -> tr.tr2_typ_rec env typ
+  in
+  tr.tr2_typ <- tr_typ;
+  tr.tr2_term <- tr_term;
+  tr.tr2_pat <- tr_pat;
+  tr.tr2_term []
 
 
 
@@ -249,8 +249,38 @@ let abst_rec_record =
     | Field(t1,_) when List.mem t1.typ recs ->
         Flag.use_abst := true;
         let t1' = tr.tr2_term recs t1 in
-        make_seq t1' @@ make_randvalue_unit @@ tr.tr2_typ recs t.typ
+        let ty = tr.tr2_typ recs t.typ in
+        Term.(seq t1' (rand ty))
+    | Match(t1, pats) ->
+        let t1',pats' =
+          match tr.tr2_desc_rec recs t.desc with
+          | Match(t',pats') -> t', pats'
+          | _ -> assert false
+        in
+        let pats'' =
+          let aux (p1,_,_) (p2,cond,t) =
+            let make x =
+              let ty = tr.tr2_typ recs @@ Id.typ x in
+              Id.set_typ x ty, make_randvalue_unit ty
+            in
+            let t' =
+              get_bv_pat p1
+              |> List.unique ~eq:Id.eq
+              |> List.Set.diff ~eq:Id.eq -$- (get_bv_pat p2)
+              |> List.map make
+              |> make_lets -$- t
+            in
+            p2, cond, t'
+          in
+          List.map2 aux pats pats'
+        in
+        make_match t1' pats''
     | _ -> tr.tr2_term_rec recs t
+  in
+  let tr_pat recs p =
+    match p.pat_desc with
+    | PRecord _ when List.mem p.pat_typ recs -> {pat_desc=PNondet; pat_typ=Ty.int}
+    | _ -> tr.tr2_pat_rec recs p
   in
   let tr_typ recs ty =
     if List.mem ty recs then
@@ -260,8 +290,25 @@ let abst_rec_record =
   in
   tr.tr2_term <- tr_term;
   tr.tr2_typ <- tr_typ;
+  tr.tr2_pat <- tr_pat;
   tr.tr2_term []
 
+
+let abst_poly_comp =
+  let tr = make_trans () in
+  let tr_term t =
+    let t' = tr.tr_term_rec t in
+    match t'.desc with
+    | BinOp((Eq | Lt | Gt | Leq | Geq), t1, t2) ->
+        begin
+          match elim_tattr t1.typ with
+          | TBase _ -> t'
+          | _ -> Term.(seqs [t1;t2] randb)
+        end
+    | _ -> t'
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_term
 
 let recdata = Encode_rec.trans
 let list = Encode_list.trans

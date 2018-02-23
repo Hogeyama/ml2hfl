@@ -132,9 +132,9 @@ let rec remove_pair_typ ty =
       let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
       leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
   | TTuple xs -> Node (None, List.map (remove_pair_typ -| Id.typ) xs)
-(*
+  (*
   | TApp(TList, typs) -> leaf (TList (root (remove_pair_typ typ)))
- *)
+   *)
   | TData s -> leaf (TData s)
   | TAttr(_, TTuple[x; {Id.typ}]) as typ0 when get_tapred typ0 <> None ->
       let y,ps = Option.get @@ get_tapred typ0 in
@@ -165,7 +165,7 @@ let rec remove_pair_typ ty =
   (*
   | TPred({Id.typ=TTuple _}, ps) ->
       unsupported "Not implemented: remove_pair_typ"
- *)
+   *)
   | typ -> Format.printf "remove_pair_typ: %a@." Print.typ typ; assert false
 
 and remove_pair_var x =

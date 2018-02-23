@@ -90,6 +90,8 @@ let make_let bindings t2 =
 let make_let_s bindings t2 =
   let bindings' = List.filter (fun (f,_) -> List.exists (snd |- occur_in f) bindings || occur_in f t2) bindings in
   make_let bindings' t2
+let make_lets_s bindings t2 =
+  List.fold_right (make_let_s -| List.singleton) bindings t2
 let make_let_type decls t2 =
   make_local (Decl_type decls) t2
 let make_lets_type decls t2 =
@@ -261,11 +263,15 @@ let make_construct c ts typ =
   {desc=Constr(c,ts); typ; attr=[]}
 let make_record fields typ =
   {desc=Record fields; typ; attr=[]}
-let make_field t s =
-  let _,typ =
-    t.typ
-    |> decomp_trecord
-    |> List.assoc s
+let make_field ?ty t s =
+  let typ =
+    match ty with
+    | None ->
+        t.typ
+        |> decomp_trecord
+        |> List.assoc s
+        |> snd
+    | Some ty -> ty
   in
   {desc=Field(t,s); typ; attr=[]}
 let make_event_unit s = make_app (make_event s) [unit_term]

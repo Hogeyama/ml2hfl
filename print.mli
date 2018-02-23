@@ -13,7 +13,12 @@ val defs : Format.formatter -> (id * (id list * term)) list -> unit
 val constr : Format.formatter -> term -> unit
 val attr : Format.formatter -> attr list -> unit
 
+val int : Format.formatter -> int -> unit
+val float : Format.formatter -> float -> unit
+val char : Format.formatter -> char -> unit
+val bool : Format.formatter -> bool -> unit
 val string : Format.formatter -> string -> unit
+val option : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a option -> unit
 val pair : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> Format.formatter -> ('a * 'b) -> unit
 val list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
 

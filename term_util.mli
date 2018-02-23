@@ -44,6 +44,7 @@ val make_local : declaration -> term -> term
 val make_let : (id * term) list -> term -> term
 val make_let_s : (id * term) list -> term -> term
 val make_lets : (id * term) list -> term -> term
+val make_lets_s : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
 val make_let_type : (string * typ) list -> term -> term
 val make_lets_type : (string * typ) list -> term -> term
@@ -108,7 +109,7 @@ val make_deref : term -> term
 val make_setref : term -> term -> term
 val make_construct : string -> term list -> typ -> term
 val make_record : (string * term) list -> typ -> term
-val make_field : term -> string -> term
+val make_field : ?ty:typ -> term -> string -> term
 val make_raise : term -> typ -> term
 val make_trywith : term -> id -> (pattern * term * term) list -> term
 val make_trywith_simple : term -> term -> term

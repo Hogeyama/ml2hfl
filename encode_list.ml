@@ -150,8 +150,6 @@ let print_bind fm bind =
   Format.fprintf fm "]@]"
 
 let add_bind bind t =
-  Debug.printf "add_bind bind: %a@." print_bind bind;
-  Debug.printf "add_bind t: %a@.@." Print.term t;
   List.fold_right (fun (x,t) t' -> make_let_s [x,t] t') bind t
 
 (* "t" must have no side-effects *)
@@ -161,10 +159,9 @@ let rec get_match_bind_cond t p =
   | PVar x -> [abst_list.tr2_var "" x, t], true_term
   | PAlias(p,x) ->
       let bind,cond = get_match_bind_cond t p in
-      let bind' = (abst_list.tr2_var "" x, t)::bind in
+      let bind' = bind @ [abst_list.tr2_var "" x, t] in
       bind', add_bind bind' cond
   | PConst {desc=Const Unit} -> [], true_term
-  | PConst t' when t'.desc = randint_unit_term.desc -> [], randbool_unit_term (* just for -base-to-int *)
   | PConst t' -> [], make_eq t t'
   | PNil -> [], Term.(fst t <= int 0)
   | PCons _ ->
@@ -178,18 +175,17 @@ let rec get_match_bind_cond t p =
       let rec aux bind cond i = function
         | [] -> bind, cond
         | p::ps ->
-            let t' = make_app (make_snd t) [make_int i] in
+            let t' = Term.(snd t @ [int i]) in
             let x = new_var_of_term t' in
             let bind',cond' = get_match_bind_cond (make_var x) p in
-            aux (bind@[x,t']@bind') (make_and cond @@ add_bind [x,t'] cond') (i+1) ps
+            aux ((x,t')::bind'@bind) (make_and cond @@ add_bind [x,t'] cond') (i+1) ps
       in
       let len = List.length ps in
       let bind, cond = get_match_bind_cond (make_tl len t) p' in
-      aux bind (make_and (make_leq (make_int len) (make_fst t)) cond) 0 ps
+      aux bind Term.(int len <= fst t && cond) 0 ps
   | PTuple ps ->
       let binds,conds = List.split @@ List.mapi (fun i p -> get_match_bind_cond (make_proj i t) p) ps in
-      List.rev_flatten binds,
-      List.fold_left make_and true_term conds
+      List.flatten binds, make_ands conds
   | PRecord fields -> assert false
   | POr(p1, p2) ->
       let bind1,cond1 = get_match_bind_cond t p1 in
@@ -338,8 +334,8 @@ let inst_list_eq_term map t =
             else
               make_app (make_var @@ List.assoc typ map) [t1'; t2']
         | TApp(TList, _) ->
-            Format.printf "%a@." Print.typ t1.typ;
-            unsupported "inst_list_eq"
+            Flag.use_abst := true;
+            randbool_unit_term
         | _ -> inst_list_eq.tr2_term_rec map t
       end
   | _ -> inst_list_eq.tr2_term_rec map t
@@ -410,12 +406,12 @@ let abst_list_opt_typ typ =
   | TApp(TList, [typ]) -> TFun(Id.new_var ~name:"i" Ty.int, opt_typ @@ abst_list_opt.tr_typ typ)
   | _ -> abst_list_opt.tr_typ_rec typ
 
-let rec get_match_bind_cond t p =
+let rec get_match_bind_cond_opt t p =
   match p.pat_desc with
   | PAny -> [], true_term
   | PVar x -> [abst_list_opt.tr_var x, t], true_term
   | PAlias(p,x) ->
-      let bind,cond = get_match_bind_cond t p in
+      let bind,cond = get_match_bind_cond_opt t p in
       (abst_list_opt.tr_var x, t)::bind, cond
   | PConst {desc=Const Unit} -> [], true_term
   | PConst t' -> [], make_eq t t'
@@ -432,17 +428,17 @@ let rec get_match_bind_cond t p =
       let rec aux bind cond i = function
           [] -> bind, cond
         | p::ps ->
-            let bind',cond' = get_match_bind_cond (make_get_val (make_app t [make_int i])) p in
-            aux (bind'@@@bind) (make_and cond cond') (i+1) ps
+            let bind',cond' = get_match_bind_cond_opt (make_get_val (make_app t [make_int i])) p in
+            aux (bind'@bind) (make_and cond cond') (i+1) ps
       in
       let len = List.length ps in
-      let bind, cond = get_match_bind_cond (make_tl_opt len t) p' in
+      let bind, cond = get_match_bind_cond_opt (make_tl_opt len t) p' in
       aux bind (make_and (make_is_some (make_app t [make_int (len-1)])) cond) 0 ps
   | PTuple ps ->
-      let binds,conds = List.split @@ List.mapi (fun i p -> get_match_bind_cond (make_proj i t) p) ps in
+      let binds,conds = List.split @@ List.mapi (fun i p -> get_match_bind_cond_opt (make_proj i t) p) ps in
       List.rev_flatten binds,
       List.fold_left make_and true_term conds
-  | _ -> Format.printf "get_match_bind_cond: %a@." Print.pattern p; assert false
+  | _ -> Format.printf "get_match_bind_cond_opt: %a@." Print.pattern p; assert false
 
 let abst_list_opt_term t =
   let typ' = abst_list_opt.tr_typ t.typ in
@@ -474,7 +470,7 @@ let abst_list_opt_term t =
   | Match(t1,pats) ->
       let x = Id.new_var ~name:"xs" (abst_list_opt.tr_typ t1.typ) in
       let aux (p,cond,t) t' =
-        let bind,cond' = get_match_bind_cond (make_var x) p in
+        let bind,cond' = get_match_bind_cond_opt (make_var x) p in
         let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, t] t') t bind in
         let t_cond =
           if cond = true_term

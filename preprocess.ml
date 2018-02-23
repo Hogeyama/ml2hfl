@@ -49,6 +49,7 @@ type preprocess_label =
   | Unify_app
   | Abst_recursive_record
   | Inline_simple_types
+  | Abst_polymorphic_comparison
 
 type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 
@@ -101,6 +102,7 @@ let string_of_label = function
   | Unify_app -> "Unify types for function application"
   | Abst_recursive_record -> "Abst recursive record"
   | Inline_simple_types -> "Inline simple types"
+  | Abst_polymorphic_comparison -> "Abst polymorphic comparison"
 
 let last acc = snd @@ List.hd acc
 let last_t acc = fst @@ last acc
@@ -146,15 +148,18 @@ let all spec : t list =
     Copy_poly,
       (Fun.const true,
        Trans.copy_poly_funs -| last_t);
+    Encode_mutable_record,
+      (Fun.const true,
+       map_trans Encode.mutable_record);
+    Inline_simple_types,
+      (Fun.const true,
+       map_trans Trans.inline_simple_types);
     Abst_recursive_record,
       (Fun.const true,
        map_trans Encode.abst_rec_record);
     Inline_record_type,
       (Fun.const true,
        map_trans Trans.inline_record_type);
-    Encode_mutable_record,
-      (Fun.const true,
-       map_trans Encode.mutable_record);
     Encode_record,
       (Fun.const true,
        map_trans Encode.record);
@@ -230,6 +235,9 @@ let all spec : t list =
     Mark_safe_fun_arg,
       (Fun.const (!Flag.PredAbst.shift_pred <> None),
        map_trans Effect_analysis.mark_safe_fun_arg);
+    Abst_polymorphic_comparison,
+      (Fun.const true,
+       map_trans Encode.abst_poly_comp);
     CPS,
       (Fun.const !Flag.Mode.trans_to_CPS,
        CPS.trans -| last_t);

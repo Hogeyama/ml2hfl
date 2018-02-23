@@ -738,8 +738,8 @@ and from_module_type mty =
 and from_module_expr id_env mb_expr =
   match mb_expr.mod_desc with
   | Tmod_structure struc ->
-      let id_env', decls = from_structure id_env mb_expr.mod_env struc in
-      let mdl = make_module @@ List.rev_map snd decls in
+      let id_env', decls = from_structure id_env struc in
+      let mdl = make_module @@ List.map snd decls in
       let id_env'' =
         let map =
           let aux (_,decl) =
@@ -774,8 +774,9 @@ and from_module_expr id_env mb_expr =
   | Tmod_constraint(expr, _, _, _) -> from_module_expr id_env expr
   | Tmod_unpack _ -> unsupported "Tmod_unpack"
 
-and from_str_item id_env tenv str_item
+and from_str_item id_env str_item
     : id list * (Asttypes.rec_flag * Syntax.declaration) list =
+  let tenv = str_item.str_env in
   let make_tdecl decls =
     let decls' =
       decls
@@ -787,7 +788,7 @@ and from_str_item id_env tenv str_item
   match str_item.str_desc with
   | Tstr_eval(e,_) ->
       let decls,t = from_expression id_env e in
-      id_env, (Nonrecursive, Decl_let[Id.new_var ~name:"u" t.typ, t]) :: make_tdecl decls
+      id_env, make_tdecl decls @ [Nonrecursive, Decl_let[Id.new_var ~name:"u" t.typ, t]]
   | Tstr_value(Asttypes.Recursive,pats) ->
       let aux {vb_pat;vb_expr} =
         let decls1,p = from_pattern vb_pat in
@@ -797,7 +798,7 @@ and from_str_item id_env tenv str_item
         | _ -> fatal "Only variables are allowed as left-hand side of 'let rec'"
       in
       let declss,pats' = List.split_map aux pats in
-      id_env, (Recursive, Decl_let pats') :: make_tdecl (List.flatten declss)
+      id_env, make_tdecl (List.flatten declss) @ [Recursive, Decl_let pats']
   | Tstr_value(Asttypes.Nonrecursive,pats) ->
       let aux {vb_pat;vb_expr} =
         let decls1,p = from_pattern vb_pat in
@@ -809,15 +810,16 @@ and from_str_item id_env tenv str_item
           | PAny -> new_var_of_term t, t
           | _ -> unsupported "Only variables are allowed as left-hand side of 'let'"
         in
-        (Nonrecursive, Decl_let [x,t]) :: make_tdecl (decls1@decls2)
+        make_tdecl (decls1@decls2) @ [Nonrecursive, Decl_let [x,t]]
       in
       id_env, List.flatten_map aux pats
   | Tstr_primitive _ -> id_env, []
   | Tstr_type(rec_flag,decls) ->
       let flag = from_rec_flag rec_flag in
       if flag = Nonrecursive then unsupported "Non recursive type declaration";
-      let declss1,declss2 = List.split_map (from_type_declaration tenv) decls in
-      id_env, (flag, Decl_type declss2) :: make_tdecl (List.flatten declss1)
+      let declss1,decls2 = List.split_map (from_type_declaration tenv) decls in
+      let decls1 = List.flatten declss1 in
+      id_env, make_tdecl decls1 @ [flag, Decl_type decls2]
   | Tstr_typext _ -> unsupported "typext"
   | Tstr_exception _ -> id_env, []
   | Tstr_module mb -> from_module_binding id_env tenv mb
@@ -829,12 +831,12 @@ and from_str_item id_env tenv str_item
   | Tstr_include _ -> id_env, []
   | Tstr_attribute _ -> id_env, []
 
-and from_structure id_env tenv struc
+and from_structure id_env struc
     : id list * (Asttypes.rec_flag * Syntax.declaration) list =
   Debug.printf "struc: @[%a@." Printtyped.implementation struc;
   let aux (id_env,decls) str_item =
-    let id_env',decls' = from_str_item id_env tenv str_item in
-    id_env', decls' @ decls
+    let id_env',decls' = from_str_item id_env str_item in
+    id_env', decls @ decls'
   in
   List.fold_left aux (id_env,[]) struc.str_items
 
@@ -843,7 +845,7 @@ let from_top_level_phrase (tenv,id_env,decls) ptop =
   | Parsetree.Ptop_dir _ -> unsupported "toplevel_directive"
   | Parsetree.Ptop_def struc ->
       let struc',_,tenv' = Typemod.type_structure tenv struc Location.none in
-      let id_env',decls' = from_structure id_env tenv struc' in
+      let id_env',decls' = from_structure id_env struc' in
       tenv', id_env', decls' @ decls
 
 let make_local' t (flag,decl) =

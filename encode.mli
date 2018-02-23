@@ -26,3 +26,5 @@ val all : term -> term
 val typ_of : (term -> term) -> typ -> typ
 
 val abst_rec_record : term -> term
+
+val abst_poly_comp : term -> term
