@@ -47,6 +47,7 @@ val simplify : t -> t
 val remove_subtype : ?sub:(t -> t -> bool) -> t list -> t list
 val remove_equiv : t list -> t list
 val contract : t -> t
+val map_pred : (Syntax.term -> Syntax.term) -> t -> t
 
 (** {6 Converter} *)
 val of_simple : Syntax.typ -> t
@@ -66,7 +67,6 @@ val make_weakest : Syntax.typ -> t
 
 
 (** {6 Misc} *)
-val map_pred : (Syntax.term -> Syntax.term) -> t -> t
 val flatten : t -> t
 val occur : Syntax.id -> t -> bool
 val subst : Syntax.id -> Syntax.term -> t -> t

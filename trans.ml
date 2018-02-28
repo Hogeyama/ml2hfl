@@ -22,7 +22,7 @@ let subst_var_id =
 
 let map_id =
   let tr = make_trans2 () in
-  tr.tr2_var <- (@@);
+  tr.tr2_var <- (fun f -> f -| tr.tr2_var_rec f);
   tr.tr2_term
 
 let alpha_rename ?(whole=false) =
@@ -2859,7 +2859,7 @@ let mark_fv_as_external =
   let tr_desc bv desc =
     match desc with
     | Var x ->
-        if Id.mem x bv then
+        if Id.mem x bv || is_prim_var x then
           Var x
         else
           Var (Id.add_attr Id.External x)
@@ -2963,3 +2963,14 @@ let inline_simple_types =
   in
   tr.tr2_desc <- tr_desc;
   tr.tr2_term []
+
+let set_length_typ =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | App({desc=Var length}, [t]) when Id.name length = "List.length" ->
+        (make_length @@ tr.tr_term t).desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term

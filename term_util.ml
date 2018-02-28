@@ -304,7 +304,7 @@ let make_eq_dec t1 t2 =
 
 let make_length_var typ =
   let x = Id.make (-1) "l" [] typ in
-  Id.make (-1) "length" [] (TFun(x, Ty.int))
+  Id.make (-1) "List.length" [] (TFun(x, Ty.int))
 
 let make_length t =
   {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}

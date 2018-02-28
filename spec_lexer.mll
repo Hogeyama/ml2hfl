@@ -7,7 +7,6 @@ let space = [' ' '\t' '\r']
 let digit = ['0'-'9']
 let lower = ['a'-'z' '_' '\'']
 let upper = ['A'-'Z']
-let symbol = ['(' ')' '*' '?' '|' '+' ',' '!' ';' '.' ':' '#']
 
 rule token = parse
 | space+
@@ -60,7 +59,7 @@ rule token = parse
 | "/\\" { INTER }
 | "\\/" { UNION }
 | digit+ { INT(int_of_string (Lexing.lexeme lexbuf)) }
-| lower(digit|lower|upper)* { IDENT(Lexing.lexeme lexbuf) }
+| (upper(digit|lower|upper)*'.')*lower(digit|lower|upper)* { IDENT(Lexing.lexeme lexbuf) }
 | "#randint_"digit+ { IDENT(Lexing.lexeme lexbuf) }
 | (lower|upper)(digit|lower|upper)* { EVENT(Lexing.lexeme lexbuf) }
 | eof { EOF }
@@ -84,16 +83,3 @@ and comment = parse
     { failwith "unterminated comment" }
 | _
     { comment lexbuf }
-
-and string = parse
-| '\"' { "" }
-| (digit|lower|upper|space|symbol)+
-  { let s = Lexing.lexeme lexbuf in
-      s ^ (string lexbuf) }
-| "\\n" { "\n" ^ (string lexbuf) }
-| _
-    { Format.eprintf "unknown token %s near characters %d-%d@."
-        (Lexing.lexeme lexbuf)
-        (Lexing.lexeme_start lexbuf)
-        (Lexing.lexeme_end lexbuf);
-      failwith "lex error" }

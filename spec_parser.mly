@@ -25,6 +25,12 @@ let orig_id x = {x with Id.id = 0}
 
 let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
 let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
+let ref_fun x ty1 ty2 =
+  let ty2' = RT.subst_var (orig_id x) (Id.set_typ x @@ elim_tattr @@ RT.to_simple ty1) ty2 in
+  RT.Fun(x, ty1, ty2')
+
+let normalize_ref ty =
+  RT.map_pred Trans.set_length_typ ty
 %}
 
 %token <string> IDENT
@@ -133,7 +139,7 @@ exp:
   { make_not $2 }
 | id id /* for length */
   {
-    if (Id.name $1 <> "length") then raise Parse_error;
+    if (Id.name $1 <> "List.length") then raise Parse_error;
     make_length @@ make_var $2
   }
 
@@ -165,11 +171,11 @@ spec_list:
 
 ref_type:
 | TYPE id COLON ref_typ
-  { $2, $4 }
+  { $2, normalize_ref $4 }
 
 ext_ref_type:
 | EXTERNAL id COLON ref_typ
-  { $2, $4 }
+  { $2, normalize_ref $4 }
 
 typedef:
 | VAL id COLON typ
@@ -234,10 +240,12 @@ typ:
     let x = $1 in
     let r = $3 in
     let typ1 = Id.typ x in
-    let typ2 = Id.typ r in
-    let typ2' = subst_type_var (orig_id x) (Id.set_typ x @@ elim_tattr typ1) typ2 in
-    let typ2'' = subst_type_var r (Id.set_typ abst_var @@ elim_tattr typ2) typ2' in
-    make_self_id @@ TFun(x, typ2'')
+    let typ2 =
+      Id.typ r
+      |> subst_type_var (orig_id x) (Id.set_typ x @@ elim_tattr typ1)
+      |> subst_type_var r (Id.set_typ abst_var @@ elim_tattr @@ Id.typ r)
+    in
+    make_self_id @@ TFun(x, typ2)
   }
 | typ LIST
   { make_self_id @@ make_tlist @@ Id.typ $1 }
@@ -256,6 +264,13 @@ ref_simple:
   }
 | LPAREN ref_typ RPAREN { $2 }
 | ref_simple LIST { RT.List(dummy_var,true_term,dummy_var,true_term,$1) }
+| ref_simple length_ref LIST
+  {
+    let typ = $1 in
+    let x,p_len = $2 in
+    let typ' = RT.subst_var (orig_id x) x typ in
+    RT.List(x,p_len,dummy_var,true_term,typ')
+  }
 | index_ref ref_simple length_ref LIST
   {
     let y,p_i = $1 in
@@ -301,8 +316,8 @@ ref_typ:
     in
     RT.Tuple[x, $1; dummy_var, $3]
   }
-| id COLON ref_simple ARROW ref_typ { RT.Fun($1, $3, $5) }
-| LPAREN id COLON ref_simple RPAREN ARROW ref_typ { RT.Fun($2, $4, $7) }
+| id COLON ref_simple ARROW ref_typ { ref_fun $1 $3 $5 }
+| LPAREN id COLON ref_simple RPAREN ARROW ref_typ { ref_fun $2 $4 $7 }
 | ref_typ ARROW ref_typ
   {
     let x  =
@@ -310,7 +325,7 @@ ref_typ:
       | RT.Base(_,y,_) -> y
       | _ -> Id.new_var @@ RT.to_simple $1
     in
-    RT.Fun(x, $1, $3)
+    ref_fun x $1 $3
   }
 | ref_typ UNION ref_typ { RT.Union(RT.to_simple $1, [$1; $3]) }
 | ref_typ INTER ref_typ { RT.Inter(RT.to_simple $1, [$1; $3]) }

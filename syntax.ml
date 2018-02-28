@@ -129,6 +129,8 @@ end
 
 let const_attr = [ANotFail; ATerminate; ADeterministic]
 
+let is_prim_var x =
+  List.mem (Id.name x) ["List.length"]
 
 type trans =
   {mutable tr_term:      term -> term;
