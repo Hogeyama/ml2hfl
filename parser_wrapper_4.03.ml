@@ -33,10 +33,10 @@ let prim_typs =
   ["unit", Ty.unit;
    "bool", Ty.bool;
    "int", Ty.int;
-   "Pervasives.format", TData "string";
-   "Pervasives.format4", TData "string";
-   "Pervasives.format6", TData "string";
-   "CamlinternalFormatBasics.fmt", TData "string";
+   "Pervasives.format", Ty.prim "string";
+   "Pervasives.format4", Ty.prim "string";
+   "Pervasives.format6", Ty.prim "string";
+   "CamlinternalFormatBasics.fmt", Ty.prim "string";
    "exn", TData "exn"]
     @ List.map (fun s -> s, TBase (TPrim s)) prim_base_types
 

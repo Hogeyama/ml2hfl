@@ -1109,23 +1109,26 @@ let remove_defs =
 
 let rename_ext_funs =
   let fld = make_fold_tr () in
-  let fld_desc (funs,map) desc =
+  let fld_desc (funs,tenv,map) desc =
     match desc with
     | Var x when Id.mem x funs ->
         let map',x' =
           try
-            let eq x y = Type.can_unify (Id.typ x) (Id.typ y) && Id.name x = Id.name y in
+            let eq x y = Type.can_unify ~tenv:(Some tenv) (Id.typ x) (Id.typ y) && Id.name x = Id.name y in
             map, List.find (eq x) map
           with Not_found ->
             let x' = Id.new_var_id x in
             x'::map, x'
         in
-        (funs,map'), Var x'
-    | _ -> fld.fld_desc_rec (funs,map) desc
+        (funs,tenv,map'), Var x'
+    | Local(Decl_type decls, _) ->
+        let tenv' = decls @ tenv in
+        fld.fld_desc_rec (funs,tenv',map) desc
+    | _ -> fld.fld_desc_rec (funs,tenv,map) desc
   in
   fld.fld_desc <- fld_desc;
   fun funs t ->
-    let (_,map),t' = fld.fld_term (funs,[]) t in
+    let (_,_,map),t' = fld.fld_term (funs,[],[]) t in
     map, t'
 
 let remove_ext_attr =
@@ -2831,6 +2834,7 @@ let abst_ext_recdata =
   let typ_not_in_env ty tys =
     match ty with
     | TData s -> not (List.mem s tys)
+    | TVariant _ -> false
     | _ -> true
   in
   abst_recdata typ_not_in_env
@@ -2951,7 +2955,6 @@ let inline_simple_types =
           | _ -> false
         in
         let decls1,decls2 = List.partition (snd |- is_simple) decls in
-        Format.printf "decls1: %a@." Print.(list @@ pair string typ) decls1;
         if decls1 = [] then
           tr.tr2_desc_rec tys' desc
         else

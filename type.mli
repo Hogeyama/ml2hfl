@@ -35,7 +35,7 @@ val prim_base_types : string list
 
 val is_fun_typ : 'a t -> bool
 val is_base_typ : 'a t -> bool
-val can_unify : 'a t -> 'a t -> bool
+val can_unify : ?tenv:(string * 'a t) list option -> 'a t -> 'a t -> bool
 val data_occurs : string -> 'a t -> bool
 val same_shape : 'a t -> 'a t -> bool
 val has_pred : 'a t -> bool
@@ -104,6 +104,7 @@ module Ty : sig
   val unit : 'a t
   val bool : 'a t
   val int : 'a t
+  val prim : string -> 'a t
   val fun_ : 'a t -> 'a t -> 'a t
   val funs : 'a t list -> 'a t -> 'a t
   val tuple : 'a t list -> 'a t

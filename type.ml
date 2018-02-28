@@ -244,34 +244,36 @@ let rec decomp_module s =
 
 let base = snd -| decomp_module
 
-let rec can_unify typ1 typ2 =
+let rec can_unify ?(tenv=None) typ1 typ2 =
   match elim_tattr typ1, elim_tattr typ2 with
   | TVar({contents=Some typ1},_), typ2
-  | typ1, TVar({contents=Some typ2},_) -> can_unify typ1 typ2
+  | typ1, TVar({contents=Some typ2},_) -> can_unify ~tenv typ1 typ2
   | _ when typ1 = typ_unknown || typ2 = typ_unknown -> true
   | TBase b1, TBase b2 -> b1 = b2
-  | TFuns([], typ1), typ2 -> can_unify typ1 typ2
-  | typ1, TFuns([], typ2) -> can_unify typ1 typ2
-  | TFuns(x::xs, typ1), typ2 -> can_unify (TFun(x, TFuns(xs, typ1))) typ2
-  | typ1, TFuns(x::xs, typ2) -> can_unify typ1 (TFun(x, TFuns(xs, typ2)))
-  | TFun(x1,typ1),TFun(x2,typ2) -> can_unify (Id.typ x1) (Id.typ x2) && can_unify typ1 typ2
-  | TApp(c1, typs1), TApp(c2, typs2) -> c1 = c2 && List.for_all2 can_unify typs1 typs2
+  | TFuns([], typ1), typ2 -> can_unify ~tenv typ1 typ2
+  | typ1, TFuns([], typ2) -> can_unify ~tenv typ1 typ2
+  | TFuns(x::xs, typ1), typ2 -> can_unify ~tenv (TFun(x, TFuns(xs, typ1))) typ2
+  | typ1, TFuns(x::xs, typ2) -> can_unify ~tenv typ1 (TFun(x, TFuns(xs, typ2)))
+  | TFun(x1,typ1),TFun(x2,typ2) -> can_unify ~tenv (Id.typ x1) (Id.typ x2) && can_unify ~tenv typ1 typ2
+  | TApp(c1, typs1), TApp(c2, typs2) -> c1 = c2 && List.for_all2 (can_unify ~tenv) typs1 typs2
   | TTuple xs1, TTuple xs2 ->
       List.length xs1 = List.length xs2 &&
-      List.for_all2 (fun x1 x2 -> can_unify (Id.typ x1) (Id.typ x2)) xs1 xs2
+      List.for_all2 (fun x1 x2 -> can_unify ~tenv (Id.typ x1) (Id.typ x2)) xs1 xs2
   | TData "event", TFun _ -> true
   | TFun _, TData "event" -> true
   | TVar({contents=None},_), _ -> true
   | _, TVar({contents=None},_) -> true
   | TVariant(poly1,labels1), TVariant(poly2,labels2) ->
       poly1 = poly2 &&
-      (poly1 || List.for_all2 (fun (s1,typs1) (s2,typs2) -> s1 = s2 && List.for_all2 can_unify typs1 typs2) labels1 labels2)
+      (poly1 || List.for_all2 (fun (s1,typs1) (s2,typs2) -> s1 = s2 && List.for_all2 (can_unify ~tenv) typs1 typs2) labels1 labels2)
   | TRecord fields1, TRecord fields2 ->
-      List.for_all2 (fun (s1,(f1,typ1')) (s2,(f2,typ2')) -> s1 = s2 && f1 = f2 && can_unify typ1' typ2') fields1 fields2
+      List.for_all2 (fun (s1,(f1,typ1')) (s2,(f2,typ2')) -> s1 = s2 && f1 = f2 && can_unify ~tenv typ1' typ2') fields1 fields2
   | TModule _, TModule _ -> true (* TODO *)
-  | TModule _, TData _ -> true (* TODO *)
-  | TData _, _ -> true (* TODO *)
-  | _, TData _ -> true (* TODO *)
+  | TData _, _
+  | _, TData _ when tenv = None -> true
+  | TData s1, TData s2 when s1 = s2 -> true
+  | TData s, _ when List.mem_assoc s @@ Option.get tenv -> can_unify ~tenv (List.assoc s @@ Option.get tenv) typ2
+  | _, TData s when List.mem_assoc s @@ Option.get tenv -> can_unify ~tenv typ1 (List.assoc s @@ Option.get tenv)
   | _ -> false
 
 
@@ -537,6 +539,7 @@ module Ty = struct
   let unit = TBase TUnit
   let bool = TBase TBool
   let int = TBase TInt
+  let prim s = TBase (TPrim s)
   let fun_ = make_tfun
   let funs tys ty = List.fold_right make_tfun tys ty
   let tuple = make_ttuple
