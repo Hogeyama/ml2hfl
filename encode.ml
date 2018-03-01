@@ -70,7 +70,7 @@ let abst_ref =
     let t' = tr.tr_term_rec t in
     match t'.desc with
     | Ref t1 ->
-        make_ignore t1 |@> Format.printf "@[%a ==> @[%a@." Print.term' t Print.term'
+        make_ignore t1
     | Deref t1 ->
         Flag.use_abst := true;
         Term.(seq t1 (rand t'.typ))
