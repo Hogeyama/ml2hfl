@@ -60,6 +60,7 @@ val remove_type_decl : term -> term
 val lift_type_decl : term -> term
 val mark_fv_as_external : term -> term
 val map_id : (id -> id) -> term -> term
+val split_mutual_rec : ?only_top:bool -> term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc

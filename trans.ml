@@ -2974,3 +2974,56 @@ let set_length_typ =
   in
   tr.tr_desc <- tr_desc;
   tr.tr_term
+
+let split_mutual_rec =
+  let tr = make_trans2 () in
+  let tr_desc only_top desc =
+    match desc with
+    | Local(Decl_let (_::_::_ as bindings), t) ->
+        let map =
+          let rec aux bindings =
+            match bindings with
+            | [] -> []
+            | (f,_)::bindings' ->
+                let tys = List.map (fst |- Id.typ) bindings' in
+                let f' =
+                  f
+                  |> Id.new_var_id
+                  |> Id.map_typ (Ty.funs tys)
+                in
+                (f, f') :: aux bindings'
+          in
+          aux bindings
+        in
+        let bindings' =
+          if only_top then
+            bindings
+          else
+            List.map (Pair.map_snd @@ tr.tr2_term only_top) bindings
+        in
+        let bindings'' =
+          let rec aux acc bindings =
+            match bindings with
+            | [] -> acc
+            | (f,t1)::bindings' ->
+                let args = List.map fst bindings' in
+                let args' = List.map Id.new_var_id args in
+                let arg_map = List.combine args args' in
+                let f' = Id.assoc f map in
+                let t_f = Term.(var f' @ vars args) in
+                let t1' =
+                  t1
+                  |> subst_map acc
+                  |> Term.(f |-> t_f)
+                  |> subst_var_map arg_map
+                in
+                let acc' = (f,t_f)::acc in
+                (f', make_funs args' t1') :: aux acc' bindings'
+          in
+          aux [] bindings'
+        in
+        (make_lets bindings'' @@ tr.tr2_term only_top t).desc
+    | _ -> tr.tr2_desc_rec only_top desc
+  in
+  tr.tr2_desc <- tr_desc;
+  fun ?(only_top=false) t -> tr.tr2_term only_top t

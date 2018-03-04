@@ -167,10 +167,9 @@ and eval
           in
           let anss, ce', paths' = List.fold_right aux ts ([],ce,[]) in
           let ans =
-            if List.hd anss = Fail then
-              Fail
-            else
-              VTuple anss
+            match anss with
+            | Fail::_ -> Fail
+            | _ -> VTuple anss
           in
           if ce' <> ce then unsupported "Modular_check.eval tuple";
           ans, ce', paths'
@@ -216,7 +215,7 @@ let add_context prog f xs t typ =
   in
   let fail_unit_desc = (make_fail Ty.unit).desc in
   let t' =
-    unit_term
+    end_of_definitions
     |> Trans.ref_to_assert ~typ_exn ~make_fail @@ Ref_type.Env.of_list [f,typ]
     |@dbg&> Debug.printf "ADD_CONTEXT t: %a@." Print.term
     |> normalize false
@@ -295,7 +294,7 @@ let check prog f typ depth =
     |> add_preds
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check ~ty:Ty.unit
-    |> Trans.map_main (make_seq -$- unit_term) (* ??? *)
+    |> Trans.map_main (make_seq -$- end_of_definitions) (* ??? *)
     |> Main_loop.verify ~make_pps:(Some(make_pps)) ~fun_list:(Some []) [] Spec.init
   in
   match result with

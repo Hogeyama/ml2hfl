@@ -879,7 +879,7 @@ let add_context for_infer prog f typ =
       make_raise (make_construct af [] etyp) typ
       |> Encode.all
     in
-    Trans.ref_to_assert ~make_fail ~typ_exn (Ref_type.Env.of_list [f,typ]) unit_term
+    Trans.ref_to_assert ~make_fail ~typ_exn (Ref_type.Env.of_list [f,typ]) end_of_definitions
   in
   if dbg then Debug.printf "ADD_CONTEXT t': %a@." Print.term_typ t';
 (*

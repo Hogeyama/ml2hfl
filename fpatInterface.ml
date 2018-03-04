@@ -172,7 +172,9 @@ let rec of_term t =
         match t.S.typ with
         | Type.TTuple xs ->
             List.map (Id.typ |- of_typ) xs
-        | _ -> assert false
+        | _ ->
+            Format.printf "%a@." Print.typ t.S.typ;
+            assert false
       in
       Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_term t]
   | S.Tuple ts ->

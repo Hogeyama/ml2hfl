@@ -357,7 +357,7 @@ and top_to_local t =
       unsupported "Modular.top_to_local (let ... and)"
   | Const Unit -> t
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.printf "TOP_TO_LOCAL: %a@." Print.term t;
       assert false
 
 let main _ spec parsed =
@@ -385,6 +385,7 @@ let main _ spec parsed =
     |*@> pr "ASSERT_TO_FUN" Print.term_typ
     |> Preprocess.run pps
     |> Preprocess.last_t
+    |> Trans.split_mutual_rec
     |> top_to_local
     |@> pr "TOP_TO_LOCAL" Print.term_typ
     |> last_def_to_fun

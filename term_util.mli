@@ -236,6 +236,7 @@ module Term : sig
   val rand : typ -> term
   val bot : typ -> term
   val var : id -> term
+  val vars : id list -> term list
   val int : int -> term
   val string : string -> term
   val (@) : term -> term list -> term
@@ -277,6 +278,7 @@ module Term : sig
   val some : term -> term
   val match_ : term -> (pattern * term * term) list -> term
   val length : term -> term
+  val (|->) : id -> term -> term -> term
 end
 
 module Pat : sig

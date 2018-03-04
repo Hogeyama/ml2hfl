@@ -529,7 +529,11 @@ let subst_map_term map t =
   | _ -> subst_map.tr2_term_rec map t
 
 let () = subst_map.tr2_term <- subst_map_term
-let subst_map = subst_map.tr2_term
+let subst_map map t =
+  if map = [] then
+    t
+  else
+    subst_map.tr2_term map t
 
 
 let () = subst.tr2_term <- subst_term
@@ -537,7 +541,11 @@ let subst_type x t typ = subst.tr2_typ (x,t) typ
 let subst_type_var x y typ = subst_type x (make_var y) typ
 let subst x t1 t2 = subst.tr2_term (x,t1) t2
 let subst_var x y t = subst x (make_var y) t
-let subst_var_map map t = subst_map (List.map (Pair.map_snd make_var) map) t
+let subst_var_map map t =
+  if map = [] then
+    t
+  else
+    subst_map (List.map (Pair.map_snd make_var) map) t
 
 let subst_var_without_typ =
   let tr = make_trans2 () in
@@ -832,6 +840,7 @@ let rec var_name_of_term t =
   | Bottom -> "bot"
   | Var x -> Id.name x
   | Local(_,t) -> var_name_of_term t
+  | Tuple([]) -> "nil"
   | Tuple(ts) -> String.join "__" @@ List.map var_name_of_term ts
   | Proj(i,t) ->
       let n = tuple_num t.typ in
@@ -842,7 +851,7 @@ let rec var_name_of_term t =
   | App({desc=Var f},_) -> "r" ^ "_" ^ Id.name f
   | _ -> Type.var_name_of @@ elim_tattr t.typ
 
-let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
+let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ |@> Format.printf "%a ==> %a@." Print.term t Print.id
 
 
 
@@ -1255,6 +1264,7 @@ module Term = struct
   let rand = make_randvalue_unit
   let bot = make_bottom
   let var = make_var
+  let vars = List.map make_var
   let int = make_int
   let string = make_string
   let (@) = make_app

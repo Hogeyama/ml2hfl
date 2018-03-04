@@ -29,35 +29,38 @@ let rec get_tuple_name_map rtyp =
   | RT.Union(_, rtyps) -> List.rev_flatten_map get_tuple_name_map rtyps
   | _ -> []
 
-let rec correct_arg_refer rtyp =
-  match rtyp with
-  | RT.Base _ -> rtyp
-  | RT.Fun(x,rtyp1,rtyp2) ->
-      let rtyp1' = correct_arg_refer rtyp1 in
-      let rtyp2' = correct_arg_refer rtyp2 in
+let rec correct_arg_refer sty rtyp =
+  match rtyp, sty with
+  | RT.Base _, _ -> rtyp
+  | RT.Fun(x,rtyp1,rtyp2), TFun(x1,sty2) ->
+      let rtyp1' = correct_arg_refer (Id.typ x1) rtyp1 in
+      let rtyp2' = correct_arg_refer sty2 rtyp2 in
       let map = get_tuple_name_map rtyp1 in
       let aux (y,path) typ =
         let t = List.fold_left (Fun.flip make_proj) (make_var x) path in
         Ref_type.subst y t typ
       in
-      RT.Fun(x, rtyp1', List.fold_right aux map rtyp2')
-  | RT.Tuple xrtyps ->
-      let aux (x,rtyp) xrtyps =
-        let rtyp' = correct_arg_refer rtyp in
+      RT.Fun(x, rtyp1', List.fold_right aux map rtyp2') |@> Format.printf "RT1: %a@." RT.print
+  | RT.Tuple xrtyps, TTuple xs ->
+      let aux (x,rtyp) x2 xrtyps =
+        let rtyp' = correct_arg_refer (Id.typ x2) rtyp in
         let map = get_tuple_name_map rtyp in
         let aux' (y,path) typ =
-          let t = List.fold_left (Fun.flip make_proj) (make_var x) path in
+          let t = List.fold_left (Fun.flip make_proj) (make_var x2) path in
           Ref_type.subst y t typ
         in
         let xrtyps' = List.map (Pair.map_snd @@ List.fold_right aux' map) xrtyps in
         (x, rtyp') :: xrtyps'
       in
-      RT.Tuple (List.fold_right aux xrtyps [])
-  | RT.Inter(typ, rtyps) -> RT.Inter(typ, List.map correct_arg_refer rtyps)
-  | RT.Union(typ, rtyps) -> RT.Union(typ, List.map correct_arg_refer rtyps)
-  | RT.ExtArg(x,rtyp1,rtyp2) -> unsupported "correct_arg_refer"
-  | RT.List _ -> unsupported "correct_arg_refer"
-  | RT.Exn _ -> unsupported "correct_arg_refer"
+      RT.Tuple (List.fold_right2 aux xrtyps xs []) |@> Format.printf "RT2: %a@." RT.print
+  | RT.Inter(typ, rtyps), _ -> RT.Inter(typ, List.map (correct_arg_refer sty) rtyps)
+  | RT.Union(typ, rtyps), _ -> RT.Union(typ, List.map (correct_arg_refer sty) rtyps)
+  | RT.ExtArg(x,rtyp1,rtyp2), _ -> unsupported "correct_arg_refer"
+  | RT.List _, _ -> unsupported "correct_arg_refer"
+  | RT.Exn _, _ -> unsupported "correct_arg_refer"
+  | _ -> assert false
+let correct_arg_refer rtyp =
+  correct_arg_refer (RT.to_simple rtyp) rtyp
 
 let rec uncurry_typ rtyp typ =
   Debug.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
