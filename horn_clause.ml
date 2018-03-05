@@ -136,7 +136,7 @@ let inline need hcs =
     let rec aux acc xs =
       match xs with
       | [] | [_] -> acc
-      | x1::x2::xs' when Id.same x1 x2 ->
+      | x1::x2::xs' when Id.(x1 = x2) ->
           aux (x1::acc) xs'
       | x1::x2::xs' ->
           aux acc (x2::xs')
@@ -183,7 +183,7 @@ let inline need hcs =
             let p',args' = Option.get @@ decomp_pred_app t in
             Debug.printf "p: %a@." Id.print p;
             Debug.printf "p': %a@." Id.print p';
-            if Id.same p p' then
+            if Id.(p = p') then
               let args'' = List.map (Option.get -| decomp_var) args in
               Debug.printf "args'': %a@." (List.print Id.print) args'';
               Debug.printf "args': %a@." (List.print Print.term) args';

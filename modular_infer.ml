@@ -1256,7 +1256,7 @@ let infer prog f typ (ce_set:ce_set) depth merge =
           let typ_ =
             Debug.printf "  typ: %a@." Ref_type.print typ;
             Debug.printf "  typ': %a@." Ref_type.print typ';
-            make_get_rtyp (fun y -> assert (Id.same y x); typ') x
+            make_get_rtyp (fun y -> assert Id.(y = x); typ') x
             |@> Debug.printf "  rtyp: %a@." Ref_type.print
             |> instantiate_any mode true
             |@> Debug.printf "  [%a] typ_: %a@." print_mode mode Ref_type.print
@@ -1267,8 +1267,8 @@ let infer prog f typ (ce_set:ce_set) depth merge =
         |> List.map aux
         |> List.map (Pair.map_snd Ref_type.contract)
         |> List.flatten_map (fun (x,typ) -> List.map (fun typ -> x, typ) @@ Ref_type.decomp_inter typ)
-        |> List.remove_lower (fun (x,typ) (x',typ') -> Id.same x x' && Ref_type.equiv typ typ')
-        |> List.filter_out (fun (g,typ') -> Id.same f g && Ref_type.subtype typ typ')
+        |> List.remove_lower (fun (x,typ) (x',typ') -> Id.(x = x') && Ref_type.equiv typ typ')
+        |> List.filter_out (fun (g,typ') -> Id.(f = g) && Ref_type.subtype typ typ')
         |> Ref_type.Env.of_list
       in
       let env'' =

@@ -309,7 +309,7 @@ let apply_sol =
 let infer ?(for_cps=false) t =
   let env = initial_env for_cps in
   let ext_funs =
-    let eq x y = Id.same x y && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
+    let eq x y = Id.(x = y) && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
     get_fv ~eq t
   in
   if List.length ext_funs <> List.length (List.unique ~eq:Id.eq ext_funs) then

@@ -1283,7 +1283,7 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; effect=e} =
       assoc_typ_cps f t1 @@@ assoc_typ_cps f t2 @@@ assoc_typ_cps f t3
   | LetCPS(bindings, t1) ->
       let aux (g,t) =
-        let typs1 = if Id.same f g.id_cps then [g.id_typ] else [] in
+        let typs1 = if Id.(f = g.id_cps) then [g.id_typ] else [] in
         typs1 @@@ assoc_typ_cps f t
       in
       assoc_typ_cps f t1 @@@ List.rev_flatten_map aux bindings
@@ -1420,7 +1420,7 @@ let rec uncps_ref_type sol typ_exn rtyp e etyp =
   | _ -> assert false
 
 let infer_effect env t =
-  let eq x y = Id.same x y && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
+  let eq x y = Id.(x = y) && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
   let ext_funs = get_fv ~eq t in
   if List.length ext_funs <> List.length (List.unique ~eq:Id.eq ext_funs) then
     begin

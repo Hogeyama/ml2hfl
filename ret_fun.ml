@@ -83,10 +83,10 @@ let add_proj_info = add_proj_info.tr_term
 
 
 let get_same_pair env y z =
-  let fsts = List.filter (function (y', Some _, None) -> Id.same y y' | _ -> false) env in
-  let snds = List.filter (function (z', None, Some _) -> Id.same z z' | _ -> false) env in
+  let fsts = List.filter (function (y', Some _, None) -> Id.(y = y') | _ -> false) env in
+  let snds = List.filter (function (z', None, Some _) -> Id.(z = z') | _ -> false) env in
   try
-    Triple.snd @@ List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.same (Option.get p) (Option.get p')) snds) fsts
+    Triple.snd @@ List.find (fun (_,p,_) -> List.exists (fun (_,_,p') -> Id.(Option.get p = Option.get p')) snds) fsts
   with Not_found -> None
 
 let pair_eta_reduce = make_trans2 ()

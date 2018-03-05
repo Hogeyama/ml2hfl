@@ -114,7 +114,7 @@ let trans_term env t =
       Debug.printf "t2': %a@." Print.term t2';
       Debug.printf "t3': %a@." Print.term t3';
       join vs2 vs3, make_if v1 t2' t3'
-  | Local(Decl_let [x,t1], t2) when not @@ Id.same x env.target && [] = fst @@ decomp_funs t1 ->
+  | Local(Decl_let [x,t1], t2) when not @@ Id.(x = env.target) && [] = fst @@ decomp_funs t1 ->
       Debug.printf "START@.";
       Debug.printf "t1: %a@." Print.term t1;
       let vs1,t1' = trans.tr_col2_term env t1 in
@@ -148,7 +148,7 @@ let trans_term env t =
         let args = List.map (fun _ -> make_extra_vars env.states env.target_xs) xss in
         let s',set_flag',ps' = List.last args in
         let vs, t1' =
-          if Id.same g env.target
+          if Id.(g = env.target)
           then
             let b = Id.new_var Ty.bool in
             let s'' = Id.new_var_id s' in
@@ -209,7 +209,7 @@ let trans_term env t =
           let xs',x = List.decomp_snoc xs in
           false, make_funs (xs'@s::set_flag::ps@[x]) t'
         in
-        if false && Id.same g env.target
+        if false && Id.(g = env.target)
         then
           vs, [g', Trans.alpha_rename @@ snd @@ List.fold_right2 aux1 args xss' (true, t1');
                g_true, snd @@ List.fold_right2 aux2 args xss' (true, t1')]

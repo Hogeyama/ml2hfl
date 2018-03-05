@@ -310,7 +310,7 @@ and print_desc attr pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[raise@ %a@]%s" s1 (print_term p typ) t s2
   | TryWith(t1,{desc=Fun(e,{desc=Match({desc=Var e'},pats)})})
-       when Id.same e e' && (function ({pat_desc=PAny},{desc=Const True},{desc=Raise {desc=Var e''}}) -> Id.same e e'' | _ -> false) @@ List.last pats ->
+       when Id.(e = e') && (function ({pat_desc=PAny},{desc=Const True},{desc=Raise {desc=Var e''}}) -> Id.same e e'' | _ -> false) @@ List.last pats ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
       let aux (pat,cond,t) =

@@ -476,9 +476,9 @@ let subst = make_trans2 ()
 (* [x |-> t], [t/x] *)
 let subst_term (x,t) t' =
   match t'.desc with
-  | Var y when Id.same x y -> t
-  | Fun(y, t1) when Id.same x y -> t'
-  | Local(Decl_let bindings, t2) when List.exists (fun (f,_) -> Id.same f x) bindings -> t'
+  | Var y when Id.(x = y) -> t
+  | Fun(y, t1) when Id.(x = y) -> t'
+  | Local(Decl_let bindings, t2) when List.exists (fst |- Id.same x) bindings -> t'
   | Local(Decl_let bindings, t2) ->
       let aux (f,t1) = subst.tr2_var (x,t) f, subst.tr2_term (x,t) t1 in
       let bindings' = List.map aux bindings in
@@ -515,11 +515,11 @@ let subst_map_term map t =
   match t.desc with
   | Var y -> if Id.mem_assoc y map then Id.assoc y map else t
   | Fun(y, t1) ->
-      let map' = List.filter_out (fun (x,_) -> Id.same x y) map in
+      let map' = List.filter_out (fst |- Id.same y) map in
       let t1' = subst_map.tr2_term map' t1 in
       make_fun y t1'
   | Local(Decl_let bindings, t2) ->
-      let map' = List.filter (fun (x,_) -> not (List.exists (fun (f,_) -> Id.same f x) bindings)) map in
+      let map' = List.filter (fun (x,_) -> not (List.exists (fst |- Id.same x) bindings)) map in
       let bindings' = List.map (Pair.map_snd @@ subst_map.tr2_term map') bindings in
       let t2' = subst_map.tr2_term map' t2 in
       make_let bindings' t2'
@@ -551,9 +551,9 @@ let subst_var_without_typ =
   let tr = make_trans2 () in
   let tr_desc (x,y) desc =
     match desc with
-    | Var z when Id.same x z -> Var (Id.set_typ y (Id.typ z))
-    | Fun(z, t1) when Id.same x z -> desc
-    | Local(Decl_let bindings, t2) when List.exists (fun (f,_) -> Id.same f x) bindings -> desc
+    | Var z when Id.(x = z) -> Var (Id.set_typ y (Id.typ z))
+    | Fun(z, t1) when Id.(x = z) -> desc
+    | Local(Decl_let bindings, t2) when List.exists (fst |- Id.same x) bindings -> desc
     | Local(Decl_let bindings, t2) ->
         let aux (f,t1) = tr.tr2_var (x,y) f, tr.tr2_term (x,y) t1 in
         let bindings' = List.map aux bindings in
@@ -644,12 +644,12 @@ and same_term t1 t2 = same_desc t1.desc t2.desc
 and same_desc t1 t2 =
   match t1,t2 with
   | Const c1, Const c2 -> same_const c1 c2
-  | Var x, Var y -> Id.same x y
-  | Fun(x,t1), Fun(y,t2) -> Id.same x y && same_term t1 t2
+  | Var x, Var y -> Id.(x = y)
+  | Fun(x,t1), Fun(y,t2) -> Id.(x = y) && same_term t1 t2
   | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
   | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
   | Local(Decl_let bindings1,t1), Local(Decl_let bindings2,t2) ->
-     let same_binding (f,t1) (g,t2) = Id.same f g && same_term t1 t2 in
+     let same_binding (f,t1) (g,t2) = Id.(f = g) && same_term t1 t2 in
      same_list same_binding bindings1 bindings2 && same_term t1 t2
   | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
   | Not t1, Not t2 -> same_term t1 t2
@@ -923,7 +923,7 @@ let rec is_bottom_def f t =
   let xs,t = decomp_funs t in
   match xs, t.desc with
   | _::_, App({desc=Var g},ts) ->
-      Id.same f g && List.for_all has_no_effect ts
+      Id.(f = g) && List.for_all has_no_effect ts
   | _ -> false
 
 let rec decomp_bexp t =
@@ -1152,7 +1152,7 @@ let col_app_args =
   let col = make_col2 [] (@) in
   let col_desc f desc =
     match desc with
-    | App({desc=Var g}, ts) when Id.same f g -> [ts]
+    | App({desc=Var g}, ts) when Id.(f = g) -> [ts]
     | _ -> col.col2_desc_rec f desc
   in
   col.col2_desc <- col_desc;
@@ -1163,10 +1163,10 @@ let col_non_fixed_args =
   let col = make_col2 [] (@) in
   let col_desc (f,xs) desc =
     match desc with
-    | App({desc=Var g}, ts) when Id.same f g ->
+    | App({desc=Var g}, ts) when Id.(f = g) ->
         let check (i,x) =
           match List.nth ts i with
-          | {desc=Var y} when Id.same x y -> []
+          | {desc=Var y} when Id.(x = y) -> []
           | t -> x :: col.col2_term (f,xs) t
           | exception Invalid_argument _ -> [x]
         in

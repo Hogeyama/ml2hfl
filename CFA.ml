@@ -38,7 +38,7 @@ let get_flow map flow t =
 let update_var = make_col2 false (||)
 let update_var_term (flow,x,t') t =
   match t.desc with
-  | Var y when Id.same x y -> add_flow flow t t'
+  | Var y when Id.(x = y) -> add_flow flow t t'
   | _ -> update_var.col2_term_rec (flow,x,t') t
 let () = update_var.col2_term <- update_var_term
 let update_var flow x t' t = update_var.col2_term (flow,x,t') t
@@ -103,7 +103,7 @@ let replace_const_term (flow,map) t =
   match t.desc with
   | Var x ->
       let ts = get_flow map flow t in
-      if List.for_all (fun t -> match t.desc with Const c -> true | Var y -> Id.same x y | _ -> false) ts
+      if List.for_all (fun t -> match t.desc with Const c -> true | Var y -> Id.(x = y) | _ -> false) ts
       then
         let cs = List.filter_map (fun t -> match t.desc with Const c -> Some c | _ -> None) ts in
         begin

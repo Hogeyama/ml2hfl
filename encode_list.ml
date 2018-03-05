@@ -218,7 +218,7 @@ let abst_list_term post t =
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
       make_app (make_snd t1') [t2']
-  | App({desc=Var x}, [t]) when Id.same x (make_length_var typ_unknown) -> make_fst @@ abst_list.tr2_term post t
+  | App({desc=Var x}, [t]) when Id.(x = make_length_var typ_unknown) -> make_fst @@ abst_list.tr2_term post t
   | Local(Decl_let bindings, t2) ->
       let aux (f,t) =
         let post' = "_" ^ Id.name f in

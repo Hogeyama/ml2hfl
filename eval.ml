@@ -21,7 +21,7 @@ let fun_info f v = fun_info [] f v
 let subst_arg = make_trans2 ()
 let subst_arg_term (x,t) t' =
   match t'.desc with
-  | Label(InfoId y, t1) when Id.same x y -> make_label (InfoTerm t) t1
+  | Label(InfoId y, t1) when Id.(x = y) -> make_label (InfoTerm t) t1
   | _ -> subst_arg.tr2_term_rec (x,t) t'
 
 let () = subst_arg.tr2_term <- subst_arg_term

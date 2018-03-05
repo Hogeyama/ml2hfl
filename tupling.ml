@@ -47,13 +47,13 @@ let partition_bindings x t =
   let aux (f,t) (before,app_x,after) =
     let xs,t1 = decomp_funs t in
     match app_x, xs, t1 with
-    | None, [], {desc=App({desc=Var y}, ts)} when Id.same x y ->
+    | None, [], {desc=App({desc=Var y}, ts)} when Id.(x = y) ->
         before, Some (f,ts), after
     | None, _, _ ->
         Debug.printf "CHECK: %a@." Print.term t1;
         check t1;
         before, app_x, (f, t)::after
-    | Some _, _, {desc=App({desc=Var y}, ts)} when Id.same x y ->
+    | Some _, _, {desc=App({desc=Var y}, ts)} when Id.(x = y) ->
         raise Cannot_compose
     | Some _, _, _ ->
         check t1;
@@ -192,7 +192,7 @@ let tupling_term env t =
           let fs' = List.filter_map Std.identity fs in
           let fg =
             try
-              let _,(fg,_) = List.find (fun (gs,_) -> List.length fs' = List.length gs && List.for_all2 Id.same fs' gs) !new_funs in
+              let _,(fg,_) = List.find (fun (gs,_) -> List.eq ~eq:Id.same fs' gs) !new_funs in
               fg
             with
             | Not_found ->
@@ -324,7 +324,7 @@ let rec tree_of_tuple t =
 let is_subsumed t1 t2 =
   if Debug.check() then Color.printf Color.Yellow "is_subsumed: %a, %a@." Print.term t1 Print.term t2;
   match t1.desc, t2.desc with
-  | App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.same f g ->
+  | App({desc=Var f},ts1), App({desc=Var g},ts2) when Id.(f = g) ->
       let check t1 t2 =
         try
           let tree1 = tree_of_tuple t1 in
@@ -405,13 +405,13 @@ let is_used_in t1 t2 = col_same_term t1 t2 <> []
 
 let rec decomp_let_app_option f t =
   match t.desc with
-  | Local(Decl_let [x, {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.same f g && is_non_rec [binding] ->
+  | Local(Decl_let [x, {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.(f = g) && is_non_rec [binding] ->
       let ts' = List.map decomp_some ts in
       if not @@ List.for_all2 (fun t t' -> Option.is_some t' || is_none t) ts ts' then invalid_arg "decomp_let_app_option";
       let args = List.filter_map Std.identity @@ List.mapi (fun i t -> Option.map (fun t' -> i, x, t') t) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
-  | Local(Decl_let ([x, {desc=App({desc=Var g}, [_])}] as bindings), t2) when Id.same f g && is_non_rec bindings ->
+  | Local(Decl_let ([x, {desc=App({desc=Var g}, [_])}] as bindings), t2) when Id.(f = g) && is_non_rec bindings ->
       invalid_arg "decomp_let_app_option"
   | _ -> [], [], t
 

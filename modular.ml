@@ -134,7 +134,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
         let neg_env' =
           let aux (g,typ) =
             let typ' =
-              if List.exists (fun (g',f') -> Id.same g g' && Id.same f f') dep then
+              if List.exists Id.(fun (g',f') -> g = g' && f = f') dep then
                 Ref_type.bottom @@ Id.typ g
               else
                 typ

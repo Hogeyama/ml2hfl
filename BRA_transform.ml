@@ -409,7 +409,7 @@ let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver 
   let replace_index = ref (-1) in
   let is_update = ref true in
   let aux_subst_each = function
-    | {desc = Var v} as e when Id.same v f ->
+    | {desc = Var v} as e when Id.(v = f) ->
       let v' = if !counter = !replace_index then (is_update := true; f) else f_no in
       begin
 	counter := !counter + 1;

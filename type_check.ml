@@ -66,7 +66,7 @@ let rec check env t typ =
       List.iter (fun (f,t) -> check env t @@ elim_tattr @@ Id.typ f) bindings;
       let aux' f =
         let check f' =
-          if Id.same f f' && not @@ Type.can_unify (Id.typ f) (Id.typ f') then
+          if Id.(f = f') && not @@ Type.can_unify (Id.typ f) (Id.typ f') then
             begin
               Format.printf "f: %a@." Print.id_typ f;
               Format.printf "f': %a@." Print.id_typ f';

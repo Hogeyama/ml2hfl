@@ -36,7 +36,7 @@ let get_args = make_col2 [] List.rev_append
 
 let get_args_desc (f:id) desc =
   match desc with
-    App({desc=Var g}, ts) when Id.same f g ->
+    App({desc=Var g}, ts) when Id.(f = g) ->
       List.fold_left (fun args t -> get_args.col2_term f t @ args) ts ts
   | _ -> get_args.col2_desc_rec f desc
 
@@ -94,11 +94,11 @@ let is_partial f ts =
 
 let get_diff_args_desc (env,f) desc =
   match desc with
-  | Var g when Id.same f g ->
+  | Var g when Id.(f = g) ->
      make_all @@ fst @@ decomp_tfun @@ Id.typ g
-  | App({desc=Var g}, ts) when Id.same f g && is_partial g ts ->
+  | App({desc=Var g}, ts) when Id.(f = g) && is_partial g ts ->
      make_all @@ fst @@ decomp_tfun @@ Id.typ g
-  | App({desc=Var g}, ts) when Id.same f g ->
+  | App({desc=Var g}, ts) when Id.(f = g) ->
       let its = List.mapi (fun i t -> i,t) ts in
       let rec aux acc = function
           [] -> acc
@@ -138,7 +138,7 @@ let elim_arg = make_trans2 ()
 
 let elim_arg_desc (f,args) desc =
   match desc with
-    App({desc=Var g}, ts) when Id.same f g ->
+    App({desc=Var g}, ts) when Id.(f = g) ->
       let ts' = List.map (elim_arg.tr2_term (f,args)) @@ elim_nth args ts in
       App(make_var g, ts')
   | _ -> elim_arg.tr2_desc_rec (f,args) desc

@@ -14,7 +14,7 @@ let subst_var_id =
   let tr = make_trans2 () in
   let tr_desc (x,x') desc =
     match desc with
-    | Var y when Id.same x y -> Var (Id.set_id y @@ Id.id x')
+    | Var y when Id.(x = y) -> Var (Id.set_id y @@ Id.id x')
     | _ -> tr.tr2_desc_rec (x,x') desc
   in
   tr.tr2_desc <- tr_desc;
@@ -109,7 +109,7 @@ let rename_poly_funs =
   let can_unify f (_,g) = Type.can_unify (Id.typ f) (Id.typ g) in
   let fld_term (f,map) t =
     match t.desc with
-    | Var x when Id.same x f ->
+    | Var x when Id.(x = f) ->
         if is_poly_typ t.typ then
           ignore @@ inst_tvar_typ Ty.int t.typ;
           let map',x' =
@@ -125,7 +125,7 @@ let rename_poly_funs =
     | Fun(x, t) ->
         let (_,map'),t' = fld.fld_term (f,map) t in
         (f,map'), make_fun x t'
-    | App({desc=Var x; typ=typ}, ts) when Id.same x f ->
+    | App({desc=Var x; typ=typ}, ts) when Id.(x = f) ->
         let x' = Id.new_var ~name:(Id.name x) typ in
         let (_,map'),ts' =
           let aux t ((_,map),ts) =
@@ -275,12 +275,12 @@ let part_eval t =
   let is_apply t =
     let xs,t' = decomp_funs t in
     match t'.desc, xs with
-    | Var x, [y] -> Id.same x y
+    | Var x, [y] -> Id.(x = y)
     | App(t, ts), _ ->
         let rec aux xs ts =
           match xs,ts with
           | [], [] -> true
-          | x::xs', {desc=Var y}::ts' when Id.same x y -> aux xs' ts'
+          | x::xs', {desc=Var y}::ts' when Id.(x = y) -> aux xs' ts'
           | _ -> false
         in
         aux xs (t::ts)
@@ -297,7 +297,7 @@ let part_eval t =
         let rec aux xs ts =
           match xs,ts with
             [], [] -> true
-          | x::xs',{desc=Var y}::ts' when Id.same x y -> aux xs' ts'
+          | x::xs',{desc=Var y}::ts' when Id.(x = y) -> aux xs' ts'
           | _ -> false
         in
         if aux xs ts
@@ -749,8 +749,8 @@ let rec inlined_f inlined fs t =
     match t.desc with
     | Const c -> Const c
     | Var y ->
-        if List.exists (fun (x,_,_) -> Id.same x y) fs then
-          let (f, xs, t') = List.find (fun (x,_,_) -> Id.same x y) fs in
+        if List.exists (Triple.fst |- Id.same y) fs then
+          let (f, xs, t') = List.find (Triple.fst |- Id.same y) fs in
           (*let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) [f, t'] in*)
           let f, _ =
             List.fold_left
@@ -771,8 +771,8 @@ let rec inlined_f inlined fs t =
     | App(t1, ts) ->
         (*let _ = Format.printf "func: %a@." pp_print_term t1' in*)
         (match t1.desc with
-         | Var f when List.exists (fun (f', _, _) -> Id.same f f') fs ->
-             let (f, xs, t) = try List.find (fun (f', _, _) -> Id.same f f') fs with Not_found -> assert false in
+         | Var f when List.exists (Triple.fst |- Id.same f) fs ->
+             let (f, xs, t) = try List.find (Triple.fst |- Id.same f) fs with Not_found -> assert false in
              let ts = List.map (inlined_f inlined fs) ts in
              let ys = List.map (fun t -> match t.desc with Const (Unit | True | False | Int _) | Var _ -> `L(t) | _ -> `R(Id.new_var ~name:"arg" t.typ)) ts in
              let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else Fpat.Util.List.split_nth (List.length xs) ys in
@@ -867,13 +867,13 @@ let lift_fst_snd_term fs t =
       make_let bindings' @@ lift_fst_snd.tr2_term fs t2
   | Proj(0, {desc=Var x}) when tuple_num (Id.typ x) = Some 2 ->
       (try
-          let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.same x' x) fs in
+          let (x, _, _) = List.find (fun (_, bfst, x') -> bfst && Id.(x' = x)) fs in
           make_var x
         with Not_found ->
           make_fst @@ lift_fst_snd.tr2_term fs t)
   | Proj(1, {desc=Var x}) when tuple_num (Id.typ x) = Some 2 ->
       (try
-          let (x, _, _) = List.find (fun (_, bfst, x') -> not bfst && Id.same x' x) fs in
+          let (x, _, _) = List.find (fun (_, bfst, x') -> not bfst && Id.(x' = x)) fs in
           make_var x
         with Not_found ->
           make_snd @@ lift_fst_snd.tr2_term fs t)
@@ -1196,7 +1196,7 @@ let make_ext_funs ?(fvs=[]) env t =
   let t' = remove_defs (Ref_type.Env.dom env) t in
   Debug.printf "MEF t': %a@." Print.term t';
   Debug.printf "MEF env: %a@." Ref_type.Env.print env;
-  let fv = get_fv ~eq:(fun x y -> Id.same x y && Type.can_unify (Id.typ x) (Id.typ y)) t' in
+  let fv = get_fv ~eq:(fun x y -> Id.(x = y) && Type.can_unify (Id.typ x) (Id.typ y)) t' in
   Debug.printf "MEF fv: %a@." (List.print Id.print) fv;
   let funs =
     fv
@@ -1229,7 +1229,7 @@ let assoc_typ =
     match desc with
     | Local(Decl_let bindings, t1) ->
         let aux (g,t) =
-          let typs1 = if Id.same f g then [Id.typ g] else [] in
+          let typs1 = if Id.(f = g) then [Id.typ g] else [] in
           typs1 @@@ col.col2_term f t
         in
         col.col2_term f t1 @@@ List.rev_flatten_map aux bindings
@@ -1246,7 +1246,7 @@ let inline_no_effect =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Local(Decl_let [x,t], {desc=Var y}) when Id.same x y && not @@ Id.mem x @@ get_fv t ->
+    | Local(Decl_let [x,t], {desc=Var y}) when Id.(x = y) && not @@ Id.mem x @@ get_fv t ->
         (tr.tr_term t).desc
     | Local(Decl_let [x,t], t2) when Id.mem x (get_fv t2) && has_no_effect t && not @@ Id.mem x @@ get_fv t ->
         let t' = tr.tr_term t in
@@ -1281,7 +1281,7 @@ let rec diff_terms t1 t2 =
       then []
       else [t1,t2]
   | Const c1, Const c2 -> if c1 = c2 then [] else [t1,t2]
-  | Var x1, Var x2 -> if Id.same x1 x2 then [] else [t1,t2]
+  | Var x1, Var x2 -> if Id.(x1 = x2) then [] else [t1,t2]
   | Fun _, Fun _ -> [t1,t2]
   | App(t11,[t12]), App(t21,[t22]) -> diff_terms t11 t21 @ diff_terms t12 t22
   | App(t1,ts1), App(t2,ts2) ->
@@ -1529,8 +1529,8 @@ let subst_with_rename =
   let tr = make_trans2 () in
   let tr_desc (x,t) desc =
     match desc with
-    | Var y when Id.same x y -> (alpha_rename t).desc
-    | Fun(y, t1) when Id.same x y -> desc
+    | Var y when Id.(x = y) -> (alpha_rename t).desc
+    | Fun(y, t1) when Id.(x = y) -> desc
     | Local(Decl_let bindings, t2) when is_non_rec bindings ->
         let aux (f,t1) = tr.tr2_var (x,t) f, tr.tr2_term (x,t) t1 in
         let bindings' = List.map aux bindings in
@@ -1571,7 +1571,7 @@ let elim_unused_branch =
     match t.desc with
     | If({desc=Const True}, t1, t2) -> tr.tr_term t1
     | If({desc=Const False}, t1, t2) -> tr.tr_term t2
-    | If({desc=BinOp(Eq,{desc=Var x},{desc=Var y})}, t1, t2) when Id.same x y -> tr.tr_term t1
+    | If({desc=BinOp(Eq,{desc=Var x},{desc=Var y})}, t1, t2) when Id.(x = y) -> tr.tr_term t1
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
@@ -1811,7 +1811,7 @@ let flatten_tuple =
 
 let rec is_in_redex x t =
   match t.desc with
-  | Var y -> Some (Id.same x y)
+  | Var y -> Some Id.(x = y)
   | Const _ -> Some false
   | Tuple ts ->
       let rs = List.map (is_in_redex x) ts in
@@ -2157,7 +2157,7 @@ let beta_full_app =
   let tr = make_trans2 () in
   let tr_desc (f,xs,t) desc =
     match desc with
-    | App({desc=Var g}, ts) when Id.same f g && List.length xs = List.length ts ->
+    | App({desc=Var g}, ts) when Id.(f = g) && List.length xs = List.length ts ->
         (List.fold_right2 (subst_with_rename ~check:true) xs ts t).desc
     | _ -> tr.tr2_desc_rec (f,xs,t) desc
   in
@@ -2372,10 +2372,10 @@ let inline_specified =
   let tr = make_trans2 () in
   let tr_term (f,xs,t1) t =
     match t.desc with
-    | Var g when Id.same f g ->
+    | Var g when Id.(f = g) ->
         if xs <> [] then invalid_arg "inline_specified?";
         t1
-    | App({desc=Var g}, ts) when Id.same f g ->
+    | App({desc=Var g}, ts) when Id.(f = g) ->
         if List.length xs <> List.length ts then invalid_arg "inline_specified!";
         subst_map (List.combine xs ts) t1
     | _ -> tr.tr2_term_rec (f,xs,t1) t
@@ -2520,7 +2520,7 @@ let eta_reduce =
         let t1' = make_app t1 ts' in
         begin
           match t2.desc with
-          | Var y when Id.same x y ->
+          | Var y when Id.(x = y) ->
               if has_no_effect t1' && not @@ List.mem ~eq:Id.eq x @@ get_fv t1' then
                 t1'.desc
               else

@@ -10,7 +10,7 @@ let trans = make_trans2 ()
 let rec root x bb path_rev =
   let aux (y,t) =
     match t with
-    | {desc=Proj(i,{desc=Var z})} when Id.same x y -> Some (z,i)
+    | {desc=Proj(i,{desc=Var z})} when Id.(x = y) -> Some (z,i)
     | _ -> None
   in
   try
@@ -26,13 +26,13 @@ let root x bb = root x bb []
 let rec find_proj i x bb =
   match bb with
   | [] -> None
-  | (y,{desc=Proj(j,{desc=Var z})})::bb' when i = j && Id.same x z -> Some y
+  | (y,{desc=Proj(j,{desc=Var z})})::bb' when i = j && Id.(x = z) -> Some y
   | _::bb' -> find_proj i x bb'
 
 let rec find_app x bb =
   match bb with
   | [] -> []
-  | (_,{desc=App({desc=Var y},[t])})::bb' when Id.same x y ->
+  | (_,{desc=App({desc=Var y},[t])})::bb' when Id.(x = y) ->
       let args = find_app x bb' in
       if List.exists (same_term t) args then
         args
@@ -124,7 +124,7 @@ let inst_var_fun x tt bb t =
       let y' = Id.new_var_id y in
       Debug.printf "x: %a, y': %a@." Id.print x Id.print y';
       let r,path = root x bb in
-      if Id.same x r
+      if Id.(x = r)
       then
         let () = Debug.printf "THIS IS ROOT@." in
         make_app (make_var x) [t]
@@ -220,7 +220,7 @@ let trans_term (tt,bb) t =
       let t' = trans.tr2_term (tt,bb') t in
       let tx = inst_var_fun x1' tt bb' t11' in
       make_let [x',tx] t'
-  | Local(Decl_let [x,({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.same x1 x2 && is_non_rec [x,t1] ->
+  | Local(Decl_let [x,({desc=Tuple[{desc=Var x1};{desc=Var x2}]} as t1)], t) when Id.(x1 = x2) && is_non_rec [x,t1] ->
       let x' =  trans.tr2_var (tt,bb) x in
       let x1' = trans.tr2_var (tt,bb) x1 in
       let bb' = (x,t1)::bb in
@@ -331,7 +331,7 @@ let sort_let_pair_aux x t =
   let bindings' = List.map (Pair.map_snd sort_let_pair.tr_term) bindings in
   let is_proj (_,t) =
     match t.desc with
-    | Proj(_, {desc=Var y}) -> Id.same x y
+    | Proj(_, {desc=Var y}) -> Id.(x = y)
     | _ -> false
   in
   let bindings1,bindings2 = List.partition is_proj bindings' in
@@ -445,7 +445,7 @@ let col_app_head = col_app_head.col_term
 
 
 let compare_pair (x1,x2) (y1,y2) =
-  if Id.same x1 y2 && Id.same x2 y1 then
+  if Id.(x1 = y2 && x2 = y1) then
     0
   else
     let r1 = compare x1 y1 in

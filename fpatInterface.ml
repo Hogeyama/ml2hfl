@@ -544,7 +544,7 @@ let insert_extra_param t =
               (try
                   let _, xxss, _ =
                     List.find
-                      (fun (f', _, recursive) -> recursive && Id.same f' f)
+                      (fun (f', _, recursive) -> recursive && Id.(f' = f))
                       rfs
                   in
                   (Debug.printf "rec: %a@." Print.term t1');
@@ -558,7 +558,7 @@ let insert_extra_param t =
                      | Type.TFun(_, _)
                      | Type.TTuple _(* ToDo: fix it *) ->
                         (match t.S.desc with
-                         | S.Var(y) when Id.same x y ->
+                         | S.Var(y) when Id.(x = y) ->
                              Debug.printf "arg %a of %a not changed@," Print.id x Print.id f;
                              xs
                          | _ -> [])
