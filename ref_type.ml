@@ -86,8 +86,8 @@ let print_base fm = function
 
 let rec occur x = function
   | Base(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
-  | Fun(_,typ1,typ2) -> occur x typ1 || occur x typ2
-  | Tuple xtyps -> List.exists (occur x -| snd) xtyps
+  | Fun(y,typ1,typ2) -> Id.(x <> y) && occur x typ1 || occur x typ2
+  | Tuple xtyps -> List.exists (fun (y,ty) -> Id.(x <> y) && occur x ty) xtyps
   | Inter(_, typs)
   | Union(_, typs) -> List.exists (occur x) typs
   | ExtArg(_,typ1,typ2) -> occur x typ1 || occur x typ2
@@ -137,14 +137,19 @@ let rec print fm = function
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print typ1 aux (xtyps', typ)
       in
       Format.fprintf fm "(%a)" aux @@ decomp_funs typ
-  | Tuple xtyps ->
-      let n = List.length xtyps in
-      let pr fm (i,(x,typ)) =
-        if i < n-1 && occur x @@ Tuple xtyps
-        then Format.fprintf fm "%a:" Id.print x;
-        print fm typ
+  | Tuple xtys ->
+      let rec aux xtys =
+        match xtys with
+        | [] -> ()
+        | [x,ty] -> print fm ty
+        | (x,ty)::xtys' ->
+            if occur x @@ Tuple xtys' then Format.fprintf fm "%a:" Id.print x;
+            Format.fprintf fm "%a * @ " print ty;
+            aux xtys'
       in
-      Format.fprintf fm "(@[%a@])" (print_list pr " *@ ") @@ List.mapi Pair.pair xtyps
+      Format.fprintf fm "(@[";
+      aux xtys;
+      Format.fprintf fm "@])"
   | Inter(styp, []) when !!Debug.check -> Format.fprintf fm "Top(%a)" Print.typ styp
   | Inter(_, []) -> Format.fprintf fm "Top"
   | Inter(_, [typ]) -> print fm typ

@@ -851,7 +851,7 @@ let rec var_name_of_term t =
   | App({desc=Var f},_) -> "r" ^ "_" ^ Id.name f
   | _ -> Type.var_name_of @@ elim_tattr t.typ
 
-let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ |@> Format.printf "%a ==> %a@." Print.term t Print.id
+let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
 
 

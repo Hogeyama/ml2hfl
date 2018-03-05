@@ -119,6 +119,7 @@ let rec of_typ typ =
   | Type.TBase Type.TBool -> Fpat.Type.mk_bool
   | Type.TFun(x,typ) -> Fpat.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
   | Type.TData "string" -> Fpat.Type.mk_string
+  | Type.TTuple xs -> Fpat.Type.mk_tuple @@ List.map (Id.typ |- of_typ) xs
   | _ ->
       Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
@@ -173,7 +174,7 @@ let rec of_term t =
         | Type.TTuple xs ->
             List.map (Id.typ |- of_typ) xs
         | _ ->
-            Format.printf "%a@." Print.typ t.S.typ;
+            Format.printf "%a@." Print.term' t;
             assert false
       in
       Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_term t]

@@ -29,32 +29,38 @@ let rec get_tuple_name_map rtyp =
   | RT.Union(_, rtyps) -> List.rev_flatten_map get_tuple_name_map rtyps
   | _ -> []
 
-let rec correct_arg_refer sty rtyp =
+let rec correct_arg_refer ?(z=None) sty rtyp =
   match rtyp, sty with
   | RT.Base _, _ -> rtyp
   | RT.Fun(x,rtyp1,rtyp2), TFun(x1,sty2) ->
-      let rtyp1' = correct_arg_refer (Id.typ x1) rtyp1 in
-      let rtyp2' = correct_arg_refer sty2 rtyp2 in
+      let rtyp1' = correct_arg_refer ~z:(Some x) (Id.typ x1) rtyp1 in
+      let rtyp2' = correct_arg_refer ~z:(Some x) sty2 rtyp2 in
       let map = get_tuple_name_map rtyp1 in
       let aux (y,path) typ =
         let t = List.fold_left (Fun.flip make_proj) (make_var x) path in
         Ref_type.subst y t typ
       in
-      RT.Fun(x, rtyp1', List.fold_right aux map rtyp2') |@> Format.printf "RT1: %a@." RT.print
+      RT.Fun(x, rtyp1', List.fold_right aux map rtyp2')
   | RT.Tuple xrtyps, TTuple xs ->
-      let aux (x,rtyp) x2 xrtyps =
-        let rtyp' = correct_arg_refer (Id.typ x2) rtyp in
+      let aux (x,rtyp) x2 (first,xrtyps) =
+        let x' =
+          match first, z with
+          | true, Some z -> z
+          | _ -> x
+        in
+        let x'' = Id.set_typ x' (Id.typ x2) in
+        let rtyp' = correct_arg_refer ~z (Id.typ x2) rtyp in
         let map = get_tuple_name_map rtyp in
         let aux' (y,path) typ =
-          let t = List.fold_left (Fun.flip make_proj) (make_var x2) path in
+          let t = List.fold_left (Fun.flip make_proj) (make_var x'') path in
           Ref_type.subst y t typ
         in
         let xrtyps' = List.map (Pair.map_snd @@ List.fold_right aux' map) xrtyps in
-        (x, rtyp') :: xrtyps'
+        false, (x, rtyp') :: xrtyps'
       in
-      RT.Tuple (List.fold_right2 aux xrtyps xs []) |@> Format.printf "RT2: %a@." RT.print
-  | RT.Inter(typ, rtyps), _ -> RT.Inter(typ, List.map (correct_arg_refer sty) rtyps)
-  | RT.Union(typ, rtyps), _ -> RT.Union(typ, List.map (correct_arg_refer sty) rtyps)
+      RT.Tuple (snd @@ List.fold_right2 aux xrtyps xs (true,[]))
+  | RT.Inter(typ, rtyps), _ -> RT.Inter(typ, List.map (correct_arg_refer ~z sty) rtyps)
+  | RT.Union(typ, rtyps), _ -> RT.Union(typ, List.map (correct_arg_refer ~z sty) rtyps)
   | RT.ExtArg(x,rtyp1,rtyp2), _ -> unsupported "correct_arg_refer"
   | RT.List _, _ -> unsupported "correct_arg_refer"
   | RT.Exn _, _ -> unsupported "correct_arg_refer"
@@ -63,7 +69,7 @@ let correct_arg_refer rtyp =
   correct_arg_refer (RT.to_simple rtyp) rtyp
 
 let rec uncurry_typ rtyp typ =
-  Debug.printf "rtyp:%a@.typ:%a@.@." RT.print rtyp Print.typ typ;
+  let r =
   match rtyp,typ with
   | RT.Inter(styp, rtyps), _ ->
       let rtyps' = List.map (uncurry_typ -$- typ) rtyps in
@@ -96,9 +102,11 @@ let rec uncurry_typ rtyp typ =
       let rtyp = RT.Fun(y, rtyp1', rtyp2') in
       List.fold_right (Fun.uncurry RT._ExtArg) exts rtyp
   | _ -> rtyp
+  in
+  Debug.printf "rtyp:%a@.typ:%a@.r:%a@.@." RT.print rtyp Print.typ typ RT.print r;r
 
 and uncurry_typ_arg rtyps typ =
-  Debug.printf "rtyps:%a@.typ:%a@.@." (print_list RT.print ";" ~last:true) rtyps Print.typ typ;
+  let r =
   match rtyps, elim_tattr typ with
   | _, TTuple xs ->
       let aux (rtyps,xrtyps) {Id.typ} =
@@ -116,15 +124,26 @@ and uncurry_typ_arg rtyps typ =
       RT.Tuple xrtyps
   | [rtyp], _ -> uncurry_typ rtyp typ
   | _ -> assert false
+  in
+  Debug.printf "rtyps:%a@.typ:%a@.r:%a@.@." Print.(list RT.print) rtyps Print.typ typ RT.print r;
+  r
 
 let uncurry_rtyp t get_rtyp f =
-  let typ = Trans.assoc_typ f t in
-  let rtyp = get_rtyp f in
-  let rtyp' = correct_arg_refer @@ uncurry_typ (RT.copy_fun_arg_to_base rtyp) typ in
-  Debug.printf "%a:@.rtyp:%a@.typ:%a@.===> %a@.@." Id.print f RT.print rtyp Print.typ typ RT.print rtyp';
-  if !!Flag.Debug.print_ref_typ
-  then Format.printf "UNCURRY: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
-  rtyp'
+  let rtyp =
+    f
+    |@> Debug.printf "%a:@." Id.print
+    |> get_rtyp
+    |@> Debug.printf "rty1: %a@." RT.print
+    |> RT.copy_fun_arg_to_base
+    |@> Debug.printf "rty2: %a@." RT.print
+    |> uncurry_typ -$- (Trans.assoc_typ f t)
+    |@> Debug.printf "rty3: %a@." RT.print
+    |> correct_arg_refer
+    |@> Debug.printf "rty4: %a@.@." RT.print
+  in
+  if !!Flag.Debug.print_ref_typ then
+    Format.printf "Curry ref_typ: %a: @[%a@]@]@." Id.print f RT.print rtyp;
+  rtyp
 
 let rec remove_pair_typ ty =
   match ty with
