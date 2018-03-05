@@ -845,7 +845,7 @@ let rec var_name_of_term t =
   | Proj(i,t) ->
       let n = tuple_num t.typ in
       let names = String.nsplit (var_name_of_term t) "__" in
-      if n = Some (List.length names)
+      if n = Some (List.length names) && List.nth names i <> ""
       then List.nth names i
       else var_name_of_term t ^ "_" ^ string_of_int i
   | App({desc=Var f},_) -> "r" ^ "_" ^ Id.name f

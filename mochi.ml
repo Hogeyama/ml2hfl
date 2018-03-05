@@ -488,7 +488,7 @@ let read_option_conf () =
   | End_of_file -> ()
 
 let merge_input_files files =
-  let filename = Filename.change_extension (List.hd files) "mml" in
+  let filename = Filename.change_extension (List.hd files) "merge.ml" in
   let cout = open_out filename in
   let ocf = Format.formatter_of_out_channel cout in
   let append file =
@@ -578,41 +578,41 @@ let string_of_exception = function
 
 let print_error = function
   | Fpat.RefTypInfer.FailedToRefineTypes ->
-      Format.printf "Verification failed:@.";
-      Format.printf "  MoCHi could not refute an infeasible error path @.";
-      Format.printf "  due to the incompleteness of the refinement type system@."
+      Format.eprintf "Verification failed:@.";
+      Format.eprintf "  MoCHi could not refute an infeasible error path @.";
+      Format.eprintf "  due to the incompleteness of the refinement type system@."
   | e when Fpat.FPATConfig.is_fpat_exception e ->
-      Format.printf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
+      Format.eprintf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
   | Syntaxerr.Error err ->
-      Format.printf "%a@." Syntaxerr.report_error err
+      Format.eprintf "%a@." Syntaxerr.report_error err
   | Typecore.Error(loc,env,err) ->
-      Format.printf "%a%a@." Location.print_error loc (Typecore.report_error env) err
+      Format.eprintf "%a%a@." Location.print_error loc (Typecore.report_error env) err
   | Typemod.Error(loc,env,err) ->
-      Format.printf "%a%a@." Location.print_error loc (Typemod.report_error env) err
+      Format.eprintf "%a%a@." Location.print_error loc (Typemod.report_error env) err
   | Env.Error e ->
-      Format.printf "%a@." Env.report_error e
+      Format.eprintf "%a@." Env.report_error e
   | Typetexp.Error(loc,env,err) ->
-      Format.printf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
+      Format.eprintf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
   | Lexer.Error(err, loc) ->
-      Format.printf "%a%a@." Location.print_error loc Lexer.report_error err
+      Format.eprintf "%a%a@." Location.print_error loc Lexer.report_error err
   | CEGAR_syntax.NoProgress ->
-      Format.printf "Unknown. (CEGAR not progress) @."
+      Format.eprintf "Unknown. (CEGAR not progress) @."
   | CEGAR_abst.NotRefined ->
-      Format.printf "Verification failed (new error path not found)@."
+      Format.eprintf "Verification failed (new error path not found)@."
   | Fatal s ->
-      Format.printf "Fatal error: %s@." s
+      Format.eprintf "Fatal error: %s@." s
   | Unsupported s ->
-      Format.printf "Unsupported: %s@." s
+      Format.eprintf "Unsupported: %s@." s
   | Sys_error s ->
-      Format.printf "%s@." s
+      Format.eprintf "%s@." s
   | TimeOut
   | Fpat.Timer.Timeout
   | Assert_failure("timer.ml", _, _) ->
-      Format.printf "Verification failed (time out)@."
+      Format.eprintf "Verification failed (time out)@."
   | Z3native.Exception("out of memory") ->
-      Format.printf "Verification failed (out of memory)@."
+      Format.eprintf "Verification failed (out of memory)@."
   | e when !Flag.Debug.debug_module = [] ->
-      Format.printf "Exception: %s@." @@ Printexc.to_string e
+      Format.eprintf "Exception: %s@." @@ Printexc.to_string e
   | e -> raise e
 
 
@@ -641,5 +641,5 @@ let () =
         Option.iter output_csv !Flag.Log.output_csv;
         Option.iter output_json !Flag.Log.output_json;
         Main_loop.print_result_delimiter ();
-        if not !!is_only_result then print_error e;
+        print_error e;
         exit 1
