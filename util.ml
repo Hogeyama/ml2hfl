@@ -317,6 +317,11 @@ module List = struct
     | [x] -> [], x
     | x::xs -> Pair.map_fst (cons x) @@ decomp_snoc xs
 
+  let rec decomp_snoc_option = function
+    | [] -> None
+    | [x] -> Some ([], x)
+    | x::xs -> Option.map (Pair.map_fst (cons x)) @@ decomp_snoc_option xs
+
   let rec mapi2 f i xs ys =
     match xs,ys with
     | [],[] -> []

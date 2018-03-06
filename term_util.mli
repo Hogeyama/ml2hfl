@@ -166,7 +166,7 @@ val get_fv : ?eq:(id -> id -> bool) -> term -> id list
 val get_id : term -> int
 val get_id_option : term -> int option
 val get_id_map : term -> (int, term) Hashtbl.t
-val get_last_definition : term -> id option
+val get_last_definition : term -> id list
 val get_body : term -> term
 val get_tdata : typ -> string list
 val get_tapred : typ -> (id * term list) option

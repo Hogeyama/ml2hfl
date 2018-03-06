@@ -340,7 +340,7 @@ let rec run spec t =
     |> Uncurry.to_tfuns
     |@> pr ~check_typ:None "to_tfuns"
   in
-  let main = Option.get @@ get_last_definition t' in
+  let main = List.last @@ get_last_definition t' in
   Debug.printf "MAIN: %a@." Id.print main;
   let top_funs = List.filter_out (Id.same main) @@ get_top_funs t' in
   let top_funs' = List.filter (is_fun_typ -| Id.typ) top_funs in

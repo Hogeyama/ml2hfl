@@ -992,20 +992,19 @@ let subst_tdata_map,subst_tdata_typ_map =
 let rec get_last_definition prefix env def t =
   match t.desc with
   | Local(Decl_let bindings, t2) ->
-      let f,t = List.last bindings in
-      get_last_definition prefix env (Some (env,f,t)) t2
+      get_last_definition prefix env (Some (env,bindings)) t2
   | Local(Decl_type decls, t2) ->
       let env' = List.map (fun (s,_) -> s, TData (prefix ^ s)) decls @ env in
       get_last_definition prefix env' def t2
   | Module decls -> unsupported "get_last_definition"
-  | Fun _ -> None
+  | Fun _ -> []
   | _ ->
       match def with
-      | None -> None
-      | Some (env', m, {desc=Module decls}) ->
+      | None -> []
+      | Some (env', [m, {desc=Module decls}]) ->
           List.fold_right make_local decls end_of_definitions
           |> get_last_definition (Id.name m ^ "." ^ prefix) env None
-      | Some (env',f,_) -> Some (Id.map_typ (subst_tdata_typ_map env') f)
+      | Some (env', bindings) -> List.map (fst |- Id.map_typ (subst_tdata_typ_map env')) bindings
 let get_last_definition t = get_last_definition "" [] None t
 
 let rec get_body t =

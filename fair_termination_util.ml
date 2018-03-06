@@ -164,9 +164,9 @@ let insert_extra_param = insert_extra_param.tr2_term []
 
 
 let set_main t =
-  match get_last_definition t with
+  match List.decomp_snoc_option @@ get_last_definition t with
   | None -> unsupported "fair_termination: set_main"
-  | Some f ->
+  | Some(_, f) ->
       let xs = get_args (Id.typ f) in
       if false then Format.printf "%a@." Print.id_typ f;
       let aux x =

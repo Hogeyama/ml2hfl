@@ -1517,13 +1517,13 @@ let elim_unused_let =
   in
   tr.tr2_term <- tr_term;
   fun ?(leave_last=false) ?(cbv=true) t ->
-  let leave =
-    if leave_last then
-      Option.to_list @@ get_last_definition t
-    else
-      []
-  in
-  tr.tr2_term (leave,cbv) t
+    let leave =
+      if leave_last then
+        get_last_definition t
+      else
+        []
+    in
+    tr.tr2_term (leave,cbv) t
 
 let subst_with_rename =
   let tr = make_trans2 () in
@@ -1991,11 +1991,11 @@ let rec replace_main ?(force=false) main t =
       main
 
 let set_main t =
-  match get_last_definition t with
+  match List.decomp_snoc_option @@ get_last_definition t with
   | None ->
       let u = Id.new_var ~name:"main" t.typ in
       None, make_let [u, t] unit_term
-  | Some f ->
+  | Some(_, f) ->
       let xs = get_args (Id.typ f) in
       let t' =
         if xs = [] && Id.typ f = Ty.unit then
@@ -3017,7 +3017,7 @@ let split_mutual_rec =
                   |> Term.(f |-> t_f)
                   |> subst_var_map arg_map
                 in
-                let acc' = (f,t_f)::acc in
+                let acc' = (f,t_f) :: List.map (Pair.map_snd @@ subst f t_f) acc in
                 (f', make_funs args' t1') :: aux acc' bindings'
           in
           aux [] bindings'

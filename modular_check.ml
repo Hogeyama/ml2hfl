@@ -272,6 +272,7 @@ let check prog f typ depth =
     Debug.printf "t': %a@." Print.term t';
     add_context prog f xs t' typ
   in
+  Format.printf "fun_env': %a@." Print.(list @@ pair id term') fun_env';
   let top_funs = List.map fst fun_env' in
   Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   Debug.printf "  t: %a@." Print.term_typ t;
@@ -290,6 +291,7 @@ let check prog f typ depth =
   in
   let (result, make_get_rtyp, set_target'), main, set_target =
     t
+    |@> Debug.printf "  t: %a@.@." Print.term_typ
     |> make_lets fun_env'
     |> add_preds
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
