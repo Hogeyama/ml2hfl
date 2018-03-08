@@ -530,9 +530,8 @@ let parse_arg () =
         Config.load_path := Filename.dirname !!Flag.mainfile :: !Config.load_path;
         filename
   in
-  let cin = open_in filename in
   Flag.Method.input_cegar := String.ends_with !!Flag.mainfile ".cegar";
-  cin
+  open_in filename
 
 (* called before parsing options *)
 let fpat_init1 () =

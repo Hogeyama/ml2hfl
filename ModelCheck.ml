@@ -2,7 +2,6 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
-open ModelCheck_util
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 

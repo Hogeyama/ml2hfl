@@ -260,7 +260,7 @@ let make_init_ce_set f t =
 
 
 let check prog f typ depth =
-  Debug.printf "MAIN_LOOP prog: %a@." print_prog prog;
+  Debug.printf "MODULAR_CHECK prog: %a@." print_prog prog;
   let {fun_typ_env=env; fun_def_env=fun_env} = prog in
   let t,fun_env' =
     let xs, t = decomp_funs @@ Id.assoc f prog.fun_def_env in

@@ -762,9 +762,7 @@ module Marshal = struct
   include BatMarshal
 
   let to_file file x =
-    let cout = open_out file in
-    Marshal.to_channel cout x [];
-    close_out cout
+    IO.CPS.open_out file (fun cout -> Marshal.to_channel cout x [])
 
   let from_file file default =
     if Sys.file_exists file then
