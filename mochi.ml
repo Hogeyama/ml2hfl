@@ -467,7 +467,7 @@ let set_file name =
     | None -> name
     | Some pp ->
         let name' = Filename.change_extension name "pml" in
-        ignore @@ Sys.command @@ (Format.sprintf "%s %s -o '%s'" pp name name' |@> Format.printf "RUN: %s@.");
+        ignore @@ Sys.command @@ Format.sprintf "%s %s -o '%s'" pp name name';
         name'
   in
   Flag.filenames := name' :: !Flag.filenames
