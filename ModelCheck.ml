@@ -156,7 +156,9 @@ let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
   let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
     f, xs@ys, t1, e, t2''
 
-let eta_expand prog = CEGAR_lift.lift2 {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
+let eta_expand prog =
+  {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
+  |> CEGAR_lift.lift2
 
 let trans_ce ce =
   let aux (s,_) =
@@ -278,6 +280,7 @@ let pr s t =
 let preprocess prog =
   Format.printf "WARNING: model checking for non-CPS programs is unmaintained.@.";
   prog
+  |@> pr "INPUT"
   |> CEGAR_CPS.trans -$- true
   |@> pr "CPS"
   |> eta_expand
@@ -298,6 +301,7 @@ let preprocess prog =
 
 let preprocess_cps prog =
   prog
+  |@> pr "INPUT"
   |> eta_expand
   |@> pr "eta_expand"
   |> elim_non_det
