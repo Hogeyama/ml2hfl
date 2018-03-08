@@ -480,8 +480,6 @@ let remove_id_event = map_def_prog (fun (f,xs,t1,e,t2) -> f, xs, t1, List.remove
 
 let rename_prog prog =
   Debug.printf "@.BEFORE RENAMING:@.%a@." CEGAR_print.prog_typ prog;
-  let counter1 = Id.get_counter () in
-  Id.clear_counter ();
   let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
   let var_names = List.rev_map id_name (List.unique vars) in
   let rename_id' x var_names =
@@ -547,7 +545,6 @@ let rename_prog prog =
   Debug.printf "@.RENAMED:@.%a@." CEGAR_print.prog_typ prog;
   ignore @@ Typing.infer prog;
   let rmap = List.map (Pair.map_snd trans_inv_var) fun_map in
-  Id.set_counter counter1;
   prog, fun_map, rmap
 
 let id_prog prog =
