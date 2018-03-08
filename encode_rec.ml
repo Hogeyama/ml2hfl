@@ -181,7 +181,7 @@ let rec abst_recdata_pat env p =
     | PSome p ->
         let p',cond,bind = abst_recdata_pat env p in
         let x = Id.new_var typ in
-        PVar x, make_is_some @@ make_var x, (make_get_val @@ make_var x, p')::bind
+        PVar x, make_and cond (make_is_some @@ make_var x), (make_get_val @@ make_var x, p')::bind
   in
   {pat_desc=desc; pat_typ=typ}, cond, bind
 
@@ -244,7 +244,7 @@ let abst_recdata_term env t =
         let aux (t,p) t' =
           make_match t [p, true_term, t']
         in
-        p', make_and c c', List.fold_right aux bind t'
+        p', List.fold_right aux bind (make_and c c'), List.fold_right aux bind t'
       in
       let t1' = abst_recdata.tr2_term env t1 in
       let pats' = List.map aux pats in

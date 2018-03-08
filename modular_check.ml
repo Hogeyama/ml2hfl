@@ -269,10 +269,8 @@ let check prog f typ depth =
       let fun_env' = List.filter (fst |- Id.mem -$- fs) fun_env in
       make_lets fun_env' t
     in
-    Debug.printf "t': %a@." Print.term t';
     add_context prog f xs t' typ
   in
-  Format.printf "fun_env': %a@." Print.(list @@ pair id term') fun_env';
   let top_funs = List.map fst fun_env' in
   Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   Debug.printf "  t: %a@." Print.term_typ t;

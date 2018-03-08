@@ -111,7 +111,14 @@ let rec generate_check typ_exn make_fail genv cenv x typ =
   | Union(_, typs) ->
       let aux (genv',cenv',ts) typ =
         let genv'',cenv'',t = generate_check typ_exn make_fail genv' cenv' x typ in
-        genv'', cenv'', ts@[t]
+        let t' =
+          match typ_exn with
+          | None -> t
+          | Some typ_exn' ->
+              let e = Id.new_var ~name:"e" typ_exn' in
+              U.make_trywith_simple t U.Term.(fun_ e false_)
+        in
+        genv'', cenv'', t'::ts
       in
       let genv'',cenv'',ts = List.fold_left aux (genv,cenv,[]) typs in
       genv'', cenv'', U.make_ors ts
@@ -306,6 +313,7 @@ and generate typ_exn make_fail genv cenv typ =
         unsupported "Ref_type_gen.generate: Inter"
     | Union(styp, []) -> [], [], U.make_bottom styp
     | Union(_, [typ]) -> generate typ_exn make_fail genv cenv typ
+(*
     | Union(_, ((Tuple _)::_ as typs)) ->
         let genv',cenv',ts =
           let aux typ (genv,cenv,ts) =
@@ -315,7 +323,16 @@ and generate typ_exn make_fail genv cenv typ =
           List.fold_right aux typs (genv,cenv,[])
         in
         genv', cenv', List.fold_left U.make_br (List.hd ts) (List.tl ts)
-    | Union(_, typs) -> unsupported "Ref_type_gen.generate: Union"
+ *)
+    | Union(_, typs) ->
+        let genv',cenv',ts =
+          let aux typ (genv,cenv,ts) =
+            let genv',cenv',t = generate typ_exn make_fail genv cenv typ in
+            genv',cenv',t::ts
+          in
+          List.fold_right aux typs (genv,cenv,[])
+        in
+        genv', cenv', List.fold_left U.make_br (List.hd ts) (List.tl ts)
     | ExtArg(x,typ1,typ2) -> unsupported "Ref_type_gen.generate: ExtArg"
     | List(x,p_len,y,p_i,typ') ->
         if p_i.S.desc <> S.Const S.True || occur y typ' then

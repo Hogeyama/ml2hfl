@@ -111,7 +111,7 @@ let infer prog f typ ce_set2 depth =
 
 let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
   let space = String.make (8*List.length history) ' ' in
-  let pr f = MVerbose.printf ("%s%a@[<hov 2>#[MAIN_LOOP]%t" ^^ f ^^ "@.") space Color.set Color.Red Color.reset in
+  let pr f = MVerbose.printf ("%s%a@[<hov 2>#[MAIN_LOOP %.2f]%t" ^^ f ^^ "@.") space Color.set Color.Red !!Time.get Color.reset in
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
   if Ref_type.subtype (Ref_type.Env.assoc f env) typ then
     (pr " TYPABLE (skip): %a :@ %a@." Id.print f Ref_type.print typ;
@@ -188,6 +188,8 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
                 else if false then
                   (MVerbose.printf "%sdepth := %d@." space (idepth+1);
                    main_loop_ind history (c+1) prog cmp dep f typ cdepth (idepth+1) ce_set3)
+                else if true then
+                  `Untypable, env', neg_env', ce_set2
                 else
                   raise NoProgress
               (*
@@ -204,7 +206,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
 
 let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
   let {fun_typ_env=env; fun_typ_neg_env=neg_env; fun_def_env} = prog in
-  let pr f = MVerbose.printf ("%a@[<hov 2>#[MAIN_LOOP]%t " ^^ f ^^ "@.") Color.set Color.Red Color.reset in
+  let pr f = MVerbose.printf ("%a@[<hov 2>#[MAIN_LOOP %.2f]%t " ^^ f ^^ "@.") Color.set Color.Red !!Time.get Color.reset in
   Debug.printf "TIME: %.3f@." !!Time.get;
   let rec check env ce_set candidates =
     match candidates with

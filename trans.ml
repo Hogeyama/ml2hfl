@@ -25,7 +25,7 @@ let map_id =
   tr.tr2_var <- (fun f -> f -| tr.tr2_var_rec f);
   tr.tr2_term
 
-let alpha_rename ?(whole=false) =
+let alpha_rename ?(whole=false) ?(set_counter=false) =
   let prefix = '#' in
   let tr = make_trans2 () in
   let tr_desc (cnt,names) desc =
@@ -71,7 +71,7 @@ let alpha_rename ?(whole=false) =
     t
     |> tr.tr2_term (cnt,names)
     |> map_id remove_sharp
-    |@whole&> set_id_counter_to_max
+    |@set_counter&> set_id_counter_to_max
 
 let inst_tvar, inst_tvar_typ =
   let tr = make_trans2 () in
@@ -2871,7 +2871,7 @@ let mark_fv_as_external =
     | Match(t1, pats) ->
         let t1' = tr.tr2_term_rec bv t1 in
         let aux (p,cond,t) =
-          let bv' = get_bv_pat p in
+          let bv' = get_bv_pat p @ bv in
           p, tr.tr2_term bv' cond, tr.tr2_term bv' t
         in
         Match(t1', List.map aux pats)

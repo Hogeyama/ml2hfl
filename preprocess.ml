@@ -135,7 +135,7 @@ let all spec : t list =
        map_trans Trans.mark_fv_as_external);
     Alpha_rename,
       (Fun.const true,
-       map_trans @@ Trans.alpha_rename ~whole:true);
+       map_trans @@ Trans.alpha_rename ~whole:true ~set_counter:true);
     Eliminate_unused_let,
       (Fun.const true,
        map_trans @@ Trans.elim_unused_let ~leave_last:true);
