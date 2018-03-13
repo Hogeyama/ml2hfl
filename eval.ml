@@ -56,6 +56,7 @@ let rec eval_print fm rands t =
   | Const(RandValue(Type.TBase Type.TInt,true)) -> assert false
   | Const(RandValue(typ,_)) -> unsupported "eval: RandValue"
   | Const c -> rands, t
+  | Var y when Id.name y = "List.length" -> rands, t
   | Var y -> unsupported "error trace with external funcitons"
   | Fun _ -> rands, t
   | App(t1, ts) ->
@@ -67,6 +68,8 @@ let rec eval_print fm rands t =
       begin
         match vs with
         | {desc=Fun(x,t)}::v1::vs' -> eval_print fm rands' @@ make_app (subst' x v1 t) vs'
+        | [{desc=Var x}; v] when Id.name x = "List.length" ->
+            rands', make_int @@ List.length @@ Option.get @@ decomp_list v
         | _ -> assert false
       end
   | If(t1, t2, t3) ->
