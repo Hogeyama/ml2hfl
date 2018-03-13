@@ -36,7 +36,10 @@ let alpha_rename ?(whole=false) ?(set_counter=false) =
           if StringSet.mem s !names then
             Counter.gen cnt
           else
-            (names := StringSet.add s !names; 0)
+            if s = "" then
+              Id.id x
+            else
+              (names := StringSet.add s !names; 0)
         else
           Id.new_int()
       in
@@ -64,12 +67,14 @@ let alpha_rename ?(whole=false) ?(set_counter=false) =
   in
   tr.tr2_desc <- tr_desc;
   tr.tr2_typ <- Fun.snd;
-  let remove_sharp = Id.map_name (fun s -> if s.[0] = prefix then String.tl s else s) in
+  let remove_sharp = Id.map_name (fun s -> if s <> "" && s.[0] = prefix then String.tl s else s) in
   fun t ->
     let cnt = !!Counter.create in
     let names = ref StringSet.empty in
     t
+    |@> Debug.printf "INPUT: %a@." Print.term
     |> tr.tr2_term (cnt,names)
+    |@> Debug.printf "OUTPUT: %a@." Print.term
     |> map_id remove_sharp
     |@set_counter&> set_id_counter_to_max
 
