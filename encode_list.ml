@@ -218,7 +218,7 @@ let abst_list_term post t =
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in
       make_app (make_snd t1') [t2']
-  | App({desc=Var x}, [t]) when Id.(x = make_length_var typ_unknown) -> make_fst @@ abst_list.tr2_term post t
+  | App({desc=Var x}, [t]) when is_length_var x -> make_fst @@ abst_list.tr2_term post t
   | Local(Decl_let bindings, t2) ->
       let aux (f,t) =
         let post' = "_" ^ Id.name f in
@@ -500,7 +500,7 @@ let trans_opt t =
 
 let pr s t = Debug.printf "##[encode_list] %s:@.%a@.@." s Print.term t
 
-let trans t =
+let trans_term t =
   let tr =
     if !Flag.Method.encode_list_opt then
       trans_opt
@@ -531,8 +531,40 @@ let trans t =
   |*@> pr "simplify_if" -| fst
   |*@> (fun t -> Type_check.check t ~ty:t.typ) -| fst
 
+let trans_var x =
+  if !Flag.Method.encode_list_opt then
+    abst_list_opt.tr_var x
+  else
+    abst_list.tr2_var "" x
+
 let trans_typ typ =
   if !Flag.Method.encode_list_opt then
     abst_list_opt.tr_typ typ
   else
     abst_list.tr2_typ "" typ
+
+let rec trans_rty ty =
+  let open Ref_type in
+  match ty with
+  | Base(base,x,t) -> Base(base, x, fst @@ trans_term t)
+  | Fun(x,ty1,ty2) -> Fun(trans_var x, trans_rty ty1, trans_rty ty2)
+  | Tuple xtys -> Tuple (List.map (Pair.map trans_var trans_rty) xtys)
+  | Inter(sty,tys) -> Inter(trans_typ sty, List.map trans_rty tys)
+  | Union(sty,tys) -> Union(trans_typ sty, List.map trans_rty tys)
+  | ExtArg(x,ty1,ty2) -> ExtArg(trans_var x, trans_rty ty1, trans_rty ty2)
+  | List(x,p_len,y,p_i,ty2) ->
+      if !Flag.Method.encode_list_opt then
+        unsupported "encode_list_opt"
+      else
+        let p_len',_ = trans_term p_len in
+        let p_i',_ = trans_term p_i in
+        let ty2' = trans_rty ty2 in
+        let ty_f = Fun(y, Base(Int,y,p_i'), ty2') in
+        let f = Id.new_var @@ to_simple ty_f in
+        Tuple [x,Base(Int,x,p_len'); f, ty_f]
+  | Exn(ty1,ty2) -> Exn(trans_rty ty1, trans_rty ty2)
+
+let trans_env env =
+  Ref_type.Env.map_value trans_rty env
+
+let trans = Program.map_on Focus.fst ~tr_env:trans_env trans_term

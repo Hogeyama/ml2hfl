@@ -1524,7 +1524,7 @@ let elim_unused_let =
   fun ?(leave_last=false) ?(cbv=true) t ->
     let leave =
       if leave_last then
-        get_last_definition t
+        List.map fst @@ get_last_definition t
       else
         []
     in
@@ -1669,9 +1669,7 @@ let expand_let_val =
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
-  fun t ->
-    assert (List.mem ACPS t.attr);
-    tr.tr_term t
+  tr.tr_term
 
 let rec eval_aexp t =
   match t.desc with
@@ -1737,12 +1735,7 @@ let beta_reduce =
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
-  fun t ->
-    let t' = tr.tr_term t in
-    if List.mem ACPS t.attr => List.mem ACPS t'.attr then
-      t'
-    else
-      add_attr ACPS t'
+  tr.tr_term
 
 let replace_bottom_def =
   let tr = make_trans () in
@@ -1995,37 +1988,16 @@ let rec replace_main ?(force=false) main t =
       assert (force || t.desc = Const End_of_definitions);
       main
 
-let set_main t =
+let main_name = "main"
+
+let replace_main_wrap main t =
+  let u = Id.new_var ~name:main_name main.typ in
+  replace_main Term.(let_ [u, main] unit) t
+
+let get_set_main t =
   match List.decomp_snoc_option @@ get_last_definition t with
-  | None ->
-      let u = Id.new_var ~name:"main" t.typ in
-      None, make_let [u, t] unit_term
-  | Some(_, f) ->
-      let xs = get_args (Id.typ f) in
-      let t' =
-        if xs = [] && Id.typ f = Ty.unit then
-          replace_main (make_var f) t
-        else
-          let bindings =
-            let aux i x =
-              let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-              let t = make_randvalue_unit @@ Id.typ x in
-              x', t
-            in
-            List.mapi aux xs
-          in
-          let main =
-            bindings
-            |> List.map fst
-            |> List.map make_var
-            |> make_app (make_var f)
-            |> make_lets bindings
-            |> inst_randval
-          in
-          let u = Id.new_var ~name:"main" main.typ in
-          replace_main (make_let [u, main] unit_term) t
-      in
-      Some (Id.name f, List.length xs), t'
+  | Some (_, (x, t)) when Id.name x = main_name -> Some x
+  | _ -> None
 
 let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
   let typ_exn =
@@ -2047,10 +2019,34 @@ let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
       let defs = List.map snd (genv' @ cenv') in
       make_lets defs @@ make_assert t_typ
     in
-    List.fold_right (make_seq -| aux) ref_env unit_term
+    let ts = List.map aux ref_env in
+    Term.(seqs ts unit)
   in
   let map = List.map (Pair.map_snd Ref_type.to_abst_typ) ref_env in
-  merge_bound_var_typ map @@ replace_main main t
+  merge_bound_var_typ map @@ replace_main_wrap main t
+
+let set_main t =
+  match List.decomp_snoc_option @@ get_last_definition t with
+  | None ->
+      let u = Id.new_var ~name:"main" t.typ in
+      make_let [u, t] unit_term
+  | Some(_, (f,_)) ->
+      let main =
+        match get_args (Id.typ f) with
+        | [] -> make_var f
+        | xs ->
+            let bindings =
+              let aux i x =
+                let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+                let t = make_randvalue_unit @@ Id.typ x in
+                x', t
+              in
+              List.mapi aux xs
+            in
+            let ys = List.map fst bindings in
+            inst_randval Term.(lets bindings (var f @ vars ys))
+      in
+      replace_main_wrap main t
 
 let recover_const_attr_shallowly t =
   let attr =
@@ -2469,7 +2465,7 @@ let direct_from_CPS =
   in
   tr.tr_typ <- tr_typ;
   tr.tr_desc <- tr_desc;
-  remove_attr ACPS -| tr.tr_term
+  tr.tr_term
 
 let reduce_fail_unit =
   let tr = make_trans () in
@@ -2973,8 +2969,7 @@ let set_length_typ =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | App({desc=Var length}, [t]) when Id.name length = "List.length" ->
-        (make_length @@ tr.tr_term t).desc
+    | App({desc=Var x}, [t]) when is_length_var x -> (make_length @@ tr.tr_term t).desc
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;

@@ -283,7 +283,7 @@ let typ_in_env ty tys =
 let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term_typ t
 
 let trans_typ = abst_recdata.tr2_typ []
-let trans t =
+let trans_term t =
   let ty = trans_typ t.typ in
   t
   |@> pr "input"
@@ -296,3 +296,6 @@ let trans t =
   |> Trans.simplify_match
   |@> pr "simpify_match"
   |@> Type_check.check ~ty
+
+(* TODO: support records in refinement types *)
+let trans : Program.t -> Program.t = Program.map trans_term

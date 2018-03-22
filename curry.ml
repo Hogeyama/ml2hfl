@@ -7,6 +7,7 @@ open Rose_tree
 module RT = Ref_type
 
 let leaf x = leaf (Some x)
+let node tys = Node(None, tys)
 let root x = Option.get @@ root x
 let flatten x = List.filter_map Fun.id @@ flatten x
 let map f x = map (fun path label -> Option.map (f path) label) x
@@ -154,9 +155,6 @@ let rec remove_pair_typ ty =
       let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
       leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
   | TTuple xs -> Node (None, List.map (remove_pair_typ -| Id.typ) xs)
-  (*
-  | TApp(TList, typs) -> leaf (TList (root (remove_pair_typ typ)))
-   *)
   | TData s -> leaf (TData s)
   | TAttr(_, TTuple[x; {Id.typ}]) as typ0 when get_tapred typ0 <> None ->
       let y,ps = Option.get @@ get_tapred typ0 in
@@ -165,12 +163,12 @@ let rec remove_pair_typ ty =
         | TFun _ -> (* Function types cannot have predicates *)
             let x1 = Id.new_var_id x in
             let x2 = Id.new_var typ in
-            let ps' = List.map (subst y @@ make_pair (make_var x1) (make_var x2)) ps in
+            let ps' = List.map Term.(y |-> pair (var x1) (var x2)) ps in
             let x' = Id.map_typ (add_tapred x1 ps') x in
             remove_pair_typ @@ TTuple [x'; Id.new_var typ]
         | _ ->
             let y' = Id.set_typ y typ in
-            let ps' = List.map (subst y @@ make_pair (make_var x) (make_var y')) ps in
+            let ps' = List.map Term.(y |-> pair (var x) (var y')) ps in
             let typ' = add_tapred y' ps' typ in
             remove_pair_typ @@ TTuple [x; Id.new_var typ']
       end
@@ -184,11 +182,9 @@ let rec remove_pair_typ ty =
       in
       leaf (add_tapred x ps' typ')
   | TAttr(attr, typ) -> leaf @@ TAttr(attr, root @@ remove_pair_typ typ)
-  (*
-  | TPred({Id.typ=TTuple _}, ps) ->
-      unsupported "Not implemented: remove_pair_typ"
-   *)
-  | typ -> Format.printf "remove_pair_typ: %a@." Print.typ typ; assert false
+  | typ ->
+      Format.printf "remove_pair_typ: %a@." Print.typ typ;
+      assert false
 
 and remove_pair_var x =
   let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
@@ -256,10 +252,8 @@ and remove_pair_aux t typ_opt =
   | Tuple ts -> Node(None, List.map (remove_pair_aux -$- None) ts)
   | Proj(i, {desc=Var x}) when x = abst_var -> leaf (make_var x) (* for predicates *)
   | Proj(i,t) ->
-      begin
-        match remove_pair_aux t None with
-        | Node (_, ts) -> List.nth ts i
-      end
+      let Node(_, ts) = remove_pair_aux t None in
+      List.nth ts i
   | _ ->
       Format.printf "%a@." Print.term t;
       assert false
@@ -267,9 +261,44 @@ and remove_pair_aux t typ_opt =
 and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
 
 
+let rec remove_pair_arg x ty =
+  let xtys,map = remove_pair_ref_typ ty in
+  match ty with
+  | RT.Tuple ytys ->
+      let xtys = List.map (Pair.map_fst Option.get) xtys in
+      let map' = (x, make_tuple @@ List.map (fst |- make_var) ytys) :: map in
+      xtys, map'
+  | _ -> [x, snd @@ List.get xtys], []
 
-let remove_pair ?(check=true) t =
-  assert (check => List.mem ACPS t.attr);
+and remove_pair_ref_typ ty =
+  match ty with
+  | RT.Base _ -> [None, ty], []
+  | RT.Fun(x,ty1,ty2) ->
+      let xtys,map = remove_pair_arg x ty1 in
+      let ty2' =
+        remove_pair_ref_typ ty2
+        |> fst
+        |> List.get
+        |> snd
+        |> RT.subst_map map
+      in
+      let ty' = List.fold_right (fun (x,ty1) ty2 -> RT.Fun(x,ty1,ty2)) xtys ty2' in
+      [None, ty'], []
+  | RT.Tuple xtys ->
+      let aux (x,ty) (xtys,map) =
+        let xtys',map' = remove_pair_arg x ty in
+        List.map (Pair.map Option.some (RT.subst_map map)) xtys' @ xtys,
+        map' @ map
+      in
+      List.fold_right aux xtys ([],[])
+  | _ ->
+      Format.printf "remove_pair_typ: %a@." Ref_type.print ty;
+      assert false
+let remove_pair_ref_typ = snd -| List.get -| fst -| remove_pair_ref_typ
+
+
+let remove_pair ?(check=true) {Program.term=t; env=rtenv; attr} =
+  assert (check => List.mem Program.ACPS attr);
   let pr s = Debug.printf "##[remove_pair] %s: %a@." s Print.term in
   let t' =
     t
@@ -282,6 +311,11 @@ let remove_pair ?(check=true) t =
     |> Trans.beta_size1
     |@> pr "beta_size1"
   in
-  t', uncurry_rtyp t
+  let rtenv = Ref_type.Env.map_value remove_pair_ref_typ rtenv in
+  {Program.term=t'; env=rtenv; attr}, uncurry_rtyp t
 
-let remove_pair_direct t = remove_pair ~check:false t
+let remove_pair_direct t =
+  t
+  |> Program.make
+  |> remove_pair ~check:false
+  |> Pair.map_fst Program.term

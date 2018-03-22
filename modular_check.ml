@@ -211,7 +211,11 @@ let add_context prog f xs t typ =
   let etyp = TVariant(false,exn_decl@[af,[]]) in
   let typ_exn = Encode.typ_of Encode.all etyp in
   let make_fail typ =
-    Encode.all @@ Trans.replace_fail_with (Raise(make_construct af [] etyp)) @@ make_fail typ
+    make_fail typ
+    |> Trans.replace_fail_with (Raise(make_construct af [] etyp))
+    |> Program.make
+    |> Encode.all
+    |> Program.term
   in
   let fail_unit_desc = (make_fail Ty.unit).desc in
   let t' =
@@ -287,15 +291,16 @@ let check prog f typ depth =
     Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
     Trans.merge_bound_var_typ map
   in
-  let (result, make_get_rtyp, set_target'), main, set_target =
+  let result, make_get_rtyp, _, set_target, main =
     t
     |@> Debug.printf "  t: %a@.@." Print.term_typ
     |> make_lets fun_env'
     |> add_preds
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check ~ty:Ty.unit
-    |> Trans.map_main (make_seq -$- end_of_definitions) (* ??? *)
-    |> Main_loop.verify ~make_pps:(Some(make_pps)) ~fun_list:(Some []) [] Spec.init
+    |> Trans.map_main Term.(seq -$- eod) (* ??? *)
+    |> Program.make
+    |> Main_loop.loop (Some(make_pps)) (Some []) [] Spec.init
   in
   match result with
   | CEGAR.Safe env ->

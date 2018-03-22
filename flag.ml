@@ -1,5 +1,5 @@
-let omega = ref Environment.omega
-let cvc3 = ref Environment.cvc3
+let omega = ref Mconfig.omega
+let cvc3 = ref Mconfig.cvc3
 
 let filenames : string list ref = ref []
 let mainfile () = List.hd !filenames
@@ -137,13 +137,13 @@ module Refine = struct
 end
 
 module ModelCheck = struct
-  let trecs = ref Environment.trecs
-  let horsat = ref Environment.horsat
-  let horsat2 = ref Environment.horsat2
-  let horsatp = ref Environment.horsatp
+  let trecs = ref Mconfig.trecs
+  let horsat = ref Mconfig.horsat
+  let horsat2 = ref Mconfig.horsat2
+  let horsatp = ref Mconfig.horsatp
 
   type model_checker = TRecS | HorSat | HorSat2 | HorSatP
-  let mc = ref (if Environment.horsat2_available then HorSat2 else if Environment.horsat_available then HorSat else TRecS)
+  let mc = ref (if Mconfig.horsat2_available then HorSat2 else if Mconfig.horsat_available then HorSat else TRecS)
 
   let church_encode = ref false
   let beta_reduce = false

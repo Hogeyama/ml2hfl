@@ -17,7 +17,6 @@ let typ_event' = Ty.(fun_ unit typ_result)
 let typ_event_cps = Ty.(funs [unit; fun_ unit typ_result] typ_result)
 let typ_exn = TData "exn"
 
-let dummy_var = Id.make (-1) "" [] Ty.int
 let abst_var = Id.make (-1) "v" [] typ_unknown
 let abst_var_int = Id.set_typ abst_var Ty.int
 let abst_var_bool = Id.set_typ abst_var Ty.bool
@@ -302,10 +301,10 @@ let make_eq_dec t1 t2 =
   let t2',k2 = aux t2 in
   k1 @@ k2 @@ make t1' t2'
 
+let is_length_var x = Id.name x = "List.length"
 let make_length_var typ =
   let x = Id.make (-1) "l" [] typ in
   Id.make (-1) "List.length" [] (TFun(x, Ty.int))
-
 let make_length t =
   {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
 
@@ -1004,12 +1003,12 @@ let rec get_last_definition prefix env def t =
       | Some (env', [m, {desc=Module decls}]) ->
           List.fold_right make_local decls end_of_definitions
           |> get_last_definition (Id.name m ^ "." ^ prefix) env None
-      | Some (env', bindings) -> List.map (fst |- Id.map_typ (subst_tdata_typ_map env')) bindings
+      | Some (env', bindings) -> List.map (Pair.map_fst @@ Id.map_typ (subst_tdata_typ_map env')) bindings
 let get_last_definition t = get_last_definition "" [] None t
 
 let rec get_body t =
   match t.desc with
-  | Local(_, t2) -> get_body t
+  | Local(_, t2) -> get_body t2
   | _ -> t
 
 let count_occurrence x t =
@@ -1262,6 +1261,7 @@ module Term = struct
   let randb = randbool_unit_term
   let rand = make_randvalue_unit
   let bot = make_bottom
+  let eod = end_of_definitions
   let var = make_var
   let vars = List.map make_var
   let int = make_int

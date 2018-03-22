@@ -272,7 +272,7 @@ let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   in
   Debug.printf "BEFORE:@.%a@." Print.term t''';
   Debug.printf "HEAD:@.%a@." Print.term @@ List.hd ts;
-  List.for_all (fun t -> incr Flag.FairTermination.loop_count; Main_loop.run [] ~exparam_sol t) ts
+  List.for_all (fun t -> incr Flag.FairTermination.loop_count; Main_loop.run [] ~exparam_sol @@ Program.make t) ts
 
 let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWithExparams preds_info(*need?*) t =
   try
@@ -330,7 +330,9 @@ let rec run spec t =
     |@> pr "copy poly. funs."
     |> remove_and_replace_event
     |@> pr "remove_and_replace_event"
+    |> Program.make
     |> Encode_rec.trans
+    |> Program.term
     |&!Flag.Termination.add_closure_exparam&> insert_extra_param
     |@!Flag.Termination.add_closure_exparam&> pr "insert extra parameters"
     |> normalize
@@ -340,7 +342,7 @@ let rec run spec t =
     |> Uncurry.to_tfuns
     |@> pr ~check_typ:None "to_tfuns"
   in
-  let main = List.last @@ get_last_definition t' in
+  let main,_ = List.last @@ get_last_definition t' in
   Debug.printf "MAIN: %a@." Id.print main;
   let top_funs = List.filter_out (Id.same main) @@ get_top_funs t' in
   let top_funs' = List.filter (is_fun_typ -| Id.typ) top_funs in

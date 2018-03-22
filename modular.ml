@@ -385,8 +385,12 @@ let main _ spec parsed =
     |@> pr "REF_TO_ASSERT" Print.term_typ
     |*> assert_to_fun
     |*@> pr "ASSERT_TO_FUN" Print.term_typ
+    |> Program.make
     |> Preprocess.run pps
+    |@> (fun results -> if List.length results <> 1 then unsupported "preprocess")
+    |> List.hd
     |> Preprocess.last_t
+    |> Program.term
     |> Trans.split_mutual_rec
     |> top_to_local
     |@> pr "TOP_TO_LOCAL" Print.term_typ

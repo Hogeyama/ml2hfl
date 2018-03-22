@@ -94,7 +94,6 @@ and print_const fm c =
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 
 and print_attr fm = function
-  | ACPS -> fprintf fm "ACPS"
   | AAbst_under -> fprintf fm "AAbst_under"
   | ATerminate -> fprintf fm "ATerminate"
   | ANotFail -> fprintf fm "ANotFail"

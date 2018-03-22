@@ -6,6 +6,7 @@ module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 type preprocess_label =
   | Init
+  | Set_main
   | Eliminate_unused_let
   | Replace_const
   | Lift_type_decl
@@ -51,14 +52,14 @@ type preprocess_label =
   | Inline_simple_types
   | Abst_polymorphic_comparison
 
-type tr_result = Syntax.term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-
-type results = (preprocess_label * tr_result) list
-
-type t = preprocess_label * ((results -> bool) * (results -> tr_result))
+type tr_result = Program.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
+type tr = Program.t -> tr_result list option
+type result = preprocess_label * tr_result
+type t = preprocess_label * tr
 
 let string_of_label = function
   | Init -> "Init"
+  | Set_main -> "Set main"
   | Eliminate_unused_let -> "Eliminate unused let"
   | Replace_const -> "Replace const"
   | Lift_type_decl ->  "Lift type decl"
@@ -104,191 +105,176 @@ let string_of_label = function
   | Inline_simple_types -> "Inline simple types"
   | Abst_polymorphic_comparison -> "Abst polymorphic comparison"
 
-let last acc = snd @@ List.hd acc
-let last_t acc = fst @@ last acc
-let last_get_rtyp acc = snd @@ last acc
-let take_result l acc = fst @@ List.assoc l acc
+let last (acc:result list) = snd @@ List.hd acc
+let last_t (acc:result list) = fst @@ last acc
+let last_get_rtyp (acc:result list) = snd @@ last acc
+let take_result l (acc:result list) = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
 
-let map_trans tr acc = tr @@ last_t acc, get_rtyp_id
+let cond_trans b (tr:tr) x : tr_result list option = if b then tr x else None
+let map_trans (tr:Program.t->Program.t) r : tr_result list option = Some [tr r, get_rtyp_id]
 
-let before label pps =
+let before label (pps:t list) =
   List.takewhile ((<>) label -| fst) pps
 
-let and_after label pps =
+let and_after label (pps:t list) =
   List.dropwhile ((<>) label -| fst) pps
 
 let filter_out labels pps =
   List.filter_out (fst |- List.mem -$- labels) pps
 
 let all spec : t list =
+  let open Trans_prog in
   [
+    Set_main,
+      map_trans set_main;
     Extract_module,
-      (Fun.const true,
-       map_trans Trans.extract_module);
+      map_trans extract_module;
     Unify_app,
-      (Fun.const true,
-       map_trans Trans.unify_app);
+      map_trans unify_app;
     Mark_fv_as_external,
-      (Fun.const true,
-       map_trans Trans.mark_fv_as_external);
+      map_trans mark_fv_as_external;
     Alpha_rename,
-      (Fun.const true,
-       map_trans @@ Trans.alpha_rename ~whole:true ~set_counter:true);
+      map_trans @@ alpha_rename ~set_counter:true;
     Eliminate_unused_let,
-      (Fun.const true,
-       map_trans @@ Trans.elim_unused_let ~leave_last:true);
+      map_trans @@ elim_unused_let ~leave_last:true;
     Replace_const,
-      (Fun.const !Flag.Method.replace_const,
-       map_trans CFA.replace_const);
+      cond_trans !Flag.Method.replace_const @@
+      map_trans CFA.replace_const;
     Lift_type_decl,
-      (Fun.const true,
-       map_trans Trans.lift_type_decl);
+      map_trans lift_type_decl;
     Copy_poly,
-      (Fun.const true,
-       Trans.copy_poly_funs -| last_t);
+      Option.some -| List.singleton -| copy_poly_funs;
     Encode_mutable_record,
-      (Fun.const true,
-       map_trans Encode.mutable_record);
+      map_trans Encode.mutable_record;
     Inline_simple_types,
-      (Fun.const true,
-       map_trans Trans.inline_simple_types);
+      map_trans inline_simple_types;
     Abst_recursive_record,
-      (Fun.const true,
-       map_trans Encode.abst_rec_record);
+      map_trans Encode.abst_rec_record;
     Inline_record_type,
-      (Fun.const true,
-       map_trans Trans.inline_record_type);
+      map_trans inline_record_type;
     Encode_record,
-      (Fun.const true,
-       map_trans Encode.record);
+      map_trans Encode.record;
     Encode_array,
-      (Fun.const true,
-       map_trans Encode.array);
+      map_trans Encode.array;
     Abst_ref,
-      (Fun.const true,
-       map_trans Encode.abst_ref);
+      map_trans Encode.abst_ref;
     Make_fun_tuple,
-      (Fun.const !Flag.Method.tupling,
-       map_trans Ref_trans.make_fun_tuple);
+      cond_trans !Flag.Method.tupling @@ map_trans @@ Program.map Ref_trans.make_fun_tuple;
     Make_ext_funs,
-      (Fun.const true,
-       fun acc -> Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
+      (fun prog -> Some [Program.map (Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ Program.term prog)) prog, get_rtyp_id]);
     Ignore_non_termination,
-      (Fun.const !Flag.Method.ignore_non_termination,
-       map_trans Trans.ignore_non_termination);
+      cond_trans !Flag.Method.ignore_non_termination @@ map_trans ignore_non_termination;
     Beta_reduce_trivial,
-      (Fun.const true,
-       map_trans Trans.beta_reduce_trivial);
+      map_trans beta_reduce_trivial;
     Eliminate_redundant_arguments,
-      (Fun.const !Flag.Method.elim_redundant_arg,
-       map_trans Trans.elim_redundant_arg);
+      cond_trans !Flag.Method.elim_redundant_arg @@ map_trans elim_redundant_arg;
     Recover_const_attr,
-      (Fun.const true,
-       map_trans Trans.recover_const_attr);
+      map_trans recover_const_attr;
     Decomp_pair_eq,
-      (Fun.const true,
-       map_trans Trans.decomp_pair_eq);
+      map_trans decomp_pair_eq;
     Add_preds,
-      (Fun.const (spec.Spec.abst_env <> []),
-       fun acc -> Trans.replace_typ (Spec.get_abst_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
+      cond_trans (spec.Spec.abst_env <> [])
+      (fun prog -> Some [Program.map (Trans.replace_typ (Spec.get_abst_env spec @@ Program.term prog)) prog, get_rtyp_id]);
     Ignore_excep_arg,
-      (Fun.const !Flag.Method.ignore_exn_arg,
-       map_trans Trans.ignore_exn_arg);
+      cond_trans !Flag.Method.ignore_exn_arg @@ map_trans ignore_exn_arg;
     Encode_simple_variant,
-      (Fun.const true,
-       map_trans Encode.simple_variant);
+      map_trans Encode.simple_variant;
     Replace_base_with_int,
-      (Fun.const (!Flag.Method.base_to_int || !Flag.Method.data_to_int),
-       map_trans Trans.replace_base_with_int);
-    Inline_simple_types,
-      (Fun.const true,
-       map_trans Trans.inline_simple_types);
+      cond_trans (!Flag.Method.base_to_int || !Flag.Method.data_to_int) @@ map_trans replace_base_with_int;
+    Inline_simple_types, map_trans inline_simple_types;
     Replace_data_with_int,
-      (Fun.const !Flag.Method.data_to_int,
-       map_trans Trans.replace_data_with_int);
-    Inline_simple_types,
-      (Fun.const true,
-       map_trans Trans.inline_simple_types);
+      cond_trans !Flag.Method.data_to_int @@ map_trans replace_data_with_int;
+    Inline_simple_types, map_trans inline_simple_types;
     Encode_recdata,
-      (Fun.const true,
-       map_trans Encode.recdata);
+      map_trans Encode.recdata;
     Inline_type_decl,
-      (Fun.const true,
-       map_trans Trans.inline_type_decl);
+      map_trans inline_type_decl;
     Encode_list,
-      (Fun.const true,
-       Encode.list -| last_t);
+      Option.some -| List.singleton -| Encode.list;
     Ret_fun,
-      (Fun.const !Flag.Method.tupling,
-       Ret_fun.trans -| last_t);
+      cond_trans !Flag.Method.tupling @@
+      Option.some -| List.singleton -| Program.map_on Focus.fst Ret_fun.trans;
     Ref_trans,
-      (Fun.const !Flag.Method.tupling,
-       Ref_trans.trans -| last_t);
+      cond_trans !Flag.Method.tupling @@
+      Option.some -| List.singleton -| Program.map_on Focus.fst Ref_trans.trans;
     Tupling,
-      (Fun.const !Flag.Method.tupling,
-       Tupling.trans -| last_t);
+      cond_trans !Flag.Method.tupling @@
+      Option.some -| List.singleton -| Program.map_on Focus.fst Tupling.trans;
     Inline,
-      (Fun.const true,
-       (fun acc -> let t = last_t acc in Trans.inlined_f (Spec.get_inlined_f spec t) t, get_rtyp_id));
+      (fun prog -> Some [Program.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Program.term prog)) prog, get_rtyp_id]);
     Mark_safe_fun_arg,
-      (Fun.const (!Flag.PredAbst.shift_pred <> None),
-       map_trans Effect_analysis.mark_safe_fun_arg);
+      cond_trans (!Flag.PredAbst.shift_pred <> None) @@
+      map_trans @@ Program.map Effect_analysis.mark_safe_fun_arg;
     Abst_polymorphic_comparison,
-      (Fun.const true,
-       map_trans Encode.abst_poly_comp);
+      map_trans Encode.abst_poly_comp;
     CPS,
-      (Fun.const !Flag.Mode.trans_to_CPS,
-       CPS.trans -| last_t);
+      cond_trans !Flag.Mode.trans_to_CPS @@
+      Option.some -| List.singleton -| CPS.trans;
     Remove_pair,
-      (Fun.const !Flag.Mode.trans_to_CPS,
-       Curry.remove_pair -| last_t);
+      cond_trans !Flag.Mode.trans_to_CPS @@
+      Option.some -| List.singleton -| Curry.remove_pair;
     Replace_bottom_def,
-      (Fun.const true,
-       map_trans Trans.replace_bottom_def);
+       map_trans replace_bottom_def;
     Add_preds,
-      (Fun.const (spec.Spec.abst_cps_env <> []),
-       fun acc -> Trans.replace_typ (Spec.get_abst_cps_env spec @@ last_t acc) @@ last_t acc, get_rtyp_id);
+      cond_trans (spec.Spec.abst_cps_env <> [])
+      (fun prog -> Some [Program.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Program.term prog)) prog, get_rtyp_id]);
     Eliminate_same_arguments,
-      (Fun.const !Flag.Method.elim_same_arg,
-       map_trans Elim_same_arg.trans);
+      cond_trans !Flag.Method.elim_same_arg @@
+      map_trans @@ Program.map Elim_same_arg.trans;
     Insert_unit_param,
-      (Fun.const !Flag.Method.insert_param_funarg,
-       map_trans Trans.insert_param_funarg);
+      cond_trans !Flag.Method.insert_param_funarg @@
+      map_trans insert_param_funarg;
     PreprocessForTermination,
-      (Fun.const Flag.Method.(!mode = Termination),
-       map_trans !BRA_types.preprocessForTerminationVerification);
+      cond_trans Flag.Method.(!mode = Termination) @@
+      map_trans @@ Program.map !BRA_types.preprocessForTerminationVerification;
     Alpha_rename,
-      (Fun.const true,
-       map_trans @@ Trans.alpha_rename ~whole:true);
+      map_trans @@ alpha_rename ~set_counter:true;
   ]
 
-let pr () = if !!Debug_ty.check then Print.term' else Print.term_typ
-let rec trans_and_print f desc proj_in proj_out ?(opt=true) ?(pr=pr()) t =
-  Debug.printf "START: %s@." desc;
-  let r = f t in
-  Debug.printf "END: %s@.@." desc;
-  let t' = proj_out r in
-  if proj_in t <> t' && opt
-  then Verbose.printf "###%a:@. @[%a@.@." Color.s_red desc pr t';
-  begin
-    if !!Debug.check then
-      try
-        Type_check.check t' t'.Syntax.typ
-      with e ->
-        Format.printf "@.%s@." @@ Printexc.to_string e;
-        Format.printf "%a@.@." Print.term' t';
-        assert false
-  end;
-  r
+let pr () = if !!Debug_ty.check then Program.print_debug else Program.print
+let print desc prog = Verbose.printf "###%a:@. @[%a@.@." Color.s_red desc !!pr prog
 
-let run pps t =
-  let aux acc (label,(cond,f)) =
-    if cond acc then
-      let r = trans_and_print f (string_of_label label) last_t fst acc in
-      (label, r)::acc
-    else
-      acc
+let rec trans_and_print
+          (tr : tr)
+          (desc : string)
+          (prog : Program.t) =
+  Debug.printf "START: %s@." desc;
+  let r = tr prog in
+  match r with
+  | None ->
+      Debug.printf "END (skipped): %s@.@." desc;
+      None
+  | Some rs ->
+      let l = List.length rs in
+      Debug.printf "END: %s@.@." desc;
+      let aux r =
+        let prog' = fst r in
+        if l > 1 || prog <> prog' then
+          print desc prog';
+        if !!Debug.check then
+          let t = Program.term prog' in
+          try
+            Type_check.check t t.Syntax.typ
+          with e ->
+            Format.printf "@.%s@." @@ Printexc.to_string e;
+            Format.printf "%a@.@." Print.term' t;
+            assert false
+      in
+      List.iter aux rs;
+      Some rs
+
+let run (pps:t list) t =
+  let aux1 (acc:result list list) (label,tr) : result list list =
+    let aux2 rs =
+      match rs with
+      | [] -> assert false
+      | (_,(prog,_))::_ ->
+          match trans_and_print tr (string_of_label label) prog with
+          | None -> rs
+          | Some rs' -> List.flatten_map (fun r -> (label, r)::rs) rs'
+    in
+    List.map aux2 acc
   in
-  List.fold_left aux [Init, (t, get_rtyp_id)] pps
+  List.fold_left aux1 [[Init, (t, get_rtyp_id)]] pps

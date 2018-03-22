@@ -95,25 +95,26 @@ let cfa t =
                                                Print.term t
                                                (List.print Print.term) (List.map (Trans.remove_id -| Hashtbl.find map) @@ IntSet.elements m)
                              | _ -> ()) flow;
-  t'', flow, map
+  (flow, map), t''
 
 
-let replace_const = make_trans2 ()
-let replace_const_term (flow,map) t =
-  match t.desc with
-  | Var x ->
-      let ts = get_flow map flow t in
-      if List.for_all (fun t -> match t.desc with Const c -> true | Var y -> Id.(x = y) | _ -> false) ts
-      then
-        let cs = List.filter_map (fun t -> match t.desc with Const c -> Some c | _ -> None) ts in
-        begin
+let replace_const =
+  let tr = make_trans2 () in
+  let replace_const_term (flow,map) t =
+    match t.desc with
+    | Var x ->
+        let ts = get_flow map flow t in
+        if List.for_all (fun t -> match t.desc with Const _ -> true | Var y -> Id.(x = y) | _ -> false) ts then
+          let cs = List.filter_map (fun t -> match t.desc with Const c -> Some c | _ -> None) ts in
           match cs with
           | c::cs' when List.for_all ((=) c) cs' -> {t with desc=Const c}
           | _ -> t
-        end
-      else t
-  | _ -> replace_const.tr2_term_rec (flow,map) t
-let () = replace_const.tr2_term <- replace_const_term
-let replace_const t =
-  let t', flow, map = cfa t in
-  Trans.reconstruct @@ Trans.remove_id @@ replace_const.tr2_term (flow,map) t'
+        else
+          t
+    | _ -> tr.tr2_term_rec (flow,map) t
+  in
+  tr.tr2_term <- replace_const_term;
+  Program.map (cfa
+               |- Fun.uncurry tr.tr2_term
+               |- Trans.remove_id
+               |- Trans.reconstruct)

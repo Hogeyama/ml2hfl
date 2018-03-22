@@ -12,7 +12,7 @@ val inst_randval : term -> term
 val ref_to_assert : ?make_fail:(typ -> term) -> ?typ_exn:typ -> Ref_type.env -> term -> term
 val replace_main : ?force:bool -> term -> term -> term
 val map_main : (term -> term) -> term -> term
-val set_main : term -> (string * int) option * term
+val set_main : term -> term
 val part_eval : term -> term
 val trans_let : term -> term
 val propagate_typ_arg : term -> term
@@ -61,6 +61,7 @@ val lift_type_decl : term -> term
 val mark_fv_as_external : term -> term
 val map_id : (id -> id) -> term -> term
 val split_mutual_rec : ?only_top:bool -> term -> term
+val get_set_main : term -> id option
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc

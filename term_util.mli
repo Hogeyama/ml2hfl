@@ -1,6 +1,5 @@
 open Syntax
 
-val dummy_var : id
 val abst_var : id
 val abst_var_int : id
 val abst_var_bool : id
@@ -166,7 +165,7 @@ val get_fv : ?eq:(id -> id -> bool) -> term -> id list
 val get_id : term -> int
 val get_id_option : term -> int option
 val get_id_map : term -> (int, term) Hashtbl.t
-val get_last_definition : term -> id list
+val get_last_definition : term -> (id * term) list
 val get_body : term -> term
 val get_tdata : typ -> string list
 val get_tapred : typ -> (id * term list) option
@@ -223,6 +222,7 @@ val trans_if : (term -> term option) -> term -> term
 val rename : (id * id) list -> term -> term
 val rename_pat : (id * id) list -> pattern -> pattern
 val set_id_counter_to_max : term -> unit
+val is_length_var : id -> bool
 
 module Term : sig
   val unit : term
@@ -235,6 +235,7 @@ module Term : sig
   val randb : term
   val rand : typ -> term
   val bot : typ -> term
+  val eod : term
   val var : id -> term
   val vars : id list -> term list
   val int : int -> term

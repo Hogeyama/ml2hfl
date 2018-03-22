@@ -72,19 +72,19 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	CEGAR_abst_util.mli
 CMI = $(MLI:.mli=.cmi)
 
-CMO = revision.cmo environment.cmo flag.cmo debug.cmo util.cmo		\
-	ext.cmo color.cmo tree.cmo rose_tree.cmo id.cmo type.cmo	\
-	syntax.cmo print.cmo term_util.cmo CEGAR_type.cmo		\
-	CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_util.cmo typing.cmo	\
-	type_check.cmo CEGAR_ref_type.cmo fpatInterface.cmo		\
-	ref_type.cmo ref_type_gen.cmo trans.cmo CFA.cmo uncurry.cmo	\
-	lift.cmo fair_termination_util.cmo CEGAR_lift.cmo slicer.cmo	\
-	useless_elim.cmo inter_type.cmo type_trans.cmo			\
+CMO = revision.cmo mconfig.cmo flag.cmo debug.cmo util.cmo menv.cmo	\
+	color.cmo tree.cmo rose_tree.cmo id.cmo type.cmo syntax.cmo	\
+	print.cmo term_util.cmo CEGAR_type.cmo CEGAR_syntax.cmo		\
+	CEGAR_print.cmo CEGAR_util.cmo typing.cmo type_check.cmo	\
+	CEGAR_ref_type.cmo fpatInterface.cmo ref_type.cmo spec.cmo	\
+	program.cmo ref_type_gen.cmo trans.cmo trans_prog.cmo CFA.cmo	\
+	uncurry.cmo lift.cmo fair_termination_util.cmo CEGAR_lift.cmo	\
+	slicer.cmo useless_elim.cmo inter_type.cmo type_trans.cmo	\
 	effect_analysis.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo		\
 	parser_wrapper.cmo encode_list.cmo encode_rec.cmo encode.cmo	\
 	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
 	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\
-	CEGAR_lexer.cmo spec.cmo spec_parser.cmo spec_lexer.cmo		\
+	CEGAR_lexer.cmo spec_parser.cmo spec_lexer.cmo			\
 	trecs_syntax.cmo trecs_parser.cmo trecs_lexer.cmo		\
 	trecsInterface.cmo horSat_syntax.cmo horSat_parser.cmo		\
 	horSat_lexer.cmo horSatInterface.cmo horSat2_parser.cmo		\

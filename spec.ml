@@ -1,9 +1,8 @@
-
 open Util
 open Syntax
 open Term_util
 
-type spec =
+type t =
     {ref_env: (id * Ref_type.t) list;
      ext_ref_env: (id * Ref_type.t) list;
      abst_env: env;
@@ -158,7 +157,7 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
    fairness}
 
 let get_vars t = get_def_vars t @ get_fv t
-let get_vars_cegar prog = List.map (fun (f,_,_,_,_) -> CEGAR_trans.trans_inv_var f) prog.CEGAR_syntax.defs
+let get_vars_cegar prog = List.map (fun (f,_,_,_,_) -> Id.from_string f Type.typ_unknown) prog.CEGAR_syntax.defs
 
 let get_ref_env spec t = (rename [Ref_env] spec @@ get_vars t).ref_env
 let get_ext_ref_env spec t = Ref_type.Env.of_list @@ (rename [Ext_ref_env] spec @@ get_vars t).ext_ref_env

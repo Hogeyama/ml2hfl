@@ -24,7 +24,7 @@ let make_self_id typ = Id.new_var ~name:"_" typ
 let orig_id x = {x with Id.id = 0}
 
 let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
-let ref_list typ = RT.List(dummy_var, true_term, dummy_var, true_term, typ)
+let ref_list typ = RT.List(Id.new_var Ty.int, true_term, Id.new_var Ty.int, true_term, typ)
 let ref_fun x ty1 ty2 =
   let ty2' = RT.subst_var (orig_id x) (Id.set_typ x @@ elim_tattr @@ RT.to_simple ty1) ty2 in
   RT.Fun(x, ty1, ty2')
@@ -94,7 +94,7 @@ let normalize_ref ty =
 
 
 %start spec
-%type <Spec.spec> spec
+%type <Spec.t> spec
 
 %%
 
@@ -263,13 +263,13 @@ ref_simple:
     RT.Base($4, x, subst_var $2 x $6)
   }
 | LPAREN ref_typ RPAREN { $2 }
-| ref_simple LIST { RT.List(dummy_var,true_term,dummy_var,true_term,$1) }
+| ref_simple LIST { RT.List(Id.new_var Ty.int,true_term,Id.new_var Ty.int,true_term,$1) }
 | ref_simple length_ref LIST
   {
     let typ = $1 in
     let x,p_len = $2 in
     let typ' = RT.subst_var (orig_id x) x typ in
-    RT.List(x,p_len,dummy_var,true_term,typ')
+    RT.List(x,p_len,Id.new_var Ty.int,true_term,typ')
   }
 | index_ref ref_simple length_ref LIST
   {
@@ -306,7 +306,7 @@ length_ref:
 
 ref_typ:
 | ref_simple { $1 }
-| id COLON ref_simple TIMES ref_typ { RT.Tuple[$1, $3; dummy_var, $5] }
+| id COLON ref_simple TIMES ref_typ { RT.Tuple[$1, $3; Id.new_var @@ Ref_type.to_simple $5, $5] }
 | ref_typ TIMES ref_typ
   {
     let x  =
@@ -314,7 +314,7 @@ ref_typ:
       | RT.Base(_,y,_) -> y
       | _ -> Id.new_var @@ RT.to_simple $1
     in
-    RT.Tuple[x, $1; dummy_var, $3]
+    RT.Tuple[x, $1; Id.new_var @@ Ref_type.to_simple $3, $3]
   }
 | id COLON ref_simple ARROW ref_typ { ref_fun $1 $3 $5 }
 | LPAREN id COLON ref_simple RPAREN ARROW ref_typ { ref_fun $2 $4 $7 }

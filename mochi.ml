@@ -145,7 +145,7 @@ let main_input_cegar lb =
 let main_split_assert orig spec parsed =
   let paths = Trans.search_fail parsed in
   let ts = List.map (Trans.screen_fail -$- parsed) paths in
-  List.for_all (Main_loop.run orig ~spec) (List.rev ts)
+  List.for_all (Main_loop.run orig ~spec) (List.rev_map Program.make ts)
 
 let main_termination orig parsed =
   let open BRA_util in
@@ -225,14 +225,15 @@ let main cin =
     let orig = Parse.use_file lb in
     let parsed = Parser_wrapper.from_use_file orig in
     Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
-    if !Flag.NonTermination.randint_refinement_log
-    then output_randint_refinement_log input_string;
+    if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
     let check_safety t =
       if !Flag.Method.modular then
         Modular.main orig spec t
       else
-        Main_loop.run orig ~spec t
+        let env = Ref_type.Env.of_list @@ Spec.get_ref_env spec t in
+        let prog = Program.make ~env t in
+        Main_loop.run orig ~spec prog
     in
     if !Flag.Method.split_assert then
       main_split_assert orig spec parsed
@@ -546,16 +547,10 @@ let fpat_init2 () =
 
 let check_env () =
   match !Flag.ModelCheck.mc with
-  | Flag.ModelCheck.TRecS -> if not Environment.trecs_available then fatal "TRecS not found"
-  | Flag.ModelCheck.HorSat -> if not Environment.horsat_available then fatal "HorSat not found"
-  | Flag.ModelCheck.HorSat2 -> if not Environment.horsat2_available then fatal "HorSat2 not found"
-  | Flag.ModelCheck.HorSatP -> if not Environment.horsatp_available then fatal "HorSatP not found"
-
-let init_after_parse_arg () =
-  if Flag.ModelCheck.(!mc <> TRecS) then
-    Flag.ModelCheck.church_encode := true
-
-let timeout_handler _ = raise TimeOut
+  | Flag.ModelCheck.TRecS -> if not Mconfig.trecs_available then fatal "TRecS not found"
+  | Flag.ModelCheck.HorSat -> if not Mconfig.horsat_available then fatal "HorSat not found"
+  | Flag.ModelCheck.HorSat2 -> if not Mconfig.horsat2_available then fatal "HorSat2 not found"
+  | Flag.ModelCheck.HorSatP -> if not Mconfig.horsatp_available then fatal "HorSatP not found"
 
 let string_of_exception = function
   | e when Fpat.FPATConfig.is_fpat_exception e ->
@@ -614,21 +609,29 @@ let print_error = function
       Format.eprintf "Exception: %s@." @@ Printexc.to_string e
   | e -> raise e
 
+let init_before_parse_arg () =
+  fpat_init1 ();
+  ignore @@ Unix.alarm !Flag.time_limit
+
+let init_after_parse_arg () =
+  if Flag.ModelCheck.(!mc <> TRecS) then
+    Flag.ModelCheck.church_encode := true;
+  fpat_init2 ();
+  Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
+  Color.init ();
+  check_env ()
+
+let timeout_handler _ = raise TimeOut
 
 let () =
   if !Sys.interactive
   then ()
   else
     try
-      fpat_init1 ();
+      init_before_parse_arg ();
       let cin = parse_arg () in
-      ignore @@ Unix.alarm !Flag.time_limit;
-      fpat_init2 ();
-      Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
-      Color.init ();
       if not !!is_only_result then print_env true false;
       init_after_parse_arg ();
-      check_env ();
       if main cin then decr Flag.Log.cegar_loop;
       Fpat.SMTProver.finalize ();
       print_info ()

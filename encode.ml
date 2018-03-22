@@ -7,7 +7,7 @@ open Type
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 
-let mutable_record =
+let mutable_record_term =
   let tr = make_trans2 () in
   let rec decomp env ty =
     match ty with
@@ -61,10 +61,11 @@ let mutable_record =
   tr.tr2_pat <- tr_pat;
   tr.tr2_term []
 
+(* TODO: support records in refinement types *)
+let mutable_record = Program.map mutable_record_term
 
 
-
-let abst_ref =
+let abst_ref_term =
   let tr = make_trans () in
   let tr_term t =
     let t' = tr.tr_term_rec t in
@@ -87,90 +88,97 @@ let abst_ref =
   tr.tr_typ <- tr_typ;
   tr.tr_term |- Trans.inst_randval
 
+(* TODO: support references in refinement types *)
+let abst_ref = Program.map abst_ref_term
 
 
-let encode_array = make_trans ()
+let array_term =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | App({desc=Var x}, [t1]) when Id.name x = "Array.of_list" && is_list_literal t1 ->
+        let ts =
+          t1
+          |> decomp_list
+          |> Option.get
+          |> List.map tr.tr_term
+        in
+        let n = List.length ts in
+        let len = make_int n in
+        let i = Id.new_var ~name:"i" Ty.int in
+        let ti = make_var i in
+        let typ' = tr.tr_typ @@ list_typ t1.typ in
+        let its = List.mapi Pair.pair ts in
+        let t' =
+          make_ref @@
+            make_pair len @@
+              make_fun i @@
+                make_seq (make_assert @@ make_and (make_leq (make_int 0) ti) (make_lt ti len)) @@
+                  List.fold_right (fun (j,x) t -> make_if (make_eq ti (make_int j)) x t) its (make_bottom typ')
+        in
+        t'.desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  let tr_typ typ =
+    match typ with
+    | TApp(TArray, [typ]) -> Ty.(ref @@ pair int (fun_ int (tr.tr_typ typ)))
+    | _ -> tr.tr_typ_rec typ
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_typ <- tr_typ;
+  tr.tr_term
 
-let encode_array_desc desc =
-  match desc with
-  | App({desc=Var x}, [t1]) when Id.name x = "Array.of_list" && is_list_literal t1 ->
-      let ts =
-        t1
-        |> decomp_list
-        |> Option.get
-        |> List.map encode_array.tr_term
-      in
-      let n = List.length ts in
-      let len = make_int n in
-      let i = Id.new_var ~name:"i" Ty.int in
-      let ti = make_var i in
-      let typ' = encode_array.tr_typ @@ list_typ t1.typ in
-      let its = List.mapi Pair.pair ts in
-      let t' =
-      make_ref @@
-        make_pair len @@
-          make_fun i @@
-            make_seq (make_assert @@ make_and (make_leq (make_int 0) ti) (make_lt ti len)) @@
-              List.fold_right (fun (j,x) t -> make_if (make_eq ti (make_int j)) x t) its (make_bottom typ')
-      in
-      t'.desc
-  | _ -> encode_array.tr_desc_rec desc
-
-let encode_array_typ typ =
-  match typ with
-  | TApp(TArray, [typ]) -> Ty.(ref @@ pair int (fun_ int (encode_array.tr_typ typ)))
-  | _ -> encode_array.tr_typ_rec typ
-
-let () = encode_array.tr_desc <- encode_array_desc
-let () = encode_array.tr_typ <- encode_array_typ
-let array = encode_array.tr_term
+(* TODO: support array in refinement types *)
+let array = Program.map array_term
 
 
 
+let record_term =
+  let tr = make_trans () in
+  let rec tr_typ typ =
+    match typ with
+    | TRecord fields ->
+        make_ttuple @@ List.map (fun (s,(f,typ)) -> if f = Mutable then unsupported "mutable record"; tr_typ typ) fields
+    | _ -> tr.tr_typ_rec typ
+  in
+  let rec tr_pat p =
+    match p.pat_desc with
+    | PRecord fields ->
+        let ps = List.map (snd |- tr.tr_pat) fields in
+        let typ = tr.tr_typ p.pat_typ in
+        {pat_desc=PTuple ps; pat_typ=typ}
+    | _ -> tr.tr_pat_rec p
+  in
+  let tr_term t =
+    match t.desc, t.typ with
+    | Record fields, _ ->
+        if is_mutable_record t.typ then
+          unsupported "Mutable records";
+        make_tuple @@ List.map (tr.tr_term -| snd) fields
+    | Local(Decl_type decls, _), _ ->
+        let tys = List.flatten_map (snd |- get_tdata) decls in
+        let check (s,ty) =
+          match ty with
+          | TRecord _ -> List.mem s tys
+          | _ -> false
+        in
+        if List.exists check decls then unsupported "recursive record types";
+        tr.tr_term_rec t
+    | Field(t,s), _ ->
+        let fields = decomp_trecord t.typ in
+        if is_mutable_record t.typ then
+          unsupported "Mutable records";
+        let t' = tr.tr_term t in
+        make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) t'
+    | SetField _, _ -> unsupported "Mutable records"
+    | _ -> tr.tr_term_rec t
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_pat <- tr_pat;
+  tr.tr_typ <- tr_typ;
+  tr.tr_term -| Trans.complete_precord
 
-let encode_record = make_trans ()
-let rec encode_record_typ typ =
-  match typ with
-  | TRecord fields ->
-      make_ttuple @@ List.map (fun (s,(f,typ)) -> if f = Mutable then unsupported "mutable record"; encode_record_typ typ) fields
-  | _ -> encode_record.tr_typ_rec typ
-
-let rec encode_record_pat p =
-  match p.pat_desc with
-  | PRecord fields ->
-      let ps = List.map (snd |- encode_record.tr_pat) fields in
-      let typ = encode_record.tr_typ p.pat_typ in
-      {pat_desc=PTuple ps; pat_typ=typ}
-  | _ -> encode_record.tr_pat_rec p
-
-let encode_record_term t =
-  match t.desc, t.typ with
-  | Record fields, _ ->
-      if is_mutable_record t.typ then
-        unsupported "Mutable records";
-      make_tuple @@ List.map (encode_record.tr_term -| snd) fields
-  | Local(Decl_type decls, _), _ ->
-      let tys = List.flatten_map (snd |- get_tdata) decls in
-      let check (s,ty) =
-        match ty with
-        | TRecord _ -> List.mem s tys
-        | _ -> false
-      in
-      if List.exists check decls then unsupported "recursive record types";
-      encode_record.tr_term_rec t
-  | Field(t,s), _ ->
-      let fields = decomp_trecord t.typ in
-      if is_mutable_record t.typ then
-        unsupported "Mutable records";
-      let t' = encode_record.tr_term t in
-      make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) t'
-  | SetField _, _ -> unsupported "Mutable records"
-  | _ -> encode_record.tr_term_rec t
-
-let () = encode_record.tr_term <- encode_record_term
-let () = encode_record.tr_pat <- encode_record_pat
-let () = encode_record.tr_typ <- encode_record_typ
-let record = encode_record.tr_term -| Trans.complete_precord
+let record = Program.map record_term
 
 
 
@@ -186,7 +194,7 @@ let rec position env c typ =
   | TData s when List.mem_assoc s env -> position env c @@ List.assoc s env
   | _ -> invalid_arg "position"
 
-let simple_variant =
+let simple_variant_term =
   let tr = make_trans2 () in
   let tr_typ env typ =
     if is_simple_variant env typ then
@@ -213,9 +221,11 @@ let simple_variant =
   tr.tr2_typ <- tr_typ;
   tr.tr2_term []
 
+(* TODO: support variants in refinement types *)
+let simple_variant = Program.map simple_variant_term
 
 
-let abst_rec_record =
+let abst_rec_record_term =
   let tr = make_trans2 () in
   let tr_term recs t =
     match t.desc with
@@ -293,8 +303,11 @@ let abst_rec_record =
   tr.tr2_pat <- tr_pat;
   tr.tr2_term []
 
+(* TODO: support records in refinement types *)
+let abst_rec_record = Program.map abst_rec_record_term
 
-let abst_poly_comp =
+
+let abst_poly_comp_term =
   let tr = make_trans () in
   let tr_term t =
     let t' = tr.tr_term_rec t in
@@ -309,13 +322,14 @@ let abst_poly_comp =
   in
   tr.tr_term <- tr_term;
   tr.tr_term
+let abst_poly_comp = Program.map abst_poly_comp_term
 
 let recdata = Encode_rec.trans
 let list = Encode_list.trans
 
 
 let pr s t =
-  Debug.printf "##[Encode] %s: %a@." s Print.term_typ t
+  Debug.printf "##[Encode] %s: %a@." s Program.print t
 
 let all t =
   t
@@ -324,7 +338,7 @@ let all t =
   |@> pr "MUTABLE_RECORD"
   |> record
   |@> pr "RECORD"
-  |&!Flag.Method.ignore_exn_arg&> Trans.ignore_exn_arg
+  |&!Flag.Method.ignore_exn_arg&> Trans_prog.ignore_exn_arg
   |@!Flag.Method.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
   |> simple_variant
   |@> pr "SIMPLE_VARIANT"
@@ -342,5 +356,7 @@ let typ_of f typ =
   typ
   |> Id.new_var
   |> make_var
+  |> Program.make
   |> f
+  |> Program.term
   |> Syntax.typ

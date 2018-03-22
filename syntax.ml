@@ -24,7 +24,6 @@ and const = (* only base type constants *)
   | RandValue of typ * bool
 
 and attr =
-  | ACPS
   | AAbst_under
   | ATerminate
   | ANotFail

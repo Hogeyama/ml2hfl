@@ -9,9 +9,9 @@ type t =
   | ExtArg of Syntax.id * t * t
   | List of Syntax.id * Syntax.term * Syntax.id * Syntax.term * t
   | Exn of t * t
-module Env : Ext.Env.ENV with type key := Syntax.id with type value := t
+module Env : Menv.ENV with type key := Syntax.id with type value := t
 type env = Env.t
-module NegEnv : Ext.Env.ENV with type key := Syntax.id with type value := t
+module NegEnv : Menv.ENV with type key := Syntax.id with type value := t
 type neg_env = NegEnv.t
 
 
@@ -70,6 +70,7 @@ val make_weakest : Syntax.typ -> t
 val flatten : t -> t
 val occur : Syntax.id -> t -> bool
 val subst : Syntax.id -> Syntax.term -> t -> t
+val subst_map : (Syntax.id * Syntax.term) list -> t -> t
 val subst_var : Syntax.id -> Syntax.id -> t -> t
 val subst_rev : Syntax.term -> Syntax.id -> t -> t
 val replace_term : Syntax.term -> Syntax.term -> t -> t

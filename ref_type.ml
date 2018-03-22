@@ -22,7 +22,7 @@ type t =
   | List of S.id * S.term * S.id * S.term * t
   | Exn of t * t
 
-let typ_result = Base(Abst "X", U.dummy_var, U.true_term)
+let typ_result = Base(Abst "X", Id.new_var T.Ty.unit, U.true_term)
 
 let _Inter styp typs = Inter(styp, typs)
 let _Union styp typs = Union(styp, typs)
@@ -143,7 +143,7 @@ let rec print fm = function
         | [] -> ()
         | [x,ty] -> print fm ty
         | (x,ty)::xtys' ->
-            if occur x @@ Tuple xtys' then Format.fprintf fm "%a:" Id.print x;
+            if true || occur x @@ Tuple xtys' then Format.fprintf fm "%a:" Id.print x;
             Format.fprintf fm "%a * @ " print ty;
             aux xtys'
       in
@@ -162,13 +162,13 @@ let rec print fm = function
       Format.fprintf fm "(@[%a where %a:%a@])" print typ2 Id.print x print typ1
   | List(x,p_len,y,p_i,typ2) ->
       Format.fprintf fm "(@[";
-      if p_i = U.true_term then
+      if false &&  p_i = U.true_term then
         if occur y typ2
         then Format.fprintf fm "[%a]%a " Id.print y print typ2
         else Format.fprintf fm "%a " print typ2
       else
         Format.fprintf fm "[%a: %a]%a " Id.print y Print.term p_i print typ2;
-      if p_len <> U.true_term then
+      if false && p_len <> U.true_term then
         Format.fprintf fm "|%a: %a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
@@ -220,6 +220,7 @@ let rec map_pred f typ =
   | Exn(typ1, typ2) -> Exn(map_pred f typ1, map_pred f typ2)
 
 let subst x t typ = map_pred (U.subst x t) typ
+let subst_map map typ = map_pred (U.subst_map map) typ
 let subst_var x y typ = map_pred (U.subst_var x y) typ
 let subst_rev t x typ = map_pred (U.subst_rev t x) typ
 let replace_term t1 t2 t3 =
@@ -679,7 +680,7 @@ module Value = struct
   let merge typ1 typ2 = [inter (to_simple typ1) [typ1; typ2]]
   let eq = equiv
 end
-module Env = Ext.Env.Make(Syntax.ID)(Value)
+module Env = Menv.Make(Syntax.ID)(Value)
 type env = Env.t
 
 module NegValue = struct
@@ -689,7 +690,7 @@ module NegValue = struct
   let merge typ1 typ2 = [union (to_simple typ1) [typ1; typ2]]
   let eq = equiv
 end
-module NegEnv = Ext.Env.Make(Syntax.ID)(NegValue)
+module NegEnv = Menv.Make(Syntax.ID)(NegValue)
 type neg_env = NegEnv.t
 
 

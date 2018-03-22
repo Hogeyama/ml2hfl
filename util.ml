@@ -191,6 +191,7 @@ module Fun = struct
   let const2 x _ _ = x
   let ignore2 _ _  = ()
   let if_ cond f1 f2 x = if cond x then f1 x else f2 x
+  let cond b f x = if b then f x else x
 end
 
 module Option = struct
@@ -515,6 +516,15 @@ module List = struct
   end
 end
 
+module Focus = struct
+  let fst (x,y) = (fun z -> z,y), x
+  let snd (x,y) = (fun z -> x,z), y
+  let (|-) f g x =
+    let ctx1,y = f x in
+    let ctx2,z = g y in
+    ctx2 |- ctx1, z
+  let (-|) f g x = (g |- f) x
+end
 
 let topological_sort ?(eq=(=)) edges =
   let rec loop edges roots xs rev_acc =
