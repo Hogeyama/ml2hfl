@@ -272,7 +272,7 @@ let verify_with rank_var rank_funs prev_vars arg_vars exparam_sol t =
   in
   Debug.printf "BEFORE:@.%a@." Print.term t''';
   Debug.printf "HEAD:@.%a@." Print.term @@ List.hd ts;
-  List.for_all (fun t -> incr Flag.FairTermination.loop_count; Main_loop.run [] ~exparam_sol @@ Program.make t) ts
+  List.for_all (fun t -> incr Flag.FairTermination.loop_count; Main_loop.run [] ~exparam_sol @@ Problem.safety t) ts
 
 let rec main_loop rank_var rank_funs prev_vars arg_vars exparam_sol spcs spcWithExparams preds_info(*need?*) t =
   try
@@ -330,9 +330,9 @@ let rec run spec t =
     |@> pr "copy poly. funs."
     |> remove_and_replace_event
     |@> pr "remove_and_replace_event"
-    |> Program.make
+    |> Problem.safety
     |> Encode_rec.trans
-    |> Program.term
+    |> Problem.term
     |&!Flag.Termination.add_closure_exparam&> insert_extra_param
     |@!Flag.Termination.add_closure_exparam&> pr "insert extra parameters"
     |> normalize

@@ -118,7 +118,7 @@ let print_env cmd json =
     with Option.No_value -> exit 1
   else
     begin
-      Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Programs@.";
+      Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Problems@.";
       Option.iter (Format.printf "  Build: %s@.") mochi;
       Option.iter (Format.printf "  FPAT revision: %s@.") fpat;
       Format.printf "  Z3 version: %s@." z3;
@@ -145,7 +145,7 @@ let main_input_cegar lb =
 let main_split_assert orig spec parsed =
   let paths = Trans.search_fail parsed in
   let ts = List.map (Trans.screen_fail -$- parsed) paths in
-  List.for_all (Main_loop.run orig ~spec) (List.rev_map Program.make ts)
+  List.for_all (Main_loop.run orig ~spec) (List.rev_map Problem.safety ts)
 
 let main_termination orig parsed =
   let open BRA_util in
@@ -231,9 +231,15 @@ let main cin =
       if !Flag.Method.modular then
         Modular.main orig spec t
       else
-        let env = Ref_type.Env.of_list @@ Spec.get_ref_env spec t in
-        let prog = Program.make ~env t in
-        Main_loop.run orig ~spec prog
+        let env_assume = Ref_type.Env.of_list @@ Spec.get_ext_ref_env spec t in
+        let env_assert = Ref_type.Env.of_list @@ Spec.get_ref_env spec t in
+        let problem =
+          if env_assert = Ref_type.Env.empty then
+            Problem.safety ~env:env_assume t
+          else
+            Problem.ref_type_check ~env:env_assume t env_assert
+        in
+        Main_loop.run orig ~spec problem
     in
     if !Flag.Method.split_assert then
       main_split_assert orig spec parsed
@@ -264,7 +270,7 @@ let set_exp_filename filename =
     unsupported "Experimental results file type"
 
 let usage =
-  "MoCHi: Model Checker for Higher-Order Programs\n\n" ^
+  "MoCHi: Model Checker for Higher-Order Problems\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
 let rec arg_spec () =
   Arg.align

@@ -567,4 +567,4 @@ let rec trans_rty ty =
 let trans_env env =
   Ref_type.Env.map_value trans_rty env
 
-let trans = Program.map_on Focus.fst ~tr_env:trans_env trans_term
+let trans = Problem.map_on Focus.fst ~tr_env:trans_env trans_term

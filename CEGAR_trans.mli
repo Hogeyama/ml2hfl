@@ -39,7 +39,7 @@ val trans_term : Syntax.term -> (string * typ * var list * t * 'a list * t) list
 
 val trans_prog :
   ?spec:(Syntax.id * Syntax.typ) list ->
-  Program.t ->
+  Problem.t ->
   prog * (var * var) list *
   (var * Syntax.id) list *
   ((var -> CEGAR_ref_type.t) -> Syntax.id -> Ref_type.t)

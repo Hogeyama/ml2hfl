@@ -114,7 +114,7 @@ let replace_const =
     | _ -> tr.tr2_term_rec (flow,map) t
   in
   tr.tr2_term <- replace_const_term;
-  Program.map (cfa
+  Problem.map (cfa
                |- Fun.uncurry tr.tr2_term
                |- Trans.remove_id
                |- Trans.reconstruct)

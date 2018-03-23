@@ -213,9 +213,9 @@ let add_context prog f xs t typ =
   let make_fail typ =
     make_fail typ
     |> Trans.replace_fail_with (Raise(make_construct af [] etyp))
-    |> Program.make
+    |> Problem.safety
     |> Encode.all
-    |> Program.term
+    |> Problem.term
   in
   let fail_unit_desc = (make_fail Ty.unit).desc in
   let t' =
@@ -299,7 +299,7 @@ let check prog f typ depth =
     |@> Debug.printf "  t with def: %a@.@." Print.term_typ
     |@> Type_check.check ~ty:Ty.unit
     |> Trans.map_main Term.(seq -$- eod) (* ??? *)
-    |> Program.make
+    |> Problem.safety
     |> Main_loop.loop (Some(make_pps)) (Some []) [] Spec.init
   in
   match result with

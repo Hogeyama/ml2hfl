@@ -36,7 +36,7 @@ let verify_with holed pred =
   let transformed = pluging holed pred in
   Util.Verbose.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
   let orig, transformed = retyping transformed (BRA_state.type_of_state holed) in
-  Main_loop.run orig @@ Program.make transformed
+  Main_loop.run orig @@ Problem.safety transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
   (* reduce to linear constraint solving *)

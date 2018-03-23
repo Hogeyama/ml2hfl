@@ -294,11 +294,11 @@ and remove_pair_ref_typ ty =
   | _ ->
       Format.printf "remove_pair_typ: %a@." Ref_type.print ty;
       assert false
-let remove_pair_ref_typ = snd -| List.get -| fst -| remove_pair_ref_typ
+let remove_pair_ref_typ = Ref_type.map_pred Trans.eta_tuple -| snd -| List.get -| fst -| remove_pair_ref_typ
 
 
-let remove_pair ?(check=true) {Program.term=t; env=rtenv; attr} =
-  assert (check => List.mem Program.ACPS attr);
+let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind} =
+  assert (check => List.mem Problem.ACPS attr);
   let pr s = Debug.printf "##[remove_pair] %s: %a@." s Print.term in
   let t' =
     t
@@ -312,10 +312,10 @@ let remove_pair ?(check=true) {Program.term=t; env=rtenv; attr} =
     |@> pr "beta_size1"
   in
   let rtenv = Ref_type.Env.map_value remove_pair_ref_typ rtenv in
-  {Program.term=t'; env=rtenv; attr}, uncurry_rtyp t
+  {Problem.term=t'; env=rtenv; attr; kind}, uncurry_rtyp t
 
 let remove_pair_direct t =
   t
-  |> Program.make
+  |> Problem.safety
   |> remove_pair ~check:false
-  |> Pair.map_fst Program.term
+  |> Pair.map_fst Problem.term

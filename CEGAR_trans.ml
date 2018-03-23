@@ -587,7 +587,7 @@ let rec trans_ref_type = function
 
 let trans_term = trans_term "" [] []
 
-let trans_prog ?(spec=[]) {Program.term=t; attr} =
+let trans_prog ?(spec=[]) {Problem.term=t; attr} =
   let pr p s t = Debug.printf "##[trans_prog] %s:@.%a@.@." s p t in
   let pr1 = pr Print.term' in
   let pr2 = pr CEGAR_print.prog_typ in
@@ -601,7 +601,7 @@ let trans_prog ?(spec=[]) {Program.term=t; attr} =
   List.iter  (fun (f,(xs,t)) -> Debug.printf "  @[<hov 4>%a %a ->@ @[%a@." Id.print f (List.print Id.print) xs Print.term t) defs;
   Debug.printf "@.";
   let defs_t,t_main' = trans_term t_main in
-  let is_cps = List.mem Program.ACPS attr in
+  let is_cps = List.mem Problem.ACPS attr in
   let defs' =
     let typ = if is_cps then typ_result else typ_unit in
     (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs

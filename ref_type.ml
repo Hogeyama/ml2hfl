@@ -143,7 +143,7 @@ let rec print fm = function
         | [] -> ()
         | [x,ty] -> print fm ty
         | (x,ty)::xtys' ->
-            if true || occur x @@ Tuple xtys' then Format.fprintf fm "%a:" Id.print x;
+            if occur x @@ Tuple xtys' then Format.fprintf fm "%a:" Id.print x;
             Format.fprintf fm "%a * @ " print ty;
             aux xtys'
       in
@@ -162,13 +162,13 @@ let rec print fm = function
       Format.fprintf fm "(@[%a where %a:%a@])" print typ2 Id.print x print typ1
   | List(x,p_len,y,p_i,typ2) ->
       Format.fprintf fm "(@[";
-      if false &&  p_i = U.true_term then
+      if p_i = U.true_term then
         if occur y typ2
         then Format.fprintf fm "[%a]%a " Id.print y print typ2
         else Format.fprintf fm "%a " print typ2
       else
         Format.fprintf fm "[%a: %a]%a " Id.print y Print.term p_i print typ2;
-      if false && p_len <> U.true_term then
+      if p_len <> U.true_term then
         Format.fprintf fm "|%a: %a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2

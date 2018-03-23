@@ -238,7 +238,7 @@ let rec eval_print fm rands t =
 
 exception Unsound
 
-let print fm (ce, {Program.term=t}) =
+let print fm (ce, {Problem.term=t}) =
   try
     ignore @@ eval_print fm ce t;
     if !Flag.use_abst then raise Unsound;

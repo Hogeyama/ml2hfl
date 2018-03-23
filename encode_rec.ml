@@ -298,4 +298,4 @@ let trans_term t =
   |@> Type_check.check ~ty
 
 (* TODO: support records in refinement types *)
-let trans : Program.t -> Program.t = Program.map trans_term
+let trans = Problem.map trans_term

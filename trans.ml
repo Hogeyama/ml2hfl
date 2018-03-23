@@ -30,21 +30,19 @@ let alpha_rename ?(whole=false) ?(set_counter=false) =
   let tr = make_trans2 () in
   let tr_desc (cnt,names) desc =
     let new_id x =
-      let id =
-        if whole then
-          let s = Id.name x in
-          if StringSet.mem s !names then
-            Counter.gen cnt
-          else
-            if s = "" then
-              Id.id x
-            else
-              (names := StringSet.add s !names; 0)
+      let rec aux var =
+        let s = Id.to_string var in
+        if s = "" || StringSet.mem s !names then
+          aux @@ Id.set_id x @@ Counter.gen cnt
         else
-          Id.new_int()
+          var
       in
-      Id.set_id x id
-      |> Id.add_name_before @@ String.make 1 prefix
+      if whole then
+        let x' = aux @@ Id.set_id x 0 in
+        names := StringSet.add (Id.to_string x') !names;
+        Id.add_name_before (String.make 1 prefix) x'
+      else
+        Id.new_var_id x
     in
     let desc' = tr.tr2_desc_rec (cnt,names) desc in
     match desc' with
@@ -69,14 +67,14 @@ let alpha_rename ?(whole=false) ?(set_counter=false) =
   tr.tr2_typ <- Fun.snd;
   let remove_sharp = Id.map_name (fun s -> if s <> "" && s.[0] = prefix then String.tl s else s) in
   fun t ->
-    let cnt = !!Counter.create in
-    let names = ref StringSet.empty in
-    t
-    |@> Debug.printf "INPUT: %a@." Print.term
-    |> tr.tr2_term (cnt,names)
-    |@> Debug.printf "OUTPUT: %a@." Print.term
-    |> map_id remove_sharp
-    |@set_counter&> set_id_counter_to_max
+  let cnt = !!Counter.create in
+  let names = ref StringSet.empty in
+  t
+  |@> Debug.printf "INPUT: %a@." Print.term
+  |> tr.tr2_term (cnt,names)
+  |@> Debug.printf "OUTPUT: %a@." Print.term
+  |> map_id remove_sharp
+  |@set_counter&> set_id_counter_to_max
 
 let inst_tvar, inst_tvar_typ =
   let tr = make_trans2 () in

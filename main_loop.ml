@@ -16,11 +16,11 @@ let preprocess make_pps ?(fun_list=None) prog spec =
   if List.length results <> 1 then unsupported "preprocess";
   let results = List.hd results in
   let set_main,_ = List.assoc Preprocess.Set_main results in
-  let main = Trans.get_set_main @@ Program.term set_main in
+  let main = Trans.get_set_main @@ Problem.term set_main in
   let prog = Preprocess.last_t results in
   let fun_list' =
     match fun_list with
-    | None -> Term_util.get_top_funs @@ Program.term Preprocess.(take_result Decomp_pair_eq results)
+    | None -> Term_util.get_top_funs @@ Problem.term Preprocess.(take_result Decomp_pair_eq results)
     | Some fun_list' -> fun_list'
   in
 
@@ -72,7 +72,7 @@ let write_annot env orig =
   |> List.map (Pair.map_fst Id.name)
   |> WriteAnnot.f !!Flag.mainfile orig
 
-let report_safe env orig {Program.term=t0} =
+let report_safe env orig {Problem.term=t0} =
   if !Flag.PrettyPrinter.write_annot && List.length !Flag.filenames = 1 then write_annot env orig;
 
   let s =
@@ -93,7 +93,7 @@ let report_safe env orig {Program.term=t0} =
           !Fpat.RefTypInfer.prev_sol
       in
       let t = Term_util.subst_map map t0 in
-      Format.printf "Program with Quantifiers Added:@.";
+      Format.printf "Problem with Quantifiers Added:@.";
       Format.printf "  @[<v>%a@]@.@." Print.term t
     end;
 
@@ -197,7 +197,7 @@ let improve_precision e =
   | _ -> raise e
 
 let rec loop make_pps fun_list exparam_sol spec prog =
-  let ex_param_inserted = Fun.cond !Flag.Method.relative_complete (Program.map insert_extra_param) prog in
+  let ex_param_inserted = Fun.cond !Flag.Method.relative_complete (Problem.map insert_extra_param) prog in
   let preprocessed, make_get_rtyp, set_main, main = preprocess make_pps ~fun_list ex_param_inserted spec in
   let cegar_prog =
     if Flag.(Method.(!mode = FairTermination) && !Termination.add_closure_exparam) then
@@ -233,7 +233,7 @@ let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
   match result with
   | CEGAR.Safe env ->
       Flag.Log.result := "Safe";
-      let env' = trans_env (Term_util.get_top_funs @@ Program.term parsed) make_get_rtyp env in
+      let env' = trans_env (Term_util.get_top_funs @@ Problem.term parsed) make_get_rtyp env in
       if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
         if !Flag.Print.result then
           report_safe env' orig ex_param_inserted;

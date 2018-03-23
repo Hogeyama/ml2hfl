@@ -128,7 +128,8 @@ let rec congruent env cond typ1 typ2 =
   | _ -> Format.printf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 
-let rec is_base_term env = function
+let rec is_base_term env t =
+  match t with
   | Const (Unit | True | False | Int _ | Rand _ | Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) -> true
   | Const _ -> false
   | Var x ->

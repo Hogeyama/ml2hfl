@@ -62,7 +62,7 @@ let mutable_record_term =
   tr.tr2_term []
 
 (* TODO: support records in refinement types *)
-let mutable_record = Program.map mutable_record_term
+let mutable_record = Problem.map mutable_record_term
 
 
 let abst_ref_term =
@@ -89,7 +89,7 @@ let abst_ref_term =
   tr.tr_term |- Trans.inst_randval
 
 (* TODO: support references in refinement types *)
-let abst_ref = Program.map abst_ref_term
+let abst_ref = Problem.map abst_ref_term
 
 
 let array_term =
@@ -129,7 +129,7 @@ let array_term =
   tr.tr_term
 
 (* TODO: support array in refinement types *)
-let array = Program.map array_term
+let array = Problem.map array_term
 
 
 
@@ -178,7 +178,7 @@ let record_term =
   tr.tr_typ <- tr_typ;
   tr.tr_term -| Trans.complete_precord
 
-let record = Program.map record_term
+let record = Problem.map record_term
 
 
 
@@ -222,7 +222,7 @@ let simple_variant_term =
   tr.tr2_term []
 
 (* TODO: support variants in refinement types *)
-let simple_variant = Program.map simple_variant_term
+let simple_variant = Problem.map simple_variant_term
 
 
 let abst_rec_record_term =
@@ -304,7 +304,7 @@ let abst_rec_record_term =
   tr.tr2_term []
 
 (* TODO: support records in refinement types *)
-let abst_rec_record = Program.map abst_rec_record_term
+let abst_rec_record = Problem.map abst_rec_record_term
 
 
 let abst_poly_comp_term =
@@ -322,14 +322,14 @@ let abst_poly_comp_term =
   in
   tr.tr_term <- tr_term;
   tr.tr_term
-let abst_poly_comp = Program.map abst_poly_comp_term
+let abst_poly_comp = Problem.map abst_poly_comp_term
 
 let recdata = Encode_rec.trans
 let list = Encode_list.trans
 
 
 let pr s t =
-  Debug.printf "##[Encode] %s: %a@." s Program.print t
+  Debug.printf "##[Encode] %s: %a@." s Problem.print t
 
 let all t =
   t
@@ -338,7 +338,7 @@ let all t =
   |@> pr "MUTABLE_RECORD"
   |> record
   |@> pr "RECORD"
-  |&!Flag.Method.ignore_exn_arg&> Trans_prog.ignore_exn_arg
+  |&!Flag.Method.ignore_exn_arg&> Trans_problem.ignore_exn_arg
   |@!Flag.Method.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
   |> simple_variant
   |@> pr "SIMPLE_VARIANT"
@@ -356,7 +356,7 @@ let typ_of f typ =
   typ
   |> Id.new_var
   |> make_var
-  |> Program.make
+  |> Problem.safety
   |> f
-  |> Program.term
+  |> Problem.term
   |> Syntax.typ

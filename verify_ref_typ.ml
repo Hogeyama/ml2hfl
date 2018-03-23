@@ -48,7 +48,7 @@ let divide spec t ref_env =
 let main orig spec parsed =
   let verify (s,spec,t) =
     Debug.printf "Start verification of %s:@.%a@." s Spec.print spec;
-    s, Main_loop.run orig ~spec @@ Program.make t
+    s, Main_loop.run orig ~spec @@ Problem.safety t
   in
   Spec.get_ref_env spec parsed
   |@> Verbose.printf "%a@." Spec.print_ref_env

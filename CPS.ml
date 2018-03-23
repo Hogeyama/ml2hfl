@@ -1190,7 +1190,7 @@ let rec trans_ref_typ is_CPS typ =
       Format.printf "%a@." Ref_type.print typ;
       assert false
 
-let trans {Program.term=t; env=rtenv; attr} =
+let trans {Problem.term=t; env=rtenv; attr; kind} =
   pr "INPUT" t;
   let env = initial_env () in
   let t =
@@ -1242,15 +1242,15 @@ let trans {Program.term=t; env=rtenv; attr} =
     |@> pr "elim_reduce"
   in
   let rtenv = Ref_type.Env.map_value (trans_ref_typ true) rtenv in
-  let attr = Program.ACPS::attr in
-  {Program.term=t'; env=rtenv; attr}, make_get_rtyp sol typ_exn typed
+  let attr = Problem.ACPS::attr in
+  {Problem.term=t'; env=rtenv; attr; kind}, make_get_rtyp sol typ_exn typed
 
 
 let trans_as_direct t =
   t
-  |> Program.make
+  |> Problem.safety
   |> trans
-  |> Pair.map_fst Program.term
+  |> Pair.map_fst Problem.term
   |> Pair.map_fst Trans.direct_from_CPS
 
 

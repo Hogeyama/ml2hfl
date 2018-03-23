@@ -52,8 +52,8 @@ type preprocess_label =
   | Inline_simple_types
   | Abst_polymorphic_comparison
 
-type tr_result = Program.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-type tr = Program.t -> tr_result list option
+type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
+type tr = Problem.t -> tr_result list option
 type result = preprocess_label * tr_result
 type t = preprocess_label * tr
 
@@ -113,7 +113,7 @@ let take_result l (acc:result list) = fst @@ List.assoc l acc
 let get_rtyp_id get_rtyp f = get_rtyp f
 
 let cond_trans b (tr:tr) x : tr_result list option = if b then tr x else None
-let map_trans (tr:Program.t->Program.t) r : tr_result list option = Some [tr r, get_rtyp_id]
+let map_trans (tr:Problem.t->Problem.t) r : tr_result list option = Some [tr r, get_rtyp_id]
 
 let before label (pps:t list) =
   List.takewhile ((<>) label -| fst) pps
@@ -125,8 +125,10 @@ let filter_out labels pps =
   List.filter_out (fst |- List.mem -$- labels) pps
 
 let all spec : t list =
-  let open Trans_prog in
+  let open Trans_problem in
   [
+    Init,
+      map_trans Fun.id;
     Set_main,
       map_trans set_main;
     Extract_module,
@@ -161,32 +163,37 @@ let all spec : t list =
     Abst_ref,
       map_trans Encode.abst_ref;
     Make_fun_tuple,
-      cond_trans !Flag.Method.tupling @@ map_trans @@ Program.map Ref_trans.make_fun_tuple;
-    Make_ext_funs,
-      (fun prog -> Some [Program.map (Trans.make_ext_funs (Spec.get_ext_ref_env spec @@ Program.term prog)) prog, get_rtyp_id]);
+      cond_trans !Flag.Method.tupling @@
+      map_trans @@ Problem.map Ref_trans.make_fun_tuple;
     Ignore_non_termination,
-      cond_trans !Flag.Method.ignore_non_termination @@ map_trans ignore_non_termination;
+      cond_trans !Flag.Method.ignore_non_termination @@
+      map_trans ignore_non_termination;
     Beta_reduce_trivial,
       map_trans beta_reduce_trivial;
     Eliminate_redundant_arguments,
-      cond_trans !Flag.Method.elim_redundant_arg @@ map_trans elim_redundant_arg;
+      cond_trans !Flag.Method.elim_redundant_arg @@
+      map_trans elim_redundant_arg;
     Recover_const_attr,
       map_trans recover_const_attr;
     Decomp_pair_eq,
       map_trans decomp_pair_eq;
     Add_preds,
       cond_trans (spec.Spec.abst_env <> [])
-      (fun prog -> Some [Program.map (Trans.replace_typ (Spec.get_abst_env spec @@ Program.term prog)) prog, get_rtyp_id]);
+      (fun prog -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_env spec @@ Problem.term prog)) prog, get_rtyp_id]);
     Ignore_excep_arg,
-      cond_trans !Flag.Method.ignore_exn_arg @@ map_trans ignore_exn_arg;
+      cond_trans !Flag.Method.ignore_exn_arg @@
+      map_trans ignore_exn_arg;
     Encode_simple_variant,
       map_trans Encode.simple_variant;
     Replace_base_with_int,
-      cond_trans (!Flag.Method.base_to_int || !Flag.Method.data_to_int) @@ map_trans replace_base_with_int;
+      cond_trans (!Flag.Method.base_to_int || !Flag.Method.data_to_int) @@
+      map_trans replace_base_with_int;
     Inline_simple_types, map_trans inline_simple_types;
     Replace_data_with_int,
-      cond_trans !Flag.Method.data_to_int @@ map_trans replace_data_with_int;
-    Inline_simple_types, map_trans inline_simple_types;
+      cond_trans !Flag.Method.data_to_int @@
+      map_trans replace_data_with_int;
+    Inline_simple_types,
+      map_trans inline_simple_types;
     Encode_recdata,
       map_trans Encode.recdata;
     Inline_type_decl,
@@ -195,18 +202,20 @@ let all spec : t list =
       Option.some -| List.singleton -| Encode.list;
     Ret_fun,
       cond_trans !Flag.Method.tupling @@
-      Option.some -| List.singleton -| Program.map_on Focus.fst Ret_fun.trans;
+      Option.some -| List.singleton -| Problem.map_on Focus.fst Ret_fun.trans;
     Ref_trans,
       cond_trans !Flag.Method.tupling @@
-      Option.some -| List.singleton -| Program.map_on Focus.fst Ref_trans.trans;
+      Option.some -| List.singleton -| Problem.map_on Focus.fst Ref_trans.trans;
     Tupling,
       cond_trans !Flag.Method.tupling @@
-      Option.some -| List.singleton -| Program.map_on Focus.fst Tupling.trans;
+      Option.some -| List.singleton -| Problem.map_on Focus.fst Tupling.trans;
     Inline,
-      (fun prog -> Some [Program.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Program.term prog)) prog, get_rtyp_id]);
+      (fun prog -> Some [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog, get_rtyp_id]);
+    Make_ext_funs,
+      map_trans make_ext_funs;
     Mark_safe_fun_arg,
       cond_trans (!Flag.PredAbst.shift_pred <> None) @@
-      map_trans @@ Program.map Effect_analysis.mark_safe_fun_arg;
+      map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;
     Abst_polymorphic_comparison,
       map_trans Encode.abst_poly_comp;
     CPS,
@@ -219,27 +228,27 @@ let all spec : t list =
        map_trans replace_bottom_def;
     Add_preds,
       cond_trans (spec.Spec.abst_cps_env <> [])
-      (fun prog -> Some [Program.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Program.term prog)) prog, get_rtyp_id]);
+      (fun prog -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Problem.term prog)) prog, get_rtyp_id]);
     Eliminate_same_arguments,
       cond_trans !Flag.Method.elim_same_arg @@
-      map_trans @@ Program.map Elim_same_arg.trans;
+      map_trans @@ Problem.map Elim_same_arg.trans;
     Insert_unit_param,
       cond_trans !Flag.Method.insert_param_funarg @@
       map_trans insert_param_funarg;
     PreprocessForTermination,
       cond_trans Flag.Method.(!mode = Termination) @@
-      map_trans @@ Program.map !BRA_types.preprocessForTerminationVerification;
+      map_trans @@ Problem.map !BRA_types.preprocessForTerminationVerification;
     Alpha_rename,
       map_trans @@ alpha_rename ~set_counter:true;
   ]
 
-let pr () = if !!Debug_ty.check then Program.print_debug else Program.print
-let print desc prog = Verbose.printf "###%a:@. @[%a@.@." Color.s_red desc !!pr prog
+let pr () = if !!Debug_ty.check then Problem.print_debug else Problem.print
+let print desc prog = Verbose.printf "### %a:@. @[%a@.@." Color.s_red desc !!pr prog
 
 let rec trans_and_print
           (tr : tr)
           (desc : string)
-          (prog : Program.t) =
+          (prog : Problem.t) =
   Debug.printf "START: %s@." desc;
   let r = tr prog in
   match r with
@@ -251,10 +260,10 @@ let rec trans_and_print
       Debug.printf "END: %s@.@." desc;
       let aux r =
         let prog' = fst r in
-        if l > 1 || prog <> prog' then
+        if desc = "Init" || l > 1 || prog <> prog' then
           print desc prog';
         if !!Debug.check then
-          let t = Program.term prog' in
+          let t = Problem.term prog' in
           try
             Type_check.check t t.Syntax.typ
           with e ->
