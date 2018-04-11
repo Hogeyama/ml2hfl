@@ -26,6 +26,9 @@ let rec decomp_bool t =
 
 let rec merge_typ env typ typ' =
   match typ,typ' with
+  | TBase(b1,_), TApp(TConstr(TFixPred p), TBase(b2, _))
+  | TApp(TConstr(TFixPred p), TBase(b1, _)), TBase(b2, _) when b1 = b2 ->
+      TApp(TConstr(TFixPred p), TBase(b1, fun _ -> []))
   | TBase(b1,ps1),TBase(b2,ps2) when b1 = b2 ->
       let x = !!new_id' in
       let ps1' = ps1 (Var x) in
@@ -73,6 +76,7 @@ let rec merge_typ env typ typ' =
       Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ';
       assert false
 
+(* wrapper for debug *)
 let merge_typ typ1 typ2 =
   try
     let r = merge_typ [] typ1 typ2 in
@@ -171,6 +175,10 @@ and trans_typ ty =
       let typ2 = trans_typ typ in
       TFun(typ1, subst_typ (trans_var x) -$- typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
+  | Type.TAttr([], typ) -> trans_typ typ
+  | Type.TAttr(Type.TARefPred(x,p)::attrs, typ) ->
+      let p' y = subst (trans_var x) y @@ snd @@ trans_term "" [] [] p in
+      TApp(TConstr (TFixPred p'), trans_typ @@ Type.TAttr(attrs,typ))
   | Type.TAttr(attr, typ) when List.mem Type.TAAssumePredTrue attr ->
       let attr' = List.filter ((<>) Type.TAAssumePredTrue) attr in
       let ty' = trans_typ @@ Type._TAttr attr' typ in
@@ -187,7 +195,9 @@ and trans_typ ty =
         | typ -> Format.printf "trans_typ[TPred]: %a@." CEGAR_print.typ typ; assert false
       end
   | Type.TTuple xs -> make_ttuple @@ List.map (trans_typ -| Id.typ) xs
-  | typ -> Format.printf "trans_typ: %a@." Print.typ typ; assert false
+  | typ ->
+      Format.printf "trans_typ: %a@." Print.typ typ;
+      assert false
 
 and trans_binop = function
   | S.Eq -> assert false

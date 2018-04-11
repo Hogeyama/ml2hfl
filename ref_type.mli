@@ -32,7 +32,8 @@ val decomp_base : t -> (base * Syntax.id * Syntax.term) option
 val decomp_fun : t -> (Syntax.id * t * t) option
 val decomp_list : t -> (Syntax.id * Syntax.term * Syntax.id * Syntax.term * t) option
 val decomp_inter : t -> t list
-val decomp_funs : int -> t -> (Syntax.id * t) list * (Syntax.id * t) list * t
+val decomp_funs : t -> (Syntax.id * t) list * t
+val decomp_funs_n : int -> t -> (Syntax.id * t) list * (Syntax.id * t) list * t
 val arg_num : t -> int
 
 val is_base : t -> bool
@@ -52,8 +53,8 @@ val map_pred : (Syntax.term -> Syntax.term) -> t -> t
 (** {6 Converter} *)
 val of_simple : Syntax.typ -> t
 val to_simple_base : base -> 'a Type.t
-val to_simple : t -> Syntax.typ
-val to_abst_typ : t -> Syntax.typ
+val to_simple : ?with_pred:bool -> t -> Syntax.typ
+val to_abst_typ : ?with_pred:bool -> t -> Syntax.typ
 
 
 (** {6 Printer} *)

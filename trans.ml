@@ -25,6 +25,16 @@ let map_id =
   tr.tr2_var <- (fun f -> f -| tr.tr2_var_rec f);
   tr.tr2_term
 
+let remove_id_let =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match tr.tr_desc_rec desc with
+    | Local(Decl_let [x, t], {desc=Var y}) when Id.(x = y) -> t.desc
+    | desc' -> desc'
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
 let alpha_rename ?(whole=false) ?(set_counter=false) =
   let prefix = '#' in
   let tr = make_trans2 () in
@@ -1194,37 +1204,39 @@ let lift_type_decl t =
   make_let_type decls' @@ remove_type_decl t
 
 
+(* order of "env" matters *)
 let make_ext_funs ?(fvs=[]) env t =
   let typ_exn = find_exn_typ t in
-  let t' = remove_defs (Ref_type.Env.dom env) t in
+  let t' = remove_defs (List.map fst env) t in
   Debug.printf "MEF t': %a@." Print.term t';
-  Debug.printf "MEF env: %a@." Ref_type.Env.print env;
+  Debug.printf "MEF env: %a@." Print.(list @@ pair id Ref_type.print) env;
   let fv = get_fv ~eq:(fun x y -> Id.(x = y) && Type.can_unify (Id.typ x) (Id.typ y)) t' in
   Debug.printf "MEF fv: %a@." (List.print Id.print) fv;
   let funs =
     fv
     |> List.filter Id.is_external
     |> List.filter_out Id.is_coefficient
-    |> List.filter_out (Ref_type.Env.mem_assoc -$- env)
+    |> List.filter_out (List.mem_assoc -$- env)
     |> List.filter_out (Id.mem -$- fvs)
   in
   Debug.printf "MEF: %a@." (List.print Print.id_typ) funs;
   if List.exists (is_poly_typ -| Id.typ) funs then
     unsupported "Trans.make_ext_funs (polymorphic functions)";
-  let map,t'' = rename_ext_funs funs t' in
+  Debug.printf "MEF t': %a@." Print.term' t';
+  let funs' = List.filter_out (Id.mem_assoc -$- env) funs in
+  let map,t'' = rename_ext_funs funs' t' in
   Debug.printf "MEF t'': %a@." Print.term' t'';
   let defs1 = List.map make_ext_fun_def map in
   let genv,cenv,defs2 =
-    let aux (genv,cenv,defs) (f,typ) =
+    let aux (f,typ) (genv,cenv,defs) =
       let genv',cenv',t = Ref_type_gen.generate typ_exn genv cenv typ in
-      let f' = Id.set_typ f @@ Ref_type.to_abst_typ typ in
+      let f' = Id.set_typ f @@ Ref_type.to_abst_typ ~with_pred:true typ in
       genv', cenv', (f',t)::defs
     in
-    List.fold_left aux ([],[],[]) @@ Ref_type.Env.to_list env
+    List.fold_right aux env ([],[],[])
   in
   let defs = List.map snd (genv @ cenv) @ defs2 in
-  Debug.printf "MEF t'': %a@." Print.term' t'';
-  lift_type_decl @@ remove_ext_attr @@ make_lets defs @@ make_lets defs1 t''
+  lift_type_decl @@ remove_ext_attr @@ remove_id_let @@ make_lets defs @@ make_lets defs1 t''
 
 let assoc_typ =
   let col = make_col2 [] (@@@) in
@@ -1976,12 +1988,12 @@ let rec map_main f t =
       {t with desc}
   | _ -> f t
 
-let rec replace_main ?(force=false) main t =
+let rec replace_main ?(force=false) ~main t =
   match t.desc with
   | Local(Decl_let bindings, t2) ->
-      make_let bindings @@ replace_main ~force main t2
+      make_let bindings @@ replace_main ~force ~main t2
   | Local(Decl_type decls, t2) ->
-      make_let_type decls @@ replace_main ~force main t2
+      make_let_type decls @@ replace_main ~force ~main t2
   | _ ->
       assert (force || t.desc = Const End_of_definitions);
       main

@@ -165,7 +165,7 @@ let trans_eager prog = map_def_prog (trans_eager_def prog.env) prog
 
 
 let rec eta_expand_term_aux env t typ =
-  if false then Debug.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if true then Debug.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match typ with
   | TBase _ -> t
   | TFun(typ1,typ2) ->
@@ -182,7 +182,7 @@ let rec eta_expand_term_aux env t typ =
   | _ -> assert false
 
 let rec eta_expand_term env t typ =
-  if false then Debug.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if true then Debug.printf "ETA: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match t with
   | Const Bottom
   | Const (Rand(TInt,_))
@@ -223,8 +223,21 @@ let eta_expand_def env (f,xs,t1,e,t2) =
   let env'' = env' @@@ env in
   let t2' = eta_expand_term env'' t2 typ in
   f, xs, t1, e, t2'
-let eta_expand prog = {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
+let eta_expand prog =
+  {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
+let fixpred_to_abstpred prog =
+  let env =
+    let rec aux ty =
+      match ty with
+      | TBase _ -> ty
+      | TFun(ty1,ty2) -> TFun(aux ty1, aux -| ty2)
+      | TApp(TConstr(TFixPred p), TBase(b,_)) -> TBase(b, fun x -> [p x])
+      | _ -> assert false
+    in
+    List.map (Pair.map_snd aux) prog.env
+  in
+  {prog with env}
 
 
 let rec eta_reduce_term = function
@@ -321,7 +334,6 @@ let rec abstract_rand_int n env cond pts xs t =
 (** pts: enviroment for predicates
     (e.g., [x >= 0, b] means that the abstracted variable b corresponds "x >= 0" in the original program) *)
 and abstract_term env cond pts t typ =
-  let pts',defs,r =
   match t with
   | Const CPS_result -> pts, [], [Const Unit]
   | Const Bottom ->
@@ -396,11 +408,6 @@ and abstract_term env cond pts t typ =
   | Var _ -> assert false
   | Const _ -> assert false
   | Let _ -> assert false
-  in
-  let dbg = false && !!Debug.check in
-  if dbg then Format.printf "abstract_term: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
-  if dbg then Format.printf "abstract_term r: %a@." (List.print CEGAR_print.term) r;
-  pts',defs,r
 
 
 
@@ -413,6 +420,7 @@ let rec abstract_typ = function
       let aux typ1 typ2 = TFun(typ1, fun _ -> typ2) in
       [List.fold_right aux typs @@ List.get @@ abstract_typ typ2]
   | TApp(TConstr TAssumeTrue, ty) -> abstract_typ ty
+  | TApp(TConstr (TFixPred _), ty) -> abstract_typ ty
   | _ -> assert false
 
 let abstract_typ typ = List.get @@ abstract_typ typ
@@ -463,6 +471,7 @@ let abstract prog top_funs =
   let b = not !Flag.PredAbst.no_simplification in
   prog
   |@> pr "INPUT"
+  |> fixpred_to_abstpred
   |&b&> expand_non_rec
   |@b&> pr "EXPAND_NONREC"
   |&b&> CEGAR_trans.simplify_if

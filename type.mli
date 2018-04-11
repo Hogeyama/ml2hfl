@@ -24,6 +24,7 @@ and constr =
   | TLazy
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list
+  | TARefPred of 'a t Id.t * 'a
   | TAPureFun
   | TAEffect of effect
   | TAAssumePredTrue
@@ -90,6 +91,7 @@ val make_tlist : 'a t -> 'a t
 val make_tref : 'a t -> 'a t
 val make_toption : 'a t -> 'a t
 val make_tarray : 'a t -> 'a t
+val add_tattr: 'a attr -> 'a t -> 'a t
 
 
 (** {6 Printers} *)

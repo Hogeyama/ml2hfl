@@ -1,29 +1,6 @@
 open Util
 open Problem
 
-let expand_let_val {term; env; attr; kind} =
-  assert (List.mem ACPS attr);
-  let term = Trans.expand_let_val term in
-  {term; env; attr; kind}
-
-let beta_reduce {term; env; attr; kind} =
-  assert (List.mem ACPS attr);
-  let term = Trans.expand_let_val term in
-  {term; env; attr; kind}
-
-let set_main {term; env; attr; kind} =
-  match kind with
-  | Safety ->
-      let term = Trans.set_main term in
-      {term; env; attr; kind}
-  | Ref_type_check asrt ->
-      let term = Trans.ref_to_assert asrt term in
-      {term; env; attr; kind=Safety}
-
-let make_ext_funs {term; env; attr; kind} =
-  let term = Trans.make_ext_funs env term in
-  {term; env; attr; kind}
-
 let extract_module = map Trans.extract_module
 let unify_app = map Trans.unify_app
 let mark_fv_as_external = map Trans.mark_fv_as_external
@@ -50,3 +27,47 @@ let copy_poly_funs = map_on Focus.fst Trans.copy_poly_funs
 let insert_param_funarg = map Trans.insert_param_funarg
 let ignore_exn_arg = map Trans.ignore_exn_arg
 let ref_to_assert env = map (Trans.ref_to_assert env)
+
+let expand_let_val {term; env; attr; kind} =
+  assert (List.mem ACPS attr);
+  let term = Trans.expand_let_val term in
+  {term; env; attr; kind}
+
+let beta_reduce {term; env; attr; kind} =
+  assert (List.mem ACPS attr);
+  let term = Trans.expand_let_val term in
+  {term; env; attr; kind}
+
+let set_main {term; env; attr; kind} =
+  match kind with
+  | Safety ->
+      let term = Trans.set_main term in
+      [{term; env; attr; kind}]
+  | Ref_type_check check ->
+      let make_check (x, ty) =
+        let tys,ty' = Ref_type.decomp_funs ty in
+        let r = Id.new_var ~name:"r" @@ Ref_type.to_simple ty' in
+        let t_check =
+          match ty' with
+          | Ref_type.Base(base,y,p) -> Term_util.subst_var y r p
+          | _ -> Term_util.Term.true_
+        in
+        let xs =
+          let aux = Id.new_var ~name:"arg" -| Ref_type.to_simple ~with_pred:true in
+          List.map (snd |- aux) tys
+        in
+        let t_check' = List.fold_right2 (Term_util.subst_var -| fst) tys xs t_check in
+        let main = Term_util.Term.(let_ [r, var x @ vars xs] (assert_ t_check')) in
+        let env =
+          let aux x (y,ty) acc = (x,ty) :: List.map (Pair.map_snd @@ Ref_type.subst_var y x) acc in
+          List.fold_right2 aux xs tys []
+        in
+        env, Trans.replace_main ~main term
+      in
+      check
+      |> List.map make_check
+      |> List.map (fun (env',term) -> let env = env' @ env in {term; env; attr; kind=Safety})
+
+let make_ext_funs {term; env; attr; kind} =
+  let term = Trans.make_ext_funs env term in
+  {term; env=[]; attr; kind}

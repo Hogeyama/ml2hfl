@@ -10,7 +10,7 @@ val copy_poly_funs : term -> term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> R
 val define_randvalue : ((typ * id) list * (id * term) list) -> typ -> ((typ * id) list * (id * term) list) * term
 val inst_randval : term -> term
 val ref_to_assert : ?make_fail:(typ -> term) -> ?typ_exn:typ -> Ref_type.env -> term -> term
-val replace_main : ?force:bool -> term -> term -> term
+val replace_main : ?force:bool -> main:term -> term -> term
 val map_main : (term -> term) -> term -> term
 val set_main : term -> term
 val part_eval : term -> term
@@ -29,7 +29,7 @@ val insert_param_funarg : term -> term
 val search_fail : term -> int list list
 val screen_fail : int list -> term -> term
 val rename_ext_funs : id list -> term -> id list * term
-val make_ext_funs : ?fvs:(id list) -> Ref_type.env -> term -> term
+val make_ext_funs : ?fvs:(id list) -> (id * Ref_type.t) list -> term -> term
 val assoc_typ : id -> term -> typ
 val diff_terms : term -> term -> (term * term) list
 val remove_label : ?label:string -> term -> term
@@ -114,3 +114,4 @@ val extract_module : term -> term
 val inline_record_type : term -> term
 val inline_type_decl : term -> term
 val inline_simple_types : term -> term
+val remove_id_let : term -> term

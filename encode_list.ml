@@ -523,8 +523,10 @@ let trans_term t =
   |> tr
   |@> (fun t -> Type_check.check t ~ty:t.typ) -| fst
   |@> pr "trans" -| fst
+(*
   |> Pair.map_fst Trans.inst_randval
   |@> pr "inst_randval" -| fst
+ *)
   |> Pair.map_fst Trans.eta_tuple
   |@> pr "eta_tuple" -| fst
   |*> Pair.map_fst Trans.simplify_if_cond
@@ -565,6 +567,6 @@ let rec trans_rty ty =
   | Exn(ty1,ty2) -> Exn(trans_rty ty1, trans_rty ty2)
 
 let trans_env env =
-  Ref_type.Env.map_value trans_rty env
+  List.map (Pair.map_snd trans_rty) env
 
 let trans = Problem.map_on Focus.fst ~tr_env:trans_env trans_term

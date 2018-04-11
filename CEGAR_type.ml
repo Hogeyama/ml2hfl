@@ -8,15 +8,16 @@ type base =
   | TBool
   | TAbst of string
 
-type constr =
+type 'a constr =
   | TList
   | TTuple
   | TAssumeTrue
+  | TFixPred of ('a -> 'a)
   | TPath of int list (* used only for refinement *)
 
 type 'a t =
   | TBase of base * ('a -> 'a list)
-  | TConstr of constr
+  | TConstr of 'a constr
   | TApp of 'a t * 'a t
   | TFun of 'a t * ('a -> 'a t)
 

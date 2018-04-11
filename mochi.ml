@@ -231,10 +231,10 @@ let main cin =
       if !Flag.Method.modular then
         Modular.main orig spec t
       else
-        let env_assume = Ref_type.Env.of_list @@ Spec.get_ext_ref_env spec t in
-        let env_assert = Ref_type.Env.of_list @@ Spec.get_ref_env spec t in
+        let env_assume = Spec.get_ext_ref_env spec t in
+        let env_assert = Spec.get_ref_env spec t in
         let problem =
-          if env_assert = Ref_type.Env.empty then
+          if env_assert = [] then
             Problem.safety ~env:env_assume t
           else
             Problem.ref_type_check ~env:env_assume t env_assert

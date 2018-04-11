@@ -30,6 +30,7 @@ let rec conv_typ ty =
       let _,tys = decomp_tapp ty in
       Fpat.Type.mk_tuple @@ List.map conv_typ tys
   | TApp(TConstr TAssumeTrue, ty) -> conv_typ ty
+  | TApp(TConstr (TFixPred _), ty) -> conv_typ ty
   | _ ->
      Format.printf "%a@." CEGAR_print.typ ty;
      assert false

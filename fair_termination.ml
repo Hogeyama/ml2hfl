@@ -355,7 +355,7 @@ let rec run spec t =
     Debug.printf "arg_vars: %a@." (List.print Print.id) arg_vars;
     let t''' =
       t''
-      |> Trans.replace_main ~force:true unit_term
+      |> Trans.replace_main ~force:true ~main:unit_term
       |> Trans.tfuns_to_tfun
       |@> pr @@ Format.asprintf "trans for %a" Print.id f
       |> Trans.flatten_let

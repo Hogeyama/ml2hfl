@@ -274,6 +274,7 @@ module Term : sig
   val seq : term -> term -> term
   val seqs : term list -> term -> term
   val ignore : term -> term
+  val assert_ : term -> term
   val assume : term -> term -> term
   val none : typ -> term
   val some : term -> term

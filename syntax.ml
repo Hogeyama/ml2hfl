@@ -163,6 +163,7 @@ let trans_typ trans = function
       let tr a =
         match a with
         | TAPred(x,ps) -> TAPred(trans.tr_var x, List.map trans.tr_term ps)
+        | TARefPred(x,p) -> TARefPred(trans.tr_var x, trans.tr_term p)
         | TAPureFun -> TAPureFun
         | TAEffect e -> TAEffect e
         | TAAssumePredTrue -> TAAssumePredTrue
@@ -333,6 +334,7 @@ let trans2_gen_typ tr env = function
       let aux a =
         match a with
         | TAPred(x,ps) -> TAPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
+        | TARefPred(x,p) -> TARefPred(tr.tr2_var env x, tr.tr2_term env p)
         | TAPureFun -> TAPureFun
         | TAEffect e -> TAEffect e
         | TAAssumePredTrue -> TAAssumePredTrue
@@ -514,6 +516,7 @@ let col_typ col typ =
         | TAPred(x,ps) ->
             let acc' = col.col_var x -@- acc in
             List.fold_left (fun acc p -> acc -@- col.col_term p) acc' ps
+        | TARefPred(x,p) -> col.col_var x -@- col.col_term p -@- acc
         | TAPureFun -> acc
         | TAEffect e -> acc
         | TAAssumePredTrue -> acc
@@ -695,6 +698,8 @@ let col2_typ col env typ =
         | TAPred(x,ps) ->
             let init = col.col2_var env x -@- acc in
             col2_list col (col.col2_term env) ~init ps
+        | TARefPred(x,p) ->
+            col.col2_var env x -@- col.col2_term env p -@- acc
         | TAPureFun -> acc
         | TAEffect _ -> acc
         | TAAssumePredTrue -> acc
@@ -888,6 +893,10 @@ let tr_col2_typ tc env = function
             let acc,x' = tc.tr_col2_var env x in
             let acc',ps' = tr_col2_list tc tc.tr_col2_term ~init:acc env ps in
             acc', TAPred(x',ps')
+        | TARefPred(x,p) ->
+            let acc,x' = tc.tr_col2_var env x in
+            let acc',p' = tc.tr_col2_term env p in
+            acc', TARefPred(x',p')
         | TAPureFun -> tc.tr_col2_empty, TAPureFun
         | TAEffect e -> tc.tr_col2_empty, TAEffect e
         | TAAssumePredTrue -> tc.tr_col2_empty, TAAssumePredTrue
@@ -1216,6 +1225,10 @@ let fold_tr_typ fld env ty =
             let env',x' = fld.fld_var env x in
             let env'',ps' = fold_tr_list fld.fld_term env' ps in
             env'', TAPred(x',ps')
+        | TARefPred(x,p) ->
+            let env',x' = fld.fld_var env x in
+            let env'',p' = fld.fld_term env' p in
+            env'', TARefPred(x',p')
         | TAPureFun -> env, TAPureFun
         | TAEffect e -> env, TAEffect e
         | TAAssumePredTrue -> env, TAAssumePredTrue

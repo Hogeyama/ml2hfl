@@ -1241,7 +1241,7 @@ let trans {Problem.term=t; env=rtenv; attr; kind} =
     |> Trans.eta_reduce
     |@> pr "elim_reduce"
   in
-  let rtenv = Ref_type.Env.map_value (trans_ref_typ true) rtenv in
+  let rtenv = List.map (Pair.map_snd @@ trans_ref_typ true) rtenv in
   let attr = Problem.ACPS::attr in
   {Problem.term=t'; env=rtenv; attr; kind}, make_get_rtyp sol typ_exn typed
 

@@ -130,7 +130,7 @@ let all spec : t list =
     Init,
       map_trans Fun.id;
     Set_main,
-      map_trans set_main;
+      set_main |- List.map (Pair.pair -$- get_rtyp_id) |- Option.some;
     Extract_module,
       map_trans extract_module;
     Unify_app,

@@ -92,7 +92,7 @@ let rec uncurry_typ rtyp typ =
   | _, TFun(x,typ2) ->
       let typ1 = Id.typ x in
       let n = element_num typ1 in
-      let exts,xrtyps,rtyp2 = RT.decomp_funs n rtyp in
+      let exts,xrtyps,rtyp2 = RT.decomp_funs_n n rtyp in
       let rtyp1' = uncurry_typ_arg (List.map snd xrtyps) typ1 in
       let rtyp2' = uncurry_typ rtyp2 typ2 in
       let y =
@@ -294,7 +294,26 @@ and remove_pair_ref_typ ty =
   | _ ->
       Format.printf "remove_pair_typ: %a@." Ref_type.print ty;
       assert false
-let remove_pair_ref_typ = Ref_type.map_pred Trans.eta_tuple -| snd -| List.get -| fst -| remove_pair_ref_typ
+let remove_pair_ref_typ (x,t) =
+  let rec aux results =
+    match results with
+    | [] -> assert false
+    | [_, ty] -> [x, ty]
+    | _ ->
+        let aux' (y,ty) (i,acc) =
+          let x' = Id.add_name_after (string_of_int i) x in
+          let y' = Option.get y in
+          i+1, (x',ty) :: List.map (Pair.map_snd @@ Ref_type.map_pred @@ subst_var y' x) acc
+        in
+        snd @@ List.fold_right aux' results (0,[])
+  in
+  t
+  |@> Format.printf "INPUT: %a, @[%a@." Id.print x Ref_type.print
+  |> remove_pair_ref_typ
+  |> fst
+  |> List.map (Pair.map_snd @@ Ref_type.map_pred Trans.eta_tuple)
+  |@> Format.printf "TRANS: @[%a@." Print.(list @@ pair (option id) Ref_type.print)
+  |> aux
 
 
 let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind} =
@@ -311,7 +330,7 @@ let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind} =
     |> Trans.beta_size1
     |@> pr "beta_size1"
   in
-  let rtenv = Ref_type.Env.map_value remove_pair_ref_typ rtenv in
+  let rtenv = List.flatten_map remove_pair_ref_typ rtenv in
   {Problem.term=t'; env=rtenv; attr; kind}, uncurry_rtyp t
 
 let remove_pair_direct t =

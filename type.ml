@@ -28,6 +28,7 @@ and constr =
   | TLazy
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
+  | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
   | TAAssumePredTrue
@@ -211,6 +212,9 @@ let rec print occur print_pred fm typ =
         Format.fprintf fm "@[%a^T@]" print' typ
       else
         Format.fprintf fm "@[(%a)^T@]" print' typ
+  | TAttr(TARefPred(x,p)::attrs, ty) ->
+      let ty' = TAttr(attrs,ty) in
+      Format.fprintf fm "@[{%a:%a|%a}@]" Id.print x print' ty' print_pred p
   | TAttr _ -> unsupported "Type.print TAttr"
   | TVariant(poly,labels) ->
       let pr fm (s, typs) =
@@ -534,6 +538,11 @@ let is_tvar ty =
   match ty with
   | TVar({contents=None},_) -> true
   | _ -> false
+
+let add_tattr attr ty =
+  match ty with
+  | TAttr(attrs, ty') -> TAttr(attr::attrs, ty')
+  | _ -> TAttr([attr], ty)
 
 module Ty = struct
   let unit = TBase TUnit

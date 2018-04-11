@@ -11,7 +11,7 @@ let main f parsed =
     let main = Id.new_var_id x in
     let t =
       parsed
-      |> Trans.replace_main Term.(let_ [main,var x] unit)
+      |> Trans.replace_main ~main:Term.(let_ [main,var x] unit)
       |> Trans.elim_unused_let ~leave_last:true
     in
     let r = f t in
@@ -43,6 +43,6 @@ let main verify parsed =
   in
   parsed
   |@> Format.printf "parsed: %a@." Print.term
-  |> Trans.replace_main main
+  |> Trans.replace_main ~main
   |@> Format.printf "set main: %a@." Print.term
   |> verify

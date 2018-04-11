@@ -39,20 +39,25 @@ and print_typ_constr fm constr =
   match constr with
   | TList -> Format.fprintf fm "list"
   | TTuple -> Format.fprintf fm "tuple"
-  | TAssumeTrue -> Format.fprintf fm "true"
+  | TFixPred _ -> assert false
+  | TAssumeTrue -> assert false
   | TPath path -> Format.fprintf fm "path %a" (List.print Format.pp_print_int) path
 
 and print_typ_aux var fm = function
   | TBase(b,ps) ->
       let x,occur = match var with None -> new_id "x", false | Some(x,occur) -> x, occur in
       let preds = ps (Var x) in
-      if true || occur || List.mem x @@ List.rev_flatten_map get_fv preds then
+      if occur || List.mem x @@ List.rev_flatten_map get_fv preds then
         Format.fprintf fm "%a:" print_var x;
       Format.fprintf fm "%a" print_typ_base b;
       if preds <> [] then
         Format.fprintf fm "[@[%a@]]" (Color.blue @@ print_list print_linear_exp ";@ ") preds
   | TApp(TConstr TAssumeTrue, ty) ->
       Format.fprintf fm "%a^T" (print_typ_aux var) ty
+  | TApp(TConstr (TFixPred p), ty) ->
+      let x = new_id "x" in
+      let pred = p (Var x) in
+      Format.fprintf fm "{%a:%a|%a}" print_var x (print_typ_aux var) ty print_linear_exp pred
   | TConstr constr ->
       print_typ_constr fm constr
   | TFun _ as typ ->

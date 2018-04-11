@@ -1299,6 +1299,7 @@ module Term = struct
   let seq = make_seq
   let seqs = List.fold_right make_seq
   let ignore = make_ignore
+  let assert_ = make_assert
   let assume = make_assume
   let none = make_none
   let some = make_some
