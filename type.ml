@@ -185,7 +185,7 @@ let rec print occur print_pred fm typ =
   | TFuns(xs,typ) ->
       let rec aux fm (xs, typ) =
         match xs with
-        | [] -> Format.printf "[%a]" print' typ
+        | [] -> Format.fprintf fm "[%a]" print' typ
         | x::xs' ->
             if occur x typ || List.exists (occur x) (List.map Id.typ xs)
             then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
@@ -330,7 +330,7 @@ let rec unify typ1 typ2 =
   | TVar({contents = None} as r, n), typ
   | typ, TVar({contents = None} as r, n) ->
       if occurs r typ then
-        (Format.printf "occurs check failure: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
+        (Format.eprintf "occurs check failure: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
          raise CannotUnify);
       Option.iter (fun n -> Debug.printf "%a := %a@." print_tvar n print_init typ) n;
       r := Some typ
@@ -342,7 +342,7 @@ let rec unify typ1 typ2 =
   | _, TData _ -> ()
   | TData _, _ -> ()
   | _ ->
-      Format.printf "unification error: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
+      Format.eprintf "unification error: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
       raise CannotUnify
 
 
@@ -489,7 +489,7 @@ let decomp_trecord typ =
   match typ with
   | TRecord fields -> fields
   | _ ->
-      Format.printf "%a@." print_init typ;
+      Format.eprintf "%a@." print_init typ;
       invalid_arg "decomp_trecord"
 
 let decomp_tvariant ty =
@@ -497,7 +497,7 @@ let decomp_tvariant ty =
   | TVariant(poly,labels) ->
       poly, labels
   | _ ->
-      Format.printf "%a@." print_init ty;
+      Format.eprintf "%a@." print_init ty;
       invalid_arg "decomp_tvariant"
 
 

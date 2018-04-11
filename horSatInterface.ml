@@ -56,7 +56,7 @@ let trans_const = function
   | True -> HS.PTapp(HS.FD 0, [])
   | False -> HS.PTapp(HS.FD 1, [])
   | TreeConstr(_,s) -> HS.PTapp(HS.Name s, [])
-  | c -> Format.printf "trans_const: %a@." CEGAR_print.term (Const c); assert false
+  | c -> Format.eprintf "trans_const: %a@." CEGAR_print.term (Const c); assert false
 
 
 let rec trans_id x =
@@ -167,8 +167,8 @@ let rec verifyFile cmd parser token filename =
       let line = loc.loc_start.pos_lnum in
       let startchar = loc.loc_start.pos_cnum - loc.loc_start.pos_bol in
       let endchar = loc.loc_end.pos_cnum - loc.loc_start.pos_cnum + startchar in
-      Format.printf "File \"%s\", line %d@?" file line;
-      if startchar >= 0 then Format.printf ", characters %d-%d@." startchar endchar;
+      Format.eprintf "File \"%s\", line %d@?" file line;
+      if startchar >= 0 then Format.eprintf ", characters %d-%d@." startchar endchar;
       raise Parse_error
   in
   close_in ic;

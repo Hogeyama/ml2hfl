@@ -38,4 +38,4 @@ and token = parse
 | digit+ { INT (int_of_string (Lexing.lexeme lexbuf)) }
 | "The number of expansions:" { EOF }
 | "Elapsed Time:" { EOF }
-| _ { Format.printf "ERROR:%s@." (Lexing.lexeme lexbuf); failwith "lex error" }
+| _ { Format.eprintf "ERROR:%s@." (Lexing.lexeme lexbuf); failwith "lex error" }

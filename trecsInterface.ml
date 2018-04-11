@@ -27,7 +27,7 @@ let trans_const = function
   | Unit -> TS.PTapp(TS.Name "unit", [])
   | True -> TS.PTapp(TS.FD 0, [])
   | False -> TS.PTapp(TS.FD 1, [])
-  | c -> Format.printf "print_const: %a@." CEGAR_print.const c; assert false
+  | c -> Format.eprintf "print_const: %a@." CEGAR_print.const c; assert false
 
 
 let trans_id x =

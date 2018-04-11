@@ -55,7 +55,7 @@ let rec ref_of_inter env cond atyp ityp =
         else if ityp = IT.Inter [] then
           []
         else
-          (Format.printf "%a@." IT.print ityp; assert false)
+          (Format.eprintf "%a@." IT.print ityp; assert false)
       in
       let ts = List.rev_flatten @@ List.map2 aux ps' ityps in
       let p = List.fold_left CS.make_and (CS.Const CS.True) ts in
@@ -72,7 +72,7 @@ let rec ref_of_inter env cond atyp ityp =
       RT.Base(RT.Unit, "", CS.Const CS.True)
   | AT.TBase(base, _), IT.Base (IT.State _) when base = AT.typ_result_base ->
       RT.Base(RT.Unit, "", CS.Const CS.True)
-  | _ -> Format.printf "atyp:%a@.ityp:%a@." CEGAR_print.typ atyp IT.print ityp; assert false
+  | _ -> Format.eprintf "atyp:%a@.ityp:%a@." CEGAR_print.typ atyp IT.print ityp; assert false
 
 let ref_of_inter atyp ityp =
   let r = ref_of_inter [] [] atyp ityp in

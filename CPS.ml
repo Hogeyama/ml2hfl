@@ -157,9 +157,9 @@ let rec unify env typ1 typ2 =
   | TTupleCPS typs1, TTupleCPS typs2 ->
       List.iter2 (unify env) typs1 typs2
   | _ ->
-      Format.printf "Bug?@.typ1: %a@.typ2: %a@."
-                    (print_typ_cps (fun _ -> ENone)) typ1
-                    (print_typ_cps (fun _ -> ENone)) typ2;
+      Format.eprintf "Bug?@.typ1: %a@.typ2: %a@."
+                     (print_typ_cps (fun _ -> ENone)) typ1
+                     (print_typ_cps (fun _ -> ENone)) typ2;
       assert false
 
 let rec typ_of_etyp etyp =
@@ -188,7 +188,7 @@ let rec infer_effect_typ env typ =
       TFunCPS(e, infer_effect_typ env typ1, infer_effect_typ env typ2)
   | TTuple xs -> TTupleCPS (List.map (infer_effect_typ env -| Id.typ) xs)
   | TAttr(_,typ) -> infer_effect_typ env typ
-  | _ -> Format.printf "%a@." Print.typ typ; assert false
+  | _ -> Format.eprintf "%a@." Print.typ typ; assert false
 
 let new_var env x = {id_cps=x; id_typ=infer_effect_typ env (Id.typ x)}
 
@@ -221,7 +221,7 @@ let rec infer_effect env tenv t =
 	  List.assoc (Id.to_string x) tenv
 	with
 	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS(TBase TInt)
-	| Not_found -> Format.printf "%a@." Print.id x; assert false
+	| Not_found -> Format.eprintf "%a@." Print.id x; assert false
       in
       {t_orig=t; t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; effect=new_evar()}
   | Fun(x, t1) ->
@@ -305,7 +305,7 @@ let rec infer_effect env tenv t =
   | Proj(i,t1) ->
       let typed = infer_effect env tenv t1 in
       let typ = infer_effect_typ env t1.typ in
-      let typ1 = match typ with TTupleCPS typs -> List.nth typs i | _ -> Format.printf "%a@." Print.term' t1; assert false in
+      let typ1 = match typ with TTupleCPS typs -> List.nth typs i | _ -> Format.eprintf "%a@." Print.term' t1; assert false in
       unify env typed.typ_cps typ;
       {t_orig=t; t_cps=ProjCPS(i,typed); typ_cps=typ1; effect=typed.effect}
   | Tuple ts ->
@@ -331,7 +331,7 @@ let rec infer_effect env tenv t =
       env.constraints <- CGeq(e, EExcep) :: env.constraints;
       {t_orig=t; t_cps=RaiseCPS typed; typ_cps=infer_effect_typ env t.typ; effect=e}
   | _ ->
-      Format.printf "t: @[%a@." Print.term t;
+      Format.eprintf "t: @[%a@." Print.term t;
       assert false
 
 
@@ -494,7 +494,7 @@ let rec trans_typ sol typ_excep typ_orig typ =
       let attr' = List.flatten_map aux attr in
       _TAttr attr' @@ trans_typ sol typ_excep typ_orig' typ
   | _ ->
-      Format.printf "%a,%a@." Print.typ typ_orig (print_typ_cps sol) typ;
+      Format.eprintf "%a,%a@." Print.typ typ_orig (print_typ_cps sol) typ;
       raise (Fatal "bug? (CPS.trans_typ)")
 
 let trans_var sol typ_excep x = Id.map_typ (trans_typ sol typ_excep -$- x.id_typ) x.id_cps
@@ -855,7 +855,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
                          ~k:(fun_ f
                                (app (sol (get_tfun_effect t2.typ_cps))
                                   (var f @ [var e]) ~k:(var k) ~h:(var h)))))))
-    | t, e -> (Format.printf "%a, %a@." (print_t_cps sol) t print_effect e; assert false)
+    | t, e -> (Format.eprintf "%a, %a@." (print_t_cps sol) t print_effect e; assert false)
   in
   {t' with attr=t_orig.attr}
 
@@ -1039,7 +1039,7 @@ let infer_effect env t =
   let ext_funs = get_fv ~eq t in
   if List.length ext_funs <> List.length (List.unique ~eq:Id.eq ext_funs) then
     begin
-      List.iter (fun x -> Format.printf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
+      List.iter (fun x -> Format.eprintf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
       unsupported "polymorphic use of external functions";
     end;
   let tenv = List.map (Pair.make Id.to_string (Id.typ |- infer_effect_typ env |- force_cont)) ext_funs in
@@ -1051,7 +1051,7 @@ let make_get_rtyp sol typ_exn typed get_rtyp f =
   Debug.printf "%a:@.rtyp:%a@.etyp:%a@.@." Id.print f RT.print rtyp (print_typ_cps sol) etyp;
   let rtyp' = Ref_type.map_pred Trans.reconstruct @@ uncps_ref_type sol typ_exn rtyp ENone etyp in
   if !!Flag.Debug.print_ref_typ then
-    Format.printf "CPS ref_typ: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
+    Format.eprintf "CPS ref_typ: %a: @[@[%a@]@ ==>@ @[%a@]@]@." Id.print f RT.print rtyp RT.print rtyp';
   rtyp'
 
 let exists_let = make_col false (||)
@@ -1187,7 +1187,7 @@ let rec trans_ref_typ is_CPS typ =
       let h = Id.new_var @@ to_simple typ_h in
       Fun(k, typ_k, Fun(h, typ_h, ret_typ))
   | _ ->
-      Format.printf "%a@." Ref_type.print typ;
+      Format.eprintf "%a@." Ref_type.print typ;
       assert false
 
 let trans {Problem.term=t; env=rtenv; attr; kind} =
@@ -1209,7 +1209,7 @@ let trans {Problem.term=t; env=rtenv; attr; kind} =
   pr2 "infer_effect" (print_term sol) typed;
   let t =
     let typ_excep' =
-      if !!Debug.check then Format.printf "typ_excep: %a@." Print.typ typ_excep;
+      Debug.eprintf "typ_excep: %a@." Print.typ typ_excep;
       trans_typ sol typ_unknown typ_excep typ_exn
     in
     let t = transform sol typ_excep' "" typed in

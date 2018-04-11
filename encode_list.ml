@@ -86,7 +86,7 @@ let rec get_rtyp_list rtyp typ =
       let typs' = List.map (fun typ -> RT.Tuple [x, RT.Base(RT.Int, x', p_len); Id.new_var typ_unknown, typ]) typs in
       get_rtyp_list (RT.Inter(typ_unknown, typs')) (make_tlist typ)
   | _, TApp(TList, [typ]) ->
-      Format.printf "%a@." RT.print rtyp;
+      Format.eprintf "%a@." RT.print rtyp;
       raise (Fatal "not implemented get_rtyp_list")
   | RT.Base(b,x,ps), _ -> RT.Base(b,x,ps)
   | RT.Fun(x,rtyp1,rtyp2), TFun(y,typ2) ->
@@ -105,7 +105,7 @@ let rec get_rtyp_list rtyp typ =
   | RT.Exn(rtyp1,rtyp2), _ ->
       RT.Exn(get_rtyp_list rtyp1 typ, rtyp2)
   | _ ->
-      Format.printf "rtyp:%a@.typ:%a@." RT.print rtyp Print.typ typ;
+      Format.eprintf "rtyp:%a@.typ:%a@." RT.print rtyp Print.typ typ;
       assert false
 
 let make_get_rtyp_list_of typed get_rtyp f =
@@ -192,7 +192,7 @@ let rec get_match_bind_cond t p =
       let bind2,cond2 = get_match_bind_cond t p2 in
       let cond2' = List.fold_right2 (fun (x1,_) (x2,_) -> subst_var x2 x1) bind1 bind2 cond2 in
       bind1, make_or cond1 cond2'
-  | _ -> Format.printf "get_match_bind_cond: %a@." Print.pattern p; assert false
+  | _ -> Format.eprintf "get_match_bind_cond: %a@." Print.pattern p; assert false
 
 let rec make_rand typ =
   match typ with
@@ -438,7 +438,7 @@ let rec get_match_bind_cond_opt t p =
       let binds,conds = List.split @@ List.mapi (fun i p -> get_match_bind_cond_opt (make_proj i t) p) ps in
       List.rev_flatten binds,
       List.fold_left make_and true_term conds
-  | _ -> Format.printf "get_match_bind_cond_opt: %a@." Print.pattern p; assert false
+  | _ -> Format.eprintf "get_match_bind_cond_opt: %a@." Print.pattern p; assert false
 
 let abst_list_opt_term t =
   let typ' = abst_list_opt.tr_typ t.typ in

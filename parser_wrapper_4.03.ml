@@ -391,12 +391,12 @@ let conv_primitive_app t ts typ =
 
 
 let from_value_kind = function
-  | Types.Val_reg -> Format.printf "Val_reg@."; assert false
+  | Types.Val_reg -> Format.eprintf "Val_reg@."; assert false
   | Types.Val_prim prim_desc -> Id.new_var (prim_desc.Primitive.prim_name)
-  | Types.Val_ivar _ -> Format.printf "Val_ivar@."; assert false
-  | Types.Val_self _ -> Format.printf "Val_self@."; assert false
-  | Types.Val_anc _ -> Format.printf "Val_anc@."; assert false
-  | Types.Val_unbound -> Format.printf "Val_unbound@."; assert false
+  | Types.Val_ivar _ -> Format.eprintf "Val_ivar@."; assert false
+  | Types.Val_self _ -> Format.eprintf "Val_self@."; assert false
+  | Types.Val_anc _ -> Format.eprintf "Val_anc@."; assert false
+  | Types.Val_unbound -> Format.eprintf "Val_unbound@."; assert false
 
 let from_constant = function
   | Const_int n -> Int n

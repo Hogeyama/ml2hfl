@@ -76,7 +76,7 @@ let rec unify typ1 typ2 =
       assert (not (occurs r typ));
       r := Some typ
   | _ ->
-      Format.printf "UNIFY: %a, %a@." print_typ typ1 print_typ typ2;
+      Format.eprintf "UNIFY: %a, %a@." print_typ typ1 print_typ typ2;
       assert false
 
 

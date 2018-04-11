@@ -483,8 +483,8 @@ let rec subtype env typ1 typ2 =
       let typ2'' = Tuple [x2,Base(Int,x2,p_len2); Id.new_var Type.Ty.int,Fun(y2,Base(Int,y2,p_i2),typ2')] in
       subtype env typ1'' typ2''
   | _ ->
-      Format.printf "typ1: %a@." print typ1;
-      Format.printf "typ2: %a@." print typ2;
+      Format.eprintf "typ1: %a@." print typ1;
+      Format.eprintf "typ2: %a@." print typ2;
       unsupported "Ref_type.subtype"
   in
   if 0=0 then
@@ -639,7 +639,7 @@ let rec make_strongest typ =
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_strongest TList"
   | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.false_term)
   | _ ->
-      Format.printf "make_strongest: %a@." Print.typ typ;
+      Format.eprintf "make_strongest: %a@." Print.typ typ;
       unsupported "Ref_type.make_strongest"
 
 and make_weakest typ =
@@ -654,7 +654,7 @@ and make_weakest typ =
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
   | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.true_term)
   | _ ->
-      Format.printf "make_weakest: %a@." Print.typ typ;
+      Format.eprintf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"
 
 

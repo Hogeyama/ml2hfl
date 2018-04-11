@@ -183,7 +183,7 @@ let rec remove_pair_typ ty =
       leaf (add_tapred x ps' typ')
   | TAttr(attr, typ) -> leaf @@ TAttr(attr, root @@ remove_pair_typ typ)
   | typ ->
-      Format.printf "remove_pair_typ: %a@." Print.typ typ;
+      Format.eprintf "remove_pair_typ: %a@." Print.typ typ;
       assert false
 
 and remove_pair_var x =
@@ -229,9 +229,9 @@ and remove_pair_aux t typ_opt =
         match op, elim_tattr t1.typ with
         | (Eq | Lt | Gt | Leq | Geq), (TBase _ | TData _) -> ()
         | (Eq | Lt | Gt | Leq | Geq), _ ->
-            Format.printf "%a@." Print.typ t1.typ;
-            Format.printf "%a@." Print.typ t2.typ;
-            Format.printf "%a@." Print.term' t;
+            Format.eprintf "%a@." Print.typ t1.typ;
+            Format.eprintf "%a@." Print.typ t2.typ;
+            Format.eprintf "%a@." Print.term' t;
             unsupported "polymorphic comparison"
         | _ -> ()
       end;
@@ -255,7 +255,7 @@ and remove_pair_aux t typ_opt =
       let Node(_, ts) = remove_pair_aux t None in
       List.nth ts i
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.eprintf "%a@." Print.term t;
       assert false
 
 and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
@@ -292,7 +292,7 @@ and remove_pair_ref_typ ty =
       in
       List.fold_right aux xtys ([],[])
   | _ ->
-      Format.printf "remove_pair_typ: %a@." Ref_type.print ty;
+      Format.eprintf "remove_pair_typ: %a@." Ref_type.print ty;
       assert false
 let remove_pair_ref_typ (x,t) =
   let rec aux results =
@@ -308,11 +308,11 @@ let remove_pair_ref_typ (x,t) =
         snd @@ List.fold_right aux' results (0,[])
   in
   t
-  |@> Format.printf "INPUT: %a, @[%a@." Id.print x Ref_type.print
+  |*@> Format.printf "INPUT: %a, @[%a@." Id.print x Ref_type.print
   |> remove_pair_ref_typ
   |> fst
   |> List.map (Pair.map_snd @@ Ref_type.map_pred Trans.eta_tuple)
-  |@> Format.printf "TRANS: @[%a@." Print.(list @@ pair (option id) Ref_type.print)
+  |*@> Format.printf "TRANS: @[%a@." Print.(list @@ pair (option id) Ref_type.print)
   |> aux
 
 

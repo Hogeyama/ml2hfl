@@ -31,25 +31,25 @@ let print_non_CPS_abst abst prog =
       | Some (MC.Safe _) -> "Safe"
       | Some (MC.Unsafe _) -> "Unsafe"
     in
-    Format.printf "@.ABST:@.%a@." CEGAR_print.prog abst;
-    Format.printf "RESULT: %s@." s;
+    Format.eprintf "@.ABST:@.%a@." CEGAR_print.prog abst;
+    Format.eprintf "RESULT: %s@." s;
     exit 0
 
 let improve_precision () =
   match () with
   | _ when not !Flag.PredAbst.use_filter ->
-      if !Flag.Print.progress then Format.printf "Filter option enabled.@.";
-      if !Flag.Print.progress then Format.printf "Restart CEGAR-loop.@.";
+      Verbose.printf "Filter option enabled.@.";
+      Verbose.printf "Restart CEGAR-loop.@.";
       Flag.PredAbst.use_filter := true
   | _ when not !Flag.PredAbst.never_use_neg_pred && not !Fpat.PredAbst.use_neg_pred ->
-      if !Flag.Print.progress then Format.printf "Negative-predicate option enabled.@.";
-      if !Flag.Print.progress then Format.printf "Restart CEGAR-loop.@.";
+      Verbose.printf "Negative-predicate option enabled.@.";
+      Verbose.printf "Restart CEGAR-loop.@.";
       Fpat.PredAbst.use_neg_pred := true
   | _ when !Fpat.PredAbst.wp_max_num < Flag.PredAbst.wp_max_max ->
       incr Fpat.PredAbst.wp_max_num;
       CEGAR_abst.incr_wp_max := true;
-      if !Flag.Print.progress then Format.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
-      if !Flag.Print.progress then Format.printf "Restart CEGAR-loop.@.";
+      Verbose.printf "Set wp_max_num to %d.@." !Fpat.PredAbst.wp_max_num;
+      Verbose.printf "Restart CEGAR-loop.@.";
   | _ ->
       raise NoProgress
 
@@ -67,8 +67,7 @@ let rec loop prog0 is_cp ces =
     then CEGAR_util.print_prog_typ' prog.info.inlined
     else CEGAR_print.prog_typ
   in
-  if !Flag.Print.progress
-  then Format.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop pr prog;
+  Verbose.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop pr prog;
   if !Flag.Print.abst_typ
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop CEGAR_print.env prog.env;
   let labeled,abst = CEGAR_abst.abstract prog.info.orig_fun_list prog.info.inlined prog in

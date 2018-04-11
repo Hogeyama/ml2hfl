@@ -73,7 +73,7 @@ let rec merge_typ env typ typ' =
   | TFun _, _
   | TConstr _, _
   | TApp _, _ ->
-      Format.printf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ';
+      Format.eprintf "merge_typ: %a,%a@." CEGAR_print.typ typ CEGAR_print.typ typ';
       assert false
 
 (* wrapper for debug *)
@@ -85,7 +85,7 @@ let merge_typ typ1 typ2 =
     Debug.printf "       @[%a@.@." CEGAR_print.typ r;
     r
   with _ when !!Debug.check ->
-    Format.printf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;
+    Format.eprintf "Cannot merge@.  TYPE 1: %a@.  TYPE 2: %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;
     assert false
 
 let rec negate_typ = function
@@ -94,8 +94,8 @@ let rec negate_typ = function
       let typ1 = negate_typ typ1 in
       let typ2 = negate_typ -| typ2 in
       TFun(typ1, typ2)
-  | TConstr _ as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
-  | TApp _ as typ -> Format.printf "negate_typ: %a." CEGAR_print.typ typ; assert false
+  | TConstr _ as typ -> Format.eprintf "negate_typ: %a." CEGAR_print.typ typ; assert false
+  | TApp _ as typ -> Format.eprintf "negate_typ: %a." CEGAR_print.typ typ; assert false
 
 let add_neg_preds_renv env =
   let aux (f,typ) = if is_randint_var f then (f, merge_typ typ (negate_typ typ)) else (f, typ) in
@@ -140,11 +140,11 @@ let rec trans_inv_term t =
         | Mul -> make_mul
         | Div -> make_div
         | _ ->
-            Format.printf "%a@." CEGAR_print.term t;
+            Format.eprintf "%a@." CEGAR_print.term t;
             assert false
       in
       f (trans_inv_term t1) (trans_inv_term t2)
-  | t -> Format.printf "%a@." CEGAR_print.term t; assert false
+  | t -> Format.eprintf "%a@." CEGAR_print.term t; assert false
 
 
 let rec preds_of typ =
@@ -192,11 +192,11 @@ and trans_typ ty =
         | TBase(b, preds) ->
             let preds' y = List.map (subst x' y) ps' @ preds y in
             TBase(b, preds')
-        | typ -> Format.printf "trans_typ[TPred]: %a@." CEGAR_print.typ typ; assert false
+        | typ -> Format.eprintf "trans_typ[TPred]: %a@." CEGAR_print.typ typ; assert false
       end
   | Type.TTuple xs -> make_ttuple @@ List.map (trans_typ -| Id.typ) xs
   | typ ->
-      Format.printf "trans_typ: %a@." Print.typ typ;
+      Format.eprintf "trans_typ: %a@." Print.typ typ;
       assert false
 
 and trans_binop = function
@@ -301,7 +301,7 @@ and trans_term post xs env t =
         | Type.TBase Type.TBool -> EqBool
         | Type.TBase Type.TInt -> EqInt
         | Type.TData typ -> CmpPoly(typ, "=")
-        | typ -> Format.printf "trans_term: %a@." Print.typ typ; assert false
+        | typ -> Format.eprintf "trans_term: %a@." Print.typ typ; assert false
       in
       defs1@defs2, make_app (Const op) [t1'; t2']
   | S.BinOp(op, t1, t2) ->
@@ -326,7 +326,7 @@ and trans_term post xs env t =
       let defss,ts' = List.split_map (trans_term post xs env) ts in
       List.flatten defss, make_tuple ts'
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.eprintf "%a@." Print.term t;
       assert false
 
 let rec formula_of t =
@@ -347,7 +347,7 @@ let rec formula_of t =
         | Type.TBase Type.TBool -> EqBool
         | Type.TBase Type.TInt -> EqInt
         | Type.TData typ -> CmpPoly(typ, "=")
-        | _ -> Format.printf "%a@." Print.typ t1.S.typ; assert false
+        | _ -> Format.eprintf "%a@." Print.typ t1.S.typ; assert false
       in
       make_app (Const op) [t1'; t2']
   | S.BinOp(op, t1, t2) ->
@@ -359,7 +359,7 @@ let rec formula_of t =
       App(Const Not, t')
   | S.Proj _ -> raise Not_found
   | S.Tuple _ -> raise Not_found
-  | _ -> Format.printf "formula_of: %a@." Print.constr t; assert false
+  | _ -> Format.eprintf "formula_of: %a@." Print.constr t; assert false
 
 let trans_def (f,(xs,t)) =
   let f' = trans_var f in

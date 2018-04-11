@@ -163,7 +163,7 @@ let rec lift_aux post xs t =
         let defs,t' = lift_aux post xs t in
         defs, Proj(i,t')
     | Bottom -> [], Bottom
-    | _ -> Format.printf "lift: %a@." Print.term t; assert false
+    | _ -> Format.eprintf "lift: %a@." Print.term t; assert false
   in
   defs, {t with desc}
 
@@ -271,7 +271,7 @@ let rec lift_aux' post xs t =
         let defs,t' = lift_aux' post xs t in
         defs, Proj(i,t')
     | Bottom -> [], Bottom
-    | _ -> Format.printf "lift: %a@." Print.term t; assert false
+    | _ -> Format.eprintf "lift: %a@." Print.term t; assert false
   in
   defs, {t with desc}
 

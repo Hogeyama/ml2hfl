@@ -44,7 +44,7 @@ let inferCoeffs argumentVariables linear_templates constraints =
   (** solve constraint and obtain coefficients **)
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
-    if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
+    if correspondenceVars = [] then (Format.eprintf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
     Util.Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
 
     List.map (fun linTemp ->
@@ -70,7 +70,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
   (** solve constraint and obtain coefficients **)
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
-    if correspondenceVars = [] then (Format.printf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
+    if correspondenceVars = [] then (Format.eprintf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
     Util.Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
 
     (List.map (fun linTemp ->

@@ -386,7 +386,7 @@ and print_typ_as_tree fm ty =
       let x = new_id "x" in
         Format.fprintf fm "(TFun(%a,fun %s->%a))" print_typ_as_tree typ1 x print_typ_as_tree (typ2 (Var x))
 
-and print_var_as_tree fm x = Format.printf "\"%s\"" x
+and print_var_as_tree fm x = Format.fprintf fm "\"%s\"" x
 
 and print_const_as_tree fm = function
   | Unit -> Format.fprintf fm "Unit"
@@ -450,7 +450,7 @@ and print_fun_def_as_tree fm (f,xs,t1,es,t2) =
     print_term_as_tree t2
 
 and print_env_as_tree fm env =
-  let aux fm (f,typ) = Format.printf "%a,%a" print_var_as_tree f print_typ_as_tree typ in
+  let aux fm (f,typ) = Format.fprintf fm "%a,%a" print_var_as_tree f print_typ_as_tree typ in
     Format.fprintf fm "[%a]" (print_list aux ";") env
 
 and print_prog_as_tree fm (env,defs,s) =

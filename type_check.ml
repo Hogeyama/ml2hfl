@@ -8,12 +8,12 @@ module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 let check_var x typ =
   if Type.can_unify (Id.typ x) typ
   then ()
-  else (Format.printf "check_var: (%a:%a), %a@." Id.print x Print.typ (Id.typ x) Print.typ typ; assert false)
+  else (Format.eprintf "check_var: (%a:%a), %a@." Id.print x Print.typ (Id.typ x) Print.typ typ; assert false)
 
 let rec check env t typ =
   Debug.printf "CHECK: @[%a, %a@." Print.term t Print.typ typ;
   if not (Type.can_unify t.typ typ) then
-    (Format.printf "check: %a, %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
+    (Format.eprintf "check: %a, %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
      assert false);
   match t.desc, elim_tattr t.typ with
   | _, TFuns _ -> ()
@@ -51,8 +51,8 @@ let rec check env t typ =
             aux (ts,typ)
         | [_], typ when typ = typ_event -> ()
         | _ ->
-            Format.printf "ts: %a@." (List.print Print.term) ts;
-            Format.printf "typ: %a@." Print.typ typ;
+            Format.eprintf "ts: %a@." (List.print Print.term) ts;
+            Format.eprintf "typ: %a@." Print.typ typ;
             assert false
       in
       let typ'' = List.fold_right (fun t typ -> TFun(Id.new_var t.typ, typ)) ts typ' in
@@ -68,8 +68,8 @@ let rec check env t typ =
         let check f' =
           if Id.(f = f') && not @@ Type.can_unify (Id.typ f) (Id.typ f') then
             begin
-              Format.printf "f: %a@." Print.id_typ f;
-              Format.printf "f': %a@." Print.id_typ f';
+              Format.eprintf "f: %a@." Print.id_typ f;
+              Format.eprintf "f': %a@." Print.id_typ f';
               assert false
             end
         in
@@ -112,7 +112,7 @@ let rec check env t typ =
         | TRecord tfields -> assert (Type.can_unify typ @@ snd @@ List.assoc s tfields)
         | TData _ -> ()
         | _ ->
-            Format.printf "%a@." Print.term' t;
+            Format.eprintf "%a@." Print.term' t;
             assert false
       end;
       check env t t.typ
@@ -163,7 +163,7 @@ let rec check env t typ =
       check env {t with typ} typ
   | _, TData _ -> () (* externally defined types *)
   | _ ->
-      Format.printf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
+      Format.eprintf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false
 
 let check t ~ty = if Flag.Debug.check_typ then check [] t ty

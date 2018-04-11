@@ -152,4 +152,4 @@ let repeat_trial check t =
   let t' = List.fold_left (fun t tr -> aux tr 0 t) t trs in
   assert (check t');
   Format.printf "%a@." Print.term t';
- t'
+  t'

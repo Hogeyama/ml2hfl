@@ -137,9 +137,9 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
       let f' = rename_id f in
       if not @@ Type.can_unify (Id.typ f') (Ref_type.to_simple typ) then
         begin
-          Format.printf "VAR: %a@." Id.print f;
-          Format.printf "  Prog: %a@." Print.typ @@ Id.typ f';
-          Format.printf "  Spec: %a@." Ref_type.print typ;
+          Format.eprintf "VAR: %a@." Id.print f;
+          Format.eprintf "  Prog: %a@." Print.typ @@ Id.typ f';
+          Format.eprintf "  Spec: %a@." Ref_type.print typ;
           fatal @@ Format.sprintf "The simple type of %s in the specification is wrong?" @@ Id.name f'
         end;
       Some (f', typ)

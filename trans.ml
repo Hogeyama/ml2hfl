@@ -254,7 +254,7 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
         (env',defs'), t
     | _ ->
-        Format.printf "define_randvalue: %a@." Print.typ typ;
+        Format.eprintf "define_randvalue: %a@." Print.typ typ;
         assert false
 let define_randvalue ed typ = define_randvalue ~name:"" ed typ
 
@@ -459,7 +459,7 @@ let replace_typ =
           if not @@ Type.can_unify (Id.typ f) (Id.typ f') then
             begin
               let f'' = Id.set_typ f @@ elim_tattr_all @@ Id.typ f' in
-              Format.printf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
+              Format.eprintf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
               let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
               fatal @@ msg ^ " (please specify monomorphic types if polymorphic types exist)"
             end;
@@ -551,7 +551,7 @@ let normalize_binop_exp op t1 t2 =
         begin
           match List.exists aux xns1, List.exists aux xns2 with
           | true, true ->
-              Format.printf "Nonlinear expression not supported: %a@." Print.term (make_binop op t1 t2);
+              Format.eprintf "Nonlinear expression not supported: %a@." Print.term (make_binop op t1 t2);
               assert false
           | false, true ->
               let k = reduce xns1 in
@@ -703,7 +703,7 @@ let rec merge_geq_leq t =
         BinOp(Or, t1', t2')
     | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
     | Not t -> Not (merge_geq_leq t)
-    | _ -> Format.printf "%a@." Print.term t; assert false
+    | _ -> Format.eprintf "%a@." Print.term t; assert false
   in
   {t with desc=desc}
 
@@ -764,7 +764,6 @@ let rec inlined_f inlined fs t =
     | Var y ->
         if List.exists (Triple.fst |- Id.same y) fs then
           let (f, xs, t') = List.find (Triple.fst |- Id.same y) fs in
-          (*let _ = List.iter (fun (x, t) -> Format.printf "%a -> %a@." print_id x pp_print_term t) [f, t'] in*)
           let f, _ =
             List.fold_left
               (fun (f, ty) y ->
@@ -772,7 +771,7 @@ let rec inlined_f inlined fs t =
                 f {desc=Fun(y, t); typ=ty; attr=[]}),
                 match ty with
                 | Type.TFun(_, ty') -> ty'
-                | _ -> Format.printf "%a@." Print.typ ty; assert false)
+                | _ -> Format.eprintf "%a@." Print.typ ty; assert false)
               (Fun.id, t.typ)
               xs
           in
@@ -782,7 +781,6 @@ let rec inlined_f inlined fs t =
           Var y
     | Fun(y, t1) -> Fun(y, inlined_f inlined fs t1)
     | App(t1, ts) ->
-        (*let _ = Format.printf "func: %a@." pp_print_term t1' in*)
         (match t1.desc with
          | Var f when List.exists (Triple.fst |- Id.same f) fs ->
              let (f, xs, t) = try List.find (Triple.fst |- Id.same f) fs with Not_found -> assert false in
@@ -808,7 +806,6 @@ let rec inlined_f inlined fs t =
     | Local(Decl_type decls, t2) -> Local(Decl_type decls, inlined_f inlined fs t2)
     | Local(Decl_let bindings, t2) ->
         let aux (f,t) =
-          (*let _ = List.iter (fun f -> Format.printf "f: %a@." print_id f) inlined in*)
           `L(f, inlined_f inlined fs t)
         in
         let bindings', fs' = Fpat.Util.List.partition_map aux bindings in
@@ -834,7 +831,7 @@ let rec inlined_f inlined fs t =
     | Tuple ts -> Tuple (List.map (inlined_f inlined fs) ts)
     | Proj(i,t) -> Proj(i, inlined_f inlined fs t)
     | Bottom -> Bottom
-    | _ -> Format.printf "inlined_f: %a@." Print.constr t; assert false
+    | _ -> Format.eprintf "inlined_f: %a@." Print.constr t; assert false
   in
   {t with desc}
 
@@ -1197,7 +1194,7 @@ let lift_type_decl t =
     | None -> (s,ty)::acc
     | Some ty' ->
         if not @@ Type.same_shape ty ty' then
-          Format.printf "Assume %a is the same as %a@." Print.typ ty Print.typ ty';
+          Format.eprintf "Assume %a is the same as %a@." Print.typ ty Print.typ ty';
         acc
   in
   let decls' = List.fold_right aux (List.flatten decls) [] in
@@ -1255,7 +1252,7 @@ let assoc_typ =
     match col.col2_term f t with
     | [] -> raise Not_found
     | [typ] -> typ
-    | _ -> Format.printf "VAR:%a@.PROG:%a@." Id.print f Print.term t; assert false
+    | _ -> Format.eprintf "VAR:%a@.PROG:%a@." Id.print f Print.term t; assert false
 
 let inline_no_effect =
   let tr = make_trans () in
@@ -2020,9 +2017,9 @@ let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
     let aux (f, typ) =
       if not @@ Type.can_unify (Id.typ f) (Ref_type.to_simple typ) then
         begin
-          Format.printf "VAR: %a@." Id.print f;
-          Format.printf "  Prog: %a@." Print.typ @@ Id.typ f;
-          Format.printf "  Spec: %a@." Ref_type.print typ;
+          Format.eprintf "VAR: %a@." Id.print f;
+          Format.eprintf "  Prog: %a@." Print.typ @@ Id.typ f;
+          Format.eprintf "  Spec: %a@." Ref_type.print typ;
           fatal @@ Format.sprintf "Type of %s in the specification is wrong?" @@ Id.name f
         end;
       let genv',cenv',t_typ = Ref_type_gen.generate_check typ_exn ~make_fail [] [] f typ in
@@ -2701,7 +2698,7 @@ let extract_module =
         Flag.use_abst := true;
         t.desc
     | Module _ ->
-        Format.printf "%a@." Print.desc desc;
+        Format.eprintf "%a@." Print.desc desc;
         unsupported "extract_module"
     | _ -> tr.tr_desc_rec desc
   in

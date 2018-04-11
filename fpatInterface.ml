@@ -32,7 +32,7 @@ let rec conv_typ ty =
   | TApp(TConstr TAssumeTrue, ty) -> conv_typ ty
   | TApp(TConstr (TFixPred _), ty) -> conv_typ ty
   | _ ->
-     Format.printf "%a@." CEGAR_print.typ ty;
+     Format.eprintf "%a@." CEGAR_print.typ ty;
      assert false
 
 let conv_const c =
@@ -122,7 +122,7 @@ let rec of_typ typ =
   | Type.TData "string" -> Fpat.Type.mk_string
   | Type.TTuple xs -> Fpat.Type.mk_tuple @@ List.map (Id.typ |- of_typ) xs
   | _ ->
-      Format.printf "FpatInterface of_typ: %a@." Print.typ typ;
+      Format.eprintf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
 
 let rec of_term t =
@@ -175,7 +175,7 @@ let rec of_term t =
         | Type.TTuple xs ->
             List.map (Id.typ |- of_typ) xs
         | _ ->
-            Format.printf "%a@." Print.term' t;
+            Format.eprintf "%a@." Print.term' t;
             assert false
       in
       Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_term t]
@@ -227,7 +227,7 @@ let inv_const c =
      CPS_result
   | Fpat.Const.Proj(typs, i) -> Proj(List.length typs, i)
   | Fpat.Const.Iff -> And (* for -safe-fun-arg-pred_true (to fix) *)
-  | _ -> Format.printf "%s@." (Fpat.Const.string_of c); assert false
+  | _ -> Format.eprintf "%s@." (Fpat.Const.string_of c); assert false
 
 let rec inv_term t =
   match t with
@@ -312,7 +312,7 @@ let rec path_to_attr ty =
         | Const And, [t1;t2] -> [add_to_temp t1 t2]
         | Const Add, _ -> [add_to_temp t (Const True)]
         | _ ->
-            Format.printf "%a@." CEGAR_print.term t;
+            Format.eprintf "%a@." CEGAR_print.term t;
             assert false
       in
       let preds = List.concat_map aux @@ p (Var x) in
@@ -337,7 +337,7 @@ let rec inv_abst_type aty =
         | Real -> TAbst "float"
         | String -> TAbst "string"
         | _ ->
-            Format.printf "%a@." Fpat.AbsType.pr aty;
+            Format.eprintf "%a@." Fpat.AbsType.pr aty;
             assert false
       in
       TBase(base, fun s -> List.map (subst x s -| inv_formula) ts)

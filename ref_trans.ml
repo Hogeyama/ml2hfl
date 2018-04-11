@@ -133,8 +133,8 @@ let inst_var_fun x tt bb t =
         let tree = make_tree r bb in
         let tree' = Rose_tree.update path (Rose_tree.leaf(Some (Id.typ y'), [make_var y'])) tree in
         let r' = trans.tr2_var (tt,bb) r in
-        let pr _ (_,ts) =
-          Format.printf "[%a]" (print_list Print.term' "; ") ts
+        let pr fm (_,ts) =
+          Format.fprintf fm "[%a]" (print_list Print.term' "; ") ts
         in
         Debug.printf "y': %a@." Id.print y';
         Debug.printf "path: [%a]@." (print_list Format.pp_print_int ";") path;
@@ -147,11 +147,6 @@ let inst_var_fun x tt bb t =
         let argss = List.map Rose_tree.flatten trees in
         let args = List.map (List.singleton -| make_tuple) argss in
         let apps = List.map (make_app @@ make_var r') args in
-(*
-        Format.printf "TREE(%a --%a-- %a):%d@." Id.print r (print_list Format.pp_print_int "") path Id.print x @@ List.length apps;
-        List.iter (Format.printf "  %a@." print_term) apps;
-        Format.printf "orig: %a@." print_term t;
-*)
         let same_arg_apps = (* negligence *)
           let rec aux i ts acc =
             match ts with
@@ -165,10 +160,6 @@ let inst_var_fun x tt bb t =
           aux 0 trees []
         in
         let xs = List.map new_var_of_term apps in
-(*
-Format.printf "root: %a, %a@." Id.print r pp_print_typ (Id.typ r);
-Format.printf "hd: %a, %a@." Id.print (List.hd xs) pp_print_typ (Id.typ @@ List.hd xs);
-*)
         let t' =
           let t1 = proj_of_path path @@ make_var @@ List.hd xs in
           let t2 =
@@ -269,7 +260,7 @@ let trans_term (tt,bb) t =
       in
       make_let [x',t1'] t'
   | Local(Decl_let [x,({desc=Tuple ts} as t1)], t) when List.for_all (Option.is_some -| decomp_var) ts && is_non_rec [x,t1] ->
-      let xs = List.map (function {desc=Var x} -> x | t -> Format.printf "%a@." Print.term t; assert false) ts in
+      let xs = List.map (function {desc=Var x} -> x | t -> Format.eprintf "%a@." Print.term t; assert false) ts in
       let x' =  trans.tr2_var (tt,bb) x in
       let xs' = List.map (trans.tr2_var (tt,bb)) xs in
       let bb' = (x,t1)::bb in
@@ -391,7 +382,6 @@ let () = move_proj.tr_term <- move_proj_term
 let col_assert = make_col [] (@@@)
 
 let col_assert_desc desc =
-(*Format.printf "CAD: %a@." print_constr {desc=desc; typ=TUnit};*)
   match desc with
   | If(t1, t2, t3) when same_term t2 unit_term && same_term t3 (make_app fail_term [unit_term]) ->
       [t1]

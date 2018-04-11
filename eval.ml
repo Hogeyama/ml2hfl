@@ -188,8 +188,8 @@ let rec eval_print fm rands t =
               | Some f -> Some f
             end
         | _ ->
-            Format.printf "@.v: %a@." Print.term v;
-            Format.printf "p: %a@." Print.pattern p;
+            Format.eprintf "@.v: %a@." Print.term v;
+            Format.eprintf "p: %a@." Print.pattern p;
             assert false
       in
       let rands',v = eval_print fm rands t1 in
@@ -233,7 +233,7 @@ let rec eval_print fm rands t =
       Format.fprintf fm "@]";
       r
   | _ ->
-      Format.printf "@.eval_print: %a@." Print.constr t;
+      Format.eprintf "@.eval_print: %a@." Print.constr t;
       assert false
 
 exception Unsound

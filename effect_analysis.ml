@@ -133,7 +133,7 @@ let rec gen_constr env tenv t =
 	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) ->
             add_effect_typ ENone Ty.int
 	| Not_found ->
-            Format.printf "%a@." Print.id x; assert false
+            Format.eprintf "%a@." Print.id x; assert false
       in
       let x' = Id.set_typ x ty in
       set_effect ENone {desc=Var x'; typ=ty; attr=t.attr}
@@ -241,7 +241,7 @@ let rec gen_constr env tenv t =
       env.constraints <- (EExcep, e) :: env.constraints;
       set_effect e @@ {desc=Raise t1'; typ=ty; attr=t.attr}
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.eprintf "%a@." Print.term t;
       assert false
 
 
@@ -314,7 +314,7 @@ let infer ?(for_cps=false) t =
   in
   if List.length ext_funs <> List.length (List.unique ~eq:Id.eq ext_funs) then
     begin
-      List.iter (fun x -> Format.printf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
+      List.iter (fun x -> Format.eprintf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
       unsupported "polymorphic use of external functions";
     end;
   let tenv = List.map (Pair.add_right (Id.typ |- make_template env |- force_cont)) ext_funs in

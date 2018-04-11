@@ -45,7 +45,7 @@ let rec coerce env cond pts typ1 typ2 t =
       let t1 = coerce env' cond pts typ21 typ11 @@ Var x in
       let t2 = coerce env' cond pts typ12 typ22 @@ App(t, t1) in
       Fun(x, None, t2)
-  | _ -> Format.printf "COERCE: %a, %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
+  | _ -> Format.eprintf "COERCE: %a, %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 let coerce env cond pts typ1 typ2 =
   if false then Format.printf "COERCE: %a  ===>  %a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2;
@@ -117,7 +117,7 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 let abstract orig_fun_list prog =
-  Format.printf "WARNING: Abstraction for non-CPS programs is unmaintained.@.";
+  Format.eprintf "WARNING: Abstraction for non-CPS programs is unmaintained.@.";
   let prog = make_arg_let prog in
   let labeled,prog = add_label prog in
   Debug.printf "MAKE_ARG_LET:\n%a@." CEGAR_print.prog prog;

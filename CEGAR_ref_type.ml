@@ -28,9 +28,9 @@ let rec occur x = function
 
 let rec print fm = function
   | Base(base,x,CS.Const CS.True) ->
-      Format.printf "%a" print_base base
+      Format.fprintf fm "%a" print_base base
   | Base(base,x,p) ->
-      Format.printf "{%a:%a | %a}" CEGAR_print.var x print_base base CEGAR_print.term p
+      Format.fprintf fm "{%a:%a | %a}" CEGAR_print.var x print_base base CEGAR_print.term p
   | Fun(x, typ1, typ2) ->
       if occur x typ2
       then Format.fprintf fm "(@[%a:%a@ ->@ %a@])" CEGAR_print.var x print typ1 print typ2

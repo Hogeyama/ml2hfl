@@ -278,7 +278,7 @@ let pr s t =
   ignore @@ Typing.infer t
 
 let preprocess prog =
-  Format.printf "WARNING: model checking for non-CPS programs is unmaintained.@.";
+  Format.eprintf "WARNING: model checking for non-CPS programs is unmaintained.@.";
   prog
   |@> pr "INPUT"
   |> CEGAR_CPS.trans -$- true

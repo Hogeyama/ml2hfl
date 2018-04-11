@@ -185,7 +185,7 @@ and eval
             in
             ans, ce, paths
       | _ ->
-          Format.printf "@.%a@." Print.term t;
+          Format.eprintf "@.%a@." Print.term t;
           unsupported "Modular_check.eval"
     in
     if dbg then

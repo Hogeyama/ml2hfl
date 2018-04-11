@@ -16,7 +16,7 @@ let to_string_CoeffInfos f =
   let isZero = function
     | {desc=Const (Int n)} -> n = 0
     | {desc=Var v} -> is_extra_coeff v
-    | t -> (Format.printf "%a@." Print.term t;raise (Invalid_argument ""))
+    | t -> (Format.eprintf "%a@." Print.term t;raise (Invalid_argument ""))
   in
   let areAllZero = List.for_all isZero (List.map f !exCoefficients) in
   try

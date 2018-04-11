@@ -65,7 +65,7 @@ let filter env cond pbs t =
   let pbs' = if !Flag.PredAbst.remove_false then filter_pbs env cond pbs else pbs in
   Debug.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
 (*
-  if debug() then Format.printf "  orig pbs: @[<hv>%a@." print_pbs pbs;
+  Debug.printf "  orig pbs: @[<hv>%a@." print_pbs pbs;
   let pbss =
     let rec aux sets (p,b) =
       let fv = get_fv p in
@@ -125,7 +125,7 @@ let rec congruent env cond typ1 typ2 =
       let typ22 = typ22 (Var x) in
       let env' = (x,typ11)::env in
       congruent env cond typ11 typ21 && congruent env' cond typ12 typ22
-  | _ -> Format.printf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
+  | _ -> Format.eprintf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 
 let rec is_base_term env t =
@@ -136,7 +136,7 @@ let rec is_base_term env t =
       (try
           is_base @@ List.assoc x env
         with Not_found ->
-          Format.printf "%s not found@." x;
+          Format.eprintf "%s not found@." x;
           assert false)
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqInt|EqBool|CmpPoly _|Add|Sub|Mul|Div),t1),t2) ->
       assert (is_base_term env t1);
@@ -209,7 +209,7 @@ let rec add_label prog =
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
         [f1,xs1,t11,e1,make_label 0 t12; f2,xs2,t21,e2,make_label 1 t22]
     | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] as defs->
-        Format.printf "%a@." CEGAR_print.prog {env=[]; defs; main=""; info=init_info};
+        Format.eprintf "%a@." CEGAR_print.prog {env=[]; defs; main=""; info=init_info};
         assert false
     | (f,_,_,_,_)::defs -> fatal @@ Format.sprintf "Not implemented (CEGAR_abst_util.add_label) %s %d" f (1 + List.length defs)
   in
@@ -261,7 +261,7 @@ let check_exist env cond x p =
   if !Flag.NonTermination.use_omega_first then
     try
       OmegaInterface.is_valid_forall_exists xs [x] cond p
-      |@!!Debug.check&> Format.printf "check_exists: %b@."
+      |@> Debug.printf "check_exists: %b@."
     with OmegaInterface.Unknown ->
       Debug.printf "check_exists: OmegaInterface.Unknown@.";
       Debug.printf "Try checking by z3...@.";
@@ -278,7 +278,7 @@ let check_exist env cond x p =
   else
     try
       FpatInterface.is_valid_forall_exists xs [x] cond p
-      |@!!Debug.check&> Format.printf "check_exists: %b@."
+      |@> Debug.printf "check_exists: %b@."
     with
     | Fpat.SMTProver.Unknown when !Flag.NonTermination.use_omega ->
         Debug.printf "check_exists: Fpat.SMTProver.Unknown@.";

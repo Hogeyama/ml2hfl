@@ -54,9 +54,9 @@ let rec make_app t ts =
   let check typ1 typ2 =
     if not (Flag.Debug.check_typ => Type.can_unify typ1 typ2) then
       begin
-        Format.printf "make_app:@[@ %a@ <=/=>@ %a@." Print.typ typ1 Print.typ typ2;
-        Format.printf "fun: %a@." Print.term t;
-        Format.printf "arg: %a@." Print.term @@ List.hd ts;
+        Format.eprintf "make_app:@[@ %a@ <=/=>@ %a@." Print.typ typ1 Print.typ typ2;
+        Format.eprintf "fun: %a@." Print.term t;
+        Format.eprintf "arg: %a@." Print.term @@ List.hd ts;
         assert false
       end
   in
@@ -74,7 +74,7 @@ let rec make_app t ts =
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
   | _ when not Flag.Debug.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
   | _ ->
-      Format.printf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
+      Format.eprintf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
       assert false
 let make_app_raw t ts =
   let t' = make_app t ts in
@@ -178,7 +178,7 @@ let make_if_ t1 t2 t3 =
         | false, true -> t3.typ
         | true, true ->
             if t2.typ <> t3.typ
-            then Format.printf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." Print.typ t2.typ Print.typ t3.typ;
+            then Format.eprintf "@[<hv 2>Warning: if-branches have different types@ %a and@ %a@]@." Print.typ t2.typ Print.typ t3.typ;
             t2.typ
       in
       {desc=If(t1, t2, t3); typ=typ; attr=make_attr[t1;t2;t3]}
@@ -352,7 +352,7 @@ let rec make_term typ =
   | TData "string" -> {desc=Const(String ""); typ; attr=[]}
   | TData "float" -> {desc=Const(Float 0.); typ; attr=[]}
   | TApp(TList, [typ']) -> make_nil typ'
-  | _ -> Format.printf "ERROR: %a@." Print.typ typ; assert false
+  | _ -> Format.eprintf "ERROR: %a@." Print.typ typ; assert false
 
 
 let none_flag = false_term
@@ -585,7 +585,16 @@ let make_match t1 pats =
         make_let [x,t1] t2
   | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
 let make_single_match ?(total=false) t1 p t2 =
-  if total || p.pat_desc = PAny
+  let rec is_total p =
+    match p.pat_desc with
+    | PAny -> true
+    | PVar _ -> true
+    | PTuple ps -> List.for_all is_total ps
+    | PRecord fields -> List.for_all (snd |- is_total) fields
+    | PAlias(p, _) -> is_total p
+    | _ -> false
+  in
+  if total || is_total p
   then make_match t1 [p, true_term, t2]
   else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let make_trywith t x pats =
@@ -753,12 +762,12 @@ let rec merge_typ typ1 typ2 =
   | TRecord fields1, TRecord fields2 ->
       let fields = List.map2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1=s2 && f1=f2); s1, (f1, merge_typ typ1 typ2)) fields1 fields2 in
       TRecord fields
-  | _ -> Format.printf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
+  | _ -> Format.eprintf "typ1:%a, typ2:%a@." Print.typ typ1 Print.typ typ2; assert false
 
 let make_if t1 t2 t3 =
   assert (Flag.Debug.check_typ => Type.can_unify t1.typ Ty.bool);
   if Flag.Debug.check_typ && not @@ Type.can_unify t2.typ t3.typ then
-    (Format.printf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
+    (Format.eprintf "%a <=/=> %a@." Print.typ t2.typ Print.typ t3.typ;
      assert false);
   match t1.desc with
   | Const True -> t2
@@ -908,7 +917,7 @@ let is_id_unique t =
     | [] -> true
     | x::xs' ->
         if Id.mem x xs'
-        then (Format.printf "%a" Id.print x; false)
+        then (Format.eprintf "%a" Id.print x; false)
         else check xs'
   in
   check bv
@@ -1217,14 +1226,14 @@ let effect_of_typ ty =
   match ty with
   | TAttr(TAEffect e::_, _) -> e
   | _ ->
-      Format.printf "%a@." Print.typ ty;
+      Format.eprintf "%a@." Print.typ ty;
       invalid_arg "effect_of_typ"
 
 let effect_of t =
   match t.attr with
   | AEffect e::_ -> e
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.eprintf "%a@." Print.term t;
       invalid_arg "effect_of"
 
 let get_tdata =

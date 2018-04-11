@@ -267,8 +267,8 @@ let rec trans_and_print
           try
             Type_check.check t t.Syntax.typ
           with e ->
-            Format.printf "@.%s@." @@ Printexc.to_string e;
-            Format.printf "%a@.@." Print.term' t;
+            Format.eprintf "@.%s@." @@ Printexc.to_string e;
+            Format.eprintf "%a@.@." Print.term' t;
             assert false
       in
       List.iter aux rs;

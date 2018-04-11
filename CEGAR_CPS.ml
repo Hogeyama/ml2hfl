@@ -21,7 +21,7 @@ let not_def = not_cps, ["x"; "k"], Const True, [], (make_if (Var "x") (App(Var "
 let rec trans_const = function
   | Const (Int _ | Unit | True | False | Rand(TBool,_) | If | Tuple _ | Bottom | Label _ as c) -> Const c
   | Const Not -> Var not_cps
-  | Const c -> Format.printf "TRANS_CONST: %a@." CEGAR_print.const c; assert false
+  | Const c -> Format.eprintf "TRANS_CONST: %a@." CEGAR_print.const c; assert false
   | Var x -> Var x
 (*
   | App(App(Const (Label n), t1), t2) -> App(Const (Label n), App(t2, t1))
@@ -35,7 +35,7 @@ let rec trans_const = function
         then make_app t' ts'
         else
           let ts1,ts2 = take2 ts' n in
-            if ts2 = [] then (Format.printf "%a@." print_term t; assert false);
+            if ts2 = [] then (Format.eprintf "%a@." print_term t; assert false);
             make_app (List.hd ts2) ((make_app t' ts1)::List.tl ts2)
 *)
   | App(App(Const (Proj(n,i)), t1), t2) -> App(trans_const t2, App(Const (Proj(n,i)), trans_const t1))

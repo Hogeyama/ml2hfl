@@ -288,7 +288,7 @@ let rec last_def_to_fun t =
       let t2' = last_def_to_fun t2 in
       {t with desc = Local(Decl_let defs, t2')}
   | _ ->
-      Format.printf "%a@." Print.term t;
+      Format.eprintf "%a@." Print.term t;
       assert false
 
 let assert_to_fun t =
@@ -359,7 +359,7 @@ and top_to_local t =
       unsupported "Modular.top_to_local (let ... and)"
   | Const Unit -> t
   | _ ->
-      Format.printf "TOP_TO_LOCAL: %a@." Print.term t;
+      Format.eprintf "TOP_TO_LOCAL: %a@." Print.term t;
       assert false
 
 let main _ spec parsed =

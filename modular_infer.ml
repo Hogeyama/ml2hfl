@@ -160,7 +160,7 @@ let rec constr_of_typ typ =
   | Inter(_, typs) ->
       _Ands (List.map constr_of_typ typs)
   | _ ->
-      Format.printf "  typ: %a@." print_template typ;
+      Format.eprintf "  typ: %a@." print_template typ;
       assert false
 
 let rec subst_template x t tmp =
@@ -235,8 +235,8 @@ let rec expand_type templates val_env typ =
         | Inter(styp, typs) ->
             Inter(styp, List.map (fun typ -> et @@ Arg(typ, ts)) typs)
         | typ' ->
-            Format.printf "@.typ: %a@." print_template typ;
-            Format.printf "typ': %a@.@." print_template typ';
+            Format.eprintf "@.typ: %a@." print_template typ;
+            Format.eprintf "typ': %a@.@." print_template typ';
             assert false
       end
   | Fun(x, typ1, typ2) -> Fun(x, et typ1, et typ2)
@@ -253,7 +253,7 @@ let rec _PAppSelf typ t =
   | Inter(styp,typs) ->
       Inter(styp, List.map (_PAppSelf -$- t) typs)
   | _ ->
-      Format.printf "%a@." print_template typ;
+      Format.eprintf "%a@." print_template typ;
       assert false
 
 let rec inline_sub templates val_env typ1 typ2 =
@@ -280,8 +280,8 @@ let rec inline_sub templates val_env typ1 typ2 =
       let c3 = subst_constr x1 (make_var x2) @@ inline_sub templates val_env (app typ12) (app typ22) in
       _And c1 @@ _Imply [c2] c3
   | _ ->
-      Format.printf "  typ1: %a@." print_template typ1;
-      Format.printf "  typ2: %a@." print_template typ2;
+      Format.eprintf "  typ1: %a@." print_template typ1;
+      Format.eprintf "  typ2: %a@." print_template typ2;
       assert false
   in
   Debug.printf "    typ1: %a@." print_template typ1;
@@ -318,7 +318,7 @@ let rec decomp_tfun typ =
   | Fun(x,typ1,typ2) -> Pair.map_fst (List.cons (x,typ1)) @@ decomp_tfun typ2
   | Inter(_, [typ']) -> decomp_tfun typ'
   | Inter _ ->
-      Format.printf "decomp_tfun: %a@." print_template typ;
+      Format.eprintf "decomp_tfun: %a@." print_template typ;
       assert false
   | _ -> [], typ
 
@@ -356,7 +356,7 @@ let base_of_typ typ =
   | TBase TBool -> Ref_type.Bool
   | TData s -> Ref_type.Abst s
   | _ ->
-      Format.printf "%a@." Print.typ typ;
+      Format.eprintf "%a@." Print.typ typ;
       assert false
 
 let rec init_with_pred_var cnt typ =
@@ -514,7 +514,7 @@ let rec make_arg_templates_aux typ =
   | Fun(x, typ1, typ2) -> (x,typ1) :: aux typ2
   | Inter(styp,typs) -> List.flatten_map aux typs
   | _ ->
-      Format.printf "%a@." print_template typ;
+      Format.eprintf "%a@." print_template typ;
       assert false
 
 let make_arg_templates templates =
@@ -662,7 +662,7 @@ let check_arity hcs =
         begin
           try
             if Id.assoc f env <> List.length ts then
-              (Format.printf "%a@." Id.print f; assert false);
+              (Format.eprintf "%a@." Id.print f; assert false);
             env
           with Not_found -> (f,n)::env
         end
@@ -862,7 +862,7 @@ let trans_CPS env funs t =
   if not @@ List.for_all (Id.mem_assoc -$- env1) funs then
     begin
       let removed = List.filter_out (Id.mem_assoc -$- env1) funs in
-      Format.printf "REMOVED: %a@." (List.print Id.print) removed;
+      Format.eprintf "REMOVED: %a@." (List.print Id.print) removed;
       assert false
     end;
   env1, make_lets env2 t_main, make_get_rtyp
@@ -1092,8 +1092,8 @@ let rec get_merge_candidates_aux typ1 typ2 =
   | Inter(_, typs), _ -> List.flatten_map (get_merge_candidates_aux typ2) typs
   | _, Inter(_, typs) -> List.flatten_map (get_merge_candidates_aux typ1) typs
   | _ ->
-      Format.printf "get_merge_candidates_aux typ1: %a@." print_template typ1;
-      Format.printf "get_merge_candidates_aux typ2: %a@." print_template typ2;
+      Format.eprintf "get_merge_candidates_aux typ1: %a@." print_template typ1;
+      Format.eprintf "get_merge_candidates_aux typ2: %a@." print_template typ2;
       assert false
 
 let get_merge_candidates templates =

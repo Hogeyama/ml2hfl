@@ -101,7 +101,7 @@ let rec put_arg_into_if_term t =
             let t3' = put_arg_into_if_term @@ make_app t3 ts' in
             make_if t1' t2' t3'
         | Const If, _ ->
-            Format.printf "%a@." CEGAR_print.term t;
+            Format.eprintf "%a@." CEGAR_print.term t;
             assert false
         | t', ts ->
             let ts' = List.map put_arg_into_if_term ts in
@@ -592,7 +592,7 @@ let eval_step_by_step  prog =
         assert (xs1 = xs2);
         make_fun xs1 (make_if t21 t22 t12)
     | [_,xs1,Const True,_,t12; _,xs2,Const True,_,t22] -> make_fun xs1 @@ make_br t22 t12
-    | _ -> Format.printf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
+    | _ -> Format.eprintf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
   in
   let counter = ref 0 in
   let rec get_tf l_then l_else =

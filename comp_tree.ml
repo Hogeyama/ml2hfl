@@ -121,10 +121,6 @@ let rename_var nid x =
   let name = Format.asprintf "%a@%d" Id.print x nid in
   let id = 0 in
   {x with Id.name; id}
-let rename_var nid x =
-  let x' = rename_var nid x in
-  Format.printf "RENAME: %a => %a@." Id.print x Id.print x'
-  ;x'
 let rename_var _ x = Id.new_var_id x
 
 let assoc_fun nid f var_env val_env =
@@ -322,10 +318,10 @@ and from_term
       let node = {nid; var_env; val_env; ce_env; nlabel = End} in
       RT.Node(node, [])
   | _ ->
-      Format.printf "@.t: @[%a@." Print.term t;
-      Format.printf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
+      Format.eprintf "@.t: @[%a@." Print.term t;
+      Format.eprintf "Dom(val_env): %a@." (List.print Id.print) @@ List.map fst val_env;
       let f = match t.desc with App({desc=Var f},_) -> f | _ -> assert false in
-      Format.printf "%a is in Dom(val_env)?: %b@." Id.print f (Id.mem_assoc f val_env);
+      Format.eprintf "%a is in Dom(val_env)?: %b@." Id.print f (Id.mem_assoc f val_env);
       unsupported "Comp_tree.from_term"
 let from_term fun_env var_env val_env ce_env t =
   from_term (Counter.create()) fun_env var_env val_env ce_env t

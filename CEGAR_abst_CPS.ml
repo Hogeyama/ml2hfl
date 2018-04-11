@@ -104,7 +104,7 @@ let rec trans_eager_bool f = function
       let t2' = trans_eager_bool f t2 in
       let t3' = trans_eager_bool f t3 in
       Term.(let_ f' (fun_ x (if_ (var x) t2' t3')) t1')
-  | t -> Format.printf "trans_eager_bool: %a@." CEGAR_print.term t; assert false
+  | t -> Format.eprintf "trans_eager_bool: %a@." CEGAR_print.term t; assert false
 
 let is_bool env t =
   try
@@ -175,7 +175,7 @@ let rec eta_expand_term_aux env t typ =
       let typ1' =
         match get_typ env' t with
         | TFun(typ,_) -> typ
-        | typ -> Format.printf "%a: %a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
+        | typ -> Format.eprintf "%a: %a@." CEGAR_print.term t CEGAR_print.typ typ; assert false
       in
       let t' = App(t, eta_expand_term_aux env' (Var x) typ1') in
       Fun(x, Some typ1, eta_expand_term_aux env' t' typ2)
@@ -202,7 +202,7 @@ let rec eta_expand_term env t typ =
             let ts'' = aux ts' typ2 in
             eta_expand_term env t typ1 :: ts''
         | t::_, _ ->
-            Format.printf "ERROR: %a, %a@." CEGAR_print.term t1 CEGAR_print.term t;
+            Format.eprintf "ERROR: %a, %a@." CEGAR_print.term t1 CEGAR_print.term t;
             assert false
       in
       let t' = make_app t1 (aux ts @@ get_typ env t1) in
@@ -216,7 +216,7 @@ let rec eta_expand_term env t typ =
           let t'' = eta_expand_term env' t' (typ2 (Var x)) in
           Fun(x, Some typ1, t'')
       | _ ->
-          Format.printf "%a, %a@." CEGAR_print.term t CEGAR_print.typ typ;
+          Format.eprintf "%a, %a@." CEGAR_print.term t CEGAR_print.typ typ;
           assert false
 let eta_expand_def env (f,xs,t1,e,t2) =
   let typ,env' = decomp_typ_var (List.assoc f env) xs in

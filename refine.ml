@@ -36,7 +36,7 @@ let rec copy_attr ty1 ty2 =
   | TFun _, _
   | TConstr _, _
   | TApp _, _ ->
-      Format.printf "Refine.copy_attr: %a, %a@." CEGAR_print.typ ty1 CEGAR_print.typ ty2;
+      Format.eprintf "Refine.copy_attr: %a, %a@." CEGAR_print.typ ty1 CEGAR_print.typ ty2;
       assert false
 
 let rec can_move ty =
@@ -190,7 +190,7 @@ let rec negate_typ ty =
       let typ2 = negate_typ @@ typ2 (Var x) in
       TFun(typ1, subst_typ x -$- typ2)
   | TConstr _
-  | TApp _ -> Format.printf "negate_typ: %a." CEGAR_print.typ ty; assert false
+  | TApp _ -> Format.eprintf "negate_typ: %a." CEGAR_print.typ ty; assert false
 
 let add_nag_preds_renv env =
   let aux (f,typ) = if is_randint_var f then merge_typ typ (negate_typ typ) else typ in
@@ -205,7 +205,7 @@ let rec add_to_path path typ1 typ2 =
   | [],_ -> merge_typ typ1 typ2
   | 0::path',TFun(typ21,typ22) -> TFun(add_to_path path' typ1 typ21, typ22)
   | 1::path',TFun(typ21,typ22) -> TFun(typ21, add_to_path path' typ1 -| typ22)
-  | _ -> Format.printf "%a@." CEGAR_print.typ typ2; assert false
+  | _ -> Format.eprintf "%a@." CEGAR_print.typ typ2; assert false
 
 let rec add_pred n path typ =
   match typ with

@@ -123,9 +123,9 @@ let rec generate_check typ_exn make_fail genv cenv x typ =
       let genv'',cenv'',ts = List.fold_left aux (genv,cenv,[]) typs in
       genv'', cenv'', U.make_ors ts
   | Exn(typ1, typ2) when is_bottom' typ2 -> generate_check typ_exn make_fail genv cenv x typ1
-  | Exn _ -> Format.printf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check Exn"
-  | ExtArg _ -> Format.printf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check ExtArg"
-  | List _ -> Format.printf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check List"
+  | Exn _ -> Format.eprintf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check Exn"
+  | ExtArg _ -> Format.eprintf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check ExtArg"
+  | List _ -> Format.eprintf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check List"
 
 and generate typ_exn make_fail genv cenv typ =
   Debug.printf "Ref_type_gen.generate: %a@." print typ;
@@ -233,7 +233,7 @@ and generate typ_exn make_fail genv cenv typ =
               let handler = U.make_fun e t2 in
               genv'', cenv'', U.make_trywith_simple t1 handler
           | _ ->
-              Format.printf "%a@." print typ;
+              Format.eprintf "%a@." print typ;
               unsupported "Ref_type_gen.wrap"
         in
         let v0 =
@@ -241,7 +241,6 @@ and generate typ_exn make_fail genv cenv typ =
           let ret_styp = to_simple ~with_pred:true rtyp in
           U.make_fun (Id.new_var ~name:"u" arg_styp) @@ make_fail ret_styp
         in
-        Format.printf "typs: %a@." (List.print print) typs;
         List.fold_right wrap typs (genv,cenv,v0)
     | Inter(_, ((Fun _)::_ as typs)) ->
         Flag.Method.fail_as_exception := true;
@@ -310,7 +309,7 @@ and generate typ_exn make_fail genv cenv typ =
         let typ' = Exn(inter' typs1, inter' typs2) in
         generate typ_exn make_fail genv cenv typ'
     | Inter(_, _) ->
-        Format.printf "INTER: %a@." print typ;
+        Format.eprintf "INTER: %a@." print typ;
         unsupported "Ref_type_gen.generate: Inter"
     | Union(styp, []) -> [], [], U.make_bottom styp
     | Union(_, [typ]) -> generate typ_exn make_fail genv cenv typ

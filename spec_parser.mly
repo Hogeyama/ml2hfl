@@ -9,11 +9,11 @@ let print_error_information () =
   try
     let st = Parsing.symbol_start_pos () in
     let en = Parsing.symbol_end_pos () in
-    Format.printf "%s, line %d, characters %d-%d\n"
-                  st.Lexing.pos_fname
-                  st.Lexing.pos_lnum
-                  (st.Lexing.pos_cnum - st.Lexing.pos_bol)
-                  (en.Lexing.pos_cnum - en.Lexing.pos_bol)
+    Format.eprintf "%s, line %d, characters %d-%d\n"
+                   st.Lexing.pos_fname
+                   st.Lexing.pos_lnum
+                   (st.Lexing.pos_cnum - st.Lexing.pos_bol)
+                   (en.Lexing.pos_cnum - en.Lexing.pos_bol)
   with _ -> ()
 
 let parse_error _ = print_error_information ()

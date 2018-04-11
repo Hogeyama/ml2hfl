@@ -64,7 +64,7 @@ let init = init.tr2_term
 let get_id ({attr} as t) =
   match List.filter_map (function AId id -> Some id | _ -> None) attr with
   | [id] -> id
-  | _ -> Format.printf "%a@." Print.term t;assert false
+  | _ -> Format.eprintf "%a@." Print.term t;assert false
 let get_typ env t = Hashtbl.find env @@ ITerm (get_id t)
 let get_typ_var env x = Hashtbl.find env @@ IVar (Id.to_string x)
 
@@ -135,7 +135,7 @@ let rec infer (env,counter) t =
   | Tuple ts ->
       List.flatten_map (infer (env,counter)) ts
   | Proj(i,t) ->infer (env,counter) t
-  | _ -> Format.printf "%a@." Print.term t; unsupported "uncurry"
+  | _ -> Format.eprintf "%a@." Print.term t; unsupported "uncurry"
 
 
 

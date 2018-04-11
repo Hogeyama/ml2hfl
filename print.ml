@@ -186,7 +186,7 @@ and print_desc attr pri typ fm desc =
         end;
       fprintf fm "@]%s" s2
   | Local(Decl_let [], t) ->
-      Format.printf "@.%a@." (print_term 0 typ) t;
+      Format.eprintf "@.%a@." (print_term 0 typ) t;
       assert false
   | Local(Decl_let [_, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
       let p = 80 in
@@ -277,7 +277,7 @@ and print_desc attr pri typ fm desc =
             let s1,s2 = paren pri p in
             fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
         | Some ts' ->
-            Format.printf "%a" (List.print @@ print_term 0 typ) ts'
+            Format.fprintf fm "%a" (List.print @@ print_term 0 typ) ts'
       end
   | Constr(s,ts) ->
       let p = 80 in
