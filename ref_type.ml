@@ -144,7 +144,7 @@ let rec print fm = function
         | [x,ty] -> print fm ty
         | (x,ty)::xtys' ->
             if occur x @@ Tuple xtys' then Format.fprintf fm "%a:" Id.print x;
-            Format.fprintf fm "%a * @ " print ty;
+            Format.fprintf fm "%a *@ " print ty;
             aux xtys'
       in
       Format.fprintf fm "(@[";
