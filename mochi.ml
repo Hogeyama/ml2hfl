@@ -616,10 +616,10 @@ let print_error = function
   | e -> raise e
 
 let init_before_parse_arg () =
-  fpat_init1 ();
-  ignore @@ Unix.alarm !Flag.time_limit
+  fpat_init1 ()
 
 let init_after_parse_arg () =
+  ignore @@ Unix.alarm !Flag.time_limit;
   if Flag.ModelCheck.(!mc <> TRecS) then
     Flag.ModelCheck.church_encode := true;
   fpat_init2 ();
