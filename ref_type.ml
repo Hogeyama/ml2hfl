@@ -287,23 +287,6 @@ let to_simple_base b =
   | Int -> Ty.int
   | Abst s -> TData s
 
-let rec to_simple ?(with_pred=false) typ =
-  match typ with
-  | Base(b, x, p) ->
-      to_simple_base b
-      |&with_pred&> T.add_tattr (T.TARefPred(x,p))
-  | Fun(x,typ1,typ2) -> T.TFun(Id.new_var @@ to_simple ~with_pred typ1, to_simple ~with_pred typ2)
-  | Tuple xtyps -> T.TTuple (List.map (Id.new_var -| to_simple ~with_pred -| snd) xtyps)
-  | Inter(sty, _)
-  | Union(sty, _) ->
-      if with_pred then
-        unsupported "Ref_type.to_simple (Inter/Union)"
-      else
-        sty
-  | ExtArg _ -> assert false
-  | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
-  | Exn(typ1, _) -> to_simple ~with_pred typ1
-
 let rec to_abst_typ ?(with_pred=false) typ =
   let r =
   match typ with
@@ -349,6 +332,23 @@ let rec to_abst_typ ?(with_pred=false) typ =
   Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;
   Debug.printf "Ref_type.to_abst_typ OUT: %a@." Print.typ r;
   r
+
+let rec to_simple ?(with_pred=false) typ =
+  match typ with
+  | Base(b, x, p) ->
+      to_simple_base b
+      |&with_pred&> T.add_tattr (T.TARefPred(x,p))
+  | Fun(x,typ1,typ2) -> T.TFun(Id.new_var @@ to_simple ~with_pred typ1, to_simple ~with_pred typ2)
+  | Tuple xtyps -> T.TTuple (List.map (Id.new_var -| to_simple ~with_pred -| snd) xtyps)
+  | Inter(sty, _)
+  | Union(sty, _) ->
+      if with_pred then
+        to_abst_typ ~with_pred:true typ
+      else
+        sty
+  | ExtArg _ -> assert false
+  | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
+  | Exn(typ1, _) -> to_simple ~with_pred typ1
 
 let rec set_base_var x = function
   | Base(base, y, p) -> Base(base, x, U.subst_var y x p)
