@@ -355,9 +355,18 @@ module Term = struct
   let tt = Const True
   let false_ = Const False
   let ff = Const False
+  let int = make_int
   let var = _Var
   let let_ = _Let
   let fun_ = _Fun
   let br = make_br
   let if_ = make_if
+  let (<) = make_lt
+  let (>) = make_gt
+  let (<=) = make_leq
+  let (>=) = make_geq
+  let (&&) = make_and
+  let (||) = make_or
+  let (+) = make_add
+  let (-) = make_sub
 end

@@ -389,6 +389,8 @@ let rec arg_spec () =
      " Use an empty set as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
+     "-rec-hccs", Arg.Set Flag.Refine.use_rec_hccs_solver, " Use recursive horn-clause solver";
+     "-hoice", Arg.Unit Flag.Refine.(fun () -> solver:=HoICE), " Use HoICE as the recursive horn-clause solver";
      (* SWT solver *)
      "", Arg.Unit ignore, "Options_for_SMT_solver";
      "-cvc3-bin", Arg.Set_string Flag.cvc3,
@@ -552,11 +554,18 @@ let fpat_init2 () =
   SMTProver.initialize ()
 
 let check_env () =
-  match !Flag.ModelCheck.mc with
-  | Flag.ModelCheck.TRecS -> if not Mconfig.trecs_available then fatal "TRecS not found"
-  | Flag.ModelCheck.HorSat -> if not Mconfig.horsat_available then fatal "HorSat not found"
-  | Flag.ModelCheck.HorSat2 -> if not Mconfig.horsat2_available then fatal "HorSat2 not found"
-  | Flag.ModelCheck.HorSatP -> if not Mconfig.horsatp_available then fatal "HorSatP not found"
+  begin
+    match !Flag.ModelCheck.mc with
+    | Flag.ModelCheck.TRecS -> if not Mconfig.trecs_available then fatal "TRecS not found"
+    | Flag.ModelCheck.HorSat -> if not Mconfig.horsat_available then fatal "HorSat not found"
+    | Flag.ModelCheck.HorSat2 -> if not Mconfig.horsat2_available then fatal "HorSat2 not found"
+    | Flag.ModelCheck.HorSatP -> if not Mconfig.horsatp_available then fatal "HorSatP not found"
+  end;
+  begin
+    match !Flag.Refine.solver with
+    | Flag.Refine.Default -> ()
+    | Flag.Refine.HoICE -> if not Mconfig.hoice_available then fatal "HoICE not found"
+  end
 
 let string_of_exception = function
   | e when Fpat.FPATConfig.is_fpat_exception e ->

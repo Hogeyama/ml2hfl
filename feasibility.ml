@@ -125,9 +125,9 @@ let rec get_prefix ce n =
   | c::ce' -> c::get_prefix ce' (n-1)
 
 let check ce {defs; main} =
-  if !Flag.Print.progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
+  Verbose.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
   let time_tmp = Time.get () in
-  if !Flag.Print.progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.Log.cegar_loop;
+  Verbose.printf "%a(%d-3) Checking counterexample ...%t @?" Color.set Color.Green !Flag.Log.cegar_loop Color.reset;
   if false then Format.printf "ce:	  %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in

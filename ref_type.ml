@@ -401,36 +401,33 @@ let is_valid = FpatInterface.is_valid -| conv
 let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
 
 let rec simplify_pred t =
-  if true then
-    try
-      if not @@ is_sat t then
-        U.false_term
-      else if is_valid t then
-        U.true_term
-      else
-        match S.desc t with
-        | S.BinOp(S.And, t1, t2) ->
-            let t1' = simplify_pred t1 in
-            let t2' = simplify_pred t2 in
-            if implies [t1'] t2' then
-              t1'
-            else if implies [t2'] t1' then
-              t2'
-            else
-              U.make_and t1' t2'
-        | S.BinOp(S.Or, t1, t2) ->
-            let t1' = simplify_pred t1 in
-            let t2' = simplify_pred t2 in
-            if implies [t1'] t2' then
-              t2'
-            else if implies [t2'] t1' then
-              t1'
-            else
-              U.make_or t1' t2'
-        | _ -> t
-    with Unsupported _ -> t
-  else
-    FpatInterface.simplify_term t
+  try
+    if not @@ is_sat t then
+      U.false_term
+    else if is_valid t then
+      U.true_term
+    else
+      match S.desc t with
+      | S.BinOp(S.And, t1, t2) ->
+          let t1' = simplify_pred t1 in
+          let t2' = simplify_pred t2 in
+          if implies [t1'] t2' then
+            t1'
+          else if implies [t2'] t1' then
+            t2'
+          else
+            U.make_and t1' t2'
+      | S.BinOp(S.Or, t1, t2) ->
+          let t1' = simplify_pred t1 in
+          let t2' = simplify_pred t2 in
+          if implies [t1'] t2' then
+            t2'
+          else if implies [t2'] t1' then
+            t1'
+          else
+            U.make_or t1' t2'
+      | _ -> t
+  with Unsupported _ -> t
 
 let rec flatten typ =
   match typ with

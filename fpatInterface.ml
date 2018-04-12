@@ -5,30 +5,31 @@ open CEGAR_print
 open CEGAR_util
 open Fpat.Combinator
 
+module F = Fpat
 module CS = CEGAR_syntax
 module S = Syntax
 
-module String = Fpat.Util.String
-module List = Fpat.Util.List
-module Array = Fpat.Util.Array
+module String = F.Util.String
+module List = F.Util.List
+module Array = F.Util.Array
 
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 let rec conv_typ ty =
   match ty with
-  | TBase(TUnit, _) -> Fpat.Type.mk_unit
-  | TBase(TInt, _) -> Fpat.Type.mk_int
-  | TBase(TBool, _) -> Fpat.Type.mk_bool
-  | TBase(TAbst "string", _) -> Fpat.Type.mk_string
-  | TBase(TAbst "float", _) -> Fpat.Type.mk_real
+  | TBase(TUnit, _) -> F.Type.mk_unit
+  | TBase(TInt, _) -> F.Type.mk_int
+  | TBase(TBool, _) -> F.Type.mk_bool
+  | TBase(TAbst "string", _) -> F.Type.mk_string
+  | TBase(TAbst "float", _) -> F.Type.mk_real
   | TBase(TAbst s, _) ->
-     Fpat.Type.mk_const (Fpat.TypConst.Ext s)
+     F.Type.mk_const (F.TypConst.Ext s)
   | TFun(ty1,tmp) ->
      let ty2 = tmp (Const True) in
-     Fpat.Type.mk_fun [conv_typ ty1; conv_typ ty2]
+     F.Type.mk_fun [conv_typ ty1; conv_typ ty2]
   | TApp _ when is_ttuple ty ->
       let _,tys = decomp_tapp ty in
-      Fpat.Type.mk_tuple @@ List.map conv_typ tys
+      F.Type.mk_tuple @@ List.map conv_typ tys
   | TApp(TConstr TAssumeTrue, ty) -> conv_typ ty
   | TApp(TConstr (TFixPred _), ty) -> conv_typ ty
   | _ ->
@@ -37,51 +38,51 @@ let rec conv_typ ty =
 
 let conv_const c =
   match c with
-  | Bottom -> Fpat.Const.Bot
-  | Unit -> Fpat.Const.Unit
-  | True -> Fpat.Const.True
-  | False -> Fpat.Const.False
-  | And -> Fpat.Const.And
-  | Or -> Fpat.Const.Or
-  | Not -> Fpat.Const.Not
-  | Lt -> Fpat.Const.Lt Fpat.Type.mk_int
-  | Gt -> Fpat.Const.Gt Fpat.Type.mk_int
-  | Leq -> Fpat.Const.Leq Fpat.Type.mk_int
-  | Geq -> Fpat.Const.Geq Fpat.Type.mk_int
-  | EqUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
-  | EqBool -> Fpat.Const.Eq Fpat.Type.mk_bool
-  | EqInt -> Fpat.Const.Eq Fpat.Type.mk_int
+  | Bottom -> F.Const.Bot
+  | Unit -> F.Const.Unit
+  | True -> F.Const.True
+  | False -> F.Const.False
+  | And -> F.Const.And
+  | Or -> F.Const.Or
+  | Not -> F.Const.Not
+  | Lt -> F.Const.Lt F.Type.mk_int
+  | Gt -> F.Const.Gt F.Type.mk_int
+  | Leq -> F.Const.Leq F.Type.mk_int
+  | Geq -> F.Const.Geq F.Type.mk_int
+  | EqUnit -> F.Const.Eq F.Type.mk_unit
+  | EqBool -> F.Const.Eq F.Type.mk_bool
+  | EqInt -> F.Const.Eq F.Type.mk_int
   | CmpPoly(typ,"=") ->
-     Fpat.Const.Eq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+     F.Const.Eq (F.Type.mk_const (F.TypConst.Ext typ))
   | CmpPoly(typ,"<>") ->
-     Fpat.Const.Neq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+     F.Const.Neq (F.Type.mk_const (F.TypConst.Ext typ))
   | CmpPoly(typ,"<") ->
-     Fpat.Const.Lt (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+     F.Const.Lt (F.Type.mk_const (F.TypConst.Ext typ))
   | CmpPoly(typ,">") ->
-     Fpat.Const.Gt (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+     F.Const.Gt (F.Type.mk_const (F.TypConst.Ext typ))
   | CmpPoly(typ,"<=") ->
-     Fpat.Const.Leq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
+     F.Const.Leq (F.Type.mk_const (F.TypConst.Ext typ))
   | CmpPoly(typ,">=") ->
-     Fpat.Const.Geq (Fpat.Type.mk_const (Fpat.TypConst.Ext typ))
-  | Int(n) -> Fpat.Const.Int(n)
-  | Rand(TInt, _) -> Fpat.Const.RandInt
+     F.Const.Geq (F.Type.mk_const (F.TypConst.Ext typ))
+  | Int(n) -> F.Const.Int(n)
+  | Rand(TInt, _) -> F.Const.RandInt
   | Rand(typ, _) -> unsupported @@ Format.asprintf "Rand[%a]" CEGAR_print.typ_base typ
-  | Add -> Fpat.Const.Add Fpat.Type.mk_int
-  | Sub -> Fpat.Const.Sub Fpat.Type.mk_int
-  | Mul -> Fpat.Const.Mul Fpat.Type.mk_int
-  | Div -> Fpat.Const.Div Fpat.Type.mk_int
-  | Char c -> Fpat.Const.Int (int_of_char c)
-  | String s -> Fpat.Const.String s
-  | Float r -> Fpat.Const.Real r
-  | Int32 n -> Fpat.Const.Int (Int32.to_int n)
-  | Int64 n -> Fpat.Const.Int (Int64.to_int n)
-  | Nativeint n -> Fpat.Const.Int (Nativeint.to_int n)
+  | Add -> F.Const.Add F.Type.mk_int
+  | Sub -> F.Const.Sub F.Type.mk_int
+  | Mul -> F.Const.Mul F.Type.mk_int
+  | Div -> F.Const.Div F.Type.mk_int
+  | Char c -> F.Const.Int (int_of_char c)
+  | String s -> F.Const.String s
+  | Float r -> F.Const.Real r
+  | Int32 n -> F.Const.Int (Int32.to_int n)
+  | Int64 n -> F.Const.Int (Int64.to_int n)
+  | Nativeint n -> F.Const.Int (Nativeint.to_int n)
   | CPS_result ->
-     Fpat.Const.UFun
-       (Fpat.Type.mk_const (Fpat.TypConst.Ext "X"),
-        Fpat.Idnt.make "end")
-  | Proj(n,i) -> Fpat.Const.Proj(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")), i)
-  | Tuple n -> Fpat.Const.Tuple(List.make n (Fpat.Type.mk_const (Fpat.TypConst.Ext "?")))
+     F.Const.UFun
+       (F.Type.mk_const (F.TypConst.Ext "X"),
+        F.Idnt.make "end")
+  | Proj(n,i) -> F.Const.Proj(List.make n (F.Type.mk_const (F.TypConst.Ext "?")), i)
+  | Tuple n -> F.Const.Tuple(List.make n (F.Type.mk_const (F.TypConst.Ext "?")))
   | CmpPoly (_, _) -> assert false
   | Temp s -> assert false
   | If  -> assert false
@@ -89,10 +90,10 @@ let conv_const c =
   | TreeConstr (_, _) -> assert false
 
 let conv_var x =
-  if Fpat.RefTypInfer.is_parameter x || is_extra_coeff_name x then
-    Fpat.Idnt.mk_coeff x
+  if F.RefTypInfer.is_parameter x || is_extra_coeff_name x then
+    F.Idnt.mk_coeff x
   else
-    Fpat.Idnt.make x
+    F.Idnt.make x
 
 let rec conv_term env t =
   match t with
@@ -101,74 +102,74 @@ let rec conv_term env t =
   | Const(Rand(TInt, Some n)) ->
       let typs,_ = decomp_rand_typ @@ assoc_renv n env in
       let typs' = List.map conv_typ typs in
-      Fpat.Term.mk_const @@ Fpat.Const.ReadInt (Fpat.Idnt.make @@ make_randint_name n, typs')
+      F.Term.mk_const @@ F.Const.ReadInt (F.Idnt.make @@ make_randint_name n, typs')
   | Const(Rand(_, Some _)) -> assert false
   | Const(c) ->
-     Fpat.Term.mk_const (conv_const c)
+     F.Term.mk_const (conv_const c)
   | Var(x) ->
-      Fpat.Term.mk_var @@ conv_var x
-  | App(t1, t2) -> Fpat.Term.mk_app (conv_term env t1) [conv_term env t2]
+      F.Term.mk_var @@ conv_var x
+  | App(t1, t2) -> F.Term.mk_app (conv_term env t1) [conv_term env t2]
   | Fun _ -> assert false
   | Let _ -> assert false
 
-let conv_formula t = t |> conv_term [] |> Fpat.Formula.of_term
+let conv_formula t = t |> conv_term [] |> F.Formula.of_term
 
 let rec of_typ typ =
   match Type.elim_tattr typ with
-  | Type.TBase Type.TUnit -> Fpat.Type.mk_unit
-  | Type.TBase Type.TInt -> Fpat.Type.mk_int
-  | Type.TBase Type.TBool -> Fpat.Type.mk_bool
-  | Type.TFun(x,typ) -> Fpat.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
-  | Type.TData "string" -> Fpat.Type.mk_string
-  | Type.TTuple xs -> Fpat.Type.mk_tuple @@ List.map (Id.typ |- of_typ) xs
+  | Type.TBase Type.TUnit -> F.Type.mk_unit
+  | Type.TBase Type.TInt -> F.Type.mk_int
+  | Type.TBase Type.TBool -> F.Type.mk_bool
+  | Type.TFun(x,typ) -> F.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
+  | Type.TData "string" -> F.Type.mk_string
+  | Type.TTuple xs -> F.Type.mk_tuple @@ List.map (Id.typ |- of_typ) xs
   | _ ->
       Format.eprintf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
 
 let rec of_term t =
   match S.desc t with
-  | S.Const S.Unit -> Fpat.Term.mk_const @@ Fpat.Const.Unit
-  | S.Const S.True -> Fpat.Term.mk_const @@ Fpat.Const.True
-  | S.Const S.False -> Fpat.Term.mk_const @@ Fpat.Const.False
-  | S.Const (S.Int n) -> Fpat.Term.mk_const @@ Fpat.Const.Int n
-  | S.Const (S.String s) -> Fpat.Term.mk_const @@ Fpat.Const.String s
-  | S.Var x -> Fpat.Term.mk_var @@ Fpat.Idnt.make @@ Id.to_string x
-  | S.Not t1 -> Fpat.Term.mk_app (Fpat.Term.mk_const Fpat.Const.Not) [of_term t1]
+  | S.Const S.Unit -> F.Term.mk_const @@ F.Const.Unit
+  | S.Const S.True -> F.Term.mk_const @@ F.Const.True
+  | S.Const S.False -> F.Term.mk_const @@ F.Const.False
+  | S.Const (S.Int n) -> F.Term.mk_const @@ F.Const.Int n
+  | S.Const (S.String s) -> F.Term.mk_const @@ F.Const.String s
+  | S.Var x -> F.Term.mk_var @@ F.Idnt.make @@ Id.to_string x
+  | S.Not t1 -> F.Term.mk_app (F.Term.mk_const F.Const.Not) [of_term t1]
   | S.BinOp(op, t1, t2) ->
       let op' =
         match op with
         | S.Eq ->
             begin
               match Type.elim_tattr @@ S.typ t1 with
-              | Type.TBase Type.TUnit -> Fpat.Const.Eq Fpat.Type.mk_unit
-              | Type.TBase Type.TInt -> Fpat.Const.Eq Fpat.Type.mk_int
-              | Type.TBase Type.TBool -> Fpat.Const.Eq Fpat.Type.mk_bool
-              | typ when typ = Type.typ_unknown -> Fpat.Const.Eq Fpat.Type.mk_int
+              | Type.TBase Type.TUnit -> F.Const.Eq F.Type.mk_unit
+              | Type.TBase Type.TInt -> F.Const.Eq F.Type.mk_int
+              | Type.TBase Type.TBool -> F.Const.Eq F.Type.mk_bool
+              | typ when typ = Type.typ_unknown -> F.Const.Eq F.Type.mk_int
               | typ ->
                   Format.eprintf "t1.S.typ: %a@." Print.typ typ;
                   unsupported "FpatInterface.of_term"
             end
-        | S.Lt -> Fpat.Const.Lt Fpat.Type.mk_int
-        | S.Gt -> Fpat.Const.Gt Fpat.Type.mk_int
-        | S.Leq -> Fpat.Const.Leq Fpat.Type.mk_int
-        | S.Geq -> Fpat.Const.Geq Fpat.Type.mk_int
-        | S.And -> Fpat.Const.And
-        | S.Or -> Fpat.Const.Or
-        | S.Add -> Fpat.Const.Add Fpat.Type.mk_int
-        | S.Sub -> Fpat.Const.Sub Fpat.Type.mk_int
-        | S.Mult -> Fpat.Const.Mul Fpat.Type.mk_int
-        | S.Div -> Fpat.Const.Div Fpat.Type.mk_int
+        | S.Lt -> F.Const.Lt F.Type.mk_int
+        | S.Gt -> F.Const.Gt F.Type.mk_int
+        | S.Leq -> F.Const.Leq F.Type.mk_int
+        | S.Geq -> F.Const.Geq F.Type.mk_int
+        | S.And -> F.Const.And
+        | S.Or -> F.Const.Or
+        | S.Add -> F.Const.Add F.Type.mk_int
+        | S.Sub -> F.Const.Sub F.Type.mk_int
+        | S.Mult -> F.Const.Mul F.Type.mk_int
+        | S.Div -> F.Const.Div F.Type.mk_int
       in
-      Fpat.Term.mk_app (Fpat.Term.mk_const op') [of_term t1; of_term t2]
+      F.Term.mk_app (F.Term.mk_const op') [of_term t1; of_term t2]
   | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
       let ts' =
         ts
         |> List.map @@ Pair.add_right @@ of_typ -| S.typ
         |> List.map @@ Pair.map_fst of_term
       in
-      Fpat.Pva.make (Fpat.Idnt.make @@ Id.to_string p) ts'
-      |> Fpat.Pva.to_formula
-      |> Fpat.Formula.term_of
+      F.Pva.make (F.Idnt.make @@ Id.to_string p) ts'
+      |> F.Pva.to_formula
+      |> F.Formula.term_of
   | S.Proj(i, t) ->
       let tys =
         match t.S.typ with
@@ -178,75 +179,75 @@ let rec of_term t =
             Format.eprintf "%a@." Print.term' t;
             assert false
       in
-      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Proj(tys, i)) [of_term t]
+      F.Term.mk_app (F.Term.mk_const @@ F.Const.Proj(tys, i)) [of_term t]
   | S.Tuple ts ->
       let tys = List.map (S.typ |- of_typ) ts in
-      Fpat.Term.mk_app (Fpat.Term.mk_const @@ Fpat.Const.Tuple tys) @@ List.map of_term ts
+      F.Term.mk_app (F.Term.mk_const @@ F.Const.Tuple tys) @@ List.map of_term ts
   | desc ->
       Format.eprintf "desc: %a@." Print.desc desc;
       unsupported "FpatInterface.of_term"
 
 let inv_const c =
   match c with
-  | Fpat.Const.Unit -> Unit
-  | Fpat.Const.True -> True
-  | Fpat.Const.False -> False
-  | Fpat.Const.And -> And
-  | Fpat.Const.Or -> Or
-  | Fpat.Const.Not -> Not
-  | Fpat.Const.Lt ty when Fpat.Type.is_int ty -> Lt
-  | Fpat.Const.Gt ty when Fpat.Type.is_int ty -> Gt
-  | Fpat.Const.Leq ty when Fpat.Type.is_int ty -> Leq
-  | Fpat.Const.Geq ty when Fpat.Type.is_int ty -> Geq
-  | Fpat.Const.Eq ty when Fpat.Type.is_unit ty -> EqUnit
-  | Fpat.Const.Eq ty when Fpat.Type.is_bool ty -> EqBool
-  | Fpat.Const.Eq ty when Fpat.Type.is_int ty -> EqInt
-  | Fpat.Const.Int(n) -> Int(n)
-  | Fpat.Const.RandInt -> Rand(TInt, None)
-  | Fpat.Const.Add ty when Fpat.Type.is_int ty -> Add
-  | Fpat.Const.Sub ty when Fpat.Type.is_int ty -> Sub
-  | Fpat.Const.Mul ty when Fpat.Type.is_int ty -> Mul
-  | Fpat.Const.Div ty when Fpat.Type.is_int ty -> Div
-  | Fpat.Const.Eq ty when Fpat.Type.is_ext ty ->
-     Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"="))
-  | Fpat.Const.Neq ty when Fpat.Type.is_ext ty ->
-     Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"<>"))
-  | Fpat.Const.Lt ty when Fpat.Type.is_ext ty ->
-     Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"<"))
-  | Fpat.Const.Gt ty when Fpat.Type.is_ext ty ->
-     Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">"))
-  | Fpat.Const.Leq ty when Fpat.Type.is_ext ty ->
-     Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,"<="))
-  | Fpat.Const.Geq ty when Fpat.Type.is_ext ty ->
-     Fpat.Type.let_ext ty (fun typ -> CmpPoly(typ,">="))
-  | Fpat.Const.String s -> String s
-  | Fpat.Const.Real r -> Float r
-  | Fpat.Const.UFun(ty, x)
-       when Fpat.Idnt.string_of x = "end"
-            && Fpat.Type.is_ext ty && Fpat.Type.let_ext ty ((=) "X") ->
+  | F.Const.Unit -> Unit
+  | F.Const.True -> True
+  | F.Const.False -> False
+  | F.Const.And -> And
+  | F.Const.Or -> Or
+  | F.Const.Not -> Not
+  | F.Const.Lt ty when F.Type.is_int ty -> Lt
+  | F.Const.Gt ty when F.Type.is_int ty -> Gt
+  | F.Const.Leq ty when F.Type.is_int ty -> Leq
+  | F.Const.Geq ty when F.Type.is_int ty -> Geq
+  | F.Const.Eq ty when F.Type.is_unit ty -> EqUnit
+  | F.Const.Eq ty when F.Type.is_bool ty -> EqBool
+  | F.Const.Eq ty when F.Type.is_int ty -> EqInt
+  | F.Const.Int(n) -> Int(n)
+  | F.Const.RandInt -> Rand(TInt, None)
+  | F.Const.Add ty when F.Type.is_int ty -> Add
+  | F.Const.Sub ty when F.Type.is_int ty -> Sub
+  | F.Const.Mul ty when F.Type.is_int ty -> Mul
+  | F.Const.Div ty when F.Type.is_int ty -> Div
+  | F.Const.Eq ty when F.Type.is_ext ty ->
+     F.Type.let_ext ty (fun typ -> CmpPoly(typ,"="))
+  | F.Const.Neq ty when F.Type.is_ext ty ->
+     F.Type.let_ext ty (fun typ -> CmpPoly(typ,"<>"))
+  | F.Const.Lt ty when F.Type.is_ext ty ->
+     F.Type.let_ext ty (fun typ -> CmpPoly(typ,"<"))
+  | F.Const.Gt ty when F.Type.is_ext ty ->
+     F.Type.let_ext ty (fun typ -> CmpPoly(typ,">"))
+  | F.Const.Leq ty when F.Type.is_ext ty ->
+     F.Type.let_ext ty (fun typ -> CmpPoly(typ,"<="))
+  | F.Const.Geq ty when F.Type.is_ext ty ->
+     F.Type.let_ext ty (fun typ -> CmpPoly(typ,">="))
+  | F.Const.String s -> String s
+  | F.Const.Real r -> Float r
+  | F.Const.UFun(ty, x)
+       when F.Idnt.string_of x = "end"
+            && F.Type.is_ext ty && F.Type.let_ext ty ((=) "X") ->
      CPS_result
-  | Fpat.Const.Proj(typs, i) -> Proj(List.length typs, i)
-  | Fpat.Const.Iff -> And (* for -safe-fun-arg-pred_true (to fix) *)
-  | _ -> Format.eprintf "%s@." (Fpat.Const.string_of c); assert false
+  | F.Const.Proj(typs, i) -> Proj(List.length typs, i)
+  | F.Const.Iff -> And (* for -safe-fun-arg-pred_true (to fix) *)
+  | _ -> Format.eprintf "%s@." (F.Const.string_of c); assert false
 
 let rec inv_term t =
   match t with
-  | Fpat.Term.Const(c) -> Const(inv_const c)
-  | Fpat.Term.Var(x) -> Var(Fpat.Idnt.string_of x)
-  | Fpat.Term.App(Fpat.Term.App(t1, t2), t3) ->
+  | F.Term.Const(c) -> Const(inv_const c)
+  | F.Term.Var(x) -> Var(F.Idnt.string_of x)
+  | F.Term.App(F.Term.App(t1, t2), t3) ->
      (match t1 with
-      | Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.Type.is_unit ty ->
+      | F.Term.Const(F.Const.Neq (ty)) when F.Type.is_unit ty ->
          App(Const(Not), App(App(Const(EqUnit), inv_term t2), inv_term t3))
-      | Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.Type.is_bool ty ->
+      | F.Term.Const(F.Const.Neq (ty)) when F.Type.is_bool ty ->
          App(Const(Not), App(App(Const(EqBool), inv_term t2), inv_term t3))
-      | Fpat.Term.Const(Fpat.Const.Neq (ty)) when Fpat.Type.is_int ty ->
+      | F.Term.Const(F.Const.Neq (ty)) when F.Type.is_int ty ->
          App(Const(Not), App(App(Const(EqInt), inv_term t2), inv_term t3))
       | _ ->
          App(App(inv_term t1, inv_term t2), inv_term t3))
-  | Fpat.Term.App(t1, t2) -> App(inv_term t1, inv_term t2)
-  | Fpat.Term.Binder(_, _, _) -> assert false
+  | F.Term.App(t1, t2) -> App(inv_term t1, inv_term t2)
+  | F.Term.Binder(_, _, _) -> assert false
 
-let inv_formula t = t |> Fpat.Formula.term_of |> inv_term
+let inv_formula t = t |> F.Formula.term_of |> inv_term
 
 
 let conv_event e = (***)
@@ -254,42 +255,42 @@ let conv_event e = (***)
   | Event(x) ->
     if x <> "fail" && Flag.Method.(!mode <> FairNonTermination) then
       Format.eprintf "Warning: fpat does not support general events.";
-    Fpat.Term.mk_const (Fpat.Const.Event(x))
+    F.Term.mk_const (F.Const.Event(x))
   | Branch(_) -> assert false
 
 let conv_fdef typs (f, args, guard, events, body) =
-  { Fpat.Fdef.name = f;
-    Fpat.Fdef.args = List.map (Fpat.Idnt.make >> Fpat.Pattern.mk_var) args;
-    Fpat.Fdef.guard = conv_formula guard;
-    Fpat.Fdef.body =
+  { F.Fdef.name = f;
+    F.Fdef.args = List.map (F.Idnt.make >> F.Pattern.mk_var) args;
+    F.Fdef.guard = conv_formula guard;
+    F.Fdef.body =
       List.fold_right
         (fun e t ->
           let t' =
             if e <> Event "fail" && Flag.Method.(List.mem !mode  [FairTermination; FairNonTermination]) then
               t
             else
-              Fpat.Term.mk_const Fpat.Const.Unit in
-          Fpat.Term.mk_app
+              F.Term.mk_const F.Const.Unit in
+          F.Term.mk_app
             (conv_event e)
             [t'])
         events (conv_term typs body) } (***)
 
 let inv_fdef fdef =
-  fdef.Fpat.Fdef.name,
-  fdef.Fpat.Fdef.args,
-  inv_formula fdef.Fpat.Fdef.guard,
+  fdef.F.Fdef.name,
+  fdef.F.Fdef.args,
+  inv_formula fdef.F.Fdef.guard,
   [],
-  inv_term fdef.Fpat.Fdef.body
+  inv_term fdef.F.Fdef.body
 
 let conv_prog prog =
   let typs = prog.CEGAR_syntax.env in
   let fdefs = prog.CEGAR_syntax.defs in
   let main = prog.CEGAR_syntax.main in
-  { Fpat.Prog.fdefs =
+  { F.Prog.fdefs =
       List.map (conv_fdef typs) fdefs;
-    Fpat.Prog.types =
-      List.map (fun (x, ty) -> Fpat.Idnt.make x, conv_typ ty) typs;
-    Fpat.Prog.main = main }
+    F.Prog.types =
+      List.map (fun (x, ty) -> F.Idnt.make x, conv_typ ty) typs;
+    F.Prog.main = main }
 
 (* TODO: merge this function to conversion from refinement types to abstraction types *)
 let add_to_temp t1 t2 =
@@ -323,12 +324,12 @@ let rec path_to_attr ty =
 
 let rec inv_abst_type aty =
   match aty with
-  | Fpat.AbsType.Base(Fpat.TypConst.Ext("X"), x, ts) ->
+  | F.AbsType.Base(F.TypConst.Ext("X"), x, ts) ->
       TBase(TAbst("X"), fun s -> [])
-  | Fpat.AbsType.Base(b, x, ts) ->
-      let x = Fpat.Idnt.string_of x in
+  | F.AbsType.Base(b, x, ts) ->
+      let x = F.Idnt.string_of x in
       let base =
-        let open Fpat.TypConst in
+        let open F.TypConst in
         match b with
         | Ext id -> TAbst id
         | Unit -> TUnit
@@ -337,14 +338,14 @@ let rec inv_abst_type aty =
         | Real -> TAbst "float"
         | String -> TAbst "string"
         | _ ->
-            Format.eprintf "%a@." Fpat.AbsType.pr aty;
+            Format.eprintf "%a@." F.AbsType.pr aty;
             assert false
       in
       TBase(base, fun s -> List.map (subst x s -| inv_formula) ts)
-  | Fpat.AbsType.Fun(aty1, aty2) ->
+  | F.AbsType.Fun(aty1, aty2) ->
       let x =
-        if Fpat.AbsType.is_base aty1 then
-          Fpat.Idnt.string_of (Fpat.AbsType.bv_of aty1)
+        if F.AbsType.is_base aty1 then
+          F.Idnt.string_of (F.AbsType.bv_of aty1)
         else
           "_dummy"
       in
@@ -355,16 +356,72 @@ let inv_abst_type ty =
   |&(!Flag.PredAbst.shift_pred<>None)&> path_to_attr
 
 
-let verify fs (*cexs*) prog =
-  let prog = conv_prog prog in
-  Format.printf "@[<v>BEGIN verification:@,  %a@," Fpat.Prog.pr prog;
-  assert false(*Verifier.verify fs prog;
-  Format.printf "END verification@,@]"*)
-
 let is_cp prog =
   prog
   |> conv_prog
-  |> Fpat.RefTypInfer.is_cut_point
+  |> F.RefTypInfer.is_cut_point
+
+let rec fix_id_T x =
+  match x with
+  | F.Idnt.T(y, _, n) -> F.Idnt.T(fix_id_T y, 0, n)
+  | _ -> x
+
+let unfold sol =
+  let sol' = Hashtbl.create @@ List.length sol in
+  List.iter (Fun.uncurry @@ Hashtbl.add sol') sol;
+  let rec aux t =
+    match CS.decomp_app t with
+    | _, [] -> t
+    | Var f, ts ->
+        let args,t' = Hashtbl.find sol' f in
+        let xs = List.map fst args in
+        let ts' = List.map aux ts in
+        let t'' = update f args t' in
+        List.fold_right2 subst xs ts' t''
+    | t1, ts -> make_app t1 (List.map aux ts)
+  and update f args t =
+    let t' = aux t in
+    Hashtbl.replace sol' f (args,t');
+    t'
+  in
+  Hashtbl.iter (fun f (args,t) -> ignore @@ update f args t) sol';
+  Hashtbl.fold (fun f (xs,t) acc -> (f,(xs,t))::acc) sol' []
+
+let verify_by_hoice filename =
+  let cmd = Format.sprintf "%s %s" !Flag.Refine.hoice filename in
+  Unix.CPS.open_process_in cmd IO.input_all
+  |> Smtlib2_interface.parse_model
+
+
+let solver () =
+  if !Flag.Refine.use_rec_hccs_solver then
+    let solve hcs =
+      let map =
+        let rename x =
+          x
+          |> fix_id_T
+          |> Format.asprintf "|%a|" F.Idnt.pr
+          |> F.Idnt.make
+        in
+        F.HCCS.tenv hcs
+        |> List.map fst
+        |> List.map (Pair.add_right rename)
+      in
+      let to_pred (xs,t) =
+        List.map (Pair.map F.Idnt.make conv_typ) xs, conv_formula t
+      in
+      let rev_map = List.map (fun (x,y) -> F.Idnt.string_of y, x) map in
+      let filename = Filename.change_extension !!Flag.mainfile "smt2" in
+      hcs
+      |> F.HCCS.rename map
+      |> F.HCCS.save_smtlib2 filename;
+      verify_by_hoice filename
+      |> unfold
+      |> List.map (fun (f,def) -> List.assoc f rev_map, to_pred def)
+    in
+    Some solve
+  else
+    None
 
 let infer labeled is_cp cexs ext_cexs prog =
   let fs = List.map fst prog.env in
@@ -392,24 +449,25 @@ let infer labeled is_cp cexs ext_cexs prog =
       List.map (flip (@) [2]) cexs
     else
       cexs in
-  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs false ext_cexs in
+  let solver = !!solver in
+  let env = F.AbsTypInfer.refine ~solver prog labeled is_cp cexs false ext_cexs in
   Flag.Log.time_parameter_inference :=
-    !Flag.Log.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
-  List.map (Pair.map Fpat.Idnt.base inv_abst_type) env
+    !Flag.Log.time_parameter_inference +. !F.EAHCCSSolver.elapsed_time;
+  List.map (Pair.map F.Idnt.base inv_abst_type) env
 
 let infer_with_ext
     (labeled: string list)
-    (is_cp: Fpat.Idnt.t -> bool)
+    (is_cp: F.Idnt.t -> bool)
     (cexs: int list list)
-    (ext_cexs: ((Fpat.Idnt.t * Fpat.Pred.t list) list) list)
+    (ext_cexs: ((F.Idnt.t * F.Pred.t list) list) list)
     (prog: CEGAR_syntax.prog)
   =
   Verbose.printf "labeled %a@." (Util.List.print Format.pp_print_string) labeled;
   Verbose.printf "cexs %a@." (Util.List.print @@ Util.List.print Format.pp_print_int) cexs;
   let pr ppf (tenv, phi) =
-    Verbose.fprintf ppf "(%a).%a" Fpat.TypEnv.pr tenv Fpat.Formula.pr phi
+    Verbose.fprintf ppf "(%a).%a" F.TypEnv.pr tenv F.Formula.pr phi
   in
-  Verbose.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" Fpat.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
+  Verbose.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" F.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
   let fs = List.map fst prog.env in
   let defs' =
     if Flag.Method.(!mode = FairNonTermination) then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
@@ -437,24 +495,24 @@ let infer_with_ext
       List.map (flip (@) [2]) cexs
     else
       cexs in
-  Verbose.printf "@[<v>BEGIN refinement:@,  %a@," Fpat.Prog.pr prog;
-  let old_split_eq = !Fpat.AbsType.split_equalities in
-  let old_eap = !Fpat.AbsType.extract_atomic_predicates in
-  let old_hccs_solver = Fpat.HCCSSolver.get_dyn () in
-  Fpat.AbsType.split_equalities := true;
-  Fpat.AbsType.extract_atomic_predicates := true;
-  Fpat.HCCSSolver.link_dyn
-    (fst -| fst -| Fpat.AEHCCSSolver.solve
-        (Fpat.EAHCCSSolver.solve [] [] [] Fpat.BwIPHCCSSolver.solve));
-  let env = Fpat.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
-  Fpat.AbsType.split_equalities := old_split_eq;
-  Fpat.AbsType.extract_atomic_predicates := old_eap;
-  Fpat.HCCSSolver.link_dyn old_hccs_solver;
+  Verbose.printf "@[<v>BEGIN refinement:@,  %a@," F.Prog.pr prog;
+  let old_split_eq = !F.AbsType.split_equalities in
+  let old_eap = !F.AbsType.extract_atomic_predicates in
+  let old_hccs_solver = F.HCCSSolver.get_dyn () in
+  F.AbsType.split_equalities := true;
+  F.AbsType.extract_atomic_predicates := true;
+  F.HCCSSolver.link_dyn
+    (fst -| fst -| F.AEHCCSSolver.solve
+        (F.EAHCCSSolver.solve [] [] [] F.BwIPHCCSSolver.solve));
+  let env = F.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
+  F.AbsType.split_equalities := old_split_eq;
+  F.AbsType.extract_atomic_predicates := old_eap;
+  F.HCCSSolver.link_dyn old_hccs_solver;
   Verbose.printf "END refinement@,@]";
 
   Flag.Log.time_parameter_inference :=
-    !Flag.Log.time_parameter_inference +. !Fpat.EAHCCSSolver.elapsed_time;
-  List.map (Pair.map Fpat.Idnt.base inv_abst_type) env
+    !Flag.Log.time_parameter_inference +. !F.EAHCCSSolver.elapsed_time;
+  List.map (Pair.map F.Idnt.base inv_abst_type) env
 
 
 (** TODO: move the following codes to another file *)
@@ -473,9 +531,9 @@ let rec trans_type typ =
           (match x'.Id.typ with
            | Type.TFun(_, _)
            | Type.TTuple _(* ToDo: fix it *) ->
-              Fpat.Util.List.unfold
+              F.Util.List.unfold
                 (fun i ->
-                 if i < !Fpat.RefTypInfer.number_of_extra_params then
+                 if i < !F.RefTypInfer.number_of_extra_params then
                    Some(Id.new_var ~name:"ex" Type.Ty.int, i + 1)
                  else
                    None)
@@ -491,7 +549,7 @@ let of_desc t = assert false (* @todo translate FPAT term to S.term *)
 
 let insert_extra_param t =
   let tmp = Time.get() in
-  Fpat.RefTypInfer.masked_params := [];
+  F.RefTypInfer.masked_params := [];
   let rec aux rfs bvs exs t =
     let desc =
       match t.S.desc with
@@ -503,9 +561,9 @@ let insert_extra_param t =
            match y'.Id.typ with
            | Type.TFun(_, _)
            | Type.TTuple _(* ToDo: fix it *) ->
-              Fpat.Util.List.unfold
+              F.Util.List.unfold
                 (fun i ->
-                 if i < !Fpat.RefTypInfer.number_of_extra_params then
+                 if i < !F.RefTypInfer.number_of_extra_params then
                    Some(Id.new_var ~name:("ex" ^ gen_id ()) Type.Ty.int, i + 1)
                  else
                    None)
@@ -566,7 +624,6 @@ let insert_extra_param t =
                      | _ -> [])
                     ts xxss
                 with Not_found ->
-                  (*let _ = List.iter (fun f -> Format.printf "r: %s@." f) rfs in*)
                   Debug.printf "non_rec: %a@." Print.term t1';
                   false, [])
            | _ ->
@@ -583,13 +640,13 @@ let insert_extra_param t =
                  let bvs =
                    bvs
                    |> List.filter (fun x -> x.Id.typ = Type.Ty.int)
-                   |> List.map (Id.to_string >> Fpat.Idnt.make)
+                   |> List.map (Id.to_string >> F.Idnt.make)
                  in
-                 let exs = List.map (Id.to_string >> Fpat.Idnt.make) exs in
-                 Fpat.RefTypInfer.new_params
+                 let exs = List.map (Id.to_string >> F.Idnt.make) exs in
+                 F.RefTypInfer.new_params
                    (if recursive then
-                      Some(Fpat.Util.List.nth xss i
-                           |> List.map (Id.to_string >> Fpat.Idnt.make))
+                      Some(F.Util.List.nth xss i
+                           |> List.map (Id.to_string >> F.Idnt.make))
                     else
                       None)
                    bvs exs
@@ -669,13 +726,13 @@ let instantiate_param prog =
   let typs = prog.CEGAR_syntax.env in
   let fdefs = prog.CEGAR_syntax.defs in
   let main = prog.CEGAR_syntax.main in
-  (if !Fpat.RefTypInfer.prev_sol = [] then
-     Fpat.RefTypInfer.init_sol (conv_prog prog));
+  (if !F.RefTypInfer.prev_sol = [] then
+     F.RefTypInfer.init_sol (conv_prog prog));
   let map =
     List.map
       (fun (x, t) ->
-       Fpat.Idnt.string_of x, inv_term t)
-      !Fpat.RefTypInfer.prev_sol
+       F.Idnt.string_of x, inv_term t)
+      !F.RefTypInfer.prev_sol
   in
   let res =
     typs,
@@ -701,7 +758,7 @@ let simplify_term t =
   if false then
   let _, t = CEGAR_trans.trans_term {S.desc = t; S.typ = Type.TBool } in
   let t = conv_formula t in
-  let t = Fpat.FormulaSimplifier.simplify t in
+  let t = F.FormulaSimplifier.simplify t in
   let t = inv_formula t in
   (CEGAR_trans.trans_inv_term t).S.desc
   else
@@ -712,12 +769,12 @@ let simplify_term p =
   { p with S.desc = simplify_term p.S.desc }
 
 let compute_strongest_post prog ce ext_cex =
-  Fpat.RankFunInfer.compute_strongest_post (conv_prog prog) ce ext_cex
+  F.RankFunInfer.compute_strongest_post (conv_prog prog) ce ext_cex
 
 
-let implies = Fpat.SMTProver.implies_dyn
-let is_sat = Fpat.SMTProver.is_sat_dyn
-let is_valid t = implies [Fpat.Formula.of_term @@ Fpat.Term.mk_const Fpat.Const.True] [t]
+let implies = F.SMTProver.implies_dyn
+let is_sat = F.SMTProver.is_sat_dyn
+let is_valid t = implies [F.Formula.of_term @@ F.Term.mk_const F.Const.True] [t]
 let is_valid_forall_exists xs ys cond p =
   let open Fpat in
   let aux x = Idnt.make x, Type.mk_int in
@@ -732,9 +789,9 @@ let is_valid_forall_exists xs ys cond p =
 let conv_pred (env: CEGAR_syntax.env) (p: CEGAR_syntax.t) =
   let env = env
   |> List.filter (is_base -| snd)
-  |> List.map (Fpat.Pair.map Fpat.Idnt.make conv_typ) in
+  |> List.map (F.Pair.map F.Idnt.make conv_typ) in
   let phi = conv_formula p in
-  ((env, phi) : Fpat.Pred.t)
+  ((env, phi) : F.Pred.t)
 
 let trans_ext (renv : (int * CEGAR_syntax.env) list) (map : (int * (CEGAR_syntax.t -> CEGAR_syntax.t list)) list) (n, bs) =
   let r = make_randint_name n in
@@ -756,7 +813,7 @@ let parse_arg arg =
   let args = Array.of_list @@ "FPAT" :: Util.String.split_blanc arg in
   let usage = "Options for FPAT are:" in
   try
-    Arg.parse_argv ~current:(ref 0) args (Arg.align Fpat.FPATConfig.arg_spec) ignore usage
+    Arg.parse_argv ~current:(ref 0) args (Arg.align F.FPATConfig.arg_spec) ignore usage
   with
   | Arg.Bad s
   | Arg.Help s -> Format.printf "%s" s; exit 0

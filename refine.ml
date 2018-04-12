@@ -228,11 +228,9 @@ let refine_post tmp =
 let refine labeled is_cp prefix ces ext_ces prog =
   let tmp = Time.get () in
   try
-    if !Flag.Print.progress then
-      Color.printf
-        Color.Green
-        "(%d-4) Discovering predicates (infeasible case) ... @."
-        !Flag.Log.cegar_loop;
+    Verbose.printf
+        "%a(%d-4) Discovering predicates (infeasible case) ...%t @."
+        Color.set Color.Green !Flag.Log.cegar_loop Color.reset;
     if Flag.Refine.use_prefix_trace then
       fatal "Not implemented: Flag.use_prefix_trace";
     let map =
@@ -253,7 +251,7 @@ let refine labeled is_cp prefix ces ext_ces prog =
       else
         add_preds_env map prog.env
     in
-    if !Flag.Print.progress then Format.printf "DONE!@.@.";
+    Verbose.printf "DONE!@.@.";
     refine_post tmp;
     map, {prog with env}
   with e ->

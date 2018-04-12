@@ -134,6 +134,10 @@ module Refine = struct
   let merge_counterexample = ref false
   let use_multiple_paths = ref false
   let disable_predicate_accumulation = ref false
+  let use_rec_hccs_solver = ref false
+  type solver = Default | HoICE
+  let solver = ref HoICE
+  let hoice = ref Mconfig.hoice
 end
 
 module ModelCheck = struct
