@@ -369,23 +369,21 @@ let main _ spec parsed =
    *)
   let bindings,body =
     let pps =
-      Preprocess.all spec
-      |> Preprocess.before Preprocess.CPS
-      |> Preprocess.filter_out [Preprocess.Beta_reduce_trivial]
+      let open Preprocess in
+      all spec
+      |> before CPS
+      |> filter_out [Beta_reduce_trivial]
     in
-    let ref_env =
-      Spec.get_ref_env spec parsed
-      |@> Verbose.printf "%a@." Spec.print_ref_env
-      |> Ref_type.Env.of_list
-    in
+    let env = Spec.get_ref_env spec parsed in
     let pr s = Debug.printf "### %s:@.  %a@.@." s in
-    parsed
-    |@> pr "PARSED" Print.term
-    |> Trans.ref_to_assert ref_env
-    |@> pr "REF_TO_ASSERT" Print.term_typ
-    |*> assert_to_fun
-    |*@> pr "ASSERT_TO_FUN" Print.term_typ
-    |> Problem.safety
+    let problem =
+      if env <> [] then
+        Problem.ref_type_check parsed env
+      else
+        Problem.safety parsed
+    in
+    problem
+    |@> pr "ORIG" Problem.print
     |> Preprocess.run pps
     |@> (fun results -> if List.length results <> 1 then unsupported "preprocess")
     |> List.hd

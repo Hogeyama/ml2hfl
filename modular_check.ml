@@ -279,7 +279,7 @@ let check prog f typ depth =
   Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   Debug.printf "  t: %a@." Print.term_typ t;
   let make_pps spec =
-    Preprocess.and_after Preprocess.CPS @@ Preprocess.all spec
+    Preprocess.(and_after CPS @@ all spec)
   in
   let add_preds =
     let map =

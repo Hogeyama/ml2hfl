@@ -244,6 +244,7 @@ let print fm (ce, {Problem.term=t}) =
     if !Flag.use_abst then raise Unsound;
     assert false
   with
-  | RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@."
-  | EventFail -> Format.fprintf fm "@\nFAIL!@."
-  | Unsound -> Format.fprintf fm "@\nThis is not a counterexample@\nDisable abstraction options@."
+  | RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@\n"
+  | EventFail -> Format.fprintf fm "@\nFAIL!@\n"
+  | Unsound -> Format.fprintf fm "@\nThis is not a counterexample@\nDisable abstraction options@\n"
+  | Unsupported s -> Format.printf "@\nUnsupported: %s@\n" s

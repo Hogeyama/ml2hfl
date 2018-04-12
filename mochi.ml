@@ -227,7 +227,7 @@ let main cin =
     Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
     if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
-    let check_safety t =
+    let verify t =
       if !Flag.Method.modular then
         Modular.main orig spec t
       else
@@ -250,9 +250,9 @@ let main cin =
     else if Flag.Method.(!mode = FairTermination) then
       main_fair_termination orig spec parsed
     else if !Flag.Mode.module_mode then
-      Verify_module.main check_safety parsed
+      Verify_module.main verify parsed
     else
-      check_safety parsed
+      verify parsed
 
 
 let set_exp_filename filename =

@@ -15,8 +15,8 @@ let preprocess make_pps ?(fun_list=None) prog spec =
   let results = Preprocess.run pps' prog in
   if List.length results <> 1 then unsupported "preprocess";
   let results = List.hd results in
-  let set_main,_ = List.assoc Preprocess.Set_main results in
-  let main = Trans.get_set_main @@ Problem.term set_main in
+  let set_main = Option.map fst @@ List.assoc_option Preprocess.Set_main results in
+  let main = Option.(set_main >>= return-|Problem.term >>= Trans.get_set_main)  in
   let prog = Preprocess.last_t results in
   let fun_list' =
     match fun_list with
@@ -133,9 +133,9 @@ let report_unsafe main ce set_main =
         Format.printf "Input for %a:@.  %a@." Id.print main_fun (print_list Format.pp_print_int "; ") (List.take arg_num ce)
     in
     Option.may pr main;
-    try
-      Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_main)
-    with Unsupported s -> Format.printf "@.Unsupported: %s@.@." s
+    match set_main with
+    | None -> ()
+    | Some set_main -> Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_main)
 
 
 let rec run_cegar prog =

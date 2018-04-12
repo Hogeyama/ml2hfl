@@ -199,12 +199,13 @@ module Option = struct
 
   exception No_value
 
-  let some x = Some x
   let iter = may
   let apply = map
 
   let (>>=) = bind
   let return = some
+  let lift = map
+  let fmap = map
 
   let get x =
     match x with
