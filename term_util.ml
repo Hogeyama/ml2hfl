@@ -322,6 +322,7 @@ let rec make_randvalue_unit typ =
   | TBase TUnit -> unit_term
   | TBase TBool -> make_eq (make_randvalue_unit Ty.int) (make_int 0)
   | TTuple [] -> make_tuple []
+  | TTuple tys -> make_tuple @@ List.map (Id.typ |- make_randvalue_unit) tys
   | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 
 let make_randvalue_cps typ =
