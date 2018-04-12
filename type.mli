@@ -84,7 +84,6 @@ val _TFun : 'a t Id.t -> 'a t -> 'a t
 val _TAttr : 'a attr list -> 'a t -> 'a t
 val pureTFun : ('a t Id.t * 'a t) -> 'a t
 val make_ttuple : 'a t list -> 'a t
-val make_ttuple' : 'a t list -> 'a t
 val make_tpair : 'a t -> 'a t -> 'a t
 val make_tfun : 'a t -> 'a t -> 'a t
 val make_tlist : 'a t -> 'a t
@@ -110,7 +109,6 @@ module Ty : sig
   val fun_ : 'a t -> 'a t -> 'a t
   val funs : 'a t list -> 'a t -> 'a t
   val tuple : 'a t list -> 'a t
-  val tuple' : 'a t list -> 'a t
   val pair : 'a t -> 'a t -> 'a t
   val list : 'a t -> 'a t
   val ref : 'a t -> 'a t

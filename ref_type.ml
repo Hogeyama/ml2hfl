@@ -338,8 +338,8 @@ let rec to_simple ?(with_pred=false) typ =
   | Base(b, x, p) ->
       to_simple_base b
       |&with_pred&> T.add_tattr (T.TARefPred(x,p))
-  | Fun(x,typ1,typ2) -> T.TFun(Id.new_var @@ to_simple ~with_pred typ1, to_simple ~with_pred typ2)
-  | Tuple xtyps -> T.TTuple (List.map (Id.new_var -| to_simple ~with_pred -| snd) xtyps)
+  | Fun(x,typ1,typ2) -> T.make_tfun (to_simple ~with_pred typ1) (to_simple ~with_pred typ2)
+  | Tuple xtyps -> T.make_ttuple (List.map (to_simple ~with_pred -| snd) xtyps)
   | Inter(sty, _)
   | Union(sty, _) ->
       if with_pred then

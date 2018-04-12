@@ -65,15 +65,8 @@ let new_var typ = Id.new_var ~name:(var_name_of typ) typ
 let make_tfun typ1 typ2 =
   TFun(new_var typ1, typ2)
 
-
 let make_ttuple typs =
   TTuple (List.map new_var typs)
-
-let make_ttuple' typs =
-  match typs with
-  | [] -> TBase TUnit
-  | [typ] -> typ
-  | _ -> make_ttuple typs
 
 let make_tpair typ1 typ2 = make_ttuple [typ1; typ2]
 
@@ -552,7 +545,6 @@ module Ty = struct
   let fun_ = make_tfun
   let funs tys ty = List.fold_right make_tfun tys ty
   let tuple = make_ttuple
-  let tuple' = make_ttuple'
   let pair = make_tpair
   let list = make_tlist
   let ref = make_tref
