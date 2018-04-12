@@ -373,6 +373,9 @@ and print_typ_constr_as_tree fm constr =
   | TList -> Format.fprintf fm "TList"
   | TTuple -> Format.fprintf fm "TTuple"
   | TAssumeTrue -> Format.fprintf fm "TAssumeTrue"
+  | TFixPred p ->
+      let x = new_id "x" in
+      Format.fprintf fm "TFixPred(fun %s->%a)" x print_term_as_tree (p (Var x))
   | TPath path -> Format.fprintf fm "TPath %a" (List.print Format.pp_print_int) path
 
 and print_typ_as_tree fm ty =

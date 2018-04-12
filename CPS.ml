@@ -55,13 +55,6 @@ let effect_max x y =
 
 let effect_cont = 0
 
-let rec print_typ_cps' fm = function
-  | TBaseCPS typ -> Format.fprintf fm "%a" Print.typ typ
-  | TFunCPS(e,typ1,typ2) ->
-      Format.fprintf fm "(%a -e%d->@ %a)" print_typ_cps' typ1 e print_typ_cps' typ2
-  | TTupleCPS typs ->
-      Format.fprintf fm "(%a)" (print_list print_typ_cps' " *@ ") typs
-
 let rec print_typ_cps sol fm typ =
   match typ with
   | TBaseCPS typ -> Format.fprintf fm "%a" Print.typ typ
@@ -486,12 +479,11 @@ let rec trans_typ sol typ_excep typ_orig typ =
   | TAttr(attr,typ_orig'), _ ->
       let aux a =
         match a with
-        | TAPred _ -> [a]
-        | TAPureFun -> []
-        | TAEffect _ -> []
-        | TAAssumePredTrue -> [a]
+        | TAPureFun -> false
+        | TAEffect _ -> false
+        | _ -> true
       in
-      let attr' = List.flatten_map aux attr in
+      let attr' = List.filter aux attr in
       _TAttr attr' @@ trans_typ sol typ_excep typ_orig' typ
   | _ ->
       Format.eprintf "%a,%a@." Print.typ typ_orig (print_typ_cps sol) typ;
