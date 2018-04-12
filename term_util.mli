@@ -101,7 +101,6 @@ val make_is_none : term -> term
 val make_is_some : term -> term
 val make_get_val : term -> term
 val make_tuple : term list -> term
-val make_tuple' : term list -> term
 val make_proj : int -> term -> term
 val make_ref : term -> term
 val make_deref : term -> term

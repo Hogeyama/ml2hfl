@@ -164,7 +164,7 @@ let uncurry_term (env,sol) t =
         then typ2
         else
           let xs1,xs2 = List.split_nth (List.length typs) xs in
-          TFun(new_var_of_term @@ make_tuple' @@ List.map make_var xs1, aux typ1' @@ List.fold_right _TFun xs2 typ2')
+          TFun(new_var_of_term @@ make_tuple @@ List.map make_var xs1, aux typ1' @@ List.fold_right _TFun xs2 typ2')
       in
       make_var @@ Id.set_typ x @@ aux (get_typ_var env x) @@ Id.typ x
   | App(t1, ts) ->
@@ -175,7 +175,7 @@ let uncurry_term (env,sol) t =
           let typs,typ' = decomp_tfun sol typ in
           assert (typs <> []);
           let ts1,ts2 = List.split_nth (List.length typs) ts in
-          make_tuple' ts1 :: aux ts2 typ'
+          make_tuple ts1 :: aux ts2 typ'
       in
       let t1' = uncurry.tr2_term (env,sol) t1 in
       let ts' = List.map (uncurry.tr2_term (env,sol)) ts in
@@ -197,7 +197,7 @@ let uncurry_term (env,sol) t =
         in
         let xss = aux xs @@ get_typ_var env f in
         let aux' ys t1 =
-          let y = new_var_of_term @@ make_tuple' @@ List.map make_var ys in
+          let y = new_var_of_term @@ make_tuple @@ List.map make_var ys in
           match ys with
           | [] -> assert false
           | [z] -> make_fun y @@ subst_var z y t1

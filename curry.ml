@@ -202,13 +202,13 @@ and remove_pair_aux t typ_opt =
   | Fun(x, t) ->
       let xs = flatten @@ remove_pair_var x in
       let t' = remove_pair t in
-      leaf @@ List.fold_right make_fun xs t'
+      leaf @@ make_funs xs t'
   | App(t1, ts) ->
       let typs = get_argtyps t1.typ in
       assert (List.length typs >= List.length ts);
       let typs' = List.take (List.length ts) typs in
       let t' = remove_pair t1 in
-      let ts' = List.flatten (List.map2 (fun t typ -> flatten (remove_pair_aux t @@ Some typ)) ts typs') in
+      let ts' = List.flatten (List.map2 (fun t typ -> flatten @@ remove_pair_aux t (Some typ)) ts typs') in
       leaf @@ make_app t' ts'
   | If(t1, t2, t3) ->
       let t1' = remove_pair t1 in

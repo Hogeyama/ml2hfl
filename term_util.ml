@@ -224,11 +224,6 @@ let make_binop op t1 t2 =
   f t1 t2
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
 let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
-let make_tuple' ts =
-  match ts with
-  | [] -> unit_term
-  | [t] -> t
-  | _ -> make_tuple ts
 let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=[]}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=[]}
 let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ; attr=[]}
@@ -320,7 +315,7 @@ let make_module decls =
   in
   {desc=Module decls'; typ; attr=[]}
 
-let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=Ty.(fun_ Ty.unit typ); attr=[]}
+let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=Ty.(fun_ unit typ); attr=[]}
 
 let rec make_randvalue_unit typ =
   match typ with

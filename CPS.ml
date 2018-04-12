@@ -79,7 +79,7 @@ let rec print_typ_cps sol fm typ =
       let etyps,typ2 = decomp typ in
       Format.fprintf fm "(@[%a%a@])" (print_list pr "") etyps (print_typ_cps sol) typ2
   | TTupleCPS typs ->
-      Format.fprintf fm "(%a)" (print_list (print_typ_cps sol) " *@ ") typs
+      Format.fprintf fm "{%a}" (print_list (print_typ_cps sol) " *@ ") typs
 
 
 and print_termlist sol fm = List.iter (fun bd -> Format.fprintf fm "@;%a" (print_term sol) bd)
@@ -170,6 +170,14 @@ let rec lift_letrec_typ env typed =
   | FunCPS _, _ -> assert false
   | _ -> ()
 
+let rec etyp_of_typ ty =
+  match ty with
+  | TBase _
+  | TData _ -> TBaseCPS ty
+  | TTuple xs -> TTupleCPS (List.map (etyp_of_typ -| Id.typ) xs)
+  | TAttr(_,ty') -> etyp_of_typ ty'
+  | _ -> Format.eprintf "%a@." Print.typ ty; assert false
+
 let rec infer_effect_typ env typ =
   match typ with
   | TBase _
@@ -194,13 +202,14 @@ let rec infer_effect env tenv t =
   | Const(RandValue(TBase TInt,true)) -> assert false
   | Const(RandValue(TBase TInt,false)) ->
       let e = new_evar () in
-      let typ = _TFunCPS env (e, TBaseCPS (TBase TUnit), TBaseCPS (TBase TInt)) in
+      let typ = _TFunCPS env (e, TBaseCPS Ty.unit, TBaseCPS Ty.int) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=RandIntCPS(List.mem AAbst_under t.attr); typ_cps=typ; effect=new_evar()}
   | Const(RandValue(typ, true)) -> assert false
   | Const(RandValue(typ, false)) ->
       let e = new_evar () in
-      let typ' = _TFunCPS env (e, TBaseCPS (TBase TUnit), TBaseCPS typ) in
+      Format.printf "typ: %a@." Print.typ typ;
+      let typ' = _TFunCPS env (e, TBaseCPS Ty.unit, etyp_of_typ typ) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=RandValueCPS typ; typ_cps=typ'; effect=new_evar()}
   | Const c -> {t_orig=t; t_cps=ConstCPS c; typ_cps=TBaseCPS t.typ; effect=new_evar()}
@@ -213,7 +222,7 @@ let rec infer_effect env tenv t =
 	try
 	  List.assoc (Id.to_string x) tenv
 	with
-	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS(TBase TInt)
+	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS Ty.int
 	| Not_found -> Format.eprintf "%a@." Print.id x; assert false
       in
       {t_orig=t; t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; effect=new_evar()}
@@ -292,7 +301,7 @@ let rec infer_effect env tenv t =
   | Event(s,true) -> assert false
   | Event(s,false) ->
       let e = new_evar () in
-      let typ = _TFunCPS env (e, TBaseCPS (TBase TUnit), TBaseCPS (TBase TUnit)) in
+      let typ = _TFunCPS env (e, TBaseCPS Ty.unit, TBaseCPS Ty.unit) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=EventCPS s; typ_cps=typ; effect=new_evar()}
   | Proj(i,t1) ->
@@ -794,7 +803,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let r = Id.new_var ~name:"r" (trans_typ sol typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in
         let xs = List.map (fun t -> Id.new_var @@ trans_typ sol typ_excep t.t_orig.typ t.typ_cps) ts in
-        let t' = make_app (make_var k) [make_tuple @@ List.map make_var xs] in
+        let t' = Term.(var k @ [tuple (vars xs)]) in
         let aux t_acc x t = app (sol t.effect) (transform sol typ_excep k_post t) ~k:(make_fun x t_acc) in
         make_fun k @@ List.fold_left2 aux t' xs ts
     | TupleCPS ts, EExcep ->
@@ -804,7 +813,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
         let e = Id.new_var ~name:"e" typ_excep in
         let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
         let h' = Id.new_var_id h in
-        let t' = make_app (make_var k) [make_tuple @@ List.map make_var xs] in
+        let t' = Term.(var k @ [tuple (vars xs)]) in
         let aux t_acc x t = app (sol t.effect) (transform sol typ_excep k_post t) ~k:(make_fun x t_acc) ~h:(make_var h') in
         let open Term in
         fun_ k
