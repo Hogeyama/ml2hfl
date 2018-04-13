@@ -34,25 +34,15 @@ revision.ml: .git/logs/HEAD $(GIT_FILES) $(FPAT_LIB) Makefile Makefile.config
 	@echo make revision.ml
 	@rm -f $@
 ifdef GIT
-	@echo -n 'let mochi = Some "' >> $@
+	@echo -n 'let mochi = Some ("' >> $@
 	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n _ >> $@; fi
 	@echo -n `$(GIT) rev-parse --short HEAD` >> $@
-	@echo -n ' (' >> $@
+	@echo -n '", "' >> $@
 	@if [ $$(${GIT} diff | wc -w) != 0 ]; then echo -n "after " >> $@; fi
 	@$(GIT) log --date=iso --pretty=format:"%ad" -1 >> $@
-	@echo -n ')' >> $@
-	@echo '"' >> $@
-	@(if [ -e $(FPAT_SRC_DIR) ]; then \
-		cd $(FPAT_SRC_DIR); \
-		echo -n 'let fpat = Some "'; \
-		echo -n `$(GIT) rev-parse --short HEAD`; \
-		echo '"'; \
-	else \
-		echo 'let fpat = None'; \
-	fi) >> $@
+	@echo '")' >> $@
 else
 	@echo "let mochi = None" >> $@
-	@echo "let fpat = None" >> $@
 endif
 
 

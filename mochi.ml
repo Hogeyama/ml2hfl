@@ -95,7 +95,7 @@ let print_info () =
 
 let print_env cmd json =
   let mochi = Revision.mochi in
-  let fpat = Revision.fpat in
+  let fpat = Fpat.Revision.fpat in
   let z3 =
     let a,b,c,d = Z3native.get_version () in
     Format.sprintf "%d.%d.%d.%d" a b c d
@@ -106,21 +106,20 @@ let print_env cmd json =
   let horsatp = HorSatPInterface.version () in
   if json then
     try
-      let mochi = Option.get mochi in
-      Format.printf "{Build:%S," @@ String.sub mochi 0 (String.index mochi ' ');
-      Format.printf "FPAT:%S," @@ Option.get fpat;
+      Option.iter (Format.printf "{Build:%S," -| fst) mochi;
+      Option.iter (Format.printf "FPAT:%S," -| fst) fpat;
       Format.printf "Z3:%S," z3;
-      Format.printf "TRecS:%S," @@ Option.get trecs;
-      Format.printf "HorSat:%S," @@ Option.get horsat;
-      Format.printf "HorSat2:%S," @@ Option.get horsat2;
-      Format.printf "HorSatP:%S," @@ Option.get horsatp;
+      Option.iter (Format.printf "TRecS:%S,") trecs;
+      Option.iter (Format.printf "HorSat:%S,") horsat;
+      Option.iter (Format.printf "HorSat2:%S,") horsat2;
+      Option.iter (Format.printf "HorSatP:%S,") horsatp;
       Format.printf "OCaml:%S}" Sys.ocaml_version;
     with Option.No_value -> exit 1
   else
     begin
       Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Problems@.";
-      Option.iter (Format.printf "  Build: %s@.") mochi;
-      Option.iter (Format.printf "  FPAT revision: %s@.") fpat;
+      Option.iter (fun (r,t) -> Format.printf "  Build: %s (%s)@." r t) mochi;
+      Option.iter (fun (r,t) -> Format.printf "  FPAT: %s (%s)@." r t) fpat;
       Format.printf "  Z3 version: %s@." z3;
       Option.iter (Format.printf "  TRecS version: %s@.") trecs;
       Option.iter (Format.printf "  HorSat version: %s@.") horsat;
