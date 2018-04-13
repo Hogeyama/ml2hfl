@@ -394,6 +394,7 @@ let verify_by_hoice filename =
   if r = 128+9 then killed();
   Smtlib2_interface.parse_model @@ IO.input_file sol
 
+let print_sol = Print.(list (pair string (pair (list (pair string CEGAR_print.typ)) CEGAR_print.term)))
 
 let solver () =
   if !Flag.Refine.use_rec_hccs_solver then
@@ -419,7 +420,9 @@ let solver () =
       |@> Debug.printf "HCCS: %a@." F.HCCS.pr
       |> F.HCCS.save_smtlib2 filename;
       verify_by_hoice filename
+      |@> Debug.printf "Sol: %a@." print_sol
       |> unfold
+      |@> Debug.printf "Unfold: %a@." print_sol
       |> List.map (fun (f,def) -> List.assoc f rev_map, to_pred def)
     in
     Some solve

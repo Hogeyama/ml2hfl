@@ -252,11 +252,11 @@ let print_ce_reduction ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs=defs
   let pr t br n e =
     let s1 = if n = 1 then "" else " [" ^ string_of_int (br+1) ^ "/" ^ string_of_int n ^ "]" in
     let s2 = match e with [] -> "" | [Event s] -> s ^ " -->" | _ -> assert false in
-      Format.printf "%a%s ... --> %s@\n" CEGAR_print.term t s1 s2
+    Format.printf "%a%s ... --> %s@\n" CEGAR_print.term t s1 s2
   in
-    init_refs map_randint_to_preds ext_ce; (* initialize abstraction predicate path of randint *)
-    Format.printf "Error trace::@\n  @[";
-    pr (Var main) 0 1 e;
-    if e <> [Event "fail"] then
-      ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
-    Format.printf "ERROR!@.@."
+  init_refs map_randint_to_preds ext_ce; (* initialize abstraction predicate path of randint *)
+  Format.printf "Error trace::@\n  @[";
+  pr (Var main) 0 1 e;
+  if e <> [Event "fail"] then
+    ignore (check_aux pr ce' true 0 (Const True) [] defs t (fun _ -> assert false));
+  Format.printf "ERROR!@.@."

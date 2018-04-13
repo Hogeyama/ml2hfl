@@ -145,17 +145,16 @@ let rec loop prog0 is_cp ces =
         | MC.CESafety ce_pre :: _ -> ce' = CEGAR_trans.trans_ce labeled prog ce_pre None
         | _ -> assert false
       in
+      if !Flag.Print.progress then Feasibility.print_ce_reduction ce' prog;
       if same_counterexample then
         try
           improve_precision ();
           loop prog is_cp ces
         with NoProgress ->
           post ();
-          if !Flag.Print.progress then Feasibility.print_ce_reduction ce' prog;
           raise NoProgress
       else
         begin
-          if !Flag.Print.progress then Feasibility.print_ce_reduction ce' prog;
           match Feasibility.check ce' prog, !Flag.Method.mode with
           | Feasibility.Feasible sol, Flag.Method.Termination ->
               (* termination analysis *)
