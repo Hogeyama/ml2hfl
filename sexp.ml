@@ -1,5 +1,7 @@
 open Util
 
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+
 type t = A of string | S of t list
 
 let rec parse_atom acc_rev s len i =
@@ -23,13 +25,13 @@ let rec parse_list atom acc_rev s len i =
     | ')' -> i, List.rev acc_rev
     | '(' ->
         let i',ss = parse_list atom [] s len (i+1) in
-        if i' >= len || s.[i'] <> ')' then invalid_arg "Sexp.parse";
+        if i' >= len || s.[i'] <> ')' then invalid_arg "Sexp.parse_list";
         parse_list atom (S ss::acc_rev) s len (i'+1)
     | _ ->
         let i',r = atom s len i in
         match r with
         | None ->
-            if i' < len then invalid_arg "Sexp.parse";
+            if i' < len then invalid_arg "Sexp.parse_list";
             i', List.rev acc_rev
         | Some a ->
             parse_list atom (A a::acc_rev) s len i'

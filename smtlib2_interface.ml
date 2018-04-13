@@ -45,6 +45,8 @@ let binop_of_atom a =
   | ">=" -> (>=)
   | "+" -> (+)
   | "-" -> (-)
+  | "*" -> ( * )
+  | "div" -> ( / )
   | _ -> unsupported ("binop_of_atom "^a)
 let rec term_of_sexp s =
   let open Sexp in

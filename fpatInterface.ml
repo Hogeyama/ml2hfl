@@ -388,9 +388,11 @@ let unfold sol =
   Hashtbl.fold (fun f (xs,t) acc -> (f,(xs,t))::acc) sol' []
 
 let verify_by_hoice filename =
-  let cmd = Format.sprintf "%s %s" !Flag.Refine.hoice filename in
-  Unix.CPS.open_process_in cmd IO.input_all
-  |> Smtlib2_interface.parse_model
+  let sol = Filename.change_extension filename "sol" in
+  let cmd = Format.sprintf "%s %s > %s" !Flag.Refine.hoice filename sol in
+  let r = Sys.command cmd in
+  if r = 128+9 then killed();
+  Smtlib2_interface.parse_model @@ IO.input_file sol
 
 
 let solver () =
@@ -414,6 +416,7 @@ let solver () =
       let filename = Filename.change_extension !!Flag.mainfile "smt2" in
       hcs
       |> F.HCCS.rename map
+      |@> Debug.printf "HCCS: %a@." F.HCCS.pr
       |> F.HCCS.save_smtlib2 filename;
       verify_by_hoice filename
       |> unfold

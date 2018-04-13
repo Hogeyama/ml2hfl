@@ -64,6 +64,7 @@ DONE
 *.dot
 *.smt
 *.smt2
+*.sol
 
 # Other generated files
 gmon.out

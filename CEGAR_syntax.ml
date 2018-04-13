@@ -369,4 +369,6 @@ module Term = struct
   let (||) = make_or
   let (+) = make_add
   let (-) = make_sub
+  let ( * ) = make_mul
+  let (/) = make_div
 end
