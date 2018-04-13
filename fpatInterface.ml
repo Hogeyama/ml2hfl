@@ -377,7 +377,7 @@ let unfold sol =
         let xs = List.map fst args in
         let ts' = List.map aux ts in
         let t'' = update f args t' in
-        List.fold_right2 subst xs ts' t''
+        subst_map (List.combine xs ts') t''
     | t1, ts -> make_app t1 (List.map aux ts)
   and update f args t =
     let t' = aux t in

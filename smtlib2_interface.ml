@@ -77,10 +77,12 @@ let type_of_atom a =
   | "Bool" -> !!CEGAR_type.typ_bool
   | _ -> unsupported "type_of_atom"
 
-let parse_model s =
+let parse_model str =
   let unsupported () = unsupported "Smtlib2_interface.parse_model" in
   let open Sexp in
-  match Sexp.parse ~parse_atom s with
+  let s = Sexp.parse ~parse_atom str in
+  Debug.printf "[parse_model] INPUT: @{%a@." (List.print print) s;
+  match s with
   | [A "sat"; S (A "model" :: sol)] ->
       let aux s =
         match s with
