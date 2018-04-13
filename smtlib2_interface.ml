@@ -35,6 +35,7 @@ let term_of_atom a =
       try
         int (int_of_string a)
       with _ -> var a
+
 let binop_of_atom a =
   let open S.Term in
   match a with
@@ -48,17 +49,21 @@ let binop_of_atom a =
   | "*" -> ( * )
   | "div" -> ( / )
   | _ -> unsupported ("binop_of_atom "^a)
+
 let rec term_of_sexp s =
   let open Sexp in
   match s with
   | A a -> term_of_atom a
   | S [A "not"; s'] -> S.make_not @@ term_of_sexp s'
-  | S [A "exists"; s1; s2] ->
-      Format.eprintf "WARNING: exists is replaced with false@.";
+  | S [A "exists"; S args; s'] ->
+      Format.eprintf "WARNING: exists is replaced with something else@.";
       Debug.printf "s: %a@." Sexp.print s;
-      S.Term.false_
-  | S (A "and" :: ss) -> List.fold_right (S.make_and -| term_of_sexp) ss S.Term.true_
-  | S (A "or" :: ss) -> List.fold_right (S.make_or -| term_of_sexp) ss S.Term.false_
+      let xs = List.map (function S [A x;_] -> x | _ -> invalid_arg "term_of_sexp") args in
+      let t = term_of_sexp s' in
+      let ts = S.decomp_ands t in
+      S.make_ands @@ List.filter (fun t -> List.Set.inter xs (S.get_fv t) = []) ts
+  | S (A "and" :: ss) -> S.make_ands @@ List.map term_of_sexp ss
+  | S (A "or" :: ss) -> S.make_ors @@ List.map term_of_sexp ss
   | S [A "-"; s] -> S.Term.(int 0 - term_of_sexp s)
   | S [A a; s1; s2] when a.[0] <> '|' -> binop_of_atom a (term_of_sexp s1) (term_of_sexp s2)
   | S (A a :: ss) when a.[0] = '|' -> S.make_app (term_of_atom a) @@ List.map term_of_sexp ss

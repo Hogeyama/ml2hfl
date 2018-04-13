@@ -178,6 +178,7 @@ let make_and t1 t2 =
   | t, Const True -> t
   | Const False, _ -> Const False
   | _ -> make_app (Const And) [t1; t2]
+let make_ands ts = List.fold_right make_and ts (Const True)
 let make_or t1 t2 =
   match t1,t2 with
   | Const False, t
@@ -185,6 +186,7 @@ let make_or t1 t2 =
   | Const True, _ -> Const True
   | Var _, _ when t1 = t2 -> t1
   | _ -> make_app (Const Or) [t1; t2]
+let make_ors ts = List.fold_right make_or ts (Const False)
 let make_not t = App(Const Not, t)
 let make_not_s t =
   match t with
@@ -286,6 +288,14 @@ let rec decomp_let = function
       (x,t1)::bindings, t2'
   | t -> [], t
 
+let rec decomp_ands t =
+  match decomp_app t with
+  | Const And, [t1;t2] -> decomp_ands t1 @ decomp_ands t2
+  | _ -> [t]
+let rec decomp_ors t =
+  match decomp_app t with
+  | Const Or, [t1;t2] -> decomp_ors t1 @ decomp_ors t2
+  | _ -> [t]
 
 
 let is_app_randint ?(is_read_int=false) t =
