@@ -21,6 +21,7 @@ val string : Format.formatter -> string -> unit
 val option : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a option -> unit
 val pair : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> Format.formatter -> ('a * 'b) -> unit
 val list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
+val ignore : string -> Format.formatter -> 'a -> unit
 
 val string_of_const : const -> string
 val string_of_binop : binop -> string

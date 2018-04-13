@@ -1,7 +1,8 @@
 open Util
 
-module S = CEGAR_syntax
+module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
+module S = CEGAR_syntax
 
 let parse_atom s len i =
   if len <= i then
@@ -42,8 +43,6 @@ let binop_of_atom a =
   | ">" -> (>)
   | "<=" -> (<=)
   | ">=" -> (>=)
-  | "and" -> (&&)
-  | "or" -> (||)
   | "+" -> (+)
   | "-" -> (-)
   | _ -> unsupported ("binop_of_atom "^a)
@@ -54,8 +53,10 @@ let rec term_of_sexp s =
   | S [A "not"; s'] -> S.make_not @@ term_of_sexp s'
   | S [A "exists"; s1; s2] ->
       Format.eprintf "WARNING: exists is replaced with false@.";
+      Debug.printf "s: %a@." Sexp.print s;
       S.Term.false_
   | S (A "and" :: ss) -> List.fold_right (S.make_and -| term_of_sexp) ss S.Term.true_
+  | S (A "or" :: ss) -> List.fold_right (S.make_or -| term_of_sexp) ss S.Term.false_
   | S [A "-"; s] -> S.Term.(int 0 - term_of_sexp s)
   | S [A a; s1; s2] when a.[0] <> '|' -> binop_of_atom a (term_of_sexp s1) (term_of_sexp s2)
   | S (A a :: ss) when a.[0] = '|' -> S.make_app (term_of_atom a) @@ List.map term_of_sexp ss
