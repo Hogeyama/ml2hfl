@@ -278,9 +278,6 @@ let check prog f typ depth =
   let top_funs = List.map fst fun_env' in
   Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
   Debug.printf "  t: %a@." Print.term_typ t;
-  let make_pps spec =
-    Preprocess.(and_after CPS @@ all spec)
-  in
   let add_preds =
     let map =
       env
@@ -300,7 +297,7 @@ let check prog f typ depth =
     |@> Type_check.check ~ty:Ty.unit
     |> Trans.map_main Term.(seq -$- eod) (* ??? *)
     |> Problem.safety
-    |> Main_loop.loop (Some(make_pps)) (Some []) [] Spec.init
+    |> Main_loop.loop Preprocess.(Some (and_after CPS -| all)) (Some []) [] Spec.init
   in
   match result with
   | CEGAR.Safe env ->

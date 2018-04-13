@@ -686,12 +686,13 @@ let same_term' t1 t2 = try same_term t1 t2 with _ -> false
 
 
 
-let merge_attrs attr1 attr2 =
+let merge_tattrs attr1 attr2 =
   let attrs =
     let eq x y =
       match x, y with
       | TAPred _, TAPred _ -> true
       | TAPureFun,  TAPureFun -> true
+      | TARefPred _, TARefPred _ -> true
       | _ -> false
     in
     List.classify ~eq (attr1 @ attr2)
@@ -709,6 +710,10 @@ let merge_attrs attr1 attr2 =
         in
         let ps2' = List.map (subst_var x2 x1) ps2 in
         TAPred(x1, merge_preds ps1 ps2')
+    | TARefPred(x1,p1), TARefPred(x2,p2) ->
+        let p2' = subst_var x2 x1 p2 in
+        let p = if same_term p1 p2' then p1 else make_and p1 p2' in
+        TARefPred(x1, p)
     | TAPureFun, TAPureFun -> TAPureFun
     | _ -> assert false
   in
@@ -730,7 +735,7 @@ let rec merge_typ typ1 typ2 =
   | _ when typ2 = typ_unknown -> typ1
   | TBase b1, TBase b2 when b1 = b2 -> TBase b1
   | TAttr(attr1,typ1), TAttr(attr2,typ2) ->
-      TAttr(merge_attrs attr1 attr2, merge_typ typ1 typ2)
+      TAttr(merge_tattrs attr1 attr2, merge_typ typ1 typ2)
   | TAttr(attr, typ'), typ
   | typ, TAttr(attr, typ') -> TAttr(attr, merge_typ typ typ')
   | TFuns(xs1,typ1), TFuns(xs2,typ2) ->

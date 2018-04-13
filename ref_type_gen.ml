@@ -367,7 +367,7 @@ and generate typ_exn make_fail genv cenv typ =
         let genv'',cenv'',t_typ2 = generate typ_exn make_fail genv' cenv' typ2 in
         genv'', cenv'', U.make_br t_typ1 @@ U.make_raise t_typ2 t_typ1.S.typ
   in
-  Debug.printf "Ref_type_gen.generate': %a@." print typ;
+  Debug.printf "Ref_type_gen.generate: %a@." print typ;
   genv', cenv', {t with S.typ = to_abst_typ ~with_pred:true typ}
 
 let generate_check typ_exn ?(make_fail=U.make_fail) genv cenv x typ = generate_check typ_exn make_fail genv cenv x typ

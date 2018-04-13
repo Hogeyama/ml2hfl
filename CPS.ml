@@ -409,7 +409,7 @@ let rec add_preds_cont_aux k t =
         let aux t (typ,ts) =
           let x, typ' =
             match typ with
-              TFun(x,typ) -> x, subst_type x t typ
+            | TFun(x,typ) -> x, subst_type x t typ
             | _ -> assert false
           in
           let t' =
@@ -1036,8 +1036,10 @@ let rec uncps_ref_type sol typ_exn rtyp e etyp =
   | _ -> assert false
 
 let infer_effect env t =
-  let eq x y = Id.(x = y) && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
-  let ext_funs = get_fv ~eq t in
+  let ext_funs =
+    let eq x y = Id.(x = y) && (can_unify (Id.typ x) (Id.typ y) || Id.typ x = Id.typ y) in
+    get_fv ~eq t
+  in
   if List.length ext_funs <> List.length (List.unique ~eq:Id.eq ext_funs) then
     begin
       List.iter (fun x -> Format.eprintf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
@@ -1060,7 +1062,6 @@ let exists_let_desc desc =
   match desc with
   | Local(Decl_let _, _) -> true
   | _ -> exists_let.col_desc_rec desc
-
 let () = exists_let.col_desc <- exists_let_desc
 let exists_let = exists_let.col_term
 
@@ -1109,15 +1110,15 @@ let inline_affine t =
  *)
 
 let has_typ_result =
-  let has_typ_result = make_col false (||) in
-  let has_typ_result_typ typ =
+  let col = make_col false (||) in
+  let col_typ typ =
     if typ = typ_result then
       true
     else
-      has_typ_result.col_typ_rec typ
+      col.col_typ_rec typ
   in
-  has_typ_result.col_typ <- has_typ_result_typ;
-  has_typ_result.col_typ
+  col.col_typ <- col_typ;
+  col.col_typ
 
 
 let initial_sol n = if n = 0 then ECont else EUnknown

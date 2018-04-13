@@ -233,7 +233,7 @@ let fixpred_to_abstpred prog =
       | TBase _ -> ty
       | TFun(ty1,ty2) -> TFun(aux ty1, aux -| ty2)
       | TApp(TConstr(TFixPred p), TBase(b,_)) -> TBase(b, fun x -> [p x])
-      | _ -> assert false
+      | _ -> Format.eprintf "%a@." CEGAR_print.typ ty; assert false
     in
     List.map (Pair.map_snd aux) prog.env
   in
