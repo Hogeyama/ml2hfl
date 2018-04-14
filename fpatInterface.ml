@@ -112,7 +112,7 @@ let rec conv_term env t =
   | Fun _ -> assert false
   | Let _ -> assert false
 
-let conv_formula t = t |> conv_term [] |> F.Formula.of_term
+let conv_formula = conv_term [] |- F.Formula.of_term
 
 let rec of_typ typ =
   match Type.elim_tattr typ with
@@ -408,19 +408,51 @@ let rec remove_atoms qv t =
       else
         Const True
 
-let rec approximate_exists t =
-  match decomp_app t with
-  | Var "exists", [args; t1] ->
-      Format.eprintf "WARNING: exists is replaced with something else@.";
-      Debug.printf "  BEFORE: %a@." CEGAR_print.term t;
-      let xs =
+let rec conv_formula' t =
+  match t with
+  | App(App(Var "exists", args), t1) ->
+      let args' =
         match decomp_app args with
-        | Var "args", ts -> List.map (function Var x -> x | _ -> invalid_arg "approximate_exists") ts
-        | _ -> invalid_arg "approximate_exists"
+        | Var "args", ts -> List.map (function Var x -> F.Idnt.make x, F.Type.mk_int | _ -> invalid_arg "FpatInterface.conv_term") ts
+        | _ -> invalid_arg "FpatInterface.conv_term"
       in
-      remove_atoms xs t1
-      |@> Debug.printf "  AFTER: %a@." CEGAR_print.term
-  | t1, ts -> make_app t1 @@ List.map approximate_exists ts
+      F.Formula.exists args' @@ conv_formula' t1
+  | Const(c) ->
+      F.Formula.of_term @@ F.Term.mk_const (conv_const c)
+  | Var(x) ->
+      F.Formula.of_term @@ F.Term.mk_var @@ conv_var x
+  | App(t1, t2) -> F.Formula.of_term @@ F.Term.mk_app (F.Formula.term_of @@ conv_formula' t1) [F.Formula.term_of @@ conv_formula' t2]
+  | Fun _ -> assert false
+  | Let _ -> assert false
+
+let eliminate_exists t =
+  let of_formula phi =
+    let open Fpat in
+    let open Term in
+    let open Z3 in
+    let phi =
+      phi
+      |> CunFormula.elim_unit
+      |> Formula.map_atom CunAtom.elim_beq_bneq
+    in
+    let tenv, phi =
+      SimTypInfer.infer_formula [] phi
+    in
+    let ctenv =
+      phi
+      |> CunFormula.get_adts
+      |> Z3Interface.mk_constructors tenv
+    in
+    F.Z3Interface.of_formula phi ctenv tenv []
+  in
+  t
+  |@> Debug.printf "  BEFORE: %a@." CEGAR_print.term
+  |> conv_formula'
+  |> of_formula
+  |> F.Z3Interface.qelim
+  |> F.Z3Interface.formula_of
+  |> inv_formula
+  |@> Debug.printf "  AFTER: %a@." CEGAR_print.term
 
 let verify_by_hoice filename =
   let sol = Filename.change_extension filename "sol" in
@@ -458,7 +490,7 @@ let solver () =
       |@> Debug.printf "Sol: %a@." print_sol
       |> unfold
       |@> Debug.printf "Unfold: %a@." print_sol
-      |> List.map (Pair.map_snd @@ Pair.map_snd approximate_exists)
+      |> List.map (Pair.map_snd @@ Pair.map_snd eliminate_exists)
       |> List.map (fun (f,def) -> List.assoc f rev_map, to_pred def)
     in
     Some solve
