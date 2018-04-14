@@ -372,6 +372,7 @@ let unfold sol =
   let rec aux t =
     match CS.decomp_app t with
     | _, [] -> t
+    | Var "exists", [args; t] -> make_app (Var "exists") [args; aux t]
     | Var f, ts ->
         let args,t' = Hashtbl.find sol' f in
         let xs = List.map fst args in
@@ -386,6 +387,40 @@ let unfold sol =
   in
   Hashtbl.iter (fun f (args,t) -> ignore @@ update f args t) sol';
   Hashtbl.fold (fun f (xs,t) acc -> (f,(xs,t))::acc) sol' []
+
+let rec remove_atoms qv t =
+  match decomp_app t with
+  | Const And, _ ->
+      t
+      |> decomp_ands
+      |> List.map (remove_atoms qv)
+      |> List.filter (fun t -> Util.List.Set.inter qv (get_fv t) = [])
+      |> make_ands
+  | Const Or, _ ->
+      t
+      |> decomp_ors
+      |> List.map (remove_atoms qv)
+      |> List.filter (fun t -> Util.List.Set.inter qv (get_fv t) = [])
+      |> make_ors
+  | _ ->
+      if Util.List.Set.inter qv (get_fv t) = [] then
+        t
+      else
+        Const True
+
+let rec approximate_exists t =
+  match decomp_app t with
+  | Var "exists", [args; t1] ->
+      Format.eprintf "WARNING: exists is replaced with something else@.";
+      Debug.printf "  BEFORE: %a@." CEGAR_print.term t;
+      let xs =
+        match decomp_app args with
+        | Var "args", ts -> List.map (function Var x -> x | _ -> invalid_arg "approximate_exists") ts
+        | _ -> invalid_arg "approximate_exists"
+      in
+      remove_atoms xs t1
+      |@> Debug.printf "  AFTER: %a@." CEGAR_print.term
+  | t1, ts -> make_app t1 @@ List.map approximate_exists ts
 
 let verify_by_hoice filename =
   let sol = Filename.change_extension filename "sol" in
@@ -423,6 +458,7 @@ let solver () =
       |@> Debug.printf "Sol: %a@." print_sol
       |> unfold
       |@> Debug.printf "Unfold: %a@." print_sol
+      |> List.map (Pair.map_snd @@ Pair.map_snd approximate_exists)
       |> List.map (fun (f,def) -> List.assoc f rev_map, to_pred def)
     in
     Some solve

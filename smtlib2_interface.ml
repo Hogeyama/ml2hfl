@@ -56,12 +56,8 @@ let rec term_of_sexp s =
   | A a -> term_of_atom a
   | S [A "not"; s'] -> S.make_not @@ term_of_sexp s'
   | S [A "exists"; S args; s'] ->
-      Format.eprintf "WARNING: exists is replaced with something else@.";
-      Debug.printf "s: %a@." Sexp.print s;
-      let xs = List.map (function S [A x;_] -> x | _ -> invalid_arg "term_of_sexp") args in
-      let t = term_of_sexp s' in
-      let ts = S.decomp_ands t in
-      S.make_ands @@ List.filter (fun t -> List.Set.inter xs (S.get_fv t) = []) ts
+      let xs = List.map (function S [A x; _] -> S.Var x | _ -> invalid_arg "term_of_sexp") args in
+      S.make_app (S.Var "exists") [S.make_app (S.Var "args") xs; term_of_sexp s']
   | S (A "and" :: ss) -> S.make_ands @@ List.map term_of_sexp ss
   | S (A "or" :: ss) -> S.make_ors @@ List.map term_of_sexp ss
   | S [A "-"; s] -> S.Term.(int 0 - term_of_sexp s)
@@ -79,10 +75,11 @@ let type_of_atom a =
 
 let parse_model str =
   let unsupported () = unsupported "Smtlib2_interface.parse_model" in
-  let open Sexp in
   let s = Sexp.parse ~parse_atom str in
-  Debug.printf "[parse_model] INPUT: @{%a@." (List.print print) s;
+  Debug.printf "[parse_model] INPUT: @{%a@." (List.print Sexp.print) s;
+  let open Sexp in
   match s with
+  | [A "unsat"; _] -> fatal "Recursive HCCS unsatisfiable?"
   | [A "sat"; S (A "model" :: sol)] ->
       let aux s =
         match s with
