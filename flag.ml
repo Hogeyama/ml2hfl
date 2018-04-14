@@ -136,7 +136,7 @@ module Refine = struct
   let disable_predicate_accumulation = ref false
   let use_rec_hccs_solver = ref false
   type solver = Default | HoICE
-  let solver = ref HoICE
+  let solver = ref Default
   let hoice = ref Mconfig.hoice
 end
 

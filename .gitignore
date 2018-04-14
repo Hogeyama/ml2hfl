@@ -25,6 +25,7 @@ parser_wrapper.ml
 *parser.output
 *parser.automaton
 *parser.conflicts
+mconfig.ml
 depend
 mochi_bin/bin/
 mochi_bin/lib/
