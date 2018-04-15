@@ -390,6 +390,8 @@ let rec arg_spec () =
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
      "-rec-hccs", Arg.Set Flag.Refine.use_rec_hccs_solver, " Use recursive horn-clause solver";
      "-hoice", Arg.Unit Flag.Refine.(fun () -> solver:=Hoice), " Use HoICE as the recursive horn-clause solver";
+     "-z3", Arg.Unit Flag.Refine.(fun () -> solver:=Z3), " Use Z3 as the recursive horn-clause solver";
+     "-z3-spacer", Arg.Unit Flag.Refine.(fun () -> solver:=Z3_spacer), " Use Z3 (Spacer) as the recursive horn-clause solver";
      (* SWT solver *)
      "", Arg.Unit ignore, "Options_for_SMT_solver";
      "-cvc3-bin", Arg.Set_string Flag.cvc3,
@@ -561,9 +563,11 @@ let check_env () =
     | Flag.ModelCheck.HorSatP -> if not Mconfig.horsatp_available then fatal "HorSatP not found"
   end;
   begin
-    match !Flag.Refine.solver with
-    | Flag.Refine.Default -> ()
-    | Flag.Refine.Hoice -> if not Mconfig.hoice_available then fatal "HoICE not found"
+    if !Flag.Refine.use_rec_hccs_solver then
+      match !Flag.Refine.solver with
+      | Flag.Refine.Hoice -> if not Mconfig.hoice_available then fatal "HoICE not found"
+      | Flag.Refine.Z3
+      | Flag.Refine.Z3_spacer -> if not Mconfig.z3_available then fatal "Z3 binary not found"
   end
 
 let string_of_exception = function

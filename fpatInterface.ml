@@ -454,12 +454,21 @@ let eliminate_exists t =
   |> inv_formula
   |@> Debug.printf "  AFTER: %a@." CEGAR_print.term
 
-let verify_by_hoice filename =
+let solve_rec_hccs filename =
+  let cmd =
+    let open Flag.Refine in
+    match !solver with
+    | Hoice -> !hoice
+    | Z3 -> !z3
+    | Z3_spacer -> !z3_spacer
+  in
   let sol = Filename.change_extension filename "sol" in
-  let cmd = Format.sprintf "%s %s > %s" !Flag.Refine.hoice filename sol in
-  let r = Sys.command cmd in
+  let cmd' = Format.sprintf "%s %s > %s" cmd filename sol in
+  let r = Sys.command cmd' in
   if r = 128+9 then killed();
-  Smtlib2_interface.parse_model @@ IO.input_file sol
+  let s = IO.input_file sol in
+  if r <> 0 || s = "" then fatal "solver aborted";
+  Smtlib2_interface.parse_model s
 
 let print_sol = Print.(list (pair string (pair (list (pair string CEGAR_print.typ)) CEGAR_print.term)))
 
@@ -486,7 +495,7 @@ let solver () =
       |> F.HCCS.rename map
       |@> Debug.printf "HCCS: %a@." F.HCCS.pr
       |> F.HCCS.save_smtlib2 filename;
-      verify_by_hoice filename
+      solve_rec_hccs filename
       |@> Debug.printf "Sol: %a@." print_sol
       |> unfold
       |@> Debug.printf "Unfold: %a@." print_sol

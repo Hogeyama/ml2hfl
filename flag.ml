@@ -135,9 +135,11 @@ module Refine = struct
   let use_multiple_paths = ref false
   let disable_predicate_accumulation = ref false
   let use_rec_hccs_solver = ref false
-  type solver = Default | Hoice
-  let solver = ref Default
+  type solver = Hoice | Z3 | Z3_spacer
+  let solver = ref Hoice
   let hoice = ref Mconfig.hoice
+  let z3 = ref Mconfig.z3
+  let z3_spacer = ref (Mconfig.z3 ^ " fixedpoint.engine=spacer")
 end
 
 module ModelCheck = struct
