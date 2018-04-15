@@ -389,7 +389,7 @@ let rec arg_spec () =
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
      "-rec-hccs", Arg.Set Flag.Refine.use_rec_hccs_solver, " Use recursive horn-clause solver";
-     "-hoice", Arg.Unit Flag.Refine.(fun () -> solver:=HoICE), " Use HoICE as the recursive horn-clause solver";
+     "-hoice", Arg.Unit Flag.Refine.(fun () -> solver:=Hoice), " Use HoICE as the recursive horn-clause solver";
      (* SWT solver *)
      "", Arg.Unit ignore, "Options_for_SMT_solver";
      "-cvc3-bin", Arg.Set_string Flag.cvc3,
@@ -563,7 +563,7 @@ let check_env () =
   begin
     match !Flag.Refine.solver with
     | Flag.Refine.Default -> ()
-    | Flag.Refine.HoICE -> if not Mconfig.hoice_available then fatal "HoICE not found"
+    | Flag.Refine.Hoice -> if not Mconfig.hoice_available then fatal "HoICE not found"
   end
 
 let string_of_exception = function
