@@ -7,6 +7,7 @@ open Fpat.Combinator
 
 module F = Fpat
 module CS = CEGAR_syntax
+module CU = CEGAR_util
 module S = Syntax
 
 module String = F.Util.String
@@ -445,13 +446,22 @@ let eliminate_exists t =
     in
     F.Z3Interface.of_formula phi ctenv tenv []
   in
+  let fv = CS.get_fv t in
+  let map = List.map (Pair.add_right @@ String.replace_chars (function '!' -> "_bang_" | c -> String.of_char c)) fv in
+  Debug.printf "  map: %a@." Print.(list (pair string string)) map;
   t
   |@> Debug.printf "  BEFORE: %a@." CEGAR_print.term
+  |> CU.subst_map @@ List.map (fun (x,y) -> x, Var y) map
   |> conv_formula'
+  |@> Debug.printf "  conv_foromula': %a@." F.Formula.pr
   |> of_formula
+  |@> Debug.printf "  of_formula: %s@." -| Z3.Expr.to_string
   |> F.Z3Interface.qelim
+  |@> Debug.printf "  qelim: %s@." -| Z3.Expr.to_string
   |> F.Z3Interface.formula_of
+  |@> Debug.printf "  formula_of: %a@." F.Formula.pr
   |> inv_formula
+  |> CU.subst_map @@ List.map (fun (x,y) -> y, Var x) map
   |@> Debug.printf "  AFTER: %a@." CEGAR_print.term
 
 let solve_rec_hccs filename =

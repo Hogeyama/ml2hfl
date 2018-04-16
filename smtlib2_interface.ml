@@ -3,6 +3,7 @@ open Util
 module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
 
 module S = CEGAR_syntax
+module U = CEGAR_util
 
 let parse_atom s len i =
   if len <= i then
@@ -61,6 +62,9 @@ let rec term_of_sexp s =
   | S (A "and" :: ss) -> S.make_ands @@ List.map term_of_sexp ss
   | S (A "or" :: ss) -> S.make_ors @@ List.map term_of_sexp ss
   | S [A "-"; s] -> S.Term.(int 0 - term_of_sexp s)
+  | S [A "let"; S defs; s'] ->
+      let defs' = List.map (function S [A x; s] -> x, term_of_sexp s | _ -> invalid_arg "term_of_sexp") defs in
+      U.subst_map defs' @@ term_of_sexp s'
   | S [A a; s1; s2] when a.[0] <> '|' -> binop_of_atom a (term_of_sexp s1) (term_of_sexp s2)
   | S (A a :: ss) when a.[0] = '|' -> S.make_app (term_of_atom a) @@ List.map term_of_sexp ss
   | _ ->
