@@ -61,6 +61,7 @@ let rec term_of_sexp s =
       S.make_app (S.Var "exists") [S.make_app (S.Var "args") xs; term_of_sexp s']
   | S (A "and" :: ss) -> S.make_ands @@ List.map term_of_sexp ss
   | S (A "or" :: ss) -> S.make_ors @@ List.map term_of_sexp ss
+  | S (A "+" :: s' :: ss) -> List.fold_left S.make_add (term_of_sexp s') @@ List.map term_of_sexp ss
   | S [A "-"; s] -> S.Term.(int 0 - term_of_sexp s)
   | S [A "let"; S defs; s'] ->
       let defs' = List.map (function S [A x; s] -> x, term_of_sexp s | _ -> invalid_arg "term_of_sexp") defs in
