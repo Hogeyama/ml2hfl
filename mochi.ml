@@ -648,8 +648,8 @@ let () =
     try
       init_before_parse_arg ();
       let cin = parse_arg () in
-      if not !!is_only_result then print_env true false;
       init_after_parse_arg ();
+      if not !!is_only_result then print_env true false;
       if main cin then decr Flag.Log.cegar_loop;
       Fpat.SMTProver.finalize ();
       print_info ()

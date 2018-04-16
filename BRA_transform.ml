@@ -224,6 +224,7 @@ let rec regularization e =
       let rec aux = function
 	| {desc = Local(Decl_let bindings, rest)} as t -> {t with desc = Local(Decl_let bindings, aux rest)}
 	| {desc = Const Unit} -> main_expr
+	| {desc = Const End_of_definitions} -> main_expr
 	| _ -> assert false
       in
       aux e
