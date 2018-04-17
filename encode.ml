@@ -11,7 +11,8 @@ let mutable_record_term =
   let tr = make_trans2 () in
   let rec decomp env ty =
     match ty with
-    | TData s -> decomp env @@ (try List.assoc s env with Not_found -> Format.eprintf "%s@." s; assert false)
+    | TData s when List.mem_assoc s env -> decomp env @@ List.assoc s env
+    | TData s -> assert false
     | TRecord fields -> fields
     | _ -> assert false
   in

@@ -55,7 +55,43 @@ let prim_typ_cons =
    "array", TArray;
    "Lazy.t", TLazy]
 
-let rec from_type_exprs env tdata tys =
+(* for Types.type_declaration *)
+(* TODO: merge with one for Typeedtree.type_declaration *)
+let rec from_type_declaration env tdata decl =
+  let decls,ty =
+    match decl.type_kind with
+    | Type_abstract ->
+        begin
+          match decl.type_manifest with
+          | None -> unsupported "Ttype_abstract"
+          | Some ty -> from_type_expr env tdata ty
+        end
+    | Type_variant constrs ->
+        let aux {cd_id;cd_args} (decls,constrs) =
+          match cd_args with
+          | Cstr_tuple args ->
+              let s = Ident.name cd_id in
+              let decls',tys = from_type_exprs env tdata args in
+              decls'@decls, (s,tys)::constrs
+          | Cstr_record _ -> unsupported "Cstr_record"
+        in
+        let decls,constrs = List.fold_right aux constrs ([],[]) in
+        decls, TVariant(false, constrs)
+    | Type_record(fields, _) ->
+        let aux {ld_id;ld_mutable;ld_type} (decls,fields) =
+          let s = Ident.name ld_id in
+          let flag = from_mutable_flag ld_mutable in
+          let decls', ty = from_type_expr env tdata ld_type in
+          decls'@decls, (s, (flag, ty))::fields
+        in
+        let decls,fields = List.fold_right aux fields ([],[]) in
+        decls, TRecord fields
+    | Type_open -> [], TVar (ref None, None)
+    | exception Not_found -> assert false
+  in
+  decls, ty
+
+and from_type_exprs env tdata tys =
   let aux ty (decls,tys) =
     let decls',ty' = from_type_expr env tdata ty in
     decls'@decls, ty'::tys
@@ -63,94 +99,110 @@ let rec from_type_exprs env tdata tys =
   List.fold_right aux tys ([],[])
 
 and from_type_expr env tdata typ =
+  let typ = Ctype.correct_levels typ in
   let typ' = (if true then Ctype.repr else Ctype.full_expand env) typ in
-(*
-  let p1,p2,ty = Ctype.extract_concrete_typedecl env typ' in
-  Debug.printf "%s, %s, %a@." (Path.name p1) (Path.name p2) (Printtyp.type_declaration @@ Ident.create "t") ty;
-*)
-  Debug.printf "%a@." Printtyp.type_expr @@ Ctype.expand_head env typ;
-  Debug.printf "%a@.@." Printtyp.type_expr typ';
-  if true then Debug.printf "%a@.@." Printtyp.raw_type_expr typ';
-  match typ'.Types.desc with
-  | Tvar _ ->
-      begin
-        try
-          [], List.assoc typ'.Types.id !venv
-        with Not_found ->
-          let x = TVar(ref None, Some (List.length !venv)) in
-          venv := (typ'.Types.id, x)::!venv;
-          [], x
-      end
-  | Tarrow(_, typ1, typ2, _) ->
-      let decls1,typ1' = from_type_expr env tdata typ1 in
-      let decls2,typ2' = from_type_expr env tdata typ2 in
-      let x = Id.new_var typ1' in
-      decls1@decls2, TFun(x, typ2')
-  | Ttuple typs ->
-      let decls,tys' = from_type_exprs env tdata typs in
-      decls, make_ttuple tys'
-  | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
-      [], List.assoc (Path.name path) prim_typs
-  | Tconstr(path, typs, _) when List.mem_assoc (Path.name path) prim_typ_cons ->
-      let decls,tys = from_type_exprs env tdata typs in
-      decls, TApp(List.assoc (Path.name path) prim_typ_cons, tys)
-  | Tconstr(path, typs, _) ->
-      let s = Path.name path in
-      let typ' = Ctype.expand_head env typ in
+  Debug.printf "ty1: %a@." Printtyp.type_expr typ;
+  Debug.printf "ty2: %a@." Printtyp.type_expr typ';
+  Debug.printf "ty3: %a@.@." Printtyp.raw_type_expr typ';
+  let decls1,tdata =
+    try
+      let p,_,ty = Ctype.extract_concrete_typedecl env typ' in
+      let s = Path.name p in
       let tdata' = s :: tdata in
       let decls' =
         if List.mem s tdata then
           []
         else
-          let decls,ty = from_type_expr env tdata' typ' in
+          let decls,ty = from_type_declaration env tdata' ty in
           (s,ty)::decls
       in
-      decls', TData s
-  | Tobject _ -> unsupported "Tobject"
-  | Tfield _ -> unsupported "Tfield"
-  | Tnil -> unsupported "Tnil"
-  | Tlink _ -> unsupported "Tlink"
-  | Tsubst _ -> unsupported "Tsubst"
-  | Tvariant row_desc ->
-      let from_row_desc row_desc =
-        let tr (s,field) =
-          match field with
-          | Rpresent None -> [], (s,[])
-          | Rpresent (Some type_expr) ->
-              let decls',ty = from_type_expr env tdata type_expr in
-              let tys =
-                match ty with
-                | TTuple xs -> List.map Id.typ xs
-                | ty -> [ty]
-              in
-              decls', (s,tys)
-          | Reither(_,type_exprs,_,_) ->
-              let decls,tys = from_type_exprs env tdata type_exprs in
-              [], (s, tys)
-          | Rabsent -> assert false
-        in
-        let declss,constrs1 = List.split_map tr row_desc.row_fields in
-        let decls,constrs2 =
-          if row_desc.row_more.desc = Tnil then
-            [], []
+      decls', tdata'
+    with Not_found -> [], tdata
+  in
+  let decls2,ty =
+    match typ'.Types.desc with
+    | Tvar _ ->
+        begin
+          try
+            [], List.assoc typ'.Types.id !venv
+          with Not_found ->
+            let x = TVar(ref None, Some (List.length !venv)) in
+            venv := (typ'.Types.id, x)::!venv;
+            [], x
+        end
+    | Tarrow(_, typ1, typ2, _) ->
+        let decls1,typ1' = from_type_expr env tdata typ1 in
+        let decls2,typ2' = from_type_expr env tdata typ2 in
+        let x = Id.new_var typ1' in
+        decls1@decls2, TFun(x, typ2')
+    | Ttuple typs ->
+        let decls,tys' = from_type_exprs env tdata typs in
+        decls, make_ttuple tys'
+    | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
+        [], List.assoc (Path.name path) prim_typs
+    | Tconstr(path, typs, _) when List.mem_assoc (Path.name path) prim_typ_cons ->
+        let decls,tys = from_type_exprs env tdata typs in
+        decls, TApp(List.assoc (Path.name path) prim_typ_cons, tys)
+    | Tconstr(path, typs, _) ->
+        let s = Path.name path in
+        let typ' = Ctype.expand_head env typ in
+        let tdata' = s :: tdata in
+        let decls' =
+          if List.mem s tdata then
+            []
           else
-            match from_type_expr env tdata row_desc.row_more with
-            | _, TVar _ -> [], []
-            | decls, TVariant(_,constrs) -> decls, constrs
-            | _ -> assert false
+            let decls,ty = from_type_expr env tdata' typ' in
+            (s,ty)::decls
         in
-        List.flatten declss, constrs1 @ constrs2
-      in
-      let decls,constrs = from_row_desc row_desc in
-      decls, TVariant(true, constrs)
-  | Tunivar _ -> unsupported "Tunivar"
-  | Tpoly(typ,[]) -> from_type_expr env tdata typ
-  | Tpoly _ -> unsupported "Tpoly"
-  | Tpackage _ -> unsupported "Tpackage"
+        decls', TData s
+    | Tobject _ -> unsupported "Tobject"
+    | Tfield _ -> unsupported "Tfield"
+    | Tnil -> unsupported "Tnil"
+    | Tlink _ -> unsupported "Tlink"
+    | Tsubst _ -> unsupported "Tsubst"
+    | Tvariant row_desc ->
+        let from_row_desc row_desc =
+          let tr (s,field) =
+            match field with
+            | Rpresent None -> [], (s,[])
+            | Rpresent (Some type_expr) ->
+                let decls',ty = from_type_expr env tdata type_expr in
+                let tys =
+                  match ty with
+                  | TTuple xs -> List.map Id.typ xs
+                  | ty -> [ty]
+                in
+                decls', (s,tys)
+            | Reither(_,type_exprs,_,_) ->
+                let decls,tys = from_type_exprs env tdata type_exprs in
+                [], (s, tys)
+            | Rabsent -> assert false
+          in
+          let declss,constrs1 = List.split_map tr row_desc.row_fields in
+          let decls,constrs2 =
+            if row_desc.row_more.desc = Tnil then
+              [], []
+            else
+              match from_type_expr env tdata row_desc.row_more with
+              | _, TVar _ -> [], []
+              | decls, TVariant(_,constrs) -> decls, constrs
+              | _ -> assert false
+          in
+          List.flatten declss, constrs1 @ constrs2
+        in
+        let decls,constrs = from_row_desc row_desc in
+        decls, TVariant(true, constrs)
+    | Tunivar _ -> unsupported "Tunivar"
+    | Tpoly(typ,[]) -> from_type_expr env tdata typ
+    | Tpoly _ -> unsupported "Tpoly"
+    | Tpackage _ -> unsupported "Tpackage"
+  in
+  decls1@decls2, ty
 
-let from_type_expr env typ = from_type_expr env [] typ
-let from_type_exprs env typ = from_type_exprs env [] typ
+let from_type_expr env ty = from_type_expr env [] ty
+let from_type_exprs env ty = from_type_exprs env [] ty
 
+(* for Typedtree.type_declaration *)
 let rec from_type_declaration env decl =
   Debug.printf "decl: %a@." (Printtyp.type_declaration (Ident.create "t")) decl.typ_type;
   let open Typedtree in
@@ -182,7 +234,7 @@ let rec from_type_declaration env decl =
         in
         let decls,fields = List.fold_right aux fields ([],[]) in
         decls, TRecord fields
-    | Ttype_open -> unsupported "Type_open"
+    | Ttype_open -> unsupported "Ttype_open"
     | exception Not_found -> assert false
   in
   decls, (decl.typ_name.txt, ty)
