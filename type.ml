@@ -353,7 +353,7 @@ let rec same_shape typ1 typ2 =
   | TVariant(poly1,labels1), TVariant(poly2,labels2) ->
       poly1 = poly2 &&
       List.eq ~eq:(Compare.eq_on snd ~eq:(List.eq ~eq:same_shape)) labels1 labels2
-  | TRecord fields1, TRecord fields2 -> unsupported "same_shape"
+  | TRecord fields1, TRecord fields2 -> List.eq ~eq:(Pair.eq (=) (Pair.eq (=) same_shape)) fields1 fields2
   | _ -> false
 
 
