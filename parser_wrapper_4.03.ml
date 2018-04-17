@@ -110,7 +110,7 @@ and from_type_expr env tdata typ =
       let s = Path.name p in
       let tdata' = s :: tdata in
       let decls' =
-        if List.mem s tdata then
+        if List.mem_assoc s prim_typs || List.mem_assoc s prim_typ_cons || List.mem s tdata then
           []
         else
           let decls,ty = from_type_declaration env tdata' ty in

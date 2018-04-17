@@ -115,3 +115,4 @@ val inline_record_type : term -> term
 val inline_type_decl : term -> term
 val inline_simple_types : term -> term
 val remove_id_let : term -> term
+val split_type_decls : term -> term

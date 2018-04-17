@@ -3034,3 +3034,17 @@ let split_mutual_rec =
   in
   tr.tr2_desc <- tr_desc;
   fun ?(only_top=false) t -> tr.tr2_term only_top t
+
+let split_type_decls =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Local(Decl_type decls, t) ->
+        let tys = List.map fst decls in
+        let decls1,decls2 = List.partition (fun (x,ty) -> List.Set.subset (List.Set.inter (get_tdata ty) tys) [x]) decls in
+        let t' = tr.tr_term t in
+        (List.fold_right (fun decl -> make_local @@ Decl_type [decl]) decls1 @@ make_local (Decl_type decls2) t').desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term

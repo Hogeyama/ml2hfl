@@ -27,6 +27,7 @@ type preprocess_label =
   | Replace_fail_with_raise
   | Ignore_excep_arg
   | Encode_simple_variant
+  | Split_type_decls
   | Encode_recdata
   | Replace_base_with_int
   | Replace_data_with_int
@@ -80,6 +81,7 @@ let string_of_label = function
   | Replace_fail_with_raise -> "Replace fail with raise"
   | Ignore_excep_arg -> "Ignore excep arg"
   | Encode_simple_variant -> "Encode simple variant"
+  | Split_type_decls -> "Split type declaration"
   | Encode_recdata -> "Encode recdata"
   | Replace_base_with_int -> "Replace base with int"
   | Replace_data_with_int -> "Replace data with int"
@@ -194,6 +196,8 @@ let all spec : t list =
       map_trans replace_data_with_int;
     Inline_simple_types,
       map_trans inline_simple_types;
+    Split_type_decls,
+      map_trans split_type_decls;
     Encode_recdata,
       map_trans Encode.recdata;
     Inline_type_decl,
