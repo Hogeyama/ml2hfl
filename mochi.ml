@@ -277,7 +277,7 @@ let rec arg_spec () =
      "<dir>  Add <dir> to the list of include directories";
      "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
      "-only-result", Arg.Unit set_only_result, " Show only result";
-     "-debug", Arg.String set_debug_modules, "<modules>  Set debug flag of modules (comma-separated)";
+     "-debug", Arg.String Flag.Debug.set_debug_modules, "<modules>  Set debug flag of modules (comma-separated)";
      "-debug-abst", Arg.Set Flag.Debug.abst, " Debugging abstraction";
      "-color", Arg.Set Flag.PrettyPrinter.color, " Turn on syntax highlighting";
      "-color-always", Arg.Set Flag.PrettyPrinter.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";

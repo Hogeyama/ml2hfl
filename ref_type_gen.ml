@@ -5,7 +5,7 @@ module S = Syntax
 module U = Term_util
 module T = Type
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let comment s t =
   if !!Debug.check then

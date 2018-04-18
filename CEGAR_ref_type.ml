@@ -2,7 +2,7 @@ open Util
 
 module CS = CEGAR_syntax
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type base =
   | Unit

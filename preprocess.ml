@@ -1,7 +1,7 @@
 open Util
 
-module Debug_ty = Debug.Make(struct let check = make_debug_check (__MODULE__^".ty") end)
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug_ty = Debug.Make(struct let check = Flag.Debug.make_check (__MODULE__^".ty") end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 
 type preprocess_label =

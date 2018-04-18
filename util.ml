@@ -864,20 +864,6 @@ let print_begin_end ?(fm=Format.std_formatter) =
     |@> Format.fprintf fm "@]\b\b%a@\n" post
 
 
-let make_debug_check s =
-  Flag.Debug.debuggable_modules := s::!Flag.Debug.debuggable_modules;
-  fun () -> List.mem s !Flag.Debug.debug_module
-
-let set_debug_modules mods =
-  let modules = String.nsplit mods "," in
-  let check m =
-    if not @@ List.mem m !Flag.Debug.debuggable_modules then
-      (Format.printf "Module \"%s\" is not registered for debug@." m;
-       exit 1)
-  in
-  List.iter check modules;
-  Flag.Debug.debug_module := modules @ !Flag.Debug.debug_module
-
 let rec fixed_point ?(eq=(=)) ?(max= -1) f init =
   let x = f init in
   if eq x init || max = 0

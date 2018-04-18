@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_common
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let num_tycheck = ref 0
 let time_check = ref 0.

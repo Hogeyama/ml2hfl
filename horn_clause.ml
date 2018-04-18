@@ -8,7 +8,7 @@ type horn_clauses = t list
 
 type pred_var = int
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let pred_var = Id.make (-1) "v" [] Ty.int
 let pred_var_term = make_var pred_var

@@ -4,7 +4,7 @@ module IT = Inter_type
 module AT = CEGAR_type
 module CS = CEGAR_syntax
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let ref_base_of_abs_base = function
   | AT.TUnit -> RT.Unit

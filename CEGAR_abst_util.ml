@@ -4,7 +4,7 @@ open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let hd (defs,ts) =
   assert (defs = []);

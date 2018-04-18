@@ -4,7 +4,7 @@ open Term_util
 open Type
 open Modular_common
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 module CT = Comp_tree
 module HC = Horn_clause

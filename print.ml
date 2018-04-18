@@ -3,7 +3,7 @@ open Util
 open Type
 open Syntax
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let rec print_typ fm t = Type.print ~occur:occur_typ (print_term 0 false) fm t
 and print_ids ?fv typ fm xs =

@@ -4,7 +4,7 @@ open CEGAR_type
 open CEGAR_util
 open CEGAR_abst_util
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let abst_arg x ty =
   if false then Debug.printf "abst_arg: %a, %a;;@." CEGAR_print.var x CEGAR_print.typ ty;

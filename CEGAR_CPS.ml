@@ -4,7 +4,7 @@ open CEGAR_print
 open CEGAR_util
 open Util
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let is_head_tuple t =
   match decomp_app t with

@@ -14,7 +14,7 @@ module String = F.Util.String
 module List = F.Util.List
 module Array = F.Util.Array
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let rec conv_typ ty =
   match ty with

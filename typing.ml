@@ -2,7 +2,7 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 exception CannotUnify
 exception External

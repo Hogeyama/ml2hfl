@@ -2,7 +2,7 @@ open Util
 
 type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 
 

@@ -6,7 +6,7 @@ open CEGAR_trans
 
 exception CannotRefute
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.Log.cegar_loop)
 

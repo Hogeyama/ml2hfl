@@ -3,7 +3,7 @@ open CEGAR_syntax
 open CEGAR_type
 open CEGAR_util
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let rename_if f x =
   if f x then

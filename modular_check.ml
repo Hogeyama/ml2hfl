@@ -5,7 +5,7 @@ open Type
 open Modular_common
 
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 
 let to_CEGAR_ref_type_base base =

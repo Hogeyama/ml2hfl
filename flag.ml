@@ -15,15 +15,6 @@ module TRecS = struct
   let param2 = ref 10
 end
 
-module Debug = struct
-  let check_fun_arg_typ = false
-  let check_typ = true
-  let debuggable_modules : string list ref = ref []
-  let debug_module : string list ref = ref []
-  let abst = ref false
-  let print_ref_typ () = List.mem "Ref_type" !debug_module
-end
-
 module Method = struct
   type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination
   let mode = ref Reachability
@@ -196,4 +187,26 @@ module Modular = struct
   let refine_init = ref false
   let use_neg_env = ref true
   let infer_merge = ref false
+end
+
+module Debug = struct
+  let check_fun_arg_typ = false
+  let check_typ = true
+  let debuggable_modules : string list ref = ref []
+  let debug_module : string list ref = ref []
+  let abst = ref false
+
+  let print_ref_typ () = List.mem "Ref_type" !debug_module
+  let make_check s =
+    debuggable_modules := s::!debuggable_modules;
+    fun () -> List.mem s !debug_module
+  let set_debug_modules mods =
+    let modules = BatString.nsplit mods "," in
+    let check m =
+      if not @@ List.mem m !debuggable_modules then
+        (Format.printf "Module \"%s\" is not registered for debug@." m;
+         exit 1)
+    in
+    List.iter check modules;
+    debug_module := modules @ !debug_module
 end

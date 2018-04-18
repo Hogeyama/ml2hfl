@@ -3,7 +3,7 @@ open Util
 open CEGAR_util
 
 let expansion_iter_count_ref = ref 0
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 (**
    [x -> ex1] ex2

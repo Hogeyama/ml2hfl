@@ -9,7 +9,7 @@ type result =
   | FeasibleNonTerm of bool * (string * CEGAR_syntax.typ) list * int list
   | Infeasible of CEGAR_syntax.ce
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let checksat env t =
   Fpat.SMTProver.is_sat_dyn (FpatInterface.conv_formula t)

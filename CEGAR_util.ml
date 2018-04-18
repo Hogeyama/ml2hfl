@@ -2,7 +2,7 @@ open Util
 open CEGAR_syntax
 open CEGAR_type
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type ext_path_part = Positive | Negative | Do_not_Care
 type ext_path = ext_path_part list

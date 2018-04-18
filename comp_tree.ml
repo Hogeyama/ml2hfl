@@ -6,7 +6,7 @@ open Modular_common
 
 module RT = Rose_tree
 
-module Debug = Debug.Make(struct let check = make_debug_check __MODULE__ end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type nlabel =
   | App of id * (id * value) list
