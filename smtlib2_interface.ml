@@ -80,7 +80,7 @@ let type_of_atom a =
 
 let parse_model str =
   let unsupported () = unsupported "Smtlib2_interface.parse_model" in
-  let s = Sexp.parse ~parse_atom str in
+  let s = str in
   Debug.printf "[parse_model] INPUT: @{%a@." (List.print Sexp.print) s;
   let open Sexp in
   match s with

@@ -122,7 +122,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
   else
     let () = Debug.printf "%sTIME: %.3f@." space !!Time.get in
     pr " history: %a" (List.print @@ Pair.print Id.print Ref_type.print) history;
-    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- Id.is_external) env;
+    pr "%a{%a,%d}%t env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.Env.print @@ Ref_type.Env.filter_key_out Id.is_external env;
     if !Flag.Modular.use_neg_env then pr "%a{%a,%d}%t neg_env:@ %a" Color.set Color.Blue Id.print f c Color.reset Ref_type.NegEnv.print neg_env;
     if false then pr "%a{%a,%d}%t ce_set:@ %a" Color.set Color.Blue Id.print f c Color.reset print_ce_set ce_set;
     pr "%a{%a,%d}%t:@ %a :? %a" Color.set Color.Blue Id.print f c Color.reset Id.print f Ref_type.print typ;
@@ -215,7 +215,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
         pr "TYPABLE (skip): %a :@ %a@." Id.print f Ref_type.print typ;
         check env ce_set candidates'
     | (f,typ)::candidates' ->
-        pr "env:@ %a" Ref_type.Env.print @@ Ref_type.Env.filter_out (fst |- Id.is_external) env;
+        pr "env:@ %a" Ref_type.Env.print @@ Ref_type.Env.filter_key_out Id.is_external env;
         pr "%a :? %a" Id.print f Ref_type.print typ;
         incr num_tycheck;
         let prog' = {prog with fun_typ_env=env} in

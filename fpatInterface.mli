@@ -38,6 +38,7 @@ val is_valid_forall_exists :
 (** {6 Misc} *)
 
 val infer :
+  (Fpat.HCCS.t -> (Fpat.Idnt.t * ((Fpat.Idnt.t * Fpat.Type.t) list * Fpat.Formula.t)) list) option ->
   string list ->
   (Fpat.Idnt.t -> bool) ->
   int list list ->

@@ -1,7 +1,6 @@
 
-type base = Unit | Bool | Int | Abst of string
 type t =
-  | Base of base * Syntax.id * Syntax.term
+  | Base of Type.base * Syntax.id * Syntax.term
   | Fun of Syntax.id * t * t
   | Tuple of (Syntax.id * t) list
   | Inter of Syntax.typ * t list
@@ -24,11 +23,12 @@ val inter : Syntax.typ -> t list -> t
 val union : Syntax.typ -> t list -> t
 val top : Syntax.typ -> t
 val bottom : Syntax.typ -> t
-
+val make_fun : t -> t -> t
+val make_base : Type.base -> t
 
 
 (** {6 Destructor} *)
-val decomp_base : t -> (base * Syntax.id * Syntax.term) option
+val decomp_base : t -> (Type.base * Syntax.id * Syntax.term) option
 val decomp_fun : t -> (Syntax.id * t * t) option
 val decomp_list : t -> (Syntax.id * Syntax.term * Syntax.id * Syntax.term * t) option
 val decomp_inter : t -> t list
@@ -41,6 +41,7 @@ val is_fun : t -> bool
 val is_list : t -> bool
 val is_top' : t -> bool
 val is_bottom' : t -> bool
+val has_inter_union : t -> bool
 
 
 (** {6 Transformation} *)
@@ -52,13 +53,11 @@ val map_pred : (Syntax.term -> Syntax.term) -> t -> t
 
 (** {6 Converter} *)
 val of_simple : Syntax.typ -> t
-val to_simple_base : base -> 'a Type.t
 val to_simple : ?with_pred:bool -> t -> Syntax.typ
 val to_abst_typ : ?with_pred:bool -> t -> Syntax.typ
 
 
 (** {6 Printer} *)
-val print_base : Format.formatter -> base -> unit
 val print : Format.formatter -> t -> unit
 
 
@@ -75,7 +74,7 @@ val subst_map : (Syntax.id * Syntax.term) list -> t -> t
 val subst_var : Syntax.id -> Syntax.id -> t -> t
 val subst_rev : Syntax.term -> Syntax.id -> t -> t
 val replace_term : Syntax.term -> Syntax.term -> t -> t
-val rename : t -> t
+val rename : ?full:bool -> t -> t
 val set_base_var : Syntax.id -> t -> t
 val copy_fun_arg_to_base : t -> t
 val same : t -> t -> bool

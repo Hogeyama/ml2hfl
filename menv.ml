@@ -24,6 +24,8 @@ module type ENV = sig
 
   val of_list : (key * value) list -> t
   val to_list : t -> (key * value) list
+  val keys : t -> key list
+  val values : t -> value list
   val dom : t -> key list
   val cod : t -> value list
   val codom : t -> value list
@@ -38,16 +40,18 @@ module type ENV = sig
   val map : (key * value -> key * value) -> t -> t
   val map_key : (key -> key) -> t -> t
   val map_value : (value -> value) -> t -> t
-  val filter : (key * value -> bool) -> t -> t
+  val filter : (key -> value -> bool) -> t -> t
   val filter_key : (key -> bool) -> t -> t
   val filter_value : (value -> bool) -> t -> t
-  val filter_out : (key * value -> bool) -> t -> t
+  val filter_out : (key -> value -> bool) -> t -> t
   val filter_key_out : (key -> bool) -> t -> t
   val filter_value_out : (value -> bool) -> t -> t
   val merge : t -> t -> t
   val normalize : t -> t
 
   val eq : t -> t -> bool
+  val exists : (key -> value -> bool) -> t -> bool
+  val for_all : (key -> value -> bool) -> t -> bool
 
   val print : Format.formatter -> t -> unit
 end
@@ -65,10 +69,12 @@ struct
 
   let of_list env = env
   let to_list env = env
-  let dom env = List.map fst env
-  let cod env = List.map snd env
-  let codom = cod
-  let range = cod
+  let keys env = List.map fst env
+  let values env = List.map snd env
+  let dom = keys
+  let cod = values
+  let codom = values
+  let range = values
 
   let find f env = List.find f env
   let assoc k env = List.assoc ~eq:eq_key k env
@@ -79,12 +85,12 @@ struct
   let map f env = List.map f env
   let map_key f env = List.map (Pair.map_fst f) env
   let map_value f env = List.map (Pair.map_snd f) env
-  let filter f env = List.filter f env
-  let filter_key f env = filter (fst |- f) env
-  let filter_value f env = filter (snd |- f) env
-  let filter_out f env = List.filter_out f env
-  let filter_key_out f env = filter_out (fst |- f) env
-  let filter_value_out f env = filter_out (snd |- f) env
+  let filter f env = List.filter (Fun.uncurry f) env
+  let filter_key f env = List.filter (fst |- f) env
+  let filter_value f env = List.filter (snd |- f) env
+  let filter_out f env = List.filter_out (Fun.uncurry f) env
+  let filter_key_out f env = List.filter_out (fst |- f) env
+  let filter_value_out f env = List.filter_out (snd |- f) env
   let merge env1 env2 =
     let aux (k,x) acc =
       if mem_assoc k acc then
@@ -107,6 +113,9 @@ struct
           with Not_found -> false, []
         in
         b && eq env1' env2'
+
+  let exists f env = List.exists (Fun.uncurry f) env
+  let for_all f env = List.for_all (Fun.uncurry f) env
 
   let print fm env =
     let pr fm (k,x) = Format.fprintf fm "@[%a |-> %a@]" Key.print k Value.print x in

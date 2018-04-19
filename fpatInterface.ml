@@ -162,7 +162,7 @@ let rec of_term t =
         | S.Div -> F.Const.Div F.Type.mk_int
       in
       F.Term.mk_app (F.Term.mk_const op') [of_term t1; of_term t2]
-  | S.App({S.desc=S.Var p}, ts) when String.starts_with (Id.to_string p) "P_"  -> (* for predicate variables *)
+  | S.App({S.desc=S.Var p}, ts) when S.PredVar.is_pvar p  -> (* for predicate variables *)
       let ts' =
         ts
         |> List.map @@ Pair.add_right @@ of_typ -| S.typ
@@ -362,161 +362,7 @@ let is_cp prog =
   |> conv_prog
   |> F.RefTypInfer.is_cut_point
 
-let rec fix_id_T x =
-  match x with
-  | F.Idnt.T(y, _, n) -> F.Idnt.T(fix_id_T y, 0, n)
-  | _ -> x
-
-let unfold sol =
-  let sol' = Hashtbl.create @@ List.length sol in
-  List.iter (Fun.uncurry @@ Hashtbl.add sol') sol;
-  let rec aux t =
-    match CS.decomp_app t with
-    | _, [] -> t
-    | Var "exists", [args; t] -> make_app (Var "exists") [args; aux t]
-    | Var f, ts ->
-        let args,t' = Hashtbl.find sol' f in
-        let xs = List.map fst args in
-        let ts' = List.map aux ts in
-        let t'' = update f args t' in
-        subst_map (List.combine xs ts') t''
-    | t1, ts -> make_app t1 (List.map aux ts)
-  and update f args t =
-    let t' = aux t in
-    Hashtbl.replace sol' f (args,t');
-    t'
-  in
-  Hashtbl.iter (fun f (args,t) -> ignore @@ update f args t) sol';
-  Hashtbl.fold (fun f (xs,t) acc -> (f,(xs,t))::acc) sol' []
-
-let rec remove_atoms qv t =
-  match decomp_app t with
-  | Const And, _ ->
-      t
-      |> decomp_ands
-      |> List.map (remove_atoms qv)
-      |> List.filter (fun t -> Util.List.Set.inter qv (get_fv t) = [])
-      |> make_ands
-  | Const Or, _ ->
-      t
-      |> decomp_ors
-      |> List.map (remove_atoms qv)
-      |> List.filter (fun t -> Util.List.Set.inter qv (get_fv t) = [])
-      |> make_ors
-  | _ ->
-      if Util.List.Set.inter qv (get_fv t) = [] then
-        t
-      else
-        Const True
-
-let rec conv_formula' t =
-  match t with
-  | App(App(Var "exists", args), t1) ->
-      let args' =
-        match decomp_app args with
-        | Var "args", ts -> List.map (function Var x -> F.Idnt.make x, F.Type.mk_int | _ -> invalid_arg "FpatInterface.conv_term") ts
-        | _ -> invalid_arg "FpatInterface.conv_term"
-      in
-      F.Formula.exists args' @@ conv_formula' t1
-  | Const(c) ->
-      F.Formula.of_term @@ F.Term.mk_const (conv_const c)
-  | Var(x) ->
-      F.Formula.of_term @@ F.Term.mk_var @@ conv_var x
-  | App(t1, t2) -> F.Formula.of_term @@ F.Term.mk_app (F.Formula.term_of @@ conv_formula' t1) [F.Formula.term_of @@ conv_formula' t2]
-  | Fun _ -> assert false
-  | Let _ -> assert false
-
-let eliminate_exists t =
-  let of_formula phi =
-    let open Fpat in
-    let open Term in
-    let open Z3 in
-    let phi =
-      phi
-      |> CunFormula.elim_unit
-      |> Formula.map_atom CunAtom.elim_beq_bneq
-    in
-    let tenv, phi =
-      SimTypInfer.infer_formula [] phi
-    in
-    let ctenv =
-      phi
-      |> CunFormula.get_adts
-      |> Z3Interface.mk_constructors tenv
-    in
-    F.Z3Interface.of_formula phi ctenv tenv []
-  in
-  let fv = CS.get_fv t in
-  let map = List.map (Pair.add_right @@ String.replace_chars (function '!' -> "_bang_" | c -> String.of_char c)) fv in
-  Debug.printf "  map: %a@." Print.(list (pair string string)) map;
-  t
-  |@> Debug.printf "  BEFORE: %a@." CEGAR_print.term
-  |> CU.subst_map @@ List.map (fun (x,y) -> x, Var y) map
-  |> conv_formula'
-  |@> Debug.printf "  conv_foromula': %a@." F.Formula.pr
-  |> of_formula
-  |@> Debug.printf "  of_formula: %s@." -| Z3.Expr.to_string
-  |> F.Z3Interface.qelim
-  |@> Debug.printf "  qelim: %s@." -| Z3.Expr.to_string
-  |> F.Z3Interface.formula_of
-  |@> Debug.printf "  formula_of: %a@." F.Formula.pr
-  |> inv_formula
-  |> CU.subst_map @@ List.map (fun (x,y) -> y, Var x) map
-  |@> Debug.printf "  AFTER: %a@." CEGAR_print.term
-
-let solve_rec_hccs filename =
-  let cmd =
-    let open Flag.Refine in
-    match !solver with
-    | Hoice -> !hoice
-    | Z3 -> !z3
-    | Z3_spacer -> !z3_spacer
-  in
-  let sol = Filename.change_extension filename "sol" in
-  let cmd' = Format.sprintf "%s %s > %s" cmd filename sol in
-  let r = Sys.command cmd' in
-  if r = 128+9 then killed();
-  let s = IO.input_file sol in
-  if r <> 0 || s = "" then fatal "solver aborted";
-  Smtlib2_interface.parse_model s
-
-let print_sol = Print.(list (pair string (pair (list (pair string CEGAR_print.typ)) CEGAR_print.term)))
-
-let solver () =
-  if !Flag.Refine.use_rec_hccs_solver then
-    let solve hcs =
-      let map =
-        let rename x =
-          x
-          |> fix_id_T
-          |> Format.asprintf "|%a|" F.Idnt.pr
-          |> F.Idnt.make
-        in
-        F.HCCS.tenv hcs
-        |> List.map fst
-        |> List.map (Pair.add_right rename)
-      in
-      let to_pred (xs,t) =
-        List.map (Pair.map F.Idnt.make conv_typ) xs, conv_formula t
-      in
-      let rev_map = List.map (fun (x,y) -> F.Idnt.string_of y, x) map in
-      let filename = Filename.change_extension !!Flag.mainfile "smt2" in
-      hcs
-      |> F.HCCS.rename map
-      |@> Debug.printf "HCCS: %a@." F.HCCS.pr
-      |> F.HCCS.save_smtlib2 filename;
-      solve_rec_hccs filename
-      |@> Debug.printf "Sol: %a@." print_sol
-      |> unfold
-      |@> Debug.printf "Unfold: %a@." print_sol
-      |> List.map (Pair.map_snd @@ Pair.map_snd eliminate_exists)
-      |> List.map (fun (f,def) -> List.assoc f rev_map, to_pred def)
-    in
-    Some solve
-  else
-    None
-
-let infer labeled is_cp cexs ext_cexs prog =
+let infer solver labeled is_cp cexs ext_cexs prog =
   let fs = List.map fst prog.env in
   let defs' =
     if Flag.Method.(!mode = FairNonTermination || !verify_ref_typ) then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
@@ -542,7 +388,6 @@ let infer labeled is_cp cexs ext_cexs prog =
       List.map (flip (@) [2]) cexs
     else
       cexs in
-  let solver = !!solver in
   let env = F.AbsTypInfer.refine ~solver prog labeled is_cp cexs false ext_cexs in
   Flag.Log.time_parameter_inference :=
     !Flag.Log.time_parameter_inference +. !F.EAHCCSSolver.elapsed_time;

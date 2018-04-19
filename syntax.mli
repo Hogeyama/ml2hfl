@@ -102,6 +102,12 @@ module ID : sig
   val print : Format.formatter -> t -> unit
 end
 
+module PredVar : sig
+  val pvar_name : string
+  val is_pvar : id -> bool
+  val new_pvar : typ list -> id
+end
+
 val const_attr : attr list
 
 type trans =

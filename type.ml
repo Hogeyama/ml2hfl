@@ -111,6 +111,12 @@ let rec elim_tattr_all ty =
   | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ elim_tattr_all) fields)
   | TModule sgn -> TModule (List.map (Pair.map_snd @@ elim_tattr_all) sgn)
 
+let rec decomp_base ty =
+  match ty with
+  | TBase b -> Some b
+  | TAttr(_, ty) -> decomp_base ty
+  | _ -> None
+
 let rec decomp_tfun typ =
   match elim_tattr typ with
   | TFun(x,typ) ->
@@ -152,6 +158,13 @@ let print_tvar fm n =
   let c = char_of_int @@ int_of_char 'a' + n mod 26 in
   let d = if n < 26 then "" else string_of_int (n/26) in
   Format.fprintf fm "'%c%s" c d
+
+let print_base fm b =
+  match b with
+  | TUnit -> Format.fprintf fm "unit"
+  | TBool -> Format.fprintf fm "bool"
+  | TInt -> Format.fprintf fm "int"
+  | TPrim s -> Format.fprintf fm "%s" s
 
 let rec print occur print_pred fm typ =
   let print' = print occur print_pred in

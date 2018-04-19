@@ -59,7 +59,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	CEGAR_trans.mli CEGAR_util.mli fair_termination_type.mli	\
 	HORS_parser.mli fpatInterface.mli ref_type.mli encode.mli	\
 	ref_type_gen.mli modular_common.mli CEGAR_abst_CPS.mli		\
-	CEGAR_abst_util.mli
+	CEGAR_abst_util.mli ref_type_check.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = revision.cmo mconfig.cmo flag.cmo debug.cmo util.cmo menv.cmo	\
@@ -67,10 +67,11 @@ CMO = revision.cmo mconfig.cmo flag.cmo debug.cmo util.cmo menv.cmo	\
 	syntax.cmo print.cmo term_util.cmo CEGAR_type.cmo		\
 	CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_util.cmo typing.cmo	\
 	type_check.cmo CEGAR_ref_type.cmo smtlib2_interface.cmo		\
-	fpatInterface.cmo ref_type.cmo spec.cmo problem.cmo		\
-	ref_type_gen.cmo trans.cmo trans_problem.cmo CFA.cmo		\
-	uncurry.cmo lift.cmo fair_termination_util.cmo CEGAR_lift.cmo	\
-	slicer.cmo useless_elim.cmo inter_type.cmo type_trans.cmo	\
+	fpatInterface.cmo QE.cmo rec_HCCS_solver.cmo ref_type.cmo	\
+	spec.cmo problem.cmo ref_type_gen.cmo trans.cmo			\
+	trans_problem.cmo ref_type_check.cmo CFA.cmo uncurry.cmo	\
+	lift.cmo fair_termination_util.cmo CEGAR_lift.cmo slicer.cmo	\
+	useless_elim.cmo inter_type.cmo type_trans.cmo			\
 	effect_analysis.cmo CPS.cmo curry.cmo CEGAR_CPS.cmo		\
 	parser_wrapper.cmo encode_list.cmo encode_rec.cmo encode.cmo	\
 	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\

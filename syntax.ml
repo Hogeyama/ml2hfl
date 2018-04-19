@@ -125,6 +125,14 @@ module Id = struct
     make (new_int()) name (Option.default [] attr) typ
 end
 
+module PredVar = struct
+  let pvar_name = "$P"
+  let is_pvar x = Id.name x = pvar_name
+  let new_pvar tys =
+    let ty = List.fold_right make_tfun tys Ty.bool in
+    Id.new_var ~name:pvar_name ty
+end
+
 
 let const_attr = [ANotFail; ATerminate; ADeterministic]
 

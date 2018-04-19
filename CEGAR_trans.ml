@@ -581,10 +581,10 @@ let rec trans_ref_type = function
   | CRT.Base(b,x,p) ->
       let b' =
         match b with
-        | CRT.Unit -> RT.Unit
-        | CRT.Bool -> RT.Bool
-        | CRT.Int -> RT.Int
-        | CRT.Abst s -> RT.Abst s
+        | CRT.Unit -> Type.TUnit
+        | CRT.Bool -> Type.TBool
+        | CRT.Int -> Type.TInt
+        | CRT.Abst s -> Type.TPrim s
       in
       RT.Base(b', trans_inv_var x, trans_inv_term p)
   | CRT.Fun(x,typ1,typ2) ->

@@ -343,6 +343,9 @@ let rec arg_spec () =
      "-use-spec", Arg.Set Flag.Method.use_spec, " use XYZ.spec for verifying XYZ.ml if exists\n(This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.Method.comment_spec, " disable {SPEC} on comments";
      "-module-verification", Arg.Set Flag.Mode.module_mode, " Check input as library";
+     (* Modular verification *)
+     "", Arg.Unit ignore, "Options_for_Modular_verification";
+     "-check-simple", Arg.Set Flag.Modular.check_simple, " Use simple refinement checking";
      (* CEGAR *)
      "", Arg.Unit ignore, "Options_for_CEGAR";
      "-split-assert", Arg.Set Flag.Method.split_assert, " Reduce to verification of multiple programs\n(each program has only one assertion)";

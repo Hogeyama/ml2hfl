@@ -10,10 +10,10 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 let to_CEGAR_ref_type_base base =
   match base with
-  | Ref_type.Unit -> CEGAR_ref_type.Unit
-  | Ref_type.Bool -> CEGAR_ref_type.Bool
-  | Ref_type.Int -> CEGAR_ref_type.Int
-  | Ref_type.Abst s -> CEGAR_ref_type.Abst s
+  | TUnit -> CEGAR_ref_type.Unit
+  | TBool -> CEGAR_ref_type.Bool
+  | TInt -> CEGAR_ref_type.Int
+  | TPrim s -> CEGAR_ref_type.Abst s
 let rec to_CEGAR_ref_type typ =
   match typ with
   | Ref_type.Base(base, x, p) -> CEGAR_ref_type.Base(to_CEGAR_ref_type_base base, Id.to_string x, snd @@ CEGAR_trans.trans_term p)
@@ -262,71 +262,88 @@ let complete_ce_set f t ce =
 let make_init_ce_set f t =
   f, complete_ce_set f t []
 
+let check_simple f ty prog =
+  let t = Id.assoc f prog.fun_def_env in
+  let fv = get_fv t in
+  let env =
+    prog.fun_typ_env
+    |> Ref_type.Env.filter_key_out Id.((=) f)
+    |> Ref_type.Env.add f ty
+  in
+  let b1 = List.Set.subset ~eq:Id.eq fv [f] in
+  let b2 = not @@ Ref_type.Env.exists (fun _ -> Ref_type.has_inter_union) env in
+  if b1 && b2 then
+    Ref_type_check.check env t ty
+  else
+    false
 
 let check prog f typ depth =
   Debug.printf "MODULAR_CHECK prog: %a@." print_prog prog;
-  let {fun_typ_env=env; fun_def_env=fun_env} = prog in
-  let t,fun_env' =
-    let xs, t = decomp_funs @@ Id.assoc f prog.fun_def_env in
-    let t' =
-      let fs = List.filter_out (Id.same f) @@ take_funs_of_depth fun_env f depth in
-      let fun_env' = List.filter (fst |- Id.mem -$- fs) fun_env in
-      make_lets fun_env' t
-    in
-    add_context prog f xs t' typ
-  in
-  let top_funs = List.map fst fun_env' in
-  Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
-  Debug.printf "  t: %a@." Print.term_typ t;
-  let add_preds =
-    let map =
-      env
-      |> Ref_type.Env.to_list
-      |> List.cons (f, typ)
-      |> List.map (Pair.map_snd Ref_type.to_abst_typ)
-    in
-    Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
-    Trans.merge_bound_var_typ map
-  in
-  let result, make_get_rtyp, _, set_target, main =
-    t
-    |@> Debug.printf "  t: %a@.@." Print.term_typ
-    |> make_lets fun_env'
-    |> add_preds
-    |@> Debug.printf "  t with def: %a@.@." Print.term_typ
-    |@> Type_check.check ~ty:Ty.unit
-    |> Trans.map_main Term.(seq -$- eod) (* ??? *)
-    |> Problem.safety
-    |@> Debug.printf "Problem: %a@.@." Problem.print
-    |> Main_loop.loop Preprocess.(Some (all |- and_after CPS)) (Some []) [] Spec.init
-  in
-  match result with
-  | CEGAR.Safe env ->
-      Debug.printf "  Typable@.";
-      Debug.printf "  env: %a@." (List.print @@ Pair.print Format.pp_print_string CEGAR_ref_type.print) env;
-      let env' = (f,typ) :: Main_loop.trans_env (List.map fst fun_env) make_get_rtyp env in
-      Debug.printf "  env': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
-      Typable (Ref_type.Env.normalize @@ Ref_type.Env.of_list env')
-  | CEGAR.Unsafe(sol, ModelCheck.CESafety ce_single) ->
-      let ce_single' = List.map ((=) 0) ce_single in
-      if !!Debug.check then Main_loop.report_unsafe main sol set_target;
-      Debug.printf "  Untypable@.@.";
-      Debug.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_bool) ce_single';
-      Debug.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
-      let ans,ce_single'',ce =
-        let val_env =
-          let aux val_env (f,t) =
-            let rec val_env' = (f, Closure(val_env', t))::val_env in
-            val_env'
-          in
-          List.fold_left aux [] fun_env'
-        in
-        try
-          eval val_env ce_single' t
-        with Exception(ans, ce, paths) -> Fail, ce, paths
+  if !Flag.Modular.check_simple && check_simple f typ prog then
+    Typable (Ref_type.Env.normalize @@ Ref_type.Env.of_list [f,typ])
+  else
+    let {fun_typ_env=env; fun_def_env=fun_env} = prog in
+    let t,fun_env' =
+      let xs, t = decomp_funs @@ Id.assoc f prog.fun_def_env in
+      let t' =
+        let fs = List.filter_out (Id.same f) @@ take_funs_of_depth fun_env f depth in
+        let fun_env' = List.filter (fst |- Id.mem -$- fs) fun_env in
+        make_lets fun_env' t
       in
-      Debug.printf "  CE: %a@\n" print_ce ce;
-      assert (ans = Fail);
-      assert (ce_single'' = []);
-      Untypable ce
-  | CEGAR.Unsafe _ -> assert false
+      add_context prog f xs t' typ
+    in
+    let top_funs = List.map fst fun_env' in
+    Debug.printf "  Check %a : %a@." Id.print f Ref_type.print typ;
+    Debug.printf "  t: %a@." Print.term_typ t;
+    let add_preds =
+      let map =
+        env
+        |> Ref_type.Env.to_list
+        |> List.cons (f, typ)
+        |> List.map (Pair.map_snd Ref_type.to_abst_typ)
+      in
+      Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
+      Trans.merge_bound_var_typ map
+    in
+    let result, make_get_rtyp, _, set_target, main =
+      t
+      |@> Debug.printf "  t: %a@.@." Print.term_typ
+      |> make_lets fun_env'
+      |> add_preds
+      |@> Debug.printf "  t with def: %a@.@." Print.term_typ
+      |@> Type_check.check ~ty:Ty.unit
+      |> Trans.map_main Term.(seq -$- eod) (* ??? *)
+      |> Problem.safety
+      |@> Debug.printf "Problem: %a@.@." Problem.print
+      |> Main_loop.loop Preprocess.(Some (all |- and_after CPS)) (Some []) [] Spec.init
+    in
+    match result with
+    | CEGAR.Safe env ->
+        Debug.printf "  Typable@.";
+        Debug.printf "  env: %a@." (List.print @@ Pair.print Format.pp_print_string CEGAR_ref_type.print) env;
+        let env' = (f,typ) :: Main_loop.trans_env (List.map fst fun_env) make_get_rtyp env in
+        Debug.printf "  env': %a@." (List.print @@ Pair.print Id.print Ref_type.print) env';
+        Typable (Ref_type.Env.normalize @@ Ref_type.Env.of_list env')
+    | CEGAR.Unsafe(sol, ModelCheck.CESafety ce_single) ->
+        let ce_single' = List.map ((=) 0) ce_single in
+        if !!Debug.check then Main_loop.report_unsafe main sol set_target;
+        Debug.printf "  Untypable@.@.";
+        Debug.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_bool) ce_single';
+        Debug.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;
+        let ans,ce_single'',ce =
+          let val_env =
+            let aux val_env (f,t) =
+              let rec val_env' = (f, Closure(val_env', t))::val_env in
+              val_env'
+            in
+            List.fold_left aux [] fun_env'
+          in
+          try
+            eval val_env ce_single' t
+          with Exception(ans, ce, paths) -> Fail, ce, paths
+        in
+        Debug.printf "  CE: %a@\n" print_ce ce;
+        assert (ans = Fail);
+        assert (ce_single'' = []);
+        Untypable ce
+    | CEGAR.Unsafe _ -> assert false

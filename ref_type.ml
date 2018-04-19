@@ -6,14 +6,8 @@ module T = Type
 
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-type base =
-  | Unit
-  | Bool
-  | Int
-  | Abst of string
-
 type t =
-  | Base of base * S.id * S.term
+  | Base of T.base * S.id * S.term
   | Fun of S.id * t * t
   | Tuple of (S.id * t) list
   | Inter of S.typ * t list
@@ -22,7 +16,7 @@ type t =
   | List of S.id * S.term * S.id * S.term * t
   | Exn of t * t
 
-let typ_result = Base(Abst "X", Id.new_var T.Ty.unit, U.true_term)
+let typ_result = Base(T.TPrim "X", Id.new_var T.Ty.unit, U.true_term)
 
 let _Inter styp typs = Inter(styp, typs)
 let _Union styp typs = Union(styp, typs)
@@ -78,11 +72,7 @@ and is_top' typ =
   | Fun(_, typ1, typ2) -> is_bottom typ1
   | _ -> false
 
-let print_base fm = function
-  | Unit -> Format.pp_print_string fm "unit"
-  | Bool -> Format.pp_print_string fm "bool"
-  | Int -> Format.pp_print_string fm "int"
-  | Abst s -> Format.pp_print_string fm s
+let print_base = Type.print_base
 
 let rec occur x = function
   | Base(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
@@ -106,12 +96,12 @@ let rec decomp_funs typ =
 let rec print fm = function
   | Base(base,x,p) when p = U.true_term ->
       Format.fprintf fm "%a" print_base base
-  | Base(Bool,x,p) when U.make_var x = p ->
+  | Base(T.TBool,x,p) when U.make_var x = p ->
       Format.fprintf fm "{true}"
-  | Base(Bool,x,p) when U.make_not (U.make_var x) = p ->
+  | Base(T.TBool,x,p) when U.make_not (U.make_var x) = p ->
       Format.fprintf fm "{false}"
-  | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, {S.desc=S.Const(S.Int n)})})
-  | Base(Int,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
+  | Base(T.TInt,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, {S.desc=S.Const(S.Int n)})})
+  | Base(T.TInt,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
       Format.fprintf fm "{%d}" n
   | Base(base,x,p) when p.S.desc = S.Const S.False ->
       Format.fprintf fm "Bot"
@@ -227,51 +217,60 @@ let replace_term t1 t2 t3 =
   let x = Id.new_var t1.S.typ in
   subst x t2 @@ subst_rev t1 x t3
 
-let rec rename var = function
+let rec rename full var ty =
+  let new_var x =
+    if full then
+      Id.new_var ~name:"x" @@ Id.typ x
+    else
+      Id.new_var_id x
+  in
+  match ty with
   | Base(base, x, p) ->
-      let x' = Option.default (Id.new_var_id x) var in
+      let x' = Option.default (new_var x) var in
       Base(base, x', U.subst_var x x' p)
   | Fun(x,typ1,typ2) ->
-      let x' = Id.new_var_id x in
+      let x' = new_var x in
       let typ2' = subst_var x x' typ2 in
-      Fun(x', rename (Some x') typ1, rename None typ2')
+      Fun(x', rename full (Some x') typ1, rename full None typ2')
   | Tuple xtyps ->
       let aux (x,typ) xtyps =
-        let x' = Id.new_var_id x in
+        let x' = new_var x in
         let sbst = subst_var x x' in
         let xtyps' = List.map (Pair.map_snd sbst) xtyps in
-        (x', rename (Some x') @@ sbst typ) :: xtyps'
+        (x', rename full (Some x') @@ sbst typ) :: xtyps'
       in
       Tuple (List.fold_right aux xtyps [])
-  | Inter(typ, typs) -> Inter(typ, List.map (rename var) typs)
-  | Union(typ, typs) -> Union(typ, List.map (rename var) typs)
+  | Inter(typ, typs) -> Inter(typ, List.map (rename full var) typs)
+  | Union(typ, typs) -> Union(typ, List.map (rename full var) typs)
   | ExtArg(x,typ1,typ2) ->
-      let x' = Id.new_var_id x in
+      let x' = new_var x in
       let typ2' = subst_var x x' typ2 in
-      ExtArg(x', rename (Some x') typ1, rename None typ2')
+      ExtArg(x', rename full (Some x') typ1, rename full None typ2')
   | List(x,p_len,y,p_i,typ) ->
-      let x' = Id.new_var_id x in
-      let y' = Id.new_var_id y in
+      let x' = new_var x in
+      let y' = new_var y in
       let p_len' = U.subst_var x x' p_len in
       let p_i' = U.subst_var y y' p_i in
       let typ' = subst_var x x' typ in
       let typ'' = subst_var y y' typ' in
-      List(x', p_len', y', p_i', rename None typ'')
-  | Exn(typ1, typ2) -> Exn(rename var typ1, rename var typ2)
-let rename typ =
+      List(x', p_len', y', p_i', rename full None typ'')
+  | Exn(typ1, typ2) -> Exn(rename full var typ1, rename full var typ2)
+let rename ?(full=false) typ =
+  Debug.printf "RENAME: %a@." print typ;
   Id.save_counter ();
   Id.clear_counter ();
-  let typ' = rename None typ in
+  let typ' = rename full None typ in
   Id.reset_counter ();
+  Debug.printf "RENAME: %a@.@." print typ';
   typ'
 
 
 let rec of_simple typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
-  | T.TBase T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
-  | T.TBase T.TInt -> Base(Int, Id.new_var typ, U.true_term)
-  | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
+  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
+  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
   | _ ->
@@ -279,23 +278,15 @@ let rec of_simple typ =
       unsupported "Ref_type.of_simple"
 
 
-let to_simple_base b =
-  let open Type in
-  match b with
-  | Unit -> Ty.unit
-  | Bool -> Ty.bool
-  | Int -> Ty.int
-  | Abst s -> TData s
-
 let rec to_abst_typ ?(with_pred=false) typ =
   let r =
   match typ with
   | Base(b, x, ({S.desc=S.Const _} as p)) ->
-      to_simple_base b
+      T.TBase b
       |&with_pred&> T.add_tattr (T.TARefPred(x,p))
   | Base(b, x, t) ->
       let x' = Id.new_var_id x in
-      let typ' = to_simple_base b in
+      let typ' = T.TBase b in
       let ps =
         if !Flag.PredAbst.decomp_pred then
           Term_util.decomp_bexp @@ U.subst_var x x' t
@@ -336,7 +327,7 @@ let rec to_abst_typ ?(with_pred=false) typ =
 let rec to_simple ?(with_pred=false) typ =
   match typ with
   | Base(b, x, p) ->
-      to_simple_base b
+      T.TBase b
       |&with_pred&> T.add_tattr (T.TARefPred(x,p))
   | Fun(x,typ1,typ2) -> T.make_tfun (to_simple ~with_pred typ1) (to_simple ~with_pred typ2)
   | Tuple xtyps -> T.make_ttuple (List.map (to_simple ~with_pred -| snd) xtyps)
@@ -349,6 +340,9 @@ let rec to_simple ?(with_pred=false) typ =
   | ExtArg _ -> assert false
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
   | Exn(typ1, _) -> to_simple ~with_pred typ1
+
+let make_base base = Base(base, Id.new_var (Type.TBase base), U.true_term)
+let make_fun ty1 ty2 = Fun(Id.new_var @@ to_simple ty1, ty1, ty2)
 
 let rec set_base_var x = function
   | Base(base, y, p) -> Base(base, x, U.subst_var y x p)
@@ -476,8 +470,8 @@ let rec subtype env typ1 typ2 =
   | _, Exn(typ21,typ22) -> subtype env typ1 typ21
   | Exn _, _ -> false
   | List(x1,p_len1,y1,p_i1,typ1'), List(x2,p_len2,y2,p_i2,typ2') ->
-      let typ1'' = Tuple [x1,Base(Int,x1,p_len1); Id.new_var Type.Ty.int,Fun(y1,Base(Int,y1,p_i1),typ1')] in
-      let typ2'' = Tuple [x2,Base(Int,x2,p_len2); Id.new_var Type.Ty.int,Fun(y2,Base(Int,y2,p_i2),typ2')] in
+      let typ1'' = Tuple [x1,Base(T.TInt,x1,p_len1); Id.new_var Type.Ty.int,Fun(y1,Base(T.TInt,y1,p_i1),typ1')] in
+      let typ2'' = Tuple [x2,Base(T.TInt,x2,p_len2); Id.new_var Type.Ty.int,Fun(y2,Base(T.TInt,y2,p_i2),typ2')] in
       subtype env typ1'' typ2''
   | _ ->
       Format.eprintf "typ1: %a@." print typ1;
@@ -627,29 +621,29 @@ and simplify typ =
 
 let rec make_strongest typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(Unit, Id.new_var typ, U.false_term)
-  | T.TBase T.TBool -> Base(Bool, Id.new_var typ, U.false_term)
-  | T.TBase T.TInt -> Base(Int, Id.new_var typ, U.false_term)
-  | T.TData s -> Base(Abst s, Id.new_var typ, U.false_term)
+  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.false_term)
+  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.false_term)
+  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.false_term)
+  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.false_term)
   | T.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_strongest TList"
-  | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.false_term)
+  | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.false_term)
   | _ ->
       Format.eprintf "make_strongest: %a@." Print.typ typ;
       unsupported "Ref_type.make_strongest"
 
 and make_weakest typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(Unit, Id.new_var typ, U.true_term)
-  | T.TBase T.TBool -> Base(Bool, Id.new_var typ, U.true_term)
-  | T.TBase T.TInt -> Base(Int, Id.new_var typ, U.true_term)
-  | T.TData s -> Base(Abst s, Id.new_var typ, U.true_term)
+  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
+  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
   | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
-  | _ when typ = U.typ_result -> Base(Unit, Id.new_var typ, U.true_term)
+  | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.true_term)
   | _ ->
       Format.eprintf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"
@@ -746,3 +740,14 @@ let rec split_inter typ =
   | Inter(styp, typs) ->
       [Inter(styp, List.flatten_map split_inter typs)]
   | _ -> [typ]
+
+let rec has_inter_union ty =
+  match ty with
+  | Base _ -> false
+  | Fun(_,ty1,ty2) -> has_inter_union ty1 || has_inter_union ty2
+  | Tuple xts -> List.exists (snd |- has_inter_union) xts
+  | Inter(_,tys) -> tys <> []
+  | Union(_,tys) -> tys <> []
+  | ExtArg(_, ty1, ty2) -> has_inter_union ty1 || has_inter_union ty2
+  | List(_,_,_,_,ty') -> has_inter_union ty'
+  | Exn(ty1,ty2) -> has_inter_union ty1 || has_inter_union ty2

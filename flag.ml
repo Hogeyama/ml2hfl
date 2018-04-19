@@ -187,6 +187,7 @@ module Modular = struct
   let refine_init = ref false
   let use_neg_env = ref true
   let infer_merge = ref false
+  let check_simple = ref false
 end
 
 module Debug = struct

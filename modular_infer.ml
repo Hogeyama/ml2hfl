@@ -24,7 +24,7 @@ and type_template =
   | Arg of type_template * term list
   | PApp of type_template * term list
   | Singleton of term
-  | Base of (Ref_type.base * HC.pred_var) option (** None represents the result type X *)
+  | Base of (Type.base * HC.pred_var) option (** None represents the result type X *)
   | Const of id * term
   | Fun of id * type_template * type_template
   | Inter of typ * type_template list
@@ -49,7 +49,7 @@ and print_template fm = function
   | PApp(typ, ts) -> Format.fprintf fm "%a%a" print_template typ (List.print Print.term) ts
   | Singleton t -> Format.fprintf fm "{%a}" Print.term t
   | Base None -> Format.fprintf fm "*"
-  | Base (Some(base, p)) -> Format.fprintf fm "%a[P_%d]" Ref_type.print_base base p
+  | Base (Some(base, p)) -> Format.fprintf fm "%a[P_%d]" Type.print_base base p
   | Const(x,t) -> Format.fprintf fm "{%a:int | %a}" Id.print x Print.term t
   | Fun(x, tmp1, tmp2) when is_fun_var x -> Format.fprintf fm "(@[<hov 2>%a ->@ %a@])" print_template tmp1 print_template tmp2
   | Fun(x, tmp1, tmp2) -> Format.fprintf fm "(@[<hov 2>%a:%a ->@ %a@])" Id.print x print_template tmp1 print_template tmp2
@@ -121,7 +121,7 @@ let rec from_ref_type typ =
   match typ with
   | Ref_type.Base(_, x, t) -> Const(x, t)
   | Ref_type.Fun(x, typ1, Ref_type.Base(base,_,t)) ->
-      assert (base = Ref_type.Unit && t.desc = Const True);
+      assert (base = TUnit && t.desc = Const True);
       Fun(x, from_ref_type typ1, Base None)
   | Ref_type.Fun(x, typ1, typ2) -> Fun(x, from_ref_type typ1, from_ref_type typ2)
   | Ref_type.Tuple _ -> assert false
@@ -349,15 +349,15 @@ let rec decomp_fun typ =
   | Fun(x, typ1, typ2) -> Pair.map_fst (List.cons (x, typ1)) @@ decomp_fun typ2
   | _ -> [], typ
 
-let base_of_typ typ =
-  match elim_tattr typ with
-  | TBase TUnit -> Ref_type.Unit
-  | TBase TInt -> Ref_type.Int
-  | TBase TBool -> Ref_type.Bool
-  | TData s -> Ref_type.Abst s
-  | _ ->
-      Format.eprintf "%a@." Print.typ typ;
-      assert false
+let base_of_typ ty =
+  match decomp_base ty with
+  | Some b -> b
+  | None ->
+      match ty with
+      | TData s -> TPrim s
+      | _ ->
+          Format.eprintf "%a@." Print.typ ty;
+          assert false
 
 let rec init_with_pred_var cnt typ =
   let ip typ = init_with_pred_var cnt typ in
@@ -748,7 +748,7 @@ let rec apply_sol mode sol x vars tmp =
   | Base(Some _)
   | PApp(Base (Some _), _) ->
       if x = None then
-        Ref_type.Base(Ref_type.Unit, Id.new_var Ty.unit, true_term)
+        Ref_type.Base(TUnit, Id.new_var Ty.unit, true_term)
       else
         let base,p,ts =
           match tmp with
@@ -773,7 +773,7 @@ let rec apply_sol mode sol x vars tmp =
           with Not_found -> make_var any_var
         in
         Ref_type.Base(base, x', p)
-  | Base None -> Ref_type.Base(Ref_type.Unit, Id.new_var Ty.unit, true_term)
+  | Base None -> Ref_type.Base(TUnit, Id.new_var Ty.unit, true_term)
   | Fun(y,typ1,typ2) ->
       Ref_type.Fun(y, apply_sol mode sol (Some y) vars typ1, apply_sol mode sol None (y::vars) typ2)
   | Inter(styp, []) ->

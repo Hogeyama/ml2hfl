@@ -60,6 +60,7 @@ val remove_arg_at : int -> 'a t -> 'a t
 
 (** {6 destructor} *)
 
+val decomp_base : 'a t -> base option
 val decomp_tfun : 'a t -> 'a t Id.t list * 'a t
 val decomp_tfuns : 'a t -> 'a t Id.t list * 'a t
 val tuple_num : 'a t -> int option
@@ -99,6 +100,7 @@ val print :
   ?occur:('a t Id.t -> 'a t -> bool) ->
   (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 val print_init : Format.formatter -> 'a t -> unit
+val print_base : Format.formatter -> base -> unit
 val print_effect : Format.formatter -> effect -> unit
 
 module Ty : sig
