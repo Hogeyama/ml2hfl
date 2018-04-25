@@ -674,6 +674,7 @@ let term_typ = print_term true
 let defs = print_defs
 let constr fm t = pp_print_string fm @@ string_of_constr t
 let attr = print_attr_list
+let decls = print_declaration false
 
 let int = Format.pp_print_int
 let float = Format.pp_print_float

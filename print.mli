@@ -12,6 +12,7 @@ val term_typ : Format.formatter -> term -> unit
 val defs : Format.formatter -> (id * (id list * term)) list -> unit
 val constr : Format.formatter -> term -> unit
 val attr : Format.formatter -> attr list -> unit
+val decls : Format.formatter -> declaration list -> unit
 
 val int : Format.formatter -> int -> unit
 val float : Format.formatter -> float -> unit

@@ -37,6 +37,7 @@ let prim_typs =
    "Pervasives.format4", Ty.prim "string";
    "Pervasives.format6", Ty.prim "string";
    "CamlinternalFormatBasics.fmt", Ty.prim "string";
+   "CamlinternalFormatBasics.format6", Ty.prim "string";
    "exn", TData "exn"]
     @ List.map (fun s -> s, TBase (TPrim s)) prim_base_types
 
@@ -48,12 +49,17 @@ let from_mutable_flag = function
   | Asttypes.Immutable -> Immutable
 
 
-let prim_typ_cons =
+let prim_typ_constr =
   ["list", TList;
    "Pervasives.ref", TRef;
    "option", TOption;
    "array", TArray;
    "Lazy.t", TLazy]
+
+let is_prim_constr constrs =
+  match constrs with
+  | ["[]", []; "::", ty::_] -> Some (Ty.list ty)
+  | _ -> None
 
 (* for Types.type_declaration *)
 (* TODO: merge with one for Typeedtree.type_declaration *)
@@ -76,7 +82,8 @@ let rec from_type_declaration env tdata decl =
           | Cstr_record _ -> unsupported "Cstr_record"
         in
         let decls,constrs = List.fold_right aux constrs ([],[]) in
-        decls, TVariant(false, constrs)
+        let ty' = Option.default (TVariant(false, constrs)) @@ is_prim_constr constrs in
+        decls, ty'
     | Type_record(fields, _) ->
         let aux {ld_id;ld_mutable;ld_type} (decls,fields) =
           let s = Ident.name ld_id in
@@ -100,7 +107,7 @@ and from_type_exprs env tdata tys =
 
 and from_type_expr env tdata typ =
   let typ = Ctype.correct_levels typ in
-  let typ' = (if true then Ctype.repr else Ctype.full_expand env) typ in
+  let typ' = (if false then Ctype.repr else Ctype.full_expand env) typ in
   Debug.printf "ty1: %a@." Printtyp.type_expr typ;
   Debug.printf "ty2: %a@." Printtyp.type_expr typ';
   Debug.printf "ty3: %a@.@." Printtyp.raw_type_expr typ';
@@ -110,7 +117,7 @@ and from_type_expr env tdata typ =
       let s = Path.name p in
       let tdata' = s :: tdata in
       let decls' =
-        if List.mem_assoc s prim_typs || List.mem_assoc s prim_typ_cons || List.mem s tdata then
+        if List.mem_assoc s prim_typs || List.mem_assoc s prim_typ_constr || List.mem s tdata then
           []
         else
           let decls,ty = from_type_declaration env tdata' ty in
@@ -140,9 +147,9 @@ and from_type_expr env tdata typ =
         decls, make_ttuple tys'
     | Tconstr(path, _, _) when List.mem_assoc (Path.name path) prim_typs ->
         [], List.assoc (Path.name path) prim_typs
-    | Tconstr(path, typs, _) when List.mem_assoc (Path.name path) prim_typ_cons ->
+    | Tconstr(path, typs, _) when List.mem_assoc (Path.name path) prim_typ_constr ->
         let decls,tys = from_type_exprs env tdata typs in
-        decls, TApp(List.assoc (Path.name path) prim_typ_cons, tys)
+        decls, TApp(List.assoc (Path.name path) prim_typ_constr, tys)
     | Tconstr(path, typs, _) ->
         let s = Path.name path in
         let typ' = Ctype.expand_head env typ in
@@ -471,8 +478,14 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
   let decls1,typ' = from_type_expr env typ in
   let decls2,t =
     match exp_desc with
-    | Texp_ident(path, _, _) ->
-        [], make_var @@ from_ident_path id_env path typ'
+    | Texp_ident(path, _, ty_desc) ->
+        let decls,ty' = from_type_expr env ty_desc.val_type in
+        let decls' =
+          match typ' with
+          | TData s -> (s, ty')::decls
+          | _ -> decls
+        in
+        decls', make_var @@ from_ident_path id_env path typ'
     | Texp_constant c ->
         [], {desc = Const (from_constant c); typ = typ'; attr=[]}
     | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
@@ -898,9 +911,9 @@ let from_top_level_phrase (tenv,id_env,decls) ptop =
   | Parsetree.Ptop_def struc ->
       let struc',_,tenv' = Typemod.type_structure tenv struc Location.none in
       let id_env',decls' = from_structure id_env struc' in
-      tenv', id_env', decls' @ decls
+      tenv', id_env', decls @ decls'
 
-let make_local' t (flag,decl) =
+let make_local' (flag,decl) t =
   match flag,decl with
   | Nonrecursive, Decl_let defs ->
       let map =
@@ -928,5 +941,5 @@ let from_use_file ast =
   ast
   |> List.fold_left from_top_level_phrase (env,[],[])
   |> Triple.trd
-  |> List.fold_left make_local' end_of_definitions
+  |> List.fold_right make_local' -$- end_of_definitions
   |> subst_tdata "exn" !!exc_typ
