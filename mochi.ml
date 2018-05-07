@@ -293,7 +293,7 @@ let rec arg_spec () =
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
-     "-abst-list-literal", Arg.Set_int Flag.Method.abst_list_literal, " Abstract long list literals";
+     "-abst-literal", Arg.Set_int Flag.Method.abst_literal, " Abstract long list literals";
      "-ignore-non-termination", Arg.Set Flag.Method.ignore_non_termination, " Ignore non-termination";
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";

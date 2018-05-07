@@ -282,8 +282,11 @@ let rec to_abst_typ ?(with_pred=false) typ =
   let r =
   match typ with
   | Base(b, x, ({S.desc=S.Const _} as p)) ->
-      T.TBase b
-      |&with_pred&> T.add_tattr (T.TARefPred(x,p))
+      let sty = T.TBase b in
+      if with_pred then
+        T.add_tattr (T.TARefPred(x,p)) sty
+      else
+        T.add_tattr (T.TAPred(x,[p])) sty
   | Base(b, x, t) ->
       let x' = Id.new_var_id x in
       let typ' = T.TBase b in
@@ -334,7 +337,7 @@ let rec to_simple ?(with_pred=false) typ =
   | Inter(sty, _)
   | Union(sty, _) ->
       if with_pred then
-        to_abst_typ ~with_pred:true typ
+        to_abst_typ typ
       else
         sty
   | ExtArg _ -> assert false

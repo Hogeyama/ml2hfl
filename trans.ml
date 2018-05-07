@@ -3048,3 +3048,30 @@ let split_type_decls =
   in
   tr.tr_desc <- tr_desc;
   tr.tr_term
+
+
+let is_big_literal t =
+  match t.desc with
+  | Const (Int n) -> !Flag.Method.abst_literal <= n
+  | Const (String s) -> !Flag.Method.abst_literal <= String.length s
+  | Cons _ ->
+      begin
+        match decomp_list t with
+        | None -> false
+        | Some ts -> List.length ts >= !Flag.Method.abst_literal && List.for_all has_no_effect ts
+      end
+  | _ -> false
+
+let abst_literal =
+  let tr = make_trans () in
+  let tr_term t =
+    if is_big_literal t then
+      begin
+        Flag.use_abst := true;
+        make_randvalue_unit t.typ
+      end
+    else
+      tr.tr_term_rec t
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_term

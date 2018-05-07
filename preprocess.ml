@@ -52,6 +52,7 @@ type preprocess_label =
   | Abst_recursive_record
   | Inline_simple_types
   | Abst_polymorphic_comparison
+  | Abst_literal
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -106,6 +107,7 @@ let string_of_label = function
   | Abst_recursive_record -> "Abst recursive record"
   | Inline_simple_types -> "Inline simple types"
   | Abst_polymorphic_comparison -> "Abst polymorphic comparison"
+  | Abst_literal -> "Abst literal"
 
 let last (acc:result list) = snd @@ List.hd acc
 let last_t (acc:result list) = fst @@ last acc
@@ -202,6 +204,8 @@ let all spec : t list =
       map_trans Encode.recdata;
     Inline_type_decl,
       map_trans inline_type_decl;
+    Abst_literal,
+      map_trans abst_literal;
     Encode_list,
       Option.some -| List.singleton -| Encode.list;
     Ret_fun,

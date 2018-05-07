@@ -354,35 +354,6 @@ let inst_list_eq t =
 
 
 
-
-
-
-let is_long_literal t =
-  match decomp_list t with
-  | None -> false
-  | Some ts -> List.length ts >= !Flag.Method.abst_list_literal (*&& List.for_all has_no_effect ts*)
-let abst_list_literal = make_trans ()
-let abst_list_literal_term t =
-  match t.desc with
-  | Cons _ when is_long_literal t ->
-      Flag.use_abst := true;
-      let ts = List.take !Flag.Method.abst_list_literal @@ Option.get @@ decomp_list t in
-      List.fold_right make_cons ts @@ make_randvalue_unit t.typ
-  | _ -> abst_list_literal.tr_term_rec t
-let () = abst_list_literal.tr_term <- abst_list_literal_term
-let abst_list_literal t =
-  if !Flag.Method.abst_list_literal >= 0 then
-    abst_list_literal.tr_term t
-  else
-    t
-
-
-
-
-
-
-
-
 let rec get_rtyp_list_opt rtyp typ = raise (Fatal "not implemented get_rtyp_list_opt")
 
 let get_rtyp_list_of typed f rtyp =
@@ -517,9 +488,6 @@ let trans_term t =
   |*> Trans.remove_top_por
   |*@> pr "remove_top_por"
   |*@> Type_check.check ~ty:t.typ
-  |> abst_list_literal
-  |@> pr "abst_list_literal"
-  |@> Type_check.check ~ty:t.typ
   |> tr
   |@> (fun t -> Type_check.check t ~ty:t.typ) -| fst
   |@> pr "trans" -| fst
