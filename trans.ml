@@ -1605,10 +1605,10 @@ let replace_base_with_int =
   let tr_desc desc =
     match desc with
     | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) ->
-        Flag.use_abst := true;
+        Flag.add_use_abst "Base with int";
         randint_unit_term.desc
     | Const(RandValue(TBase (TPrim _), b)) ->
-        Flag.use_abst := true;
+        Flag.add_use_abst "Base with int";
         Const (RandValue(Ty.int,b))
     | _ -> tr.tr_desc_rec desc
   in
@@ -2695,7 +2695,7 @@ let extract_module =
         in
         (tr.tr_term @@ List.fold_right aux decls t).desc
     | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
-        Flag.use_abst := true;
+        Flag.add_use_abst "Functor";
         t.desc
     | Module _ ->
         Format.eprintf "%a@." Print.desc desc;
@@ -3052,7 +3052,7 @@ let split_type_decls =
 
 let is_big_literal t =
   match t.desc with
-  | Const (Int n) -> !Flag.Method.abst_literal <= n
+  | Const (Int n) -> !Flag.Method.abst_literal <= abs n
   | Const (String s) -> !Flag.Method.abst_literal <= String.length s
   | Cons _ ->
       begin
@@ -3067,11 +3067,11 @@ let abst_literal =
   let tr_term t =
     if is_big_literal t then
       begin
-        Flag.use_abst := true;
+        Flag.add_use_abst "Literal";
         make_randvalue_unit t.typ
       end
     else
       tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
-  tr.tr_term
+  fun t -> if !Flag.Method.abst_literal < 0 then t else tr.tr_term t

@@ -464,7 +464,7 @@ let abstract_prog prog =
   let attr = List.remove_all prog.info.attr ACPS in
   {env; defs; main=prog.main; info={prog.info with attr}}
 
-let pr s prog = Debug.printf "##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
+let pr s prog = Debug.printf "@.##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
 
 let abstract prog top_funs =
   let labeled,prog = add_label prog in

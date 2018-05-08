@@ -884,22 +884,25 @@ let rec simplify_if_term env t =
       simplify_if_term env t3
   | App(App(App(Const If, t1), t2), t3) ->
       let add_env t env = if has_rand t then env else t::env in
-      let t1' = simplify_if_term env t1 in
-      let t1'' = normalize_bool_term t1' in
-      let t2' = simplify_if_term (add_env t1'' env) t2 in
-      let t3' = simplify_if_term (add_env (make_not t1'') env) t3 in
-      let t1''',t2'',t3'' =
-        match t1'' with
-        | App(Const Not, t1''') -> t1''', t3', t2'
-        | _ -> t1'', t2', t3'
+      let t1' =
+        t1
+        |> simplify_if_term env
+        |> normalize_bool_term
+      in
+      let t2' = simplify_if_term (add_env t1' env) t2 in
+      let t3' = simplify_if_term (add_env (make_not t1') env) t3 in
+      let t1'',t2'',t3'' =
+        match t1' with
+        | App(Const Not, t1'') -> t1'', t3', t2'
+        | _ -> t1', t2', t3'
       in
       begin
-        if implies env t1''' then
+        if implies env t1'' then
           t2''
-        else if implies env (make_not t1''') then
+        else if implies env (make_not t1'') then
           t3''
         else
-          make_if t1''' t2'' t3''
+          make_if t1'' t2'' t3''
       end
   | App(t1,t2) -> App(simplify_if_term env t1, simplify_if_term env t2)
   | Let(x, t1, t2) -> Let(x, simplify_if_term env t1, simplify_if_term env t2)

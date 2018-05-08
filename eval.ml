@@ -241,7 +241,7 @@ exception Unsound
 let print fm (ce, {Problem.term=t}) =
   try
     ignore @@ eval_print fm ce t;
-    if !Flag.use_abst then raise Unsound;
+    if !Flag.use_abst <> [] then raise Unsound;
     assert false
   with
   | RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@\n"

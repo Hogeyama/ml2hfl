@@ -334,7 +334,7 @@ let inst_list_eq_term map t =
             else
               make_app (make_var @@ List.assoc typ map) [t1'; t2']
         | TApp(TList, _) ->
-            Flag.use_abst := true;
+            Flag.add_use_abst "List equality";
             randbool_unit_term
         | _ -> inst_list_eq.tr2_term_rec map t
       end

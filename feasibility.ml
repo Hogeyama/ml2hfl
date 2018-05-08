@@ -134,6 +134,7 @@ let check ce {defs; main} =
   let pr _ _ _ _ = () in
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
+  Debug.printf "constr: %a@." CEGAR_print.term constr;
   let result =
     if checksat env' constr
     then

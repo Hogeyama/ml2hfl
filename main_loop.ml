@@ -120,13 +120,13 @@ let report_unsafe main ce set_main =
     if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
       "Unknown."
     else
-      if !Flag.use_abst then
-        "Unknown (because of abstraction options)"
+      if !Flag.use_abst <> [] then
+        Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
       else
         "Unsafe!"
   in
   Color.printf Color.Bright "%s@.@." s;
-  if not !Flag.use_abst then
+  if !Flag.use_abst = [] then
     let pr main_fun =
       let arg_num = Type.arity @@ Id.typ main_fun in
       if arg_num > 0 then

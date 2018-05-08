@@ -424,7 +424,7 @@ let conv_primitive_app t ts typ =
       make_app {randint_term with attr} [unit_term]
   | Var {Id.name="Pervasives.!"}, [t] -> make_deref t
   | Var {Id.name="Pervasives.:="}, [t1;t2] -> make_setref t1 t2
-  | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> make_eq (make_app randint_term [unit_term]) (make_int 0)
+  | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> randbool_unit_term
   | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
   | Var {Id.name="Random.int"}, [t] ->
       let x = Id.new_var ~name:"n" Ty.int in

@@ -74,7 +74,7 @@ let abst_ref_term =
     | Ref t1 ->
         make_ignore t1
     | Deref t1 ->
-        Flag.use_abst := true;
+        Flag.add_use_abst "References";
         Term.(seq t1 (rand t'.typ))
     | SetRef(t1, t2) ->
         Term.(seqs [t1;t2] unit)
@@ -244,7 +244,7 @@ let abst_rec_record_term =
         let t1' = tr.tr2_term (recs'@recs) t1 in
         make_local (Decl_type decls') t1'
     | Record fields when List.mem t.typ recs ->
-        Flag.use_abst := true;
+        Flag.add_use_abst "Recursive records";
         let bindings =
           fields
           |> List.map snd
@@ -253,12 +253,12 @@ let abst_rec_record_term =
         in
         make_lets bindings randint_unit_term
     | SetField(t1,_,t2) when List.mem t1.typ recs ->
-        Flag.use_abst := true;
+        Flag.add_use_abst "Recursive records";
         let t1' = tr.tr2_term recs t1 in
         let t2' = tr.tr2_term recs t2 in
         make_seq t1' t2'
     | Field(t1,_) when List.mem t1.typ recs ->
-        Flag.use_abst := true;
+        Flag.add_use_abst "Recursive records";
         let t1' = tr.tr2_term recs t1 in
         let ty = tr.tr2_typ recs t.typ in
         Term.(seq t1' (rand ty))

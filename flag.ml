@@ -7,7 +7,8 @@ let spec_file = ref ""
 
 let time_limit = ref 0
 
-let use_abst = ref false
+let use_abst : string list ref = ref []
+let add_use_abst s = if not @@ List.mem s !use_abst then use_abst := s :: !use_abst
 let pp : string option ref = ref None
 
 module TRecS = struct
