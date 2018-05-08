@@ -209,9 +209,27 @@ let rec map_pred f typ =
   | List(y,p_len,z,p_i,typ) -> List(y, f p_len, z, f p_i, map_pred f typ)
   | Exn(typ1, typ2) -> Exn(map_pred f typ1, map_pred f typ2)
 
-let subst x t typ = map_pred (U.subst x t) typ
-let subst_map map typ = map_pred (U.subst_map map) typ
-let subst_var x y typ = map_pred (U.subst_var x y) typ
+let rec subst_map map typ =
+  match typ with
+  | Base(base,y,p) ->
+      let map' = List.filter (fst |- Id.eq y) map in
+      Base(base, y, U.subst_map map p)
+  | Fun(y,typ1,typ2) ->
+      let map' = List.filter (fst |- Id.eq y) map in
+      Fun(y, subst_map map typ1, subst_map map' typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ subst_map map) xtyps)
+  | Inter(typ, typs) -> Inter(typ, List.map (subst_map map) typs)
+  | Union(typ, typs) -> Union(typ, List.map (subst_map map) typs)
+  | ExtArg(y,typ1,typ2) ->
+      let map' = List.filter (fst |- Id.eq y) map in
+      ExtArg(y, subst_map map typ1, subst_map map' typ2)
+  | List(y,p_len,z,p_i,typ) ->
+      let map1 = List.filter (fst |- Id.eq y) map in
+      let map2 = List.filter (fst |- Id.eq z) map1 in
+      List(y, U.subst_map map p_len, z, U.subst_map map1 p_i, subst_map map2 typ)
+  | Exn(typ1, typ2) -> Exn(subst_map map typ1, subst_map map typ2)
+let subst x t typ = subst_map [x,t] typ
+let subst_var x y typ = subst x (U.make_var y) typ
 let subst_rev t x typ = map_pred (U.subst_rev t x) typ
 let replace_term t1 t2 t3 =
   let x = Id.new_var t1.S.typ in
