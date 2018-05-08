@@ -53,7 +53,7 @@ let unfold sol =
   let rec aux t =
     match CEGAR_syntax.decomp_app t with
     | _, [] -> t
-    | CEGAR_syntax.Var "exists", [args; t] -> CEGAR_syntax.make_app (CEGAR_syntax.Var "exists") [args; aux t]
+    | CEGAR_syntax.Var ("exists"|"forall" as s), [args; t] -> CEGAR_syntax.make_app (CEGAR_syntax.Var s) [args; aux t]
     | CEGAR_syntax.Var f, ts ->
         let args,t' = Hashtbl.find sol' f in
         let xs = List.map fst args in

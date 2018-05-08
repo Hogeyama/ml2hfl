@@ -9,13 +9,14 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 let rec conv_formula' t =
   match t with
-  | App(App(Var "exists", args), t1) ->
+  | App(App(Var ("exists"|"forall" as q), args), t1) ->
       let args' =
         match decomp_app args with
         | Var "args", ts -> List.map (function Var x -> F.Idnt.make x, F.Type.mk_int | _ -> invalid_arg "FpatInterface.conv_term") ts
         | _ -> invalid_arg "FpatInterface.conv_term"
       in
-      F.Formula.exists args' @@ conv_formula' t1
+      let f = match q with "exists" -> F.Formula.exists | "forall" -> F.Formula.forall | _ -> assert false in
+      f args' @@ conv_formula' t1
   | Const(c) ->
       F.Formula.of_term @@ F.Term.mk_const (conv_const c)
   | Var(x) ->
