@@ -4,6 +4,8 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 module F = Fpat
 
+exception TimeOut
+
 let rec fix_id_T x =
   match x with
   | F.Idnt.T(y, _, n) -> F.Idnt.T(fix_id_T y, 0, n)
@@ -18,12 +20,13 @@ let solve_file filename =
     | Z3_spacer -> !z3_spacer
   in
   let sol = Filename.change_extension filename "sol" in
-  let cmd' = Format.sprintf "%s %s > %s" cmd filename sol in
+  let cmd' = Format.sprintf "(ulimit -t %d; %s %s > %s)" !Flag.Refine.solver_timelimit cmd filename sol in
   let r = Sys.command cmd' in
-  if r = 128+9 then killed();
+  if r = 128+9 then raise TimeOut;
   let s = IO.input_file sol in
   if r <> 0 || s = "" then fatal "solver aborted";
-  Sexp.parse ~parse_atom:Smtlib2_interface.parse_atom s
+  Smtlib2_interface.parse_sexp s
+  |@> Debug.printf "PARSED: %a@." (List.print Sexp.print)
 
 let print_sol = Print.(list (pair string (pair (list (pair string CEGAR_print.typ)) CEGAR_print.term)))
 

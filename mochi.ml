@@ -287,7 +287,7 @@ let rec arg_spec () =
      "-v", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version shortly";
      "-env", Arg.Unit (fun () -> print_env false true; exit 0), " Print the version and the environment as JSON";
      "-version", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version";
-     "-limit", Arg.Set_int Flag.time_limit, " Set time limit";
+     "-limit", Arg.Set_int Flag.time_limit, " Set time limit (seconds)";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      (* abstraction *)
@@ -392,6 +392,7 @@ let rec arg_spec () =
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
      "-rec-hccs", Arg.Set Flag.Refine.use_rec_hccs_solver, " Use recursive horn-clause solver";
+     "-rec-hccs-limit", Arg.Set_int Flag.Refine.solver_timelimit, " Set time limit for recursive horn-clause solver (seconds)";
      "-hoice", Arg.Unit Flag.Refine.(fun () -> solver:=Hoice), " Use HoICE as the recursive horn-clause solver";
      "-z3", Arg.Unit Flag.Refine.(fun () -> solver:=Z3), " Use Z3 as the recursive horn-clause solver";
      "-z3-spacer", Arg.Unit Flag.Refine.(fun () -> solver:=Z3_spacer), " Use Z3 (Spacer) as the recursive horn-clause solver";

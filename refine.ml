@@ -241,7 +241,14 @@ let refine labeled is_cp prefix ces ext_ces prog =
           [List.hd ces], [List.hd ext_ces]
       in
       Format.printf "@[<v>";
-      let solver = if !Flag.Refine.use_rec_hccs_solver then fun _ -> Rec_HCCS_solver.solve else Fun.id in
+      let solver orig c =
+        if !Flag.Refine.use_rec_hccs_solver then
+          try
+            Rec_HCCS_solver.solve c
+          with Rec_HCCS_solver.TimeOut -> orig c
+        else
+          orig c
+      in
       let map = FpatInterface.infer solver labeled is_cp ces ext_ces prog in
       Format.printf "@]";
       map

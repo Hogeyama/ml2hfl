@@ -129,6 +129,7 @@ module Refine = struct
   let use_rec_hccs_solver = ref false
   type solver = Hoice | Z3 | Z3_spacer
   let solver = ref Hoice
+  let solver_timelimit = ref 5 (* seconds *)
   let hoice = ref Mconfig.hoice
   let z3 = ref Mconfig.z3
   let z3_spacer = ref (Mconfig.z3 ^ " fixedpoint.engine=spacer")
