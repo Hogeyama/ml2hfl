@@ -5,6 +5,27 @@ open Type
 
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
+let make_tuple' ts =
+  match ts with
+  | [t] -> t
+  | _ -> make_tuple ts
+let make_ttuple' tys =
+  match tys with
+  | [ty] -> ty
+  | _ -> make_ttuple tys
+let make_ptuple' ps =
+  match ps with
+  | [p] -> p
+  | _ -> make_ptuple ps
+module Term = struct
+  include Term
+  let tuple' = make_tuple'
+end
+module Ty = struct
+  include Ty
+  let tuple' = make_ttuple'
+end
+
 let abst_recdata = make_trans2 ()
 
 let abst_recdata_leaves env typs =
@@ -12,7 +33,7 @@ let abst_recdata_leaves env typs =
   let r_typ =
     if typs = []
     then Ty.int
-    else Ty.(tuple [int; tuple typs'])
+    else Ty.(tuple [int; tuple' typs'])
   in
   Ty.(tuple [unit; (* extra-param *)
              pureTFun(Id.new_var ~name:"path" @@ list int, r_typ)])
@@ -34,16 +55,16 @@ let encode_recdata_typ env s ty =
               else
                 unsupported "encode_variant: non-simple recursion"
         in
-        List.map (make_tpair Ty.bool) @@ List.map (fun (_,tys) -> make_ttuple @@ List.filter_map aux tys) labels
+        List.map (make_tpair Ty.bool) @@ List.map (make_ttuple' -| List.filter_map aux -| snd) labels
       in
-      Ty.(pair unit (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, tuple tys)))
+      Ty.(pair unit (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, tuple' tys)))
   | _ -> abst_recdata.tr2_typ env ty
 
 let abst_recdata_typ env typ =
   match typ with
   | TRecord fields -> unsupported "abst_recdata_typ TRecord"
   | TVariant(false,labels) ->
-      let aux (s,tys) = Ty.(pair bool (tuple @@ List.map (abst_recdata.tr2_typ env) tys)) in
+      let aux (s,tys) = Ty.(pair bool (tuple' @@ List.map (abst_recdata.tr2_typ env) tys)) in
       make_ttuple @@ List.map aux labels
   | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
   | _ -> abst_recdata.tr2_typ_rec env typ
@@ -85,14 +106,14 @@ let rec abst_recdata_pat env p =
             p'::ps, make_and cond' cond, bind'@bind
           in
           let ps,cond,bind = List.fold_right aux ps ([],true_term,[]) in
-          make_ptuple ps, cond, bind
+          make_ptuple' ps, cond, bind
         in
         let ps' =
           let aux (c',tys) =
             if c = c' then
               Pat.(pair true_ p')
             else
-              let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
+              let ty = make_ttuple' @@ List.map (abst_recdata.tr2_typ env) tys in
               Pat.(pair false_ (__ ty))
           in
           let poly,decls = decomp_tvariant @@ expand_typ env p.pat_typ in
@@ -102,6 +123,7 @@ let rec abst_recdata_pat env p =
         PTuple ps', true_term, []
     | PConstr(c,ps) ->
         let f = Id.new_var typ in
+        Format.printf "f: %a@." Print.id_typ f;
         let pcbs = List.map (abst_recdata_pat env) ps in
         let binds =
           let make_bind (acc,i) p (p',_,_) =
@@ -111,7 +133,7 @@ let rec abst_recdata_pat env p =
                 i+1, Term.(pair unit (* extra-param *)
                                 (fun_ path (snd (var f) @ [list [int i]])))
               else
-                i, Term.(proj i (snd (snd (var f) @ [list [int i]])))
+                i, Term.(snd (proj i (snd (var f) @ [list [int i]])))
             in
             acc@[t', p'], i'
           in
@@ -192,10 +214,10 @@ let abst_recdata_term env t =
   | Constr(c,ts) when not (is_rec_type env t.typ) ->
       let aux (c',tys) =
         if c = c' then
-          let t' = make_tuple @@ List.map (abst_recdata.tr2_term env) ts in
+          let t' = make_tuple' @@ List.map (abst_recdata.tr2_term env) ts in
           Term.(pair true_ t')
         else
-          let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
+          let ty = make_ttuple' @@ List.map (abst_recdata.tr2_typ env) tys in
           Term.(pair false_ (rand ty))
       in
       make_tuple @@ List.map aux @@ snd @@ decomp_tvariant @@ expand_typ env t.typ
@@ -210,10 +232,10 @@ let abst_recdata_term env t =
           let make_return ts' =
             let aux (c',tys) =
               if c = c' then
-                Term.(pair true_ (tuple ts'))
+                Term.(pair true_ (tuple' ts'))
               else
                 let tys' = List.filter_out ((=) t.typ) tys in
-                let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys' in
+                let ty = make_ttuple' @@ List.map (abst_recdata.tr2_typ env) tys' in
                 Term.(pair false_ (rand ty))
             in
             make_tuple @@ List.map aux labels
