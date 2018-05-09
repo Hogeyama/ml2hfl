@@ -191,20 +191,12 @@ let make_eq t1 t2 =
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
   {desc=BinOp(Lt, t1, t2); typ=(TBase TBool); attr=make_attr[t1;t2]}
 let make_gt t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
   {desc=BinOp(Gt, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_leq t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
   {desc=BinOp(Leq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_geq t1 t2 =
-  assert (true || Flag.Debug.check_typ => Type.can_unify t1.typ (TBase TInt));
-  assert (true || Flag.Debug.check_typ => Type.can_unify t2.typ (TBase TInt));
   {desc=BinOp(Geq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_binop op t1 t2 =
   let f =
@@ -596,8 +588,11 @@ let make_single_match ?(total=false) t1 p t2 =
   then make_match t1 [p, true_term, t2]
   else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let make_trywith t x pats =
-  let handler = make_fun x @@ make_match (make_var x) pats in
-  {desc=TryWith(t, handler); typ=t.typ; attr=[]}
+  if List.Set.subset [ANotFail;ATerminate] t.attr then
+    t
+  else
+    let handler = make_fun x @@ make_match (make_var x) pats in
+    {desc=TryWith(t, handler); typ=t.typ; attr=[]}
 let make_trywith_simple t handler = {desc=TryWith(t, handler); typ=t.typ; attr=[]}
 
 
