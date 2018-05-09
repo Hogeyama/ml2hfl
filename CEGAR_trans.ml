@@ -26,8 +26,9 @@ let rec decomp_bool t =
 
 let rec merge_typ env typ typ' =
   match typ,typ' with
-  | TBase(b1,_), TApp(TConstr(TFixPred p), TBase(b2, _))
-  | TApp(TConstr(TFixPred p), TBase(b1, _)), TBase(b2, _) when b1 = b2 ->
+  | TBase(b1,ps), TApp(TConstr(TFixPred p), TBase(b2, _))
+  | TApp(TConstr(TFixPred p), TBase(b1, _)), TBase(b2, ps) when b1 = b2 ->
+      if ps (Var "x") <> [] then unsupported "merge_typ TFixPred";
       TApp(TConstr(TFixPred p), TBase(b1, fun _ -> []))
   | TBase(b1,ps1),TBase(b2,ps2) when b1 = b2 ->
       let x = !!new_id' in
