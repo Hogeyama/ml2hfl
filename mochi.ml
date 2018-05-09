@@ -364,9 +364,7 @@ let rec arg_spec () =
                       " Never use negative predicates for abstraction";
      "-decomp-pred", Arg.Set Flag.PredAbst.decomp_pred, " Decompose abstraction predicates (e.g., [P1 && P2] ==> [P1, P2])";
      "-decomp-eq-pred", Arg.Set Flag.PredAbst.decomp_eq_pred, " Decompose abstraction predicates on equalities (e.g., [t1 = t2] ==> [t1 <= t2, t1 >= t2])";
-     "-shift-pred",
-       Arg.Int (fun n -> Flag.PredAbst.shift_pred := Some n; Fpat.AbsTypInfer.add_path_info := true),
-       " Set predicates true for safe function arguments";
+     "-shift-pred", Arg.Set Flag.PredAbst.shift_pred, " Set predicates true for safe function arguments";
      "-non-cartesian", Arg.Clear Flag.PredAbst.cartesian, " Do non-cartesian abstraction";
      (* higher-order model checking *)
      "", Arg.Unit ignore, "Options_for_model_checking";

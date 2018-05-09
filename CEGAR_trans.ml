@@ -55,13 +55,6 @@ let rec merge_typ env typ typ' =
       let ps = List.fold_right add ps1' ps2'' in
       let ps t = List.map (subst x t) ps in
       TBase(b1, ps)
-  | TFun(TApp(TConstr TAssumeTrue, ty11),ty12), TFun(ty21,ty22)
-  | TFun(ty21,ty22), TFun(TApp(TConstr TAssumeTrue, ty11),ty12) ->
-      begin
-        match merge_typ env (TFun(ty21,ty22)) (TFun(ty11,ty12)) with
-        | TFun(ty1,ty2) -> TFun(TApp(TConstr TAssumeTrue,ty1), ty2)
-        | _ -> assert false
-      end
   | TFun(typ11,typ12), TFun(typ21,typ22) ->
       let x = !!new_id' in
       let env' = (x,typ11)::env in
@@ -183,7 +176,7 @@ and trans_typ ty =
   | Type.TAttr(attr, typ) when List.mem Type.TAAssumePredTrue attr ->
       let attr' = List.filter ((<>) Type.TAAssumePredTrue) attr in
       let ty' = trans_typ @@ Type._TAttr attr' typ in
-      TApp(TConstr TAssumeTrue, ty')
+      TApp(TConstr (TFixPred(fun _ -> Const True)), ty')
   | Type.TAttr(_, typ) when Term_util.get_tapred ty <> None ->
       let x,ps = Option.get @@ Term_util.get_tapred ty in
       begin
@@ -956,8 +949,3 @@ and beta_subst x t1 t2 =
   match t1 with
   | Fun(y,_,t11) -> beta_subst_aux x (y,t11) t2
   | _ -> subst x t1 t2
-
-
-let elim_assume_true prog =
-  let env = List.map (Pair.map_snd elim_assume_true) prog.env in
-  {prog with env}

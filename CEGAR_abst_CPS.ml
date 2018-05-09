@@ -419,7 +419,6 @@ let rec abstract_typ = function
       let typs = abstract_typ typ1 in
       let aux typ1 typ2 = TFun(typ1, fun _ -> typ2) in
       [List.fold_right aux typs @@ List.get @@ abstract_typ typ2]
-  | TApp(TConstr TAssumeTrue, ty) -> abstract_typ ty
   | TApp(TConstr (TFixPred _), ty) -> abstract_typ ty
   | _ -> assert false
 

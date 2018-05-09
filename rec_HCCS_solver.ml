@@ -6,11 +6,6 @@ module F = Fpat
 
 exception TimeOut
 
-let rec fix_id_T x =
-  match x with
-  | F.Idnt.T(y, _, n) -> F.Idnt.T(fix_id_T y, 0, n)
-  | _ -> x
-
 let solve_file filename =
   let cmd =
     let open Flag.Refine in
@@ -34,7 +29,7 @@ let preprocess_rec_hccs hcs =
   let map =
     let rename x =
       x
-      |> fix_id_T
+      |> F.Idnt.reset_uid
       |> Format.asprintf "|%a|" F.Idnt.pr
       |> F.Idnt.make
     in

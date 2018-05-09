@@ -51,7 +51,7 @@ val remove_equiv : t list -> t list
 val contract : t -> t
 val map_pred : (Syntax.term -> Syntax.term) -> t -> t
 
-(** {6 Converter} *)
+(** {6 Translator} *)
 val of_simple : Syntax.typ -> t
 val to_simple : ?with_pred:bool -> t -> Syntax.typ
 val to_abst_typ : ?with_pred:bool -> t -> Syntax.typ

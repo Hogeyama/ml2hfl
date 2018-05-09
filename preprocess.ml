@@ -222,7 +222,7 @@ let all spec : t list =
     Make_ext_funs,
       map_trans make_ext_funs;
     Mark_safe_fun_arg,
-      cond_trans (!Flag.PredAbst.shift_pred <> None) @@
+      cond_trans !Flag.PredAbst.shift_pred @@
       map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;
     Abst_polymorphic_comparison,
       map_trans Encode.abst_poly_comp;

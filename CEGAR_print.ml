@@ -40,7 +40,6 @@ and print_typ_constr fm constr =
   | TList -> Format.fprintf fm "list"
   | TTuple -> Format.fprintf fm "tuple"
   | TFixPred _ -> assert false
-  | TAssumeTrue -> assert false
   | TPath path -> Format.fprintf fm "path %a" (List.print Format.pp_print_int) path
 
 and print_typ_aux var fm = function
@@ -52,8 +51,6 @@ and print_typ_aux var fm = function
       Format.fprintf fm "%a" print_typ_base b;
       if preds <> [] then
         Format.fprintf fm "[@[%a@]]" (Color.blue @@ print_list print_linear_exp ";@ ") preds
-  | TApp(TConstr TAssumeTrue, ty) ->
-      Format.fprintf fm "%a^T" (print_typ_aux var) ty
   | TApp(TConstr (TFixPred p), ty) ->
       let x = new_id "x" in
       let pred = p (Var x) in
@@ -372,7 +369,6 @@ and print_typ_constr_as_tree fm constr =
   match constr with
   | TList -> Format.fprintf fm "TList"
   | TTuple -> Format.fprintf fm "TTuple"
-  | TAssumeTrue -> Format.fprintf fm "TAssumeTrue"
   | TFixPred p ->
       let x = new_id "x" in
       Format.fprintf fm "TFixPred(fun %s->%a)" x print_term_as_tree (p (Var x))

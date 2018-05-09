@@ -11,7 +11,6 @@ type base =
 type 'a constr =
   | TList
   | TTuple
-  | TAssumeTrue
   | TFixPred of ('a -> 'a)
   | TPath of int list (* used only for refinement *)
 
@@ -49,7 +48,6 @@ let make_tapp typ typs =
 let make_ttuple typs =
   make_tapp (TConstr TTuple) typs
 
-let make_assume_true ty = _TApp (TConstr TAssumeTrue) ty
 
 
 (** Destructors/Inspectors *)
@@ -57,7 +55,7 @@ let make_assume_true ty = _TApp (TConstr TAssumeTrue) ty
 let rec decomp_base ty =
   match ty with
   | TBase(b, ps) -> Some (b, ps)
-  | TApp(TConstr TAssumeTrue, ty) -> decomp_base ty
+  | TApp(TConstr (TFixPred _), ty) -> decomp_base ty
   | _ -> None
 
 let is_base ty = None <> decomp_base ty
@@ -100,15 +98,6 @@ let rec map f ty =
       | TConstr _ -> ty
       | TApp(ty1,ty2) -> TApp(map f ty1, map f ty2)
       | TFun(ty1, ty2) -> TFun(map f ty1, map f -| ty2)
-
-let elim_assume_true =
-  let tr f ty =
-    match ty with
-    | TApp(TConstr TAssumeTrue,ty') -> Some (f ty')
-    | _ -> None
-  in
-  fun ty -> map tr ty
-
 
 let map_base f =
   let tr _ ty =

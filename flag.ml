@@ -118,7 +118,7 @@ module PredAbst = struct
   let decomp_eq_pred = ref false
   let no_simplification = ref false
   let cartesian = ref true
-  let shift_pred : int option ref = ref None
+  let shift_pred = ref false
 end
 
 module Refine = struct

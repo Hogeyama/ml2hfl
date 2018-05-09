@@ -131,7 +131,6 @@ let abstract orig_fun_list prog =
 
 
 let abstract orig_fun_list force ?(top_funs=[]) prog =
-  let prog = CEGAR_trans.elim_assume_true prog in
   let labeled,abst =
     Time.measure_and_add
       Flag.Log.time_abstraction

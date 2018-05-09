@@ -10,163 +10,12 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.Log.cegar_loop)
 
-let decomp_path p =
-  match decomp_app p with
-  | Const (Temp "path"), p'::path ->
-      p', List.map (function Const (Int n) -> n | _ -> assert false) path
-  | _ -> assert false
-
-let compose_path path p =
-  make_app (Const (Temp "path")) (p :: List.map make_int path)
-
-let rec copy_attr ty1 ty2 =
-  match ty1,ty2 with
-  | TBase _, TBase _ -> ty2
-  | TFun(TApp(TConstr TAssumeTrue, ty11),ty12), TFun(ty21,ty22) ->
-      begin
-        match copy_attr (TFun(ty11,ty12)) (TFun(ty21,ty22)) with
-        | TFun(ty1',ty2') -> TFun(TApp(TConstr TAssumeTrue,ty1'), ty2')
-        | _ -> assert false
-      end
-  | TFun(ty11,ty12), TFun(ty21,ty22) ->
-      let x = new_id' "x" in
-      let ty2' = copy_attr (ty12 (Var x)) (ty22 (Var x)) in
-      TFun(copy_attr ty11 ty21, subst_typ x -$- ty2')
-  | TBase _, _
-  | TFun _, _
-  | TConstr _, _
-  | TApp _, _ ->
-      Format.eprintf "Refine.copy_attr: %a, %a@." CEGAR_print.typ ty1 CEGAR_print.typ ty2;
-      assert false
-
-let rec can_move ty =
-  match ty with
-  | TBase _ -> true
-  | TFun(TApp(TConstr TAssumeTrue,TBase _),_) -> true
-  | TFun(TBase _,ty2) -> true
-  | TFun(TApp(TConstr TAssumeTrue,TFun _),ty2) -> can_move @@ ty2 (Var "d")
-  | TFun(TFun(TBase _,ty12),ty2) when is_typ_result @@ ty12 (Var "d") && is_typ_result @@ ty2 (Var "d") -> true
-  | TFun(TFun _,ty2) -> false
-  | _ -> assert false
-
-
-let make_imply' t1 t2 =
-  match !Flag.PredAbst.shift_pred with
-  | None -> assert false
-  | Some 0 -> make_imply t1 t2
-  | Some 1 -> make_app (Const (Temp ";")) [make_not_s t1; t1; t2]
-  | Some 2 -> make_app (Const (Temp ";")) [make_not_s t1; make_and t1 t2]
-  | Some 3 -> make_app (Const (Temp ";")) [t1; make_imply t1 t2]
-  | Some 4 -> make_app (Const (Temp ";")) [make_not t1; make_imply t1 t2]
-  | Some _ -> assert false
-let rec decode_imply t =
-  match decomp_app t with
-  | Const (Temp ";"), ts -> List.flatten_map decode_imply ts
-  | _ -> [t]
-
-
-let rec move_arg_pred ty =
-  match ty with
-  | TBase _ -> ty
-  | TFun(TApp(TConstr TAssumeTrue,TBase(b,ps)),ty2) when can_move @@ ty2 (Var "d") ->
-      let x = new_id' "x" in
-      let ps_x = ps (Var x) in
-      let ty1' = TBase(b,fun _ -> []) in
-      let ty2' =
-        let add b' ps' =
-          let y = new_id' "y" in
-          let ps'_y = ps' (Var y) in
-          let ps'_y' =
-            let aux p1 p2 =
-              let p1',path1 = decomp_path p1 in
-              let p2',path2 = decomp_path p2 in
-              let path1',c = List.decomp_snoc path1 in
-              assert (c = 0);
-              if List.is_prefix path1' path2 then
-                if p2' = Const True then
-                  make_not_s p1' |> compose_path path2
-                else
-                  make_imply' p1' p2' |> compose_path path2
-              else
-                p2
-            in
-            List.map (List.fold_right aux ps_x) ps'_y
-          in
-          TBase(b', fun t -> List.map (subst y t) ps'_y')
-        in
-        map_base add @@ move_arg_pred @@ ty2 (Var x)
-      in
-      TFun(ty1', subst_typ x -$- ty2')
-  | TFun(TApp(TConstr TAssumeTrue,ty1),ty2) -> move_arg_pred @@ TFun(ty1, ty2)
-  | TFun(ty1,ty2) -> TFun(move_arg_pred ty1, move_arg_pred -| ty2)
-  | TConstr _ -> unsupported "Refine"
-  | TApp _ -> unsupported "Refine"
-let move_arg_pred typ =
-  Debug.printf "[MOVE_PRED] input: %a@." CEGAR_print.typ typ;
-  let r = move_arg_pred typ in
-  Debug.printf "[MOVE_PRED] output: %a@." CEGAR_print.typ r;
-  r
-
-let rec remove_arg_pred ty =
-  match ty with
-  | TBase(b,ps) ->
-      let x = new_id' "x" in
-      let ps_x = ps (Var x) in
-      let ps_x' =
-        let aux t =
-          match decomp_path t with
-          | Const _, _ -> []
-          | t', _ -> decode_imply t'
-        in
-        List.flatten_map aux ps_x
-      in
-      TBase(b, fun t -> List.map (subst x t) ps_x')
-  | TFun(ty1,ty2) -> TFun(remove_arg_pred ty1, remove_arg_pred -| ty2)
-  | TApp(TConstr TAssumeTrue, ty2) -> remove_arg_pred ty2
-  | TApp _ -> assert false
-  | TConstr _ -> assert false
-
-let rec remove_redundant_pred ty =
-  match ty with
-  | TBase(b,ps) ->
-      let x = new_id' "x" in
-      let ps_x = ps (Var x) in
-      let ps_x' =
-        let rec aux ps =
-          match ps with
-          | [] -> []
-          | p::ps' ->
-              if List.exists ((=) p) ps' || p = Const False || p = Const True then
-                aux ps'
-              else
-                p :: aux ps'
-        in
-        aux ps_x
-      in
-      TBase(b, fun t -> List.map (subst x t) ps_x')
-  | TFun(ty1,ty2) -> TFun(remove_redundant_pred ty1, remove_redundant_pred -| ty2)
-  | TApp _ -> assert false
-  | TConstr _ -> assert false
 
 let add_preds_env map env =
   let aux (f,typ1) =
     let typ' =
       try
-        let typ2 = List.assoc f map in
-        let typ2' =
-          if !Flag.PredAbst.shift_pred <> None then
-            typ2
-            |@> Debug.printf "INPUT: %a@." CEGAR_print.typ
-            |> copy_attr typ1
-            |@> Debug.printf "COPY: %a@." CEGAR_print.typ
-            |> move_arg_pred
-            |@> Debug.printf "MOVE: %a@.@." CEGAR_print.typ
-            |> remove_arg_pred
-            |> remove_redundant_pred
-          else
-            typ2
-        in
-        merge_typ typ1 typ2'
+        merge_typ typ1 @@ List.assoc f map
       with Not_found -> typ1
     in
     f, typ'
@@ -218,6 +67,60 @@ let rec add_pred n path typ =
   | TConstr _ -> assert false
   | TApp _ -> assert false
 
+let rec col_fix_pred path_rev env_rev ty =
+  match ty with
+  | TBase _ -> []
+  | TApp(TConstr(TFixPred p), (TBase(b, _) as ty')) ->
+      let x = new_id "x" in
+      let env = List.rev @@ (x,ty')::env_rev in
+      [List.rev @@ path_rev, env, p (Var x)]
+  | TFun(ty1, ty2) ->
+      let x = new_id "x" in
+      let env_rev' =
+        if is_base ty1 then
+          env_rev
+        else
+          (x,ty)::env_rev
+      in
+   Debug.printf "??? %a@." CEGAR_print.typ ty1;
+      col_fix_pred (0::path_rev) env_rev ty1 @
+      col_fix_pred (1::path_rev) env_rev' (ty2 (Var x))
+  | _ -> assert false
+let fix_pred_of f ty =
+  ty
+  |@> Debug.printf "[fix_pred_of] INPUT %s : %a@." f CEGAR_print.typ
+  |> col_fix_pred [] []
+  |@> Debug.printf "[fix_pred_of] OUTPUT %s : %a@." f Print.(list (triple (list int) __ CEGAR_print.term))
+  |> List.map (fun (path,env,p) -> (FpatInterface.conv_var f,path), (env,p))
+
+let instansiate_pred_by_env env c =
+  let paths : ((Fpat.Idnt.t * int list) * ((_ * _) list * CEGAR_syntax.t)) list = List.flatten_map (Fun.uncurry fix_pred_of) env in
+  Debug.printf "c: %a@." Fpat.HCCS.pr c;
+  Debug.printf "paths: %a@." Print.(list (pair (pair Fpat.Idnt.pr (list int)) (pair __ CEGAR_print.term))) paths;
+  let rec has_path x (y,path) =
+    match x with
+    | Fpat.Idnt.T(x', _, arg) ->
+        begin
+          match path with
+          | [] -> false
+          | i::path' -> i = arg && has_path x' (y,path')
+        end
+    | _ -> x = y
+  in
+  let map =
+    let aux (x,_) =
+      try
+        let (_,(args,t)) = List.find (has_path x -| fst) paths in
+        let args = List.map FpatInterface.(Pair.map conv_var conv_typ) args in
+        Some (x, (args, FpatInterface.conv_formula t))
+      with Not_found -> None
+    in
+    Fpat.HCCS.tenv c
+    |@> Debug.printf "tenv: %a@." Fpat.TypEnv.pr
+    |> List.filter_map aux
+    |@> Debug.printf "tenv': %a@." Print.(list (pair Fpat.Idnt.pr (pair Fpat.TypEnv.pr Fpat.Formula.pr)))
+  in
+  Fpat.HCCS.subst map c
 
 
 let refine_post tmp =
@@ -229,8 +132,8 @@ let refine labeled is_cp prefix ces ext_ces prog =
   let tmp = Time.get () in
   try
     Verbose.printf
-        "%a(%d-4) Discovering predicates (infeasible case) ...%t @."
-        Color.set Color.Green !Flag.Log.cegar_loop Color.reset;
+      "%a(%d-4) Discovering predicates (infeasible case) ...%t @."
+      Color.set Color.Green !Flag.Log.cegar_loop Color.reset;
     if Flag.Refine.use_prefix_trace then
       fatal "Not implemented: Flag.use_prefix_trace";
     let map =
@@ -240,18 +143,21 @@ let refine labeled is_cp prefix ces ext_ces prog =
         else
           [List.hd ces], [List.hd ext_ces]
       in
-      Format.printf "@[<v>";
       let solver orig c =
-        if !Flag.Refine.use_rec_hccs_solver then
-          try
-            Rec_HCCS_solver.solve c
-          with Rec_HCCS_solver.TimeOut -> orig c
-        else
-          orig c
+        let c' = if true then (instansiate_pred_by_env prog.env c) else c in
+        Verbose.printf "@[<v>";
+        let r =
+          if !Flag.Refine.use_rec_hccs_solver then
+            try
+              Rec_HCCS_solver.solve c'
+            with Rec_HCCS_solver.TimeOut -> orig c'
+          else
+            orig c'
+        in
+        Verbose.printf "@]";
+        r
       in
-      let map = FpatInterface.infer solver labeled is_cp ces ext_ces prog in
-      Format.printf "@]";
-      map
+      FpatInterface.infer solver labeled is_cp ces ext_ces prog
     in
     let env =
       if !Flag.Refine.disable_predicate_accumulation then

@@ -31,7 +31,6 @@ let rec conv_typ ty =
   | TApp _ when is_ttuple ty ->
       let _,tys = decomp_tapp ty in
       F.Type.mk_tuple @@ List.map conv_typ tys
-  | TApp(TConstr TAssumeTrue, ty) -> conv_typ ty
   | TApp(TConstr (TFixPred _), ty) -> conv_typ ty
   | _ ->
      Format.eprintf "%a@." CEGAR_print.typ ty;
@@ -293,36 +292,6 @@ let conv_prog prog =
       List.map (fun (x, ty) -> F.Idnt.make x, conv_typ ty) typs;
     F.Prog.main = main }
 
-(* TODO: merge this function to conversion from refinement types to abstraction types *)
-let add_to_temp t1 t2 =
-  let rec aux t =
-    match decomp_app t with
-    | Const (Int 0), [] -> []
-    | Const Add, [Const (Int n); t2] -> Const (Int n) :: aux t2
-    | _ -> assert false
-  in
-  make_app (Const (Temp "path")) (t2 :: aux t1)
-let rec path_to_attr ty =
-  match ty with
-  | TBase(b, p) -> ty
-  | TConstr c -> unsupported "FpatInterface.path_to_attr (TConstr)"
-  | TApp _ -> unsupported "FpatInterface.path_to_attr (TApp)"
-  | TFun(TBase(b,p), ty2) ->
-      let x = new_id "x" in
-      let aux t =
-        match decomp_app t with
-        | Const And, [t1;t2] -> [add_to_temp t1 t2]
-        | Const Add, _ -> [add_to_temp t (Const True)]
-        | _ ->
-            Format.eprintf "%a@." CEGAR_print.term t;
-            assert false
-      in
-      let preds = List.concat_map aux @@ p (Var x) in
-      let p' t = List.map (subst x t) preds in
-      let ty2' = path_to_attr -| ty2 in
-      TFun(TBase(b,p'), ty2')
-  | TFun(ty1, ty2) -> TFun(path_to_attr ty1, path_to_attr -| ty2)
-
 let rec inv_abst_type aty =
   match aty with
   | F.AbsType.Base(F.TypConst.Ext("X"), x, ts) ->
@@ -351,10 +320,6 @@ let rec inv_abst_type aty =
           "_dummy"
       in
       TFun(inv_abst_type aty1, subst_typ x -$- (inv_abst_type aty2))
-let inv_abst_type ty =
-  ty
-  |> inv_abst_type
-  |&(!Flag.PredAbst.shift_pred<>None)&> path_to_attr
 
 
 let is_cp prog =

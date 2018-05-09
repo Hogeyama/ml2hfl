@@ -64,4 +64,3 @@ val trans_ce :
 val simplify_if : prog -> prog
 val add_fail_to_end : prog -> prog
 val add_env : Syntax.env -> prog -> prog
-val elim_assume_true : prog -> prog
