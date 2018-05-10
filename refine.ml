@@ -104,7 +104,7 @@ let instansiate_pred_by_env env c =
           | [] -> false
           | i::path' -> i = arg && has_path x' (y,path')
         end
-    | _ -> x = y
+    | _ -> path = [] && x = y
   in
   let map =
     let aux (x,_) =
