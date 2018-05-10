@@ -67,34 +67,32 @@ let rec add_pred n path typ =
   | TConstr _ -> assert false
   | TApp _ -> assert false
 
-let rec col_fix_pred path_rev env_rev ty =
+let rec col_fix_pred path_rev env_rev acc ty =
   match ty with
-  | TBase _ -> []
+  | TBase _ -> acc
   | TApp(TConstr(TFixPred p), (TBase(b, _) as ty')) ->
       let x = new_id "x" in
       let env = List.rev @@ (x,ty')::env_rev in
-      [List.rev @@ path_rev, env, p (Var x)]
-  | TFun(ty1, ty2) ->
-      let x = new_id "x" in
-      let env_rev' =
-        if is_base ty1 then
-          env_rev
-        else
-          (x,ty)::env_rev
+      (List.rev @@ path_rev, env, p (Var x))::acc
+  | TFun _ ->
+      let args,ty' = decomp_tfun_env ty in
+      assert (get_base ty' = typ_result_base);
+      let aux (env_rev,i,acc) (x,ty1) =
+        let env_rev' = if is_base ty1 then (x,ty1)::env_rev else env_rev in
+        let acc' = col_fix_pred (i::path_rev) env_rev acc ty1 in
+        env_rev', i+1, acc'
       in
-   Debug.printf "??? %a@." CEGAR_print.typ ty1;
-      col_fix_pred (0::path_rev) env_rev ty1 @
-      col_fix_pred (1::path_rev) env_rev' (ty2 (Var x))
+      Triple.trd @@ List.fold_left aux (env_rev,0,acc) args
   | _ -> assert false
 let fix_pred_of f ty =
   ty
   |@> Debug.printf "[fix_pred_of] INPUT %s : %a@." f CEGAR_print.typ
-  |> col_fix_pred [] []
+  |> col_fix_pred [] [] []
   |@> Debug.printf "[fix_pred_of] OUTPUT %s : %a@." f Print.(list (triple (list int) __ CEGAR_print.term))
   |> List.map (fun (path,env,p) -> (FpatInterface.conv_var f,path), (env,p))
 
 let instansiate_pred_by_env env c =
-  let paths : ((Fpat.Idnt.t * int list) * ((_ * _) list * CEGAR_syntax.t)) list = List.flatten_map (Fun.uncurry fix_pred_of) env in
+  let paths = List.flatten_map (Fun.uncurry fix_pred_of) env in
   Debug.printf "c: %a@." Fpat.HCCS.pr c;
   Debug.printf "paths: %a@." Print.(list (pair (pair Fpat.Idnt.pr (list int)) (pair __ CEGAR_print.term))) paths;
   let rec has_path x (y,path) =
@@ -144,7 +142,7 @@ let refine labeled is_cp prefix ces ext_ces prog =
           [List.hd ces], [List.hd ext_ces]
       in
       let solver orig c =
-        let c' = if true then (instansiate_pred_by_env prog.env c) else c in
+        let c' = instansiate_pred_by_env prog.env c in
         Verbose.printf "@[<v>";
         let r =
           if !Flag.Refine.use_rec_hccs_solver then
