@@ -14,9 +14,9 @@ let new_id' x = new_id (Format.sprintf "%s_%d" x !Flag.Log.cegar_loop)
 let add_preds_env map env =
   let aux (f,typ1) =
     let typ' =
-      try
-        merge_typ typ1 @@ List.assoc f map
-      with Not_found -> typ1
+      List.assoc_option f map
+      |> Option.map @@ merge_typ typ1
+      |> Option.default typ1
     in
     f, typ'
   in
@@ -67,19 +67,19 @@ let rec add_pred n path typ =
   | TConstr _ -> assert false
   | TApp _ -> assert false
 
-let rec col_fix_pred path_rev env_rev acc ty =
+let rec col_fix_pred path env_rev acc ty =
   match ty with
   | TBase _ -> acc
   | TApp(TConstr(TFixPred p), (TBase(b, _) as ty')) ->
       let x = new_id "x" in
       let env = List.rev @@ (x,ty')::env_rev in
-      (List.rev @@ path_rev, env, p (Var x))::acc
+      (path, env, p (Var x))::acc
   | TFun _ ->
       let args,ty' = decomp_tfun_env ty in
       assert (get_base ty' = typ_result_base);
       let aux (env_rev,i,acc) (x,ty1) =
         let env_rev' = if is_base ty1 then (x,ty1)::env_rev else env_rev in
-        let acc' = col_fix_pred (i::path_rev) env_rev acc ty1 in
+        let acc' = col_fix_pred (i::path) env_rev acc ty1 in
         env_rev', i+1, acc'
       in
       Triple.trd @@ List.fold_left aux (env_rev,0,acc) args
@@ -92,6 +92,7 @@ let fix_pred_of f ty =
   |> List.map (fun (path,env,p) -> (FpatInterface.conv_var f,path), (env,p))
 
 let instansiate_pred_by_env env c =
+  Debug.printf "env: %a@." CEGAR_print.env env;
   let paths = List.flatten_map (Fun.uncurry fix_pred_of) env in
   Debug.printf "c: %a@." Fpat.HCCS.pr c;
   Debug.printf "paths: %a@." Print.(list (pair (pair Fpat.Idnt.pr (list int)) (pair __ CEGAR_print.term))) paths;
