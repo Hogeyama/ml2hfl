@@ -204,6 +204,10 @@ let output_randint_refinement_log input_string =
   output_string cout ("[INPUT]:\n" ^ input_string ^ "\n");
   close_out cout
 
+let main_quick_check spec t =
+  t
+  |> Preprocess.(run_on_term (before CPS @@ all spec))
+  |> Quick_check.repeat_forever
 
 let main cin =
   let input_string =
@@ -240,7 +244,9 @@ let main cin =
         in
         Main_loop.run orig ~spec problem
     in
-    if !Flag.Method.split_assert then
+    if !Flag.Method.quick_check then
+      main_quick_check spec parsed
+    else if !Flag.Method.split_assert then
       main_split_assert orig spec parsed
     else if !Flag.Method.verify_ref_typ then
       Verify_ref_typ.main orig spec parsed
@@ -354,6 +360,7 @@ let rec arg_spec () =
      "-use-spec", Arg.Set Flag.Method.use_spec, " use XYZ.spec for verifying XYZ.ml if exists\n(This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.Method.comment_spec, " disable {SPEC} on comments";
      "-module-verification", Arg.Set Flag.Mode.module_mode, " Check input as library";
+     "-quickcheck", Arg.Set Flag.Method.quick_check, " Disprove safety via QuickCheck (other method options will be ignored)";
      (* Modular verification *)
      "", Arg.Unit ignore, "Options_for_Modular_verification";
      "-check-simple", Arg.Set Flag.Modular.check_simple, " Use simple refinement checking";

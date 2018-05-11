@@ -295,3 +295,11 @@ let run (pps:t list) t =
     List.map aux2 acc
   in
   List.fold_left aux1 [[Init, (t, get_rtyp_id)]] pps
+
+let run_on_term pps t =
+  t
+  |> Problem.safety
+  |> run pps
+  |> List.last
+  |> last_t
+  |> Problem.term

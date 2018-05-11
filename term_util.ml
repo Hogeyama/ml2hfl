@@ -1272,6 +1272,7 @@ module Term = struct
   let var = make_var
   let vars = List.map make_var
   let int = make_int
+  let bool = make_bool
   let string = make_string
   let (@) = make_app
   let (@@) = make_app

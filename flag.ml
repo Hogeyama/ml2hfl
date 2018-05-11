@@ -2,7 +2,10 @@ let omega = ref Mconfig.omega
 let cvc3 = ref Mconfig.cvc3
 
 let filenames : string list ref = ref []
-let mainfile () = List.hd !filenames
+let mainfile () =
+  try
+    List.hd !filenames
+  with _ -> invalid_arg "Flag.mainfile"
 let spec_file = ref ""
 
 let time_limit = ref 0
@@ -53,6 +56,7 @@ module Method = struct
   let fail_as_exception = ref false
   let ignore_exn_arg = ref false
   let data_to_int = ref false
+  let quick_check = ref false
 end
 
 module Print = struct

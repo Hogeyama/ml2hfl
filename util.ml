@@ -190,6 +190,7 @@ module Fun = struct
   let const x _ = x
   let const2 x _ _ = x
   let ignore2 _ _  = ()
+  let ignore3 _ _ _ = ()
   let if_ cond f1 f2 x = if cond x then f1 x else f2 x
   let cond b f x = if b then f x else x
 end
@@ -653,6 +654,21 @@ module Math = struct
     if m < n then gcd n m
     else if n = 0 then m
     else gcd n (m mod n)
+
+  let pi = 2. *. acos 0.
+end
+
+module Random = struct
+  include Random
+  let gaussian d =
+    let x = float 1. in
+    let y = float 1. in
+    d *. sqrt (-2. *. log x) *. cos (2. *. Math.pi *. y)
+end
+
+module Format = struct
+  include Format
+  let dummy_formatter = make_formatter Fun.ignore3 ignore
 end
 
 module Filename = struct

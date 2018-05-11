@@ -238,6 +238,7 @@ module Term : sig
   val var : id -> term
   val vars : id list -> term list
   val int : int -> term
+  val bool : bool -> term
   val string : string -> term
   val (@) : term -> term list -> term
   val (@@) : term -> term list -> term

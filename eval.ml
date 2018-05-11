@@ -2,8 +2,10 @@ open Util
 open Syntax
 open Term_util
 
-exception RaiseExcep of int list * term
+exception RaiseExcep of term
 exception EventFail
+exception ReachLimit
+exception ReachBottom
 
 let fix f v = {desc=Label(InfoId f, v); typ = v.typ; attr=[]}
 let rec fun_info args_rev f t =
@@ -47,62 +49,55 @@ let rec print_value fm t =
   | _ -> Print.term fm t
 
 
-let rec eval_print fm rands t =
-  if false then Format.printf "EVAL:%a@.RANDS:%a@.@." Print.term t (print_list Format.pp_print_int ";") rands;
+let rec eval_print fm cnt limit gen t =
+  (match limit with None -> () | Some n -> incr cnt; if !cnt > n then raise ReachLimit);
   match t.desc with
   | Const(RandValue(Type.TBase Type.TInt,false)) ->
       let x = Id.new_var Type.Ty.unit in
-      List.tl rands, make_fun x @@ make_int @@ List.hd rands
+      Term.(fun_ x (int !!gen))
   | Const(RandValue(Type.TBase Type.TInt,true)) -> assert false
   | Const(RandValue(typ,_)) -> unsupported "eval: RandValue"
-  | Const c -> rands, t
-  | Var y when is_length_var y -> rands, t
+  | Const c -> t
+  | Var y when is_length_var y -> t
   | Var y -> unsupported "error trace with external funcitons"
-  | Fun _ -> rands, t
+  | Fun _ -> t
   | App(t1, ts) ->
-      let aux t (rands,vs) =
-        let rands',v = eval_print fm rands t in
-        rands', v::vs
-      in
-      let rands',vs = List.fold_right aux (t1::ts) (rands,[]) in
+      let vs = List.fold_right (fun t acc -> eval_print fm cnt limit gen t :: acc) (t1::ts) [] in
       begin
         match vs with
-        | {desc=Fun(x,t)}::v1::vs' -> eval_print fm rands' @@ make_app (subst' x v1 t) vs'
+        | {desc=Fun(x,t)}::v1::vs' -> eval_print fm cnt limit gen @@ make_app (subst' x v1 t) vs'
         | [{desc=Var x}; v] when is_length_var x ->
-            rands', make_int @@ List.length @@ Option.get @@ decomp_list v
+            make_int @@ List.length @@ Option.get @@ decomp_list v
         | _ -> assert false
       end
   | If(t1, t2, t3) ->
-      let rands', v = eval_print fm rands t1 in
+      let v = eval_print fm cnt limit gen t1 in
       let b = bool_of_term v in
       Format.fprintf fm "@\nif %b then ... ->" b;
       let t' = if b then t2 else t3 in
-      eval_print fm rands' t'
-  | Local(Decl_type _, t2) -> eval_print fm rands t2
+      eval_print fm cnt limit gen t'
+  | Local(Decl_type _, t2) -> eval_print fm cnt limit gen t2
   | Local(Decl_let bindings, t2) ->
-      let aux (rands,vs) (f,t) =
-        let rands',v = eval_print fm rands t in
-        rands', vs@[f,v]
-      in
-      let rands',vs = List.fold_left aux (rands,[]) bindings in
+      let aux vs (f,t) = vs @ [f, eval_print fm cnt limit gen t] in
+      let vs = List.fold_left aux [] bindings in
       let subst' (x,v) t = subst x (fix x @@ fun_info x v) t in
-      eval_print fm rands' @@ List.fold_right subst' vs t2
+      eval_print fm cnt limit gen @@ List.fold_right subst' vs t2
   | BinOp(And, t1, t2) ->
-      let rands',v1 = eval_print fm rands t1 in
+      let v1 = eval_print fm cnt limit gen t1 in
       if bool_of_term v1
-      then eval_print fm rands' t2
-      else rands', false_term
+      then eval_print fm cnt limit gen t2
+      else false_term
   | BinOp(Or, t1, t2) ->
-      let rands',v1 = eval_print fm rands t1 in
+      let v1 = eval_print fm cnt limit gen t1 in
       if bool_of_term v1
-      then rands', true_term
-      else eval_print fm rands' t2
+      then true_term
+      else eval_print fm cnt limit gen t2
   | BinOp(op, t1, t2) ->
-      let rands',v2 = eval_print fm rands t2 in
-      let rands'',v1 = eval_print fm rands' t1 in
+      let v2 = eval_print fm cnt limit gen t2 in
+      let v1 = eval_print fm cnt limit gen t1 in
       let n1 = int_of_term v1 in
       let n2 = int_of_term v2 in
-      let v =
+      begin
         match op with
         | Eq -> make_bool (n1 = n2)
         | Lt -> make_bool (n1 < n2)
@@ -114,28 +109,23 @@ let rec eval_print fm rands t =
         | Mult -> make_int (n1 * n2)
         | Div -> make_int (n1 / n2)
         | _ -> assert false
-      in
-      rands'', v
+      end
   | Not t1 ->
-      let rands',v1 = eval_print fm rands t1 in
-      rands', make_bool @@ not @@ bool_of_term v1
+      let v1 = eval_print fm cnt limit gen t1 in
+      make_bool @@ not @@ bool_of_term v1
   | Event("fail",false) -> raise EventFail
   | Event _ -> assert false
   | Record fields -> raise (Fatal "Not implemented: eval_print Record")
   | Field(s,t1) -> raise (Fatal "Not implemented: eval_print Record")
   | SetField(s,t1,t2) -> raise (Fatal "Not implemented: eval_print Record")
-  | Nil -> rands, t
+  | Nil -> t
   | Cons(t1,t2) ->
-      let rands',v2 = eval_print fm rands t2 in
-      let rands'',v1 = eval_print fm rands' t1 in
-      rands'', make_cons v1 v2
+      let v2 = eval_print fm cnt limit gen t2 in
+      let v1 = eval_print fm cnt limit gen t1 in
+      make_cons v1 v2
   | Constr(s,ts) ->
-      let aux t (rands,vs) =
-        let rands',v = eval_print fm rands t in
-        rands', v::vs
-      in
-      let rands',vs = List.fold_right aux ts (rands,[]) in
-      rands', {desc=Constr(s,vs); typ=t.typ; attr=[]}
+      let vs = List.fold_right (fun t acc -> eval_print fm cnt limit gen t :: acc) ts [] in
+      {desc=Constr(s,vs); typ=t.typ; attr=[]}
   | Match(t1,pat::pats) ->
       let merge r1 r2 =
         match r1, r2 with
@@ -192,42 +182,42 @@ let rec eval_print fm rands t =
             Format.eprintf "p: %a@." Print.pattern p;
             assert false
       in
-      let rands',v = eval_print fm rands t1 in
+      let v = eval_print fm cnt limit gen t1 in
       let p,cond,t = pat in
       begin
         match check v p with
-        | None -> eval_print fm rands' @@ make_match v pats
+        | None -> eval_print fm cnt limit gen @@ make_match v pats
         | Some f ->
-            let rands'',v = eval_print fm rands' @@ f cond in
+            let v = eval_print fm cnt limit gen @@ f cond in
             let t' = if bool_of_term v then f t else make_match v pats in
-            eval_print fm rands'' t'
+            eval_print fm cnt limit gen t'
       end
   | Match(t1,[]) -> assert false
   | Raise t ->
-      let rands',v = eval_print fm rands t in
+      let v = eval_print fm cnt limit gen t in
       Format.fprintf fm "@\nraise %a" print_value v;
-      raise (RaiseExcep(rands',v))
+      raise (RaiseExcep v)
   | TryWith(t1,t2) ->
       begin
         try
-          eval_print fm rands t1
-        with RaiseExcep(rands',e) -> eval_print fm rands' @@ make_app t2 [e]
+          eval_print fm cnt limit gen t1
+        with RaiseExcep e -> eval_print fm cnt limit gen @@ make_app t2 [e]
       end
-  | Tuple[t1;t2] ->
-      let rands',v2 = eval_print fm rands t2 in
-      let rands'',v1 = eval_print fm rands' t1 in
-      rands'', make_pair v1 v2
+  | Tuple ts ->
+      ts
+      |> List.fold_right (fun t acc -> eval_print fm cnt limit gen t :: acc) -$- []
+      |> make_tuple
   | Proj(i,t) ->
-      let rands',v = eval_print fm rands t in
-      rands', List.nth (tuple_of_term v) i
-  | Bottom -> assert false
-  | Label(InfoId f, v) -> eval_print fm rands @@ subst f (fix f v) v
+      let v = eval_print fm cnt limit gen t in
+      List.nth (tuple_of_term v) i
+  | Bottom -> raise ReachBottom
+  | Label(InfoId f, v) -> eval_print fm cnt limit gen @@ subst f (fix f v) v
   | Label(InfoString f, t) ->
       let args,t' = take_args t in
       Format.fprintf fm "@\n@[<v 2>%s %a ->" f (print_list print_value " ") args;
       let r =
         try
-          eval_print fm rands t'
+          eval_print fm cnt limit gen t'
         with e -> Format.fprintf fm "@]"; raise e
       in
       Format.fprintf fm "@]";
@@ -239,8 +229,17 @@ let rec eval_print fm rands t =
 exception Unsound
 
 let print fm (ce, {Problem.term=t}) =
+  let cnt = ref 0 in
+  let limit = None in
+  let gen =
+    let r = ref ce in
+    fun () ->
+      match !r with
+      | [] -> assert false
+      | n::ce' -> r := ce'; n
+  in
   try
-    ignore @@ eval_print fm ce t;
+    ignore @@ eval_print fm cnt limit gen t;
     if !Flag.use_abst <> [] then raise Unsound;
     assert false
   with
