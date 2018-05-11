@@ -268,6 +268,15 @@ let set_exp_filename filename =
   else
     unsupported "Experimental results file type"
 
+let just_run_other_command cmd =
+  if !Flag.filenames = [] then
+    (Format.eprintf "Option \"-just-run\" must follow input file@."; exit 1);
+  let filename = !!Flag.mainfile in
+  let total,r = Time.measure (fun () -> Sys.command @@ snd @@ String.replace ~str:cmd ~sub:"%i" ~by:filename) in
+  let result = if r = 0 then "Safe" else "Error" in
+  Format.printf "{filename:%S, result:%S, total:%f}@." filename result total;
+  exit r
+
 let usage =
   "MoCHi: Model Checker for Higher-Order Problems\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
@@ -290,6 +299,8 @@ let rec arg_spec () =
      "-limit", Arg.Set_int Flag.time_limit, " Set time limit (seconds)";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
+     "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";
+     "-just-run", Arg.String just_run_other_command, " (just for experiments, %i is replaced with the filename)";
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
