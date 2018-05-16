@@ -618,6 +618,8 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
   let env' = uniq_env env in
   let attr = if is_cps then [ACPS] else [] in
+  let max_id = List.fold_left (fun m x -> max m @@ snd @@ decomp_id x) 0 @@ List.flatten_map (fun (f,xs,_,_,_) -> f::xs) defs'' in
+  Id.set_counter max_id;
   let prog,map,rmap =
     {env=env'; defs=defs''; main; info={init_info with attr}}
     |@> pr2 "PROG_A"

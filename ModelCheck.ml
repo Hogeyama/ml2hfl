@@ -72,9 +72,11 @@ let elim_non_det ({defs;main;info} as prog) =
         let f' = rename_id f in
         let defs1,defs2 = List.partition (check f) defs in
         let defs1' = List.map (fun (f,xs,t1,e,t2) -> rename_id f,xs,t1,e,t2) defs1 in
-        let ts = List.map (fun x -> Var x) xs in
-        let aux f = make_app (Var f) ts in
-        let t = List.fold_left (fun t (f,_,_,_,_) -> make_br (aux f) t) (aux f') defs1' in
+        let t =
+          let args = List.map (fun x -> Var x) xs in
+          let app f = make_app (Var f) args in
+          List.fold_left (fun t (g,_,_,_,_) -> make_br (app g) t) (app f') defs1'
+        in
         (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
     | def::defs -> def :: elim_non_det_def defs
   in
