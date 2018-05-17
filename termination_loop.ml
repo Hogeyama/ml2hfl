@@ -1,3 +1,4 @@
+open Util
 open BRA_types
 open BRA_transform
 
@@ -31,12 +32,23 @@ let cycle_counter = ref 0
 let incr_cycle () = cycle_counter := !cycle_counter + 1
 let reset_cycle () = cycle_counter := 0
 
+let rec remove_coeff_defs coeffs t =
+  let open Syntax in
+  match t.desc with
+  | Local(Decl_let[x, t1], t2) when Id.mem x coeffs ->
+      let n = Term_util.int_of_term t1 in
+      let sol,t2' = remove_coeff_defs coeffs t2 in
+      (x,n)::sol, t2'
+  | _ -> [], t
+
 let verify_with holed pred =
   (* combine holed program and predicate *)
   let transformed = pluging holed pred in
+  let coeffs = List.filter (List.mem Id.Coefficient -| Id.attr) @@ Term_util.get_top_funs holed.program in
   Util.Verbose.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
-  let orig, transformed = retyping transformed (BRA_state.type_of_state holed) in
-  Main_loop.run orig @@ Problem.safety transformed
+  let orig, transformed = retyping transformed @@ BRA_state.type_of_state holed in
+  let exparam_sol,transformed = remove_coeff_defs coeffs transformed in
+  Main_loop.run ~exparam_sol orig @@ Problem.safety transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
   (* reduce to linear constraint solving *)
@@ -50,16 +62,14 @@ let inferCoeffs argumentVariables linear_templates constraints =
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
       let ((correspondenceCoeffs, const_part) as ranking_function) =
-        Fpat.LinTermIntExp.of_term
-          (Fpat.Term.subst
-             (List.map (fun (v, t) -> (v, t)) correspondenceVars) linTemp)
+        Fpat.LinTermIntExp.of_term @@ Fpat.Term.subst correspondenceVars linTemp
       in
       (** extract coefficients **)
       let coefficients =
-	let cor dict x =
-	  try List.assoc x dict with Not_found -> 0 in
 	let formatter (n, v) = (v, Fpat.IntTerm.int_of n) in
-	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
+        let dict = List.map formatter correspondenceCoeffs in
+	let cor x = List.assoc_default 0 x dict in
+	List.map cor argumentVariables
       in
       {coeffs = coefficients; constant = Fpat.IntTerm.int_of const_part}
     ) linear_templates
@@ -77,14 +87,14 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
       let correspondenceCoeffs, const_part =
         Fpat.LinTermIntExp.of_term
-          (Fpat.Term.subst (List.map (fun (v, t) -> (v, t)) correspondenceVars) linTemp)
+          (Fpat.Term.subst correspondenceVars linTemp)
       in
       (** extract coefficients **)
       let coefficients =
-	let cor dict x =
-	  try List.assoc x dict with Not_found -> 0 in
 	let formatter (n, v) = (v, Fpat.IntTerm.int_of n) in
-	List.map (cor (List.map formatter correspondenceCoeffs)) argumentVariables
+        let dict = List.map formatter correspondenceCoeffs in
+	let cor x = Util.List.assoc_default 0 x dict in
+	List.map cor argumentVariables
       in
       {coeffs = coefficients; constant = Fpat.IntTerm.int_of const_part}
      ) linear_templates,
@@ -238,7 +248,8 @@ let rec run predicate_que holed =
 	    (* make templates (for arguments and previous arguments) *)
 	    let linearTemplates = Fpat.Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Fpat.Template.mk_atom arg_env 1), i+1) else None) 0 in
 	    let prevLinearTemplates = List.map (Fpat.Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
-	    Fpat.Util.List.iteri (fun i lt -> Util.Verbose.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;	    try
+	    Fpat.Util.List.iteri (fun i lt -> Util.Verbose.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;
+            try
 	      (* make a constraint *)
 	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
 	      Util.Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
@@ -250,7 +261,9 @@ let rec run predicate_que holed =
 	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
 	      Util.Verbose.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	      newPredicateInfo
-	    with _ (* | Fpat.PolyConstrSolver.Unknown (TODO[kuwahara]: INVESTIGATE WHICH EXCEPTION IS CAPTURED) *) ->
+	    with
+            | Fpat.PolyConstrSolver.NoSolution
+            | Fpat.PolyConstrSolver.Unknown ->
 	      Util.Verbose.printf "Try to update extra parameters...@.@.";
 
 	      try

@@ -200,13 +200,15 @@ let rec loop make_pps fun_list exparam_sol spec prog =
   let ex_param_inserted = Fun.cond !Flag.Method.relative_complete (Problem.map insert_extra_param) prog in
   let preprocessed, make_get_rtyp, set_main, main = preprocess make_pps ~fun_list ex_param_inserted spec in
   let cegar_prog =
-    if Flag.(Method.(!mode = FairTermination) && !Termination.add_closure_exparam) then
-      let () = if false then Format.printf "%a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol in
-      let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
-      let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') preprocessed in
-      if false then Format.printf "MAIN_LOOP: %a@." CEGAR_print.prog preprocessed;
-      let info = {preprocessed.CEGAR_syntax.info with CEGAR_syntax.exparam_orig=Some preprocessed} in
-      {prog'' with CEGAR_syntax.info}
+    if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
+      begin
+        Debug.printf "exparam_sol: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol;
+        let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
+        let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') preprocessed in
+        Debug.printf "MAIN_LOOP: %a@." CEGAR_print.prog preprocessed;
+        let info = {preprocessed.CEGAR_syntax.info with CEGAR_syntax.exparam_orig=Some preprocessed} in
+        {prog'' with CEGAR_syntax.info}
+      end
     else
       preprocessed
   in

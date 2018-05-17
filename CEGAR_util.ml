@@ -316,7 +316,7 @@ let rec has_bottom = function
   | _ -> assert false
 
 
-let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
+let rec normalize_bool_term ?(imply = Fun.flip List.mem) t =
   match t with
   | Const c -> Const c
   | Var x -> Var x
@@ -391,24 +391,25 @@ let rec normalize_bool_term ?(imply = fun env t -> List.mem t env) t =
             let xns1 = decomp t1 in
             let xns2 = decomp t2 in
             let reduce xns = List.fold_left (fun acc (_,n) -> acc+n) 0 xns in
-            let not_const xns = List.exists (fun (x,_) -> x <> None) xns in
+            let is_const xns = List.for_all (fst |- (=) None) xns in
             begin
-              match not_const xns1, not_const xns2 with
-              | true, true ->
+              match is_const xns1, is_const xns2 with
+              | false, false ->
                   raise NonLinear
-              | false, true ->
+              | true, false ->
                   let k = reduce xns1 in
                   List.rev_map (fun (x,n) -> x,n*k) xns2
-              | true, false ->
+              | false, true ->
                   let k = reduce xns2 in
                   List.rev_map (fun (x,n) -> x,n*k) xns1
-              | false, false ->
-                  [None, reduce xns1 + reduce xns2]
+              | true, true ->
+                  [None, reduce xns1 * reduce xns2]
             end
         | App(App(Const Div, t1), t2) ->
             raise NonLinear
         | _ ->
-            unsupported @@ Format.asprintf "CEGAR_util.normalize_bool_term: %a" CEGAR_print.term @@ make_app op [t1;t2]
+            Format.eprintf "t: @[%a@." CEGAR_print.term t;
+            unsupported "CEGAR_util.normalize_bool_term"
       in
       let xns1 = decomp t1 in
       let xns2 = decomp t2 in

@@ -225,11 +225,11 @@ let refine_rank_fun ce ex_ce prog =
       if !Flag.Termination.add_closure_exparam
       then
         let progWithExparam = Option.get prog.info.exparam_orig in
-        if false then Format.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
+        Debug.printf "REFINE: %a@." CEGAR_print.prog @@ Option.get prog.info.exparam_orig;
         Format.printf "@[<v>";
         let _, spcWithExparam = FpatInterface.compute_strongest_post progWithExparam ce ex_ce in
         Format.printf "@]";
-        if false then Format.printf "REFINE: %a@." Fpat.Formula.pr spcWithExparam;
+        Debug.printf "REFINE: %a@." Fpat.Formula.pr spcWithExparam;
         spcWithExparam
       else spc (* dummy *)
     in

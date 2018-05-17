@@ -1,9 +1,12 @@
+open Util
 open BRA_util
 open Type
 open Syntax
 open Term_util
 open BRA_types
 open BRA_state
+
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 (***** Constants *****)
 
@@ -56,9 +59,10 @@ let place_signature = function
 
 let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
 let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string v ^ place_signature (show_typ (Id.typ v)))
-let rec show_term t = show_desc t.desc
-and show_desc = function
+let rec show_term ?(top=false) t = show_desc top t.desc
+and show_desc top = function
   | Const Unit -> "()"
+  | Const End_of_definitions -> "()"
   | Const True -> "true"
   | Const False -> "false"
   | Const (Int n) -> parens (string_of_int n)
@@ -80,11 +84,13 @@ and show_desc = function
     "let rec "
     ^ show_bind b
     ^ List.fold_left (fun acc x -> acc ^ " and " ^ show_bind x) "" bs
-    ^ " in "
-    ^ show_term t
+    ^ (if top then ";; " else " in ")
+    ^ show_term ~top t
   | BinOp (binop, t1, t2) -> parens (show_term t1) ^ show_binop binop ^ parens (show_term t2)
   | Not t -> "not " ^ parens (show_term t)
-  | t -> raise (Invalid_argument "show_term")
+  | t ->
+      Format.eprintf "t: %a@." Print.desc t;
+      raise (Invalid_argument "show_term")
 and show_binop = function
   | Eq -> "="
   | Lt -> "<"
@@ -118,8 +124,10 @@ let restore_ids =
 
 let retyping t type_of_state  =
   stateType := List.map show_typ type_of_state;
+  Debug.printf "t: @[%a@." Print.term t;
   (* Format.eprintf "@.%s@." (show_term t); *)
-  let lb = t |> show_term
+  let lb = t |> show_term ~top:true
+             |@> Debug.printf "show_term t: @[%s@."
              |> Lexing.from_string
   in
   let () = lb.Lexing.lex_curr_p <-
@@ -130,6 +138,7 @@ let retyping t type_of_state  =
   in
   let orig = Parse.use_file lb in
   let parsed = Parser_wrapper.from_use_file orig in
+  Debug.printf "parsed from show_term t: @[%a@." Print.term parsed;
   let parsed = restore_ids parsed in
   let _ =
     if true
@@ -208,7 +217,7 @@ let rec lambda_lift t =
   let lift_binding (id, body) =
     let args,body = decomp_funs body in
     let (sub_bindings, body') , _ = Lift.lift' ~args body in
-    (id, make_funs args body') :: List.map (fun (a, (b, c)) -> (a, make_funs b c)) sub_bindings
+    List.map (fun (a, (b, c)) -> (a, make_funs b c)) sub_bindings @ [id, make_funs args body']
   in
   match t with
     | {desc = Local(Decl_let bindings, rest)} ->

@@ -60,7 +60,9 @@ let beta_reduce_def (f,xs,t1,e,t2) =
 
 let rec expand_non_rec {env;defs;main;info} =
   let non_rec = info.non_rec in
-  let aux (f,xs,t1,e,t2) = f, xs, subst_map non_rec t1, e, subst_map non_rec t2 in
+  let aux (f,xs,t1,e,t2) =
+    let non_rec' = List.filter_out (fst |- List.mem -$- xs) non_rec in
+    f, xs, subst_map non_rec' t1, e, subst_map non_rec' t2 in
   let defs' =
     defs
     |> List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f non_rec)
@@ -165,7 +167,7 @@ let trans_eager prog = map_def_prog (trans_eager_def prog.env) prog
 
 
 let rec eta_expand_term_aux env t typ =
-  if true then Debug.printf "ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
+  if true then Debug.printf "  ETA_AUX: %a: %a@." CEGAR_print.term t CEGAR_print.typ typ;
   match typ with
   | TBase _ -> t
   | TFun(typ1,typ2) ->
@@ -220,8 +222,7 @@ let rec eta_expand_term env t typ =
           assert false
 let eta_expand_def env (f,xs,t1,e,t2) =
   let typ,env' = decomp_typ_var (List.assoc f env) xs in
-  let env'' = env' @@@ env in
-  let t2' = eta_expand_term env'' t2 typ in
+  let t2' = eta_expand_term (env' @ env) t2 typ in
   f, xs, t1, e, t2'
 let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}

@@ -23,6 +23,7 @@ let clear_counter () = counter := init_counter
 
 let make id name attr typ = {id; name; attr; typ}
 let new_var ?(name="x") ?(attr=[]) typ = make (new_int()) name attr typ
+let new_coeff ?(name="x") ?(attr=[]) typ = make (new_int()) name (Coefficient::attr) typ
 let new_var_id x = {x with id=new_int()}
 
 let id x = x.id

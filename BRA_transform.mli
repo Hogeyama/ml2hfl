@@ -10,7 +10,7 @@ val remove_unit_wraping : Syntax.term -> Syntax.term
 val lambda_lift : Syntax.term -> Syntax.term
 val regularization : Syntax.term -> Syntax.term
 
-val show_term : Syntax.term -> string
+val show_term : ?top:bool -> Syntax.term -> string
 val retyping : Syntax.term -> Syntax.typ list -> (Parsetree.toplevel_phrase list * Syntax.term)
 
 val extract_id : Syntax.term -> Syntax.id

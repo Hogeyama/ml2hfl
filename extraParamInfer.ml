@@ -43,16 +43,14 @@ let nthCoefficient = ref []
 let freshCoefficient () =
   let _ = counter := !counter + 1 in
   let freshName = "c" ^ string_of_int (!counter - 1) ^ "_COEFFICIENT" in
-  let freshId = Id.new_var ~name:freshName Ty.int in
+  let freshId = Id.new_coeff ~name:freshName Ty.int in
   let _ = nthCoefficient := !nthCoefficient @ [freshId] in
   let freshCoeff = make_var freshId in
   (exCoefficients := freshCoeff :: !exCoefficients; freshCoeff)
 
 let rec makeTemplate = function
   | [] -> freshCoefficient ()
-  | x :: xs ->
-    let term = make_mul (freshCoefficient ()) (make_var x) in
-    make_add term (makeTemplate xs)
+  | x :: xs -> Term.(freshCoefficient() * var x + makeTemplate xs)
 
 let rec insertExparam scope expr =
   match expr.desc with

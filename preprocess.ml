@@ -44,7 +44,7 @@ type preprocess_label =
   | Add_cps_preds
   | Eliminate_same_arguments
   | Insert_unit_param
-  | PreprocessForTermination
+  | Preprocess_for_termination
   | Extract_module
   | Mark_fv_as_external
   | Alpha_rename
@@ -99,7 +99,7 @@ let string_of_label = function
   | Add_cps_preds -> "Add cps preds"
   | Eliminate_same_arguments -> "Eliminate same arguments"
   | Insert_unit_param -> "Insert unit param"
-  | PreprocessForTermination -> "Preprocessfortermination"
+  | Preprocess_for_termination -> "Preprocess for termination"
   | Extract_module -> "Extract module"
   | Mark_fv_as_external -> "Mark free variables as external"
   | Alpha_rename -> "Alpha renaming"
@@ -133,6 +133,9 @@ let all spec : t list =
   [
     Init,
       map_trans Fun.id;
+    Preprocess_for_termination,
+      cond_trans Flag.Method.(!mode = Termination) @@
+      map_trans @@ Problem.map (fun t -> !BRA_types.preprocessForTerminationVerification t);
     Set_main,
       set_main |- List.map (Pair.pair -$- get_rtyp_id) |- Option.some;
     Extract_module,
@@ -142,6 +145,7 @@ let all spec : t list =
     Mark_fv_as_external,
       map_trans mark_fv_as_external;
     Alpha_rename,
+      cond_trans Flag.Method.(!mode <> Termination) @@
       map_trans @@ alpha_rename ~set_counter:true;
     Eliminate_unused_let,
       map_trans @@ elim_unused_let ~leave_last:true;
@@ -243,10 +247,8 @@ let all spec : t list =
     Insert_unit_param,
       cond_trans !Flag.Method.insert_param_funarg @@
       map_trans insert_param_funarg;
-    PreprocessForTermination,
-      cond_trans Flag.Method.(!mode = Termination) @@
-      map_trans @@ Problem.map !BRA_types.preprocessForTerminationVerification;
     Alpha_rename,
+      cond_trans Flag.Method.(!mode <> Termination) @@
       map_trans @@ alpha_rename ~set_counter:true;
   ]
 
