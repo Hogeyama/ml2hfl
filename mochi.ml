@@ -410,8 +410,14 @@ let rec arg_spec () =
      "-rec-hccs", Arg.Set Flag.Refine.use_rec_hccs_solver, " Use recursive horn-clause solver";
      "-rec-hccs-limit", Arg.Set_int Flag.Refine.solver_timelimit, " Set time limit for recursive horn-clause solver (seconds)";
      "-hoice", Arg.Unit Flag.Refine.(fun () -> solver:=Hoice), " Use HoICE as the recursive horn-clause solver";
+     "-hoice-bin", Arg.Set_string Flag.Refine.hoice,
+                   Format.sprintf "<cmd>  Change hoice command to <cmd> (default: \"%s\")" !Flag.Refine.hoice;
      "-z3", Arg.Unit Flag.Refine.(fun () -> solver:=Z3), " Use Z3 as the recursive horn-clause solver";
+     "-z3-bin", Arg.Set_string Flag.Refine.hoice,
+                Format.sprintf "<cmd>  Change z3 command to <cmd> (default: \"%s\")" !Flag.Refine.z3;
      "-z3-spacer", Arg.Unit Flag.Refine.(fun () -> solver:=Z3_spacer), " Use Z3 (Spacer) as the recursive horn-clause solver";
+     "-z3-spacer-bin", Arg.Set_string Flag.Refine.hoice,
+                   Format.sprintf "<cmd>  Change z3-spacer command to <cmd> (default: \"%s\")" !Flag.Refine.z3_spacer;
      (* SWT solver *)
      "", Arg.Unit ignore, "Options_for_SMT_solver";
      "-cvc3-bin", Arg.Set_string Flag.cvc3,

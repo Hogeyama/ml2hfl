@@ -12,5 +12,7 @@ horsat2="$ld $bin/horsat2"
 horsatp="$ld $bin/horsatp"
 trecs="$ld $bin/trecs"
 cvc3=$bin/cvc3
+z3="$ld $bin/z3"
+hoice="$ld $bin/hoice"
 
-$ld $bin/mochi.opt -trecs-bin "$trecs" -horsat-bin "$horsat" -horsat2-bin "$horsat2" -horsatp-bin "$horsatp" -cvc3-bin "$cvc3" -I $stdlib "$@"
+$ld $bin/mochi.opt -trecs-bin "$trecs" -horsat-bin "$horsat" -horsat2-bin "$horsat2" -horsatp-bin "$horsatp" -cvc3-bin "$cvc3" -z3-bin "$z3" -hoice-bin "$hoice" -I $stdlib "$@"
