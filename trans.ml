@@ -1515,10 +1515,10 @@ let elim_unused_let =
       let desc =
         match t'.desc with
         | Local(Decl_let bindings, t1) ->
-            let fv2 = get_fv t1 in
+            let leave' = get_fv t1 @ leave in
             let used (f,t) =
-              Id.mem f leave ||
-              List.exists (fun (f,_) -> Id.mem f fv2) bindings ||
+              Id.mem f leave' ||
+              List.exists (fun (_,t2) -> Id.mem f @@ get_fv t2) bindings ||
               cbv && not @@ has_no_effect t
             in
             let bindings' = List.filter used bindings in
