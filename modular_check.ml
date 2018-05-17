@@ -226,11 +226,7 @@ let add_context prog f xs t typ =
     |@dbg&> Debug.printf "ADD_CONTEXT t': %a@." Print.term
   in
   let fun_env' =
-    let make (x,ty) =
-      let x' = Id.set_typ x @@ Ref_type.to_simple ~with_pred:true ty in
-      let _,_,t = Ref_type_gen.generate (Some typ_exn) ~make_fail [] [] ty in
-      x, t
-    in
+    let make = Pair.map_snd @@ Triple.trd -| Ref_type_gen.generate (Some typ_exn) ~make_fail [] [] in
     env
     |> Ref_type.Env.filter_key (Id.mem -$- fs)
     |> Ref_type.Env.to_list

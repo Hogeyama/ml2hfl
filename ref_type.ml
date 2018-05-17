@@ -213,7 +213,7 @@ let rec subst_map map typ =
   match typ with
   | Base(base,y,p) ->
       let map' = List.filter_out (fst |- Id.eq y) map in
-      Base(base, y, U.subst_map map p)
+      Base(base, y, U.subst_map map' p)
   | Fun(y,typ1,typ2) ->
       let map' = List.filter_out (fst |- Id.eq y) map in
       Fun(y, subst_map map typ1, subst_map map' typ2)
