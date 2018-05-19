@@ -26,9 +26,8 @@ let print_info_default () =
 
 let output_csv filename =
   let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
-  let ocf = Format.formatter_of_out_channel oc in
-  let pr fmt = Format.fprintf ocf fmt in
-  let pr_mod fmt = if !Flag.Method.modular then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
+  let pr fmt = Printf.fprintf oc fmt in
+  let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   pr "%s," @@ Filename.chop_extension_if_any @@ Filename.basename !!Flag.mainfile;
   pr "%S," !Flag.Log.result;
   pr "%d," !Flag.Log.cegar_loop;
@@ -40,7 +39,7 @@ let output_csv filename =
   pr_mod "%n," !Modular.num_tycheck;
   pr_mod "%f," !Modular.time_check;
   pr_mod "%f," !Modular.time_synthesize;
-  pr "0@.";
+  pr "0\n";
   close_out oc
 
 let output_json filename =
@@ -50,19 +49,25 @@ let output_json filename =
     else
       open_out_gen [Open_append; Open_creat] 0o644 filename
   in
-  let ocf = Format.formatter_of_out_channel oc in
-  let pr fmt = Format.fprintf ocf fmt in
-  let pr_ter fmt = if Flag.Method.(!mode = Termination) then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
-  let pr_mod fmt = if !Flag.Method.modular then Format.fprintf ocf fmt else Format.ifprintf ocf fmt in
+  let pr fmt = Printf.fprintf oc fmt in
+  let pr_ter fmt = if Flag.Method.(!mode = Termination) then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
+  let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   pr "{filename: %S" !!Flag.mainfile;
   pr ", result: %S" !Flag.Log.result;
   pr ", cycles: %d" !Flag.Log.cegar_loop;
   pr_ter ", ranking: {";
-  List.iter
-    (fun (f_name, (cycles, pred)) ->
-     pr_ter ", %S: {function: \"%a\", inferCycles: %d}" f_name BRA_types.pr_ranking_function pred cycles)
-    !Termination_loop.lrf;
-  pr_ter "\"_\":{} }";
+  let rec pr_rfs rfs =
+    let pr_rf (f_name, (cycles, pred)) =
+      let rank_fun = Format.asprintf "%a" BRA_types.pr_ranking_function pred in
+      pr_ter "%S: {function: %S, inferCycles: %d}" f_name rank_fun cycles
+    in
+    match rfs with
+    | [] -> ()
+    | [rf] -> pr_rf rf
+    | rf::rfs' -> pr_rf rf; pr_ter ", "; pr_rfs rfs'
+  in
+  pr_rfs !Termination_loop.lrf;
+  pr_ter "}";
   pr ", total: %f" !!Time.get;
   pr ", abst: %f" !Flag.Log.time_abstraction;
   pr ", mc: %f" !Flag.Log.time_mc;
@@ -72,7 +77,7 @@ let output_json filename =
   pr_mod ", \"#typeChecker\": %d" !Modular.num_tycheck;
   pr_mod ", typeChecker: %f" !Modular.time_check;
   pr_mod ", typeSynthesizer: %f" !Modular.time_synthesize;
-  pr "}@."
+  pr "}\n"
 
 let print_info_modular () =
   Format.printf "#typeChecker: %d@." !Modular.num_tycheck;
@@ -178,9 +183,16 @@ let main_termination orig parsed =
     | Termination_loop.FailedToFindLLRF -> false
   in
   if result then
-    (Flag.Log.result := "terminating"; Format.printf "Terminating!@."; result)
+    begin
+      Flag.Log.result := "terminating";
+      if !Flag.Print.result then Format.printf "Terminating!@."
+    end
   else
-    (Flag.Log.result := "unknown"; Format.printf "Unknown...@."; result)
+   begin
+     Flag.Log.result := "unknown";
+     if !Flag.Print.result then Format.printf "Unknown...@."
+   end;
+  result
 
 let main_fair_termination orig spec parsed =
   let result = Fair_termination.run spec parsed in
