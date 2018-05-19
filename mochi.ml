@@ -101,10 +101,11 @@ let print_info () =
 let print_env cmd json =
   let mochi = Revision.mochi in
   let fpat = Fpat.Revision.fpat in
-  let z3 =
+  let z3_lib =
     let a,b,c,d = Z3native.get_version () in
     Format.sprintf "%d.%d.%d.%d" a b c d
   in
+  let z3_bin = if Mconfig.z3_available then Some (String.trim @@ Unix.CPS.open_process_in (Mconfig.z3 ^ " -version") IO.input_all) else None in
   let trecs = TrecsInterface.version () in
   let horsat = HorSatInterface.version () in
   let horsat2 = HorSat2Interface.version () in
@@ -113,7 +114,8 @@ let print_env cmd json =
     try
       Option.iter (Format.printf "{Build:%S," -| fst) mochi;
       Option.iter (Format.printf "FPAT:%S," -| fst) fpat;
-      Format.printf "Z3:%S," z3;
+      Format.printf "\"Z3 library\":%S," z3_lib;
+      Option.iter (Format.printf "\"Z3 binary\":%S,") z3_bin;
       Option.iter (Format.printf "TRecS:%S,") trecs;
       Option.iter (Format.printf "HorSat:%S,") horsat;
       Option.iter (Format.printf "HorSat2:%S,") horsat2;
@@ -125,7 +127,8 @@ let print_env cmd json =
       Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Problems@.";
       Option.iter (fun (r,t) -> Format.printf "  Build: %s (%s)@." r t) mochi;
       Option.iter (fun (r,t) -> Format.printf "  FPAT: %s (%s)@." r t) fpat;
-      Format.printf "  Z3 version: %s@." z3;
+      Format.printf "  Z3 library version: %s@." z3_lib;
+      Option.iter (Format.printf "  Z3 binary: %s@.") z3_bin;
       Option.iter (Format.printf "  TRecS version: %s@.") trecs;
       Option.iter (Format.printf "  HorSat version: %s@.") horsat;
       Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2;
