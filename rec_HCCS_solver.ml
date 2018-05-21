@@ -99,9 +99,7 @@ let approximate (args, t) =
   args, t'
 
 let solve hcs =
-  let to_pred (xs,t) =
-    List.map (Pair.map F.Idnt.make FpatInterface.conv_typ) xs, FpatInterface.conv_formula t
-  in
+  let to_pred = Pair.map (List.map (Pair.map F.Idnt.make FpatInterface.conv_typ)) FpatInterface.conv_formula in
   let rev_map,filename = preprocess_rec_hccs hcs in
   solve_file filename
   |> Smtlib2_interface.parse_model
@@ -110,7 +108,7 @@ let solve hcs =
   |@> Debug.printf "Unfold: %a@." print_sol
   |> List.map (Pair.map_snd @@ Pair.map_snd QE.eliminate)
   |> List.map (Pair.map_snd approximate)
-  |> List.map (fun (f,def) -> List.assoc f rev_map, to_pred def)
+  |> List.map (Pair.map (fun f -> List.assoc f rev_map) to_pred)
 
 let check_sat hcs =
   let _,filename = preprocess_rec_hccs hcs in
