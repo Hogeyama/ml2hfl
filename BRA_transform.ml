@@ -140,10 +140,7 @@ let retyping t type_of_state  =
   let parsed = Parser_wrapper.from_use_file orig in
   Debug.printf "parsed from show_term t: @[%a@." Print.term parsed;
   let parsed = restore_ids parsed in
-  let _ =
-    if true
-    then Util.Verbose.printf "transformed::@. @[%a@.@." Print.term parsed
-  in
+  Verbose.printf "transformed::@. @[%a@.@." Print.term parsed;
   (orig, parsed)
 
 let extract_functions (target_program : term) =

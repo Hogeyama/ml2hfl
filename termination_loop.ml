@@ -41,6 +41,8 @@ let rec remove_coeff_defs coeffs t =
       (x,n)::sol, t2'
   | _ -> [], t
 
+let set_to_coeff exparam t = Trans.map_id (fun x -> if Id.mem x exparam then Id.add_attr Id.Coefficient x else x) t
+
 let verify_with holed pred =
   (* combine holed program and predicate *)
   let transformed = pluging holed pred in
@@ -48,6 +50,7 @@ let verify_with holed pred =
   Util.Verbose.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
   let orig, transformed = retyping transformed @@ BRA_state.type_of_state holed in
   let exparam_sol,transformed = remove_coeff_defs coeffs transformed in
+  let transformed = set_to_coeff (List.map fst exparam_sol) transformed in
   Main_loop.run ~exparam_sol orig @@ Problem.safety transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
