@@ -1534,7 +1534,7 @@ let get_fv =
   let col = make_col2 [] (@@@) in
   let col_desc bv desc =
     match desc with
-    | Var x -> if Id.mem x bv || Id.(List.Set.inter x.attr [External;Coefficient]) <> [] then [] else [x]
+    | Var x -> if Id.mem x bv then [] else [x]
     | Local(Decl_let bindings, t2) ->
         let bv' = List.fold_left (fun bv (f,_) -> f::bv) bv bindings in
         let aux fv (_,t) = col.col2_term bv' t @@@ fv in
