@@ -893,7 +893,7 @@ let solve_opt solver tenv0 phi obj =
       |> List.map (Pair.map_snd CunTerm.simplify)
     in
     let best = Term.subst m obj_t in
-    if Optimize.get_upper handle 0 |> Z3.Expr.to_string |> (=) "oo" then begin
+    if Optimize.get_upper handle |> Z3.Expr.to_string |> (=) "oo" then begin
       Optimize.add solver [p];
       let d =
         let step = RealTerm.one in
