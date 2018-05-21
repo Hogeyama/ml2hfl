@@ -67,6 +67,37 @@ let unfold sol =
   Hashtbl.iter (fun f (args,t) -> ignore @@ update f args t) sol';
   Hashtbl.fold (fun f (xs,t) acc -> (f,(xs,t))::acc) sol' []
 
+let approximate (args, t) =
+  let rest = List.Set.diff (CEGAR_syntax.get_fv t) (List.map fst args) in
+  let t' =
+    if rest <> [] then
+      let open CEGAR_syntax in
+      let rec approx t =
+        match decomp_app t with
+        | Const And, _ ->
+            decomp_ands t
+            |> List.map approx
+            |> List.filter (get_fv |- List.Set.disjoint rest)
+            |> make_ands
+        | Const Or, _ ->
+            decomp_ors t
+            |> List.map approx
+            |> List.filter (get_fv |- List.Set.disjoint rest)
+            |> make_ors
+        | _ -> t
+      in
+      let t' = approx t in
+      warning "QE fails. Some approximation is used.";
+      Debug.printf "[approx.] t: %a@." CEGAR_print.term t;
+      Debug.printf "[approx.] fv: %a@." Print.(list string) (CEGAR_syntax.get_fv t);
+      Debug.printf "[approx.] args: %a@." Print.(list string) (List.map fst args);
+      Debug.printf "[approx.] t': %a@." CEGAR_print.term t';
+      t'
+    else
+      t
+  in
+  args, t'
+
 let solve hcs =
   let to_pred (xs,t) =
     List.map (Pair.map F.Idnt.make FpatInterface.conv_typ) xs, FpatInterface.conv_formula t
@@ -78,6 +109,7 @@ let solve hcs =
   |> unfold
   |@> Debug.printf "Unfold: %a@." print_sol
   |> List.map (Pair.map_snd @@ Pair.map_snd QE.eliminate)
+  |> List.map (Pair.map_snd approximate)
   |> List.map (fun (f,def) -> List.assoc f rev_map, to_pred def)
 
 let check_sat hcs =

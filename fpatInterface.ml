@@ -254,7 +254,7 @@ let conv_event e = (***)
   match e with
   | Event(x) ->
     if x <> "fail" && Flag.Method.(!mode <> FairNonTermination) then
-      Format.eprintf "Warning: fpat does not support general events.";
+      warning "fpat does not support general events.";
     F.Term.mk_const (F.Const.Event(x))
   | Branch(_) -> assert false
 

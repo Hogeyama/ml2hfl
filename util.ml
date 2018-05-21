@@ -18,7 +18,7 @@ let unsupported s = raise (Unsupported s)
 let timeout () = raise TimeOut
 let killed () = raise Killed
 
-let warning s = Format.eprintf "%s@\n" s
+let warning s = Format.eprintf "WARNING: %s@\n%!" s
 
 let (!!) f = f ()
 let (-|) f g x = f (g x)
