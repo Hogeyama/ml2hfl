@@ -100,7 +100,6 @@ let print_info () =
 
 let print_env cmd json =
   let mochi = Revision.mochi in
-  let fpat = Fpat.Revision.fpat in
   let z3_lib =
     let a,b,c,d = Z3native.get_version () in
     Format.sprintf "%d.%d.%d.%d" a b c d
@@ -113,7 +112,6 @@ let print_env cmd json =
   if json then
     try
       Option.iter (Format.printf "{Build:%S," -| fst) mochi;
-      Option.iter (Format.printf "FPAT:%S," -| fst) fpat;
       Format.printf "\"Z3 library\":%S," z3_lib;
       Option.iter (Format.printf "\"Z3 binary\":%S,") z3_bin;
       Option.iter (Format.printf "TRecS:%S,") trecs;
@@ -126,7 +124,6 @@ let print_env cmd json =
     begin
       Color.printf Color.Green "MoCHi: Model Checker for Higher-Order Problems@.";
       Option.iter (fun (r,t) -> Format.printf "  Build: %s (%s)@." r t) mochi;
-      Option.iter (fun (r,t) -> Format.printf "  FPAT: %s (%s)@." r t) fpat;
       Format.printf "  Z3 library version: %s@." z3_lib;
       Option.iter (Format.printf "  Z3 binary: %s@.") z3_bin;
       Option.iter (Format.printf "  TRecS version: %s@.") trecs;
@@ -625,7 +622,6 @@ let string_of_exception = function
   | Fpat.Timer.Timeout
   | Assert_failure("timer.ml", _, _) -> "TimeOut"
   | Killed -> "Killed"
-  | Z3native.Exception("out of memory") -> "OutOfMemory"
   | e -> Printexc.to_string e
 
 let print_error = function
@@ -661,8 +657,6 @@ let print_error = function
   | Fpat.Timer.Timeout
   | Assert_failure("timer.ml", _, _) ->
       Format.eprintf "Verification failed (time out)@."
-  | Z3native.Exception("out of memory") ->
-      Format.eprintf "Verification failed (out of memory)@."
   | e when !Flag.Debug.debug_module = [] ->
       Format.eprintf "Exception: %s@." @@ Printexc.to_string e
   | e -> raise e

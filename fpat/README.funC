@@ -1,0 +1,20 @@
+funC
+====
+
+funC is a software model checker for C based on functionalization and 
+higher-order software model checking.
+
+Requirements
+------------
+
+* OCaml 3.12.1 or later (http://www.caml.org)
+* ocamlfind/findlib (http://projects.camlcity.org/projects/findlib.html)
+* FPAT (https://bitbucket.org/uhiro/vhorn)
+* CIL (http://kerneis.github.io/cil/)
+
+Installation
+------------
+
+Run the following commands to build funC:
+
+  $ make

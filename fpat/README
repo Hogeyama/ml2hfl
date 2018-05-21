@@ -1,0 +1,67 @@
+FPAT
+====
+
+FPAT is a Framework for Program Analysis and Transformation.
+
+Requirements
+------------
+
+* OCaml 4.03.0 or later (http://www.caml.org)
+* OPAM 1.22 or later (http://opam.ocamlpro.com/)
+
+Required OPAM packages
+----------------------
+
+* ocamlfind
+* extlib
+* zarith
+* camlp4
+* camlp5
+
+Optional OPAM packages
+----------------------
+
+* minisat (http://www.dcs.gla.ac.uk/~michele/camlminisat.html)
+* apron
+* ocaml-glpk
+* gsl
+* cil
+* llvm
+
+Further Options
+---------------
+
+* Z3 4.4.2.1 (https://github.com/Z3Prover/z3/)
+* CVC3 (http://www.cs.nyu.edu/acsys/cvc3/)
+* CSIsat 1.2 (http://www.sosy-lab.org/~dbeyer/CSIsat/)
+* RSRefine (https://bitbucket.org/terauchi/idepceg)
+* AiSatClone
+
+* GSL CQP extension (http://www.network-theory.co.uk/download/gslextras/Bundle/)
+* SPPoC (http://www.lifl.fr/west/sppoc/)
+* OSDP (https://cavale.enseeiht.fr/osdp/)
+
+Installation
+------------
+
+First, edit "Makefile.config.model" and save it as "Makefile.config".
+Then, run the following commands to build and install FPAT:
+
+  $ autoconf
+  $ ./configure
+  $ make install-lib
+  $ make
+  $ make install
+
+Authors
+-------
+
+FPAT was developed and is maintained by Hiroshi Unno <uhiro@cs.tsukuba.ac.jp> 
+
+Contributors
+------------
+
+Daisuke Okamoto <okamoto@logic.cs.tsukuba.ac.jp>
+Kodai Hashimoto <kodai@logic.cs.tsukuba.ac.jp>
+Sho Torii <sho@logic.cs.tsukuba.ac.jp>
+Hiroki Sakamoto <sakamoto@logic.cs.tsukuba.ac.jp>

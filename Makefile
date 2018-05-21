@@ -48,6 +48,16 @@ endif
 
 
 ################################################################################
+# libraries
+
+install-lib: csisat fpat
+csisat:
+	cd csisat && make lib
+
+fpat: csisat
+	cd fpat && ./configure && make install-lib && make && make install
+
+################################################################################
 # bytecode and native-code compilation
 
 MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
