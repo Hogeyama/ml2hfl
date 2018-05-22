@@ -78,8 +78,8 @@ let const_ty c =
       assert false
 
 let rec gen_sub mode env t ty : sub_constr list =
-  Debug.printf "env: %a@." RT.Env.print env;
-  Debug.printf "t: %a@.@." Print.term t;
+  if false then Debug.printf "env: %a@." RT.Env.print env;
+  if false then Debug.printf "t: %a@.@." Print.term t;
   match t.desc with
   | _ when is_simple_expr t ->
       let aty = simple_expr_ty t in
@@ -124,19 +124,17 @@ let rec gen_sub mode env t ty : sub_constr list =
             List.map (snd |- lift env) bindings
         | Use_empty_pred -> unsupported "Ref_type_check.Use_empty_pred"
       in
-      let sub1 =
+      let sub =
         let env' = List.fold_right2 (fst |- RT.Env.add) bindings tys env in
         gen_sub mode env' t1 ty
       in
-      let sub2 =
-        let ts = List.map snd bindings in
-        let env' =
-          let cons (x,_) ty env = RT.Env.add x ty env in
-          List.fold_right2 cons bindings tys env
-        in
-        List.flatten @@ List.map2 (gen_sub mode env') ts tys
+      let aux (env,acc) (x,t) ty =
+        let env' = if is_base_var x then env else RT.Env.add x ty env in
+        let acc' = gen_sub mode env' t ty @ acc in
+        Debug.printf "TEMPLATE: %a: %a@." Id.print x RT.print ty;
+        env', acc'
       in
-      sub1 @ sub2
+      snd @@ List.fold_left2 aux (env,sub) bindings tys
   | BinOp(op,t1,t2) when is_simple_expr t1 ->
       let x2 = new_var_of_term t2 in
       gen_sub mode env Term.(let_ [x2,t2] (make_binop op t1 (var x2))) ty
