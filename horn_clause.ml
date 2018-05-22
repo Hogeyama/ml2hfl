@@ -15,9 +15,9 @@ let pred_var_term = make_var pred_var
 let make_pred_var p ts =
   let typs = List.map Syntax.typ ts in
   let typ = List.fold_right make_tfun typs Ty.bool in
-  Id.make p PredVar.pvar_name [] typ
+  Id.make p PredVar.pvar_name [Id.Predicate] typ
 let is_pred_var = PredVar.is_pvar
-let get_pred_id x = Id.id x
+let get_pred_id = Id.id
 let get_pred_id_of_term t =
   match t.desc with
   | App({desc=Var x}, ts) -> assert (is_pred_var x); Some (get_pred_id x)
