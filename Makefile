@@ -50,12 +50,14 @@ endif
 ################################################################################
 # libraries
 
-install-lib: csisat fpat
+.PHONY: csisat fpat
+
+install-lib: fpat
 csisat:
 	cd csisat && make lib
 
 fpat: csisat
-	cd fpat && ./configure && make install-lib && make && make install
+	cd fpat && ./configure && make install-lib all install
 
 ################################################################################
 # bytecode and native-code compilation

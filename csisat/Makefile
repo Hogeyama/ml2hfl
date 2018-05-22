@@ -4,10 +4,11 @@ PWD = $(shell pwd)
 OBJ = obj
 SRC = src
 DOC = doc
+BIN = bin
 LIB =/usr/lib #lib
 
 INCLUDE=/usr/include
-LIBS=-ccopt -L$(LIB) -cclib -L./$(LIB_DIR) -cclib -lcamlglpk -cclib -lglpk
+LIBS=-ccopt -L$(LIB) -cclib -lglpk -cclib -L$(LIB_DIR) -cclib -lcsisat
 
 OCAML_C = $(shell if which ocamlc.opt 2> /dev/null > /dev/null ; then echo ocamlc.opt; else echo ocamlc; fi)
 OCAML_LD = $(OCAML_C)
@@ -21,8 +22,10 @@ COMPILE_FLAG = #-inline 10
 #COMPILE_FLAG = -p
 OCAML_LD_FLAGS =
 
+DIRS = $(OBJ) $(BIN)
 
 FILES = \
+	$(OBJ)/camlglpk.cmx \
 	$(OBJ)/csisatGlobal.cmx \
 	$(OBJ)/csisatMessage.cmx \
 	$(OBJ)/csisatOrdSet.cmx \
@@ -53,13 +56,18 @@ FILES = \
 	$(OBJ)/csisatTests.cmx \
     $(OBJ)/csisatMain.cmx
 
-TARGET = bin/csisat
+TARGET = $(BIN)/csisat
 
-all: lib $(FILES)
+
+all: $(DIRS) lib $(FILES)
 	$(OCAML_OPT_C) $(COMPILE_FLAG) -o $(TARGET) $(FILES) $(LIBS) $(CAMLGLPK)
 	$(shell sed -i 's/Version .*\\n\\n/Version 1.2 (Rev REV, Build DATE)\.\\n\\n/g' $(SRC)/csisatConfig.ml)
 
-$(FILES): $(GLPK_LIB)
+$(OBJ):
+	mkdir -p $(OBJ)
+
+$(BIN):
+	mkdir -p $(BIN)
 
 VERSION = $(shell svnversion)
 DATE = $(shell date -u +%Y-%m-%dT%H:%M:%S)
@@ -111,6 +119,7 @@ $(OBJ)/%.ml: $(SRC)/io/%.mly
 	@mv $(patsubst %.mly, %.ml, $<) $@
 	@mv $(patsubst %.mly, %.mli, $<) $(patsubst %.ml, %.mli, $@)
 
+
 $(OBJ)/%.cmx: $(OBJ)/%.ml
 	$(OCAML_OPT_C) $(COMPILE_FLAG) -I $(OBJ) $(INLCUDES) -c $<
 	$(OCAML_C) -I $(OBJ) $(INLCUDES) -c $<
@@ -127,7 +136,20 @@ $(OBJ)/%.cmx: $(SRC)/%.ml
 $(OBJ)/%.o: $(SRC)/%.c
 	$(OCAML_C) -c -ccopt -I$(INCLUDE) -ccopt -o -ccopt $@ $<
 
-.PHONY: doc
+LIB_DIR = lib
+OCAML_LIB = libcsisat
+
+lib: $(LIB_DIR)/$(OCAML_LIB).cmxa
+
+GLPK_OBJ = $(SRC)/camlglpk_stubs.o
+
+$(LIB_DIR)/$(OCAML_LIB).cmxa $(LIB_DIR)/$(OCAML_LIB).a: $(GLPK_LIB) $(FILES) $(GLPK_OBJ)
+	@echo Creating OCAML \(native code\) library $@
+	@mkdir -p $(LIB_DIR)
+	$(OCAML_OPT_LD) $(OCAML_LD_FLAGS) -a -o $@ $(FILES)
+	ar q $(LIB_DIR)/$(OCAML_LIB).a $(GLPK_OBJ)
+
+.PHONY: doc lib
 
 doc: odoc
 
@@ -146,37 +168,4 @@ odoc:
 		$(patsubst $(OBJ)/%, $(SRC)/%, $(patsubst %.cmx, %.ml, $(FILES)))
 
 clean:
-	$(RM) $(TARGET) $(OBJ)/* $(LIB_DIR)/* $(SRC)/camlglpk.mli
-
-
-LIB_DIR = lib
-OCAML_LIB = libcsisat
-
-lib: camlglpk $(LIB_DIR)/$(OCAML_LIB).cmxa
-
-$(LIB_DIR)/$(OCAML_LIB).cmxa $(LIB_DIR)/$(OCAML_LIB).a: $(GLPK_LIB) $(FILES)
-	@echo Creating OCAML \(native code\) library $@
-	@mkdir -p $(LIB_DIR)
-	$(OCAML_OPT_LD) $(OCAML_LD_FLAGS) -a -o $@ $(FILES)
-
-CC=gcc
-CFLAGS= -O2 -Wall -fPIC
-
-GLPK_SRC = $(SRC)/camlglpk_stubs.c
-GLPK_OBJ = $(SRC)/camlglpk_stubs.o
-GLPK_LIB = $(LIB_DIR)/libcamlglpk.a
-
-camlglpk: $(OBJ)/camlglpk.cmi $(GLPK_LIB)
-
-$(OBJ)/camlglpk.cmi: $(SRC)/camlglpk.ml
-	@mkdir -p $(LIB_DIR)
-	@echo compiling camlglpk interface
-	@cp $(SRC)/camlglpk.ml $(SRC)/camlglpk.mli
-	ocamlc -c $(SRC)/camlglpk.mli
-	@mv $(SRC)/camlglpk.cmi $(OBJ)
-
-$(GLPK_LIB): $(GLPK_SRC)
-	@echo compiling $(GLPK_LIB)
-	$(CC) -c $(GLPK_SRC) $(CFLAGS) -o $(GLPK_OBJ)
-	ar rc $(GLPK_LIB) $(GLPK_OBJ)
-	ranlib $(GLPK_LIB)
+	$(RM) $(TARGET) $(OBJ)/*
