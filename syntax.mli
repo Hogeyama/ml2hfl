@@ -248,7 +248,5 @@ val get_bv : term -> id list
 val get_bv_pat : pattern -> id list
 val is_non_rec : (id * term) list -> bool
 
-val make_extra_coeff : ?name:string -> ?typ:typ -> unit -> id
-val is_extra_coeff : id -> bool
 val is_prim_var : id -> bool
 val decomp_funs : term -> id list * term

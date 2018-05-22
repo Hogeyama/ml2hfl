@@ -93,7 +93,7 @@ let rec infer (env,counter) t =
   | Event _
   | Const _
   | Bottom -> unify (get_typ env t) @@ from_type t.typ
-  | Var x when is_extra_coeff x -> unify (get_typ env t) TBase
+  | Var x when Id.is_coefficient x -> unify (get_typ env t) TBase
   | Var x ->
       if false then Format.printf "x: %a@." Print.id x;
       unify (get_typ env t) @@ get_typ_var env x

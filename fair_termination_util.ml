@@ -124,8 +124,8 @@ let make_extra_param xs =
   match xs with
   | [x] -> make_var x
   | _ ->
-      let mk = make_var -| make_extra_coeff in
-      List.fold_left (fun acc x -> make_add acc @@ make_mul !!mk (make_var x)) !!mk xs
+      let mk () = make_var @@ Id.new_coeff ~name:"c" Ty.int in
+      List.fold_left Term.(fun acc x -> acc + !!mk * (var x)) !!mk xs
 let is_fun_var = is_fun_typ -| Id.typ
 let new_exparam () = Id.new_var ~name:"ex" Ty.int
 

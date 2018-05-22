@@ -365,7 +365,7 @@ let rec run spec t =
     in
     let fv = List.remove_all (get_fv t''') rank_var in
     Debug.printf "%a@." (List.print Print.id) fv;
-    assert (List.for_all is_extra_coeff fv);
+    assert (List.for_all Id.is_coefficient fv);
     let init_sol = List.map (fun x -> x, 1) fv in
     let result = main_loop rank_var rank_funs prev_vars arg_vars init_sol [] [] [] t''' in
     if !!Debug.check then

@@ -15,7 +15,7 @@ let to_string_CoeffInfos f =
   in
   let isZero = function
     | {desc=Const (Int n)} -> n = 0
-    | {desc=Var v} -> is_extra_coeff v
+    | {desc=Var v} -> Id.is_coefficient v
     | t -> (Format.eprintf "%a@." Print.term t;raise (Invalid_argument ""))
   in
   let areAllZero = List.for_all isZero (List.map f !exCoefficients) in
@@ -112,7 +112,7 @@ let rec removeDummySubstitutions = function
 
 let substituteZero e =
   let toZero = function
-    | { desc = Var id } when is_extra_coeff id -> make_int 0
+    | { desc = Var id } when Id.is_coefficient id -> make_int 0
     | e -> e
   in
   BRA_transform.everywhere_expr toZero e

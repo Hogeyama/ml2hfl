@@ -1573,12 +1573,6 @@ let occur_typ =
   col.col2_typ
 
 
-let make_extra_coeff ?(name="c") ?(typ=TBase TInt) () =
-  Id.new_var ~name:name ~attr:[Id.Coefficient] typ
-let is_extra_coeff = List.mem Id.Coefficient -| Id.attr
-
-
-
 let is_non_rec bindings =
   match bindings with
   | [] -> assert false

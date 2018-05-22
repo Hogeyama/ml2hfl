@@ -731,7 +731,7 @@ let make_ext_env =
   let col_desc funs desc =
     match desc with
     | Var x when Fpat.RefTypInfer.is_parameter (Id.name x) -> []
-    | Var x when is_extra_coeff x -> []
+    | Var x when Id.is_coefficient x -> []
     | Var x when Id.mem x funs -> [x, Id.typ x]
     | Var x -> []
     | _ -> col.col2_desc_rec funs desc
