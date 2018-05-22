@@ -950,7 +950,8 @@ let save_smtlib2 filename hcs =
                 String.pr)))
     hcs;
   Format.fprintf ocf "(check-sat)@,";
-  Format.fprintf ocf "(get-model)@,@]@?";
+  Format.fprintf ocf "(get-model)@,";
+  Format.fprintf ocf "(exit)@,@]@?";
   close_out oc
 let save_smtlib2 = Logger.log_block2 "HCCS.save_smtlib2" save_smtlib2
 
