@@ -20,13 +20,24 @@ let rec lift env sty =
       let args = x :: RT.Env.keys base_env in
       let pred =
         let pvar = PredVar.new_pvar @@ List.map Id.typ args in
-        Term.(var pvar @ (vars args))
+        Term.(var pvar @ vars args)
       in
       RT.Base(base, x, pred)
   | TFun(x,sty2) ->
       let rty1 = lift env @@ Id.typ x in
       let rty2 = lift (RT.Env.add x rty1 env) sty2 in
       RT.Fun(x, rty1, rty2)
+  | TTuple xs ->
+      let xtyps,_ =
+        let aux (acc,env) x =
+          let rty = lift env @@ Id.typ x in
+          let env' = RT.Env.add x rty env in
+          let acc' = acc @ [x, rty] in
+          acc', env'
+        in
+        List.fold_left aux ([],env) xs
+      in
+      RT.Tuple xtyps
   | TAttr(_,sty') -> lift env sty'
   | _ ->
       Format.eprintf "LIFT: %a@." Print.typ sty;
@@ -53,7 +64,7 @@ let print_constrs fm cs =
   List.print pr fm cs
 
 let simple_expr_ty t =
-  let x = Id.new_var t.typ in
+  let x = new_var_of_term t in
   let base = Option.get @@ decomp_base t.typ in
   RT.Base(base, x, Term.(var x = t))
 
@@ -102,15 +113,16 @@ let rec gen_sub mode env t ty : sub_constr list =
       gen_sub mode env Term.(let_ [x,t1] (if_ (var x) t2 t3)) ty
   | Local(Decl_let bindings, t1) ->
       let tys =
-        let aux (x,t) =
-          match mode with
-          | Default ->
+        match mode with
+        | Default ->
+            let aux (x,t) =
               if Id.mem x @@ get_fv t then raise Ref_type_not_found;
               lift env t
-          | Allow_recursive -> unsupported "Ref_type_check.Allow_recursive"
-          | Use_empty_pred -> unsupported "Ref_type_check.Use_empty_pred"
-        in
-        List.map aux bindings
+            in
+            List.map aux bindings
+        | Allow_recursive ->
+            List.map (snd |- lift env) bindings
+        | Use_empty_pred -> unsupported "Ref_type_check.Use_empty_pred"
       in
       let sub1 =
         let env' = List.fold_right2 (fst |- RT.Env.add) bindings tys env in
@@ -126,18 +138,44 @@ let rec gen_sub mode env t ty : sub_constr list =
       in
       sub1 @ sub2
   | BinOp(op,t1,t2) when is_simple_expr t1 ->
-      let x2 = Id.new_var t2.typ in
+      let x2 = new_var_of_term t2 in
       gen_sub mode env Term.(let_ [x2,t2] (make_binop op t1 (var x2))) ty
   | BinOp(op,t1,t2) ->
-      let x1 = Id.new_var t1.typ in
+      let x1 = new_var_of_term t1 in
       gen_sub mode env Term.(let_ [x1,t1] (make_binop op (var x1) t2)) ty
   | Not t1 ->
-      let x = Id.new_var t1.typ in
-      gen_sub mode env Term.(let_ [x,t1] (not t1)) ty
+      let x = new_var_of_term t1 in
+      gen_sub mode env Term.(let_ [x,t1] (not (var x))) ty
   | Event("fail",false) ->
       let x = Id.new_var Ty.unit in
       let aty = RT.Fun(x, RT.Base(TUnit, x, Term.false_), RT.Base(TUnit, x, Term.false_)) in
       [env, (aty, ty)]
+  | Tuple ts when List.for_all is_var ts ->
+      let aty =
+        let xs = List.map (Option.get -| decomp_var) ts in
+        let atys = List.map (RT.Env.assoc -$- env) xs in
+        RT.Tuple (List.combine xs atys)
+      in
+      [env, (aty, ty)]
+  | Tuple ts ->
+      let xs = List.map new_var_of_term ts in
+      let t0 = Term.(tuple (vars xs)) in
+      let t' = List.fold_right2 (fun x t acc -> Term.(let_ [x,t] acc)) xs ts t0 in
+      gen_sub mode env t' ty
+  | Proj(i,{desc=Var x}) ->
+      let env',aty =
+        match RT.Env.assoc x env with
+        | RT.Tuple xtys ->
+            let xtys1,xtys2 = List.takedrop i xtys in
+            RT.Env.of_list @@ List.rev xtys1,
+            snd @@ List.hd xtys2
+        | _ -> assert false
+      in
+      assert (List.Set.disjoint ~eq:Id.eq (RT.Env.dom env') (RT.Env.dom env));
+      [RT.Env.merge env' env, (aty, ty)]
+  | Proj(i,t1) ->
+      let x = new_var_of_term t1 in
+      gen_sub mode env Term.(let_ [x,t1] (proj i (var x))) ty
   | Bottom -> []
   | Local _ -> unsupported __LOC__
   | Label _ -> unsupported __LOC__
@@ -152,8 +190,6 @@ let rec gen_sub mode env t ty : sub_constr list =
   | Match _ -> unsupported __LOC__
   | Raise _ -> unsupported __LOC__
   | TryWith _ -> unsupported __LOC__
-  | Tuple _ -> unsupported __LOC__
-  | Proj _ -> unsupported __LOC__
   | Ref _ -> unsupported __LOC__
   | Deref _ -> unsupported __LOC__
   | SetRef _ -> unsupported __LOC__
@@ -165,6 +201,7 @@ let denote_ty x ty =
   match ty with
   | RT.Base(b,y,p) -> subst_var y x p
   | RT.Fun _ -> true_term
+  | RT.Tuple _ -> true_term
   | _ -> unsupported __LOC__
 
 let denote_env env =
@@ -181,6 +218,14 @@ let rec flatten env (ty1,ty2) =
   | RT.Fun(x1,ty11,ty12), RT.Fun(x2,ty21,ty22) ->
       flatten env (ty21,ty11) @
       flatten (RT.Env.add x2 ty21 env) (RT.subst_var x1 x2 ty12, ty22)
+  | RT.Tuple xtys1, RT.Tuple xtys2 ->
+      let aux (x1,ty1) (x2,ty2) (env,sbst,acc) =
+        let env' = RT.Env.add x2 ty1 env in
+        let sbst' = RT.subst_var x1 x2 -| sbst in
+        let acc' = flatten env (ty1,ty2) @ acc in
+        env', sbst', acc'
+      in
+      Triple.trd @@ List.fold_right2 aux xtys1 xtys2 (env,Fun.id,[])
   | _ ->
       Format.eprintf "ty1: %a@." RT.print ty1;
       Format.eprintf "ty2: %a@." RT.print ty2;
@@ -205,35 +250,31 @@ let rec simplify pre1 pre2 ant =
 let simplify (pre,ant) =
   simplify [] pre ant
 
-
-let to_hcs constrs =
-  let to_formula (pre,ant) =
-    let pre' = List.map (Fpat.Formula.of_term -| FpatInterface.of_term) pre in
-    let ant' = Fpat.Formula.of_term @@ FpatInterface.of_term ant in
-    Fpat.HCCS.of_formula pre' ant'
-  in
-  List.flatten_map to_formula constrs
-
-
-
-let check ?(mode=Default) rty_env t ty =
+let gen_hcs mode env t ty =
   let ty = RT.rename ~full:true ty in
-  let rty_env = RT.Env.map_value (RT.rename ~full:true) rty_env in
-  Debug.printf "Check:@.";
+  let env = RT.Env.map_value (RT.rename ~full:true) env in
+  Debug.printf "Ref_type_check:@.";
   Debug.printf "  t: %a@." Print.term t;
-  Debug.printf "  rty_env: %a@." RT.Env.print rty_env;
-  let hcs =
-    gen_sub mode rty_env t ty
-    |@> Debug.printf "Subtyping constraints:@.  @[%a@.@." print_sub_constrs
-    |> List.flatten_map (Fun.uncurry flatten)
-    |@> Debug.printf "Constraints:@.  @[%a@.@." print_constrs
-    |> List.flatten_map simplify
-    |@> Debug.printf "Simplified:@.  @[%a@.@." print_constrs
-    |> to_hcs
-    |@> Debug.printf "Constraints:@.  @[%a@.@." Fpat.HCCS.pr
-    |*@> Fpat.HCCS.save_graphviz "test.dot"
-  in
+  Debug.printf "  env: %a@." RT.Env.print env;
+  gen_sub mode env t ty
+  |@> Debug.printf "Subtyping constraints:@.  @[%a@.@." print_sub_constrs
+  |> List.flatten_map (Fun.uncurry flatten)
+  |@> Debug.printf "Constraints:@.  @[%a@.@." print_constrs
+  |> List.flatten_map simplify
+  |@> Debug.printf "Simplified:@.  @[%a@.@." print_constrs
+  |> FpatInterface.to_hcs
+  |@> Debug.printf "Constraints:@.  @[%a@.@." Fpat.HCCS.pr
+  |*@> Fpat.HCCS.save_graphviz "test.dot"
+
+let check ?(mode=Default) env t ty =
+  let hcs = gen_hcs mode env t ty in
   Fpat.HCCS.save_smtlib2 "test.smt2" hcs;
   try
     Rec_HCCS_solver.check_sat hcs
   with _ -> false
+
+let print cout ?(mode=Default) env t ty =
+  let hcs = gen_hcs mode env t ty in
+  let filename = Filename.change_extension !!Flag.mainfile "smt2" in
+  Fpat.HCCS.save_smtlib2 filename hcs;
+  Printf.fprintf cout "%s" @@ IO.input_file filename

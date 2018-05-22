@@ -3,9 +3,9 @@ let cvc3 = ref Mconfig.cvc3
 
 let filenames : string list ref = ref []
 let mainfile () =
-  try
-    List.hd !filenames
-  with _ -> invalid_arg "Flag.mainfile"
+  match !filenames with
+  | filename::_ -> filename
+  | _ -> invalid_arg "Flag.mainfile"
 let spec_file = ref ""
 
 let time_limit = ref 0
@@ -20,7 +20,7 @@ module TRecS = struct
 end
 
 module Method = struct
-  type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination
+  type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | PrintRefConstr
   let mode = ref Reachability
   let input_cegar = ref false
   let nondet = ref false (* eager evaluation for branch *)

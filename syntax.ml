@@ -116,21 +116,21 @@ let attr t = t.attr
 
 module Id = struct
   include Id
-  let new_var ?name ?attr typ =
+  let new_var ?name ?(attr=[]) typ =
     let name =
       match name with
       | None -> Type.var_name_of typ
       | Some name -> name
     in
-    make (new_int()) name (Option.default [] attr) typ
+    make !!new_int name attr typ
 end
 
 module PredVar = struct
-  let pvar_name = "$P"
-  let is_pvar x = Id.name x = pvar_name
+  let pvar_name = "P"
+  let is_pvar = Id.is_predicate
   let new_pvar tys =
     let ty = List.fold_right make_tfun tys Ty.bool in
-    Id.new_var ~name:pvar_name ty
+    Id.new_var ~name:pvar_name ~attr:[Id.Predicate] ty
 end
 
 

@@ -9,6 +9,7 @@ type 'a t =
 and attr =
   | External
   | Coefficient
+  | Predicate
 
 let init_counter = 0
 let counter = ref init_counter
@@ -75,6 +76,7 @@ let map_attr f x = {x with attr = f x.attr}
 
 let is_external x = List.mem External x.attr
 let is_coefficient x = List.mem Coefficient x.attr
+let is_predicate x = List.mem Predicate x.attr
 
 let print fm x =
   let s = to_string x in
@@ -82,6 +84,7 @@ let print fm x =
   let s = if !Flag.Print.as_ocaml then String.sign_to_letters @@ String.uncapitalize s else s in
   let s = if is_coefficient x then "#" ^ s else s in
   let s = if is_external x then "$" ^ s else s in
+  let s = if is_predicate x then "%" ^ s else s in
   Format.fprintf fm "@[%s@]" s
 
 let prefix_for_module m = name m ^ "."

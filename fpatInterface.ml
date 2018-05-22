@@ -720,3 +720,12 @@ let parse_arg arg =
   with
   | Arg.Bad s
   | Arg.Help s -> Format.printf "%s" s; exit 0
+
+
+let to_hcs constrs =
+  let to_formula (pre,ant) =
+    let pre' = List.map (Fpat.Formula.of_term -| of_term) pre in
+    let ant' = Fpat.Formula.of_term @@ of_term ant in
+    Fpat.HCCS.of_formula pre' ant'
+  in
+  Util.List.flatten_map to_formula constrs

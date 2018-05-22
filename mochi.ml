@@ -221,6 +221,12 @@ let main_quick_check spec t =
   |> Preprocess.(run_on_term (before CPS @@ all spec))
   |> Quick_check.repeat_forever
 
+let print_ref_constr spec t =
+  let t' = Preprocess.(run_on_term (before CPS @@ all spec)) t in
+  let ty = Ref_type.of_simple t'.Syntax.typ in
+  let env = Ref_type.Env.empty in
+  Ref_type_check.(print stdout ~mode:Allow_recursive env t' ty)
+
 let main cin =
   let input_string =
     let s = IO.input_all cin in
@@ -242,6 +248,7 @@ let main cin =
     Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
     if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
     let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
+    (* TODO: Refactor below *)
     let verify t =
       if !Flag.Method.modular then
         Modular.main orig spec t
@@ -256,7 +263,9 @@ let main cin =
         in
         Main_loop.run orig ~spec problem
     in
-    if !Flag.Method.quick_check then
+    if Flag.Method.(!mode = PrintRefConstr) then
+      (print_ref_constr spec parsed; exit 0)
+    else if !Flag.Method.quick_check then
       main_quick_check spec parsed
     else if !Flag.Method.split_assert then
       main_split_assert orig spec parsed
@@ -319,10 +328,11 @@ let rec arg_spec () =
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";
      "-just-run", Arg.String just_run_other_command, " (just for experiments, %i is replaced with the filename)";
+     "-print-ref-constr", Arg.Unit (fun () -> set_only_result (); Flag.Method.(mode := PrintRefConstr)), " Just print constraints for refinement types";
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
-     "-abst-literal", Arg.Set_int Flag.Method.abst_literal, " Abstract long list literals";
+     "-abst-literal", Arg.Set_int Flag.Method.abst_literal, " Abstract literals";
      "-ignore-non-termination", Arg.Set Flag.Method.ignore_non_termination, " Ignore non-termination";
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";
