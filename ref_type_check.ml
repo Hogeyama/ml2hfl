@@ -131,7 +131,7 @@ let rec gen_sub mode env t ty : sub_constr list =
       let sub2 =
         let ts = List.map snd bindings in
         let env' =
-          let cons (x,t) ty env = if Id.mem x @@ get_fv t then RT.Env.add x ty env else env in
+          let cons (x,_) ty env = RT.Env.add x ty env in
           List.fold_right2 cons bindings tys env
         in
         List.flatten @@ List.map2 (gen_sub mode env') ts tys
