@@ -74,6 +74,7 @@ and print_termlist pri typ fm ts =
 
 and print_const fm c =
   match c with
+  | End_of_definitions when !Flag.Print.as_ocaml -> fprintf fm "()"
   | End_of_definitions -> fprintf fm "EOD"
   | Unit -> fprintf fm "()"
   | True -> fprintf fm "true"
@@ -164,7 +165,7 @@ and print_desc attr pri typ fm desc =
       fprintf fm "@[<hov 2>%sassert%s %a%s@]" s1 label (print_term p typ) t1 s2
   | If(t1, t2, t3) ->
       let p = 10 in
-      let s1,s2 = paren pri (p+1) in
+      let s1,s2 = paren pri (if t3.desc = Const Unit then p else p+1) in
       let label =
         if !Flag.Print.only_if_id then
           match List.find_option (function AId _ -> true | _ -> false) attr with
@@ -193,7 +194,7 @@ and print_desc attr pri typ fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "@[%sassert@ false%s@]" s1 s2
   | Local(Decl_let [u,t1], t2) when not !!Debug.check && Id.typ u = TBase TUnit && not @@ Id.mem u @@ get_fv t2 ->
-      let p = 18 in
+      let p = 9 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a;@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
   | Local(Decl_let bindings, t2) ->

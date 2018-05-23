@@ -637,7 +637,7 @@ let string_of_exception = function
 let print_error = function
   | Fpat.RefTypInfer.FailedToRefineTypes ->
       Format.eprintf "Verification failed:@.";
-      Format.eprintf "  MoCHi could not refute an infeasible error path @.";
+      Format.eprintf "  MoCHi could not refute an infeasible error path@.";
       Format.eprintf "  due to the incompleteness of the refinement type system@."
   | e when Fpat.FPATConfig.is_fpat_exception e ->
       Format.eprintf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
