@@ -239,6 +239,7 @@ let rec simplify pre1 pre2 ant =
   | p::pre2' ->
       match p.desc with
       | Const True -> simplify pre1 pre2' ant
+      | Const False -> []
       | BinOp(And, p1, p2) -> simplify pre1 (p1::p2::pre2') ant
       | BinOp(Eq, {desc=Var x}, t) ->
           let sb = subst x t in
