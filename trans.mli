@@ -63,6 +63,7 @@ val map_id : (id -> id) -> term -> term
 val split_mutual_rec : ?only_top:bool -> term -> term
 val get_set_main : term -> id option
 val abst_literal : term -> term
+val encode_bool_as_int : term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc

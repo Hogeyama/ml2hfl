@@ -3078,3 +3078,44 @@ let abst_literal =
   in
   tr.tr_term <- tr_term;
   fun t -> if !Flag.Method.abst_literal < 0 then t else tr.tr_term t
+
+let encode_bool_as_int =
+  let tr = make_trans () in
+  let tr_typ typ =
+    if typ = Ty.bool then
+      Ty.int
+    else
+      tr.tr_typ_rec typ
+  in
+  let int_of_bool t = Term.(if_ t (int 1) (int 0)) in
+  let boo_of_int t =
+    match t.desc with
+    | If(t1, {desc=Const (Int 1)}, {desc=Const (Int 0)}) -> t1
+    | _ -> Term.(t <> int 0)
+  in
+  let tr_desc desc =
+    match desc with
+    | Const True -> Const (Int 1)
+    | Const False -> Const (Int 0)
+    | Not t ->
+        let t' = boo_of_int @@ tr.tr_term t in
+        Term.(int_of_bool (not t')).desc
+    | BinOp((And|Or as op), t1, t2) ->
+        let op' = match op with And -> Term.(&&) | Or -> Term.(||) | _ -> assert false in
+        let t1' = boo_of_int @@ tr.tr_term t1 in
+        let t2' = boo_of_int @@ tr.tr_term t2 in
+        (int_of_bool @@ op' t1' t2').desc
+    | BinOp((Eq|Lt|Gt|Leq|Geq), _, _) ->
+        let desc' = tr.tr_desc_rec desc in
+        let t' = {desc=desc'; attr=[]; typ=Ty.bool} in
+        (int_of_bool t').desc
+    | If(t1, t2, t3) ->
+        let t1' = tr.tr_term t1 in
+        let t2' = tr.tr_term t2 in
+        let t3' = tr.tr_term t3 in
+        Term.(if_ (boo_of_int t1') t2' t3').desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_typ <- tr_typ;
+  tr.tr_desc <- tr_desc;
+  tr.tr_term

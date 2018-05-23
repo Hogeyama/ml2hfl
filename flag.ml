@@ -57,6 +57,7 @@ module Method = struct
   let ignore_exn_arg = ref false
   let data_to_int = ref false
   let quick_check = ref false
+  let bool_to_int = ref false
 end
 
 module Print = struct

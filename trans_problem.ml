@@ -29,6 +29,7 @@ let ignore_exn_arg = map Trans.ignore_exn_arg
 let ref_to_assert env = map (Trans.ref_to_assert env)
 let split_type_decls = map Trans.split_type_decls
 let abst_literal = map Trans.abst_literal
+let encode_bool_as_int = map Trans.encode_bool_as_int
 
 let expand_let_val {term; env; attr; kind} =
   assert (List.mem ACPS attr);

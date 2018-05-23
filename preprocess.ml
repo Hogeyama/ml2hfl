@@ -52,6 +52,7 @@ type preprocess_label =
   | Inline_simple_types
   | Abst_polymorphic_comparison
   | Abst_literal
+  | Encode_bool_as_int
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -106,6 +107,7 @@ let string_of_label = function
   | Inline_simple_types -> "Inline simple types"
   | Abst_polymorphic_comparison -> "Abst polymorphic comparison"
   | Abst_literal -> "Abst literal"
+  | Encode_bool_as_int -> "Encode bool as int"
 
 let last (acc:result list) = snd @@ List.hd acc
 let last_t (acc:result list) = fst @@ last acc
@@ -144,6 +146,9 @@ let all spec : t list =
       map_trans @@ alpha_rename ~set_counter:true;
     Eliminate_unused_let,
       map_trans @@ elim_unused_let ~leave_last:true;
+    Encode_bool_as_int,
+      cond_trans !Flag.Method.bool_to_int @@
+      map_trans @@ encode_bool_as_int;
     Replace_const,
       cond_trans !Flag.Method.replace_const @@
       map_trans CFA.replace_const;

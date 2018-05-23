@@ -363,6 +363,7 @@ let rec arg_spec () =
      "-elim-same-arg", Arg.Set Flag.Method.elim_same_arg, " Eliminate same arguments";
      "-base-to-int", Arg.Set Flag.Method.base_to_int, " Replace primitive base types with int";
      "-data-to-int", Arg.Set Flag.Method.data_to_int, " Replace data types with int";
+     "-bool-to-int", Arg.Set Flag.Method.bool_to_int, " Encode booleans into integers";
      (* verification *)
      "", Arg.Unit ignore, "Options_for_verifier";
      "-modular",
