@@ -56,15 +56,15 @@ let save_to_file t =
     Format.fprintf fm "%a@." Print.term_typ t);
   close_out cout
 
-let verify_with holed pred =
+let verify_with holed exparam_sol pred =
   (* combine holed program and predicate *)
   let transformed = pluging holed pred in
   let coeffs = List.filter (List.mem Id.Coefficient -| Id.attr) @@ Term_util.get_top_funs holed.program in
-  Util.Verbose.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
+  Verbose.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
   let orig, transformed = retyping transformed @@ BRA_state.type_of_state holed in
   if !!Debug.check then save_to_file transformed;
-  let exparam_sol,transformed = remove_coeff_defs coeffs transformed in
-  let transformed = set_to_coeff (List.map fst exparam_sol) transformed in
+  let exparam_sol',transformed = remove_coeff_defs coeffs transformed in
+  let transformed = set_to_coeff (List.map fst exparam_sol') transformed in
   Main_loop.run ~exparam_sol orig @@ Problem.safety transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
@@ -74,7 +74,7 @@ let inferCoeffs argumentVariables linear_templates constraints =
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
     if correspondenceVars = [] then (Format.eprintf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
-    Util.Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
+    Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
 
     List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]..., v0=2) *)
@@ -98,7 +98,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
   let correspondenceVars = constraints |> generate |> Fpat.PolyConstrSolver.solve_dyn in
   begin
     if correspondenceVars = [] then (Format.eprintf "Invalid ordered.@."; raise Fpat.PolyConstrSolver.Unknown);
-    Util.Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
+    Verbose.printf "Inferred coefficients:@.  %a@." Fpat.PolyConstrSolver.pr correspondenceVars;
 
     (List.map (fun linTemp ->
       (* EXAMPLE: ([v1 -> 1][v2 -> 0][v3 -> 1]...[vn -> 0], v0=2) *)
@@ -110,7 +110,7 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
       let coefficients =
 	let formatter (n, v) = (v, Fpat.IntTerm.int_of n) in
         let dict = List.map formatter correspondenceCoeffs in
-	let cor x = Util.List.assoc_default 0 x dict in
+	let cor x = List.assoc_default 0 x dict in
 	List.map cor argumentVariables
       in
       {coeffs = coefficients; constant = Fpat.IntTerm.int_of const_part}
@@ -118,18 +118,10 @@ let inferCoeffsAndExparams argumentVariables linear_templates constraints =
      let correspondenceExparams =
        List.map (fun (v, t) ->
                  let n = Fpat.IntTerm.int_of t in
-                 (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.Ty.int, Term_util.make_int n))
+                 (v |> Fpat.Idnt.string_of |> (flip Id.from_string) Type.Ty.int, n))
                 (List.filter (fun (v, _) -> v |> Fpat.Idnt.is_coeff) correspondenceVars)
      in
-     let substToVar = function
-       | {Syntax.desc = Syntax.Var x} -> (try List.assoc x correspondenceExparams with Not_found -> if Id.is_coefficient x then Term_util.make_int 0 else Term_util.make_var x)
-       | t -> t
-     in
-     let preprocessForExparam e =
-       let e = ExtraParamInfer.removeDummySubstitutions e in
-       let _ = ExtraParamInfer.withExparam := e in
-       BRA_transform.everywhere_expr substToVar e
-     in preprocessForExparam
+     correspondenceExparams
     )
   end
 
@@ -182,26 +174,23 @@ let rec run predicate_que holed =
       (* result log update here *)
       lrf := BRA_util.update_assoc (Id.to_string holed.verified.id, !cycle_counter, predicate_info) !lrf;
 
-      (* set subst. to coeffs. of exparams (use in Main_loop.run as preprocess) *)
-      BRA_types.preprocessForTerminationVerification := predicate_info.substToCoeffs;
-
       try
 	let result = if !Flag.Termination.separate_pred then
 	    let predicates = separate_to_CNF (construct_LLRF predicate_info) in
-            List.for_all (verify_with holed) predicates
+            List.for_all (verify_with holed predicate_info.coeffsMap) predicates
 	  else if !Flag.Termination.split_callsite then
 	    let predicate = construct_LLRF predicate_info in
 	    let splited = callsite_split holed in
 	    reset_counter ();
-	    List.for_all (fun h -> verify_with h predicate) splited
+	    List.for_all (fun h -> verify_with h predicate_info.coeffsMap predicate) splited
 	  else
 	    let predicate = construct_LLRF predicate_info in
-	    verify_with holed predicate
+	    verify_with holed predicate_info.coeffsMap predicate
 	in
 	if result then
-	  (Util.Verbose.printf "%s is terminating.@." holed.verified.id.Id.name ; result)
+	  (Verbose.printf "%s is terminating.@." holed.verified.id.Id.name ; result)
 	else
-	  (Util.Verbose.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
+	  (Verbose.printf "%s is possibly non-terminating.@." holed.verified.id.Id.name ; result)
       with Refine.PostCondition (env, spc, spcWithExparam) ->
 	let unwrap_template = function (Fpat.Term.App (Fpat.Term.App (_, t), _)) -> t | _ -> assert false in
 	let unwrap_template t = unwrap_template (Fpat.Formula.term_of t) in
@@ -218,7 +207,7 @@ let rec run predicate_que holed =
 	  (* make templates *)
 	  let linear_template = unwrap_template (Fpat.Template.mk_atom arg_env 1) in
 	  let linear_template_prev = Fpat.Term.subst (List.combine arg_vars prev_var_terms) linear_template in
-	  Util.Verbose.printf "Linear template:@.  %a@." Fpat.Term.pr linear_template;
+	  Verbose.printf "Linear template:@.  %a@." Fpat.Term.pr linear_template;
 
 	  (* make a constraint: spc => R(x_prev) > R(x) && R(x) >= 0 *)
 	  let constraints =
@@ -226,7 +215,7 @@ let rec run predicate_que holed =
 	      (Fpat.Formula.band [ Fpat.NumAtom.gt Fpat.Type.mk_int linear_template_prev linear_template |> Fpat.Formula.of_atom
 			    ; Fpat.NumAtom.geq Fpat.Type.mk_int linear_template (Fpat.IntTerm.make 0) |> Fpat.Formula.of_atom])]
 	  in
-	  Util.Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
+	  Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 
           (* solve constraints and obtain coefficients of a ranking function *)
 	  let newPredicateInfo _ =
@@ -235,7 +224,7 @@ let rec run predicate_que holed =
 	      (* return updated predicate *)
 	      { predicate_info with coefficients = coefficientInfos @ predicate_info.coefficients; errorPaths = spc :: predicate_info.errorPaths }
             with Fpat.PolyConstrSolver.Unknown ->
-	      Util.Verbose.printf "Failed to solve the constraints...@.@.";
+	      Verbose.printf "Failed to solve the constraints...@.@.";
 
 	      (* Failed to infer a new ranking predicate -> Update extra parameters *)
 	      (** UPDATE [not implemented] **)
@@ -265,42 +254,42 @@ let rec run predicate_que holed =
 	    (* make templates (for arguments and previous arguments) *)
 	    let linearTemplates = Fpat.Util.List.unfold (fun i -> if i < numberOfSpcSequences then Some (unwrap_template (Fpat.Template.mk_atom arg_env 1), i+1) else None) 0 in
 	    let prevLinearTemplates = List.map (Fpat.Term.subst (List.combine arg_vars prev_var_terms)) linearTemplates in
-	    Fpat.Util.List.iteri (fun i lt -> Util.Verbose.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;
+	    Fpat.Util.List.iteri (fun i lt -> Verbose.printf "Linear template(%d):@.  %a@." i Fpat.Term.pr lt) linearTemplates;
             try
 	      (* make a constraint *)
 	      let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequence in
-	      Util.Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
+	      Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 
 	      (* solve constraint and obtain coefficients *)
 	      let coefficientInfos = inferCoeffs arg_vars linearTemplates constraints in
 
               (* return new predicate information (coeffcients + error paths) *)
 	      let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam} in
-	      Util.Verbose.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
+	      Verbose.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 	      newPredicateInfo
 	    with
             | Fpat.PolyConstrSolver.NoSolution
             | Fpat.PolyConstrSolver.Unknown ->
-	      Util.Verbose.printf "Try to update extra parameters...@.@.";
+	      Verbose.printf "Try to update extra parameters...@.@.";
 
 	      try
 		(* make a constraint *)
 		let constraints = makeLexicographicConstraints allVars linearTemplates prevLinearTemplates spcSequenceWithExparam in
-		Util.Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
+		Verbose.printf "Constraint:@.  %a@." Fpat.Formula.pr constraints;
 
 		(* solve constraint and obtain coefficients *)
 		let coefficientInfos, exparamInfo = inferCoeffsAndExparams arg_vars linearTemplates constraints in
 
 		(* return new predicate information (coeffcients + error paths) *)
-		let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; substToCoeffs = exparamInfo; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam } in
-		Util.Verbose.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
+		let newPredicateInfo = { predicate_info with coefficients = coefficientInfos; coeffsMap = exparamInfo; errorPaths = spcSequence; errorPathsWithExparam = spcSequenceWithExparam } in
+		Verbose.printf "Found ranking function: %a@." pr_ranking_function newPredicateInfo;
 		newPredicateInfo
               with
 		| Fpat.PolyConstrSolver.NoSolution ->
-		  Util.Verbose.printf "Failed to find LLRF...@.";
+		  Verbose.printf "Failed to find LLRF...@.";
 		  raise InferenceFailure (* failed to solve the constraints *)
 		| e ->
-		  Util.Verbose.printf "error: %s@." (Printexc.to_string e);
+		  Verbose.printf "error: %s@." (Printexc.to_string e);
 		  raise InferenceFailure (* failed to solve the constraints *)
 	  )
 	  in

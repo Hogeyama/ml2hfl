@@ -9,7 +9,7 @@ let print_info_default () =
         (fun (f_name, (cycles, pred)) ->
          Format.printf "ranking function(%s)[inference cycle: %d]: %a\n" f_name cycles BRA_types.pr_ranking_function pred;
          if !Flag.Termination.add_closure_exparam then
-           let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.substToCoeffs in
+           let str_exparam = ExtraParamInfer.to_string_CoeffInfos pred.BRA_types.coeffsMap in
            if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
         !Termination_loop.lrf
     end;
@@ -163,13 +163,15 @@ let main_termination orig parsed =
   let parsed = if !Flag.Termination.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
   let _ = if !Flag.Termination.add_closure_exparam then Verbose.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
   let holed_list = BRA_transform.to_holed_programs parsed in
+  let fv = Term_util.get_fv parsed in
+  let coeffs = List.filter Id.is_coefficient @@ Term_util.get_fv parsed in
   let result =
     try
       List.for_all
         (fun holed ->
          let init_predicate_info =
            { BRA_types.variables = List.map BRA_transform.extract_id (BRA_state.get_argvars holed.BRA_types.state holed.BRA_types.verified)
-           ; BRA_types.substToCoeffs = if !Flag.Termination.add_closure_exparam then ExtraParamInfer.initPreprocessForExparam else (fun x -> x)
+           ; BRA_types.coeffsMap = if !Flag.Termination.add_closure_exparam then List.map (Pair.add_right @@ Fun.const 0) coeffs else []
            ; BRA_types.prev_variables = List.map BRA_transform.extract_id (BRA_state.get_prev_statevars holed.BRA_types.state holed.BRA_types.verified)
            ; BRA_types.coefficients = []
            ; BRA_types.errorPaths = []

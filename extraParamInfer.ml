@@ -7,7 +7,8 @@ let exCoefficients = ref []
 
 
 
-let to_string_CoeffInfos f =
+let to_string_CoeffInfos coeffsMap =
+  let f = subst_map (List.map (Util.Pair.map_snd make_int) coeffsMap) in
   let g v = Id.name @@ var_of_term v in
   let h = function
     | {desc = Const (Int n)} -> string_of_int n
