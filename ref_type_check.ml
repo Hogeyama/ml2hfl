@@ -262,6 +262,8 @@ let gen_hcs mode env t ty =
   |@> Debug.printf "Simplified:@.  @[%a@.@." print_constrs
   |> FpatInterface.to_hcs
   |@> Debug.printf "Constraints:@.  @[%a@.@." Fpat.HCCS.pr
+  |> Fpat.HCCS.simplify_full []
+  |@> Debug.printf "Simplified by Fpat:@.  @[%a@.@." Fpat.HCCS.pr
   |*@> Fpat.HCCS.save_graphviz "test.dot"
 
 let check ?(mode=Default) env t ty =
