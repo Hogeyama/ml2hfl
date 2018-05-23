@@ -2,6 +2,8 @@ open Util
 open BRA_types
 open BRA_transform
 
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
+
 let (|>) = BRA_util.(|>)
 
 let mapOption (f : 'a -> 'b option) (lst : 'a list) =
@@ -43,12 +45,24 @@ let rec remove_coeff_defs coeffs t =
 
 let set_to_coeff exparam t = Trans.map_id (fun x -> if Id.mem x exparam then Id.add_attr Id.Coefficient x else x) t
 
+let save_counter = ref 0
+let save_to_file t =
+  incr save_counter;
+  let ext = string_of_int !save_counter ^ ".ml" in
+  let filename = Filename.change_extension !!Flag.mainfile ext in
+  let cout = open_out filename in
+  let fm = Format.formatter_of_out_channel cout in
+  Ref.tmp_set Flag.Print.as_ocaml true (fun () ->
+    Format.fprintf fm "%a@." Print.term_typ t);
+  close_out cout
+
 let verify_with holed pred =
   (* combine holed program and predicate *)
   let transformed = pluging holed pred in
   let coeffs = List.filter (List.mem Id.Coefficient -| Id.attr) @@ Term_util.get_top_funs holed.program in
   Util.Verbose.printf "[%d]@.%a@." (get_now ()) Print.term transformed;
   let orig, transformed = retyping transformed @@ BRA_state.type_of_state holed in
+  if !!Debug.check then save_to_file transformed;
   let exparam_sol,transformed = remove_coeff_defs coeffs transformed in
   let transformed = set_to_coeff (List.map fst exparam_sol) transformed in
   Main_loop.run ~exparam_sol orig @@ Problem.safety transformed
