@@ -582,9 +582,7 @@ let sexp_of =
       method feq ty t1 t2 =
         "(= " ^ CunTerm.sexp_of t1 ^ " " ^ CunTerm.sexp_of t2 ^ ")"
       method fneq ty t1 t2 =
-        "(or " ^
-        "(< " ^ CunTerm.sexp_of t1 ^ " " ^ CunTerm.sexp_of t2 ^ ") " ^
-        "(> " ^ CunTerm.sexp_of t1 ^ " " ^ CunTerm.sexp_of t2 ^ "))"
+        "(not (= " ^ CunTerm.sexp_of t1 ^ " " ^ CunTerm.sexp_of t2 ^ "))"
       method flt ty t1 t2 =
         "(< " ^ CunTerm.sexp_of t1 ^ " " ^ CunTerm.sexp_of t2 ^ ")"
       method fgt ty t1 t2 =
