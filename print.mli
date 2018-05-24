@@ -1,5 +1,16 @@
 open Syntax
 
+type config =
+    {ty : bool; (** print types of arguments *)
+     as_ocaml : bool; (** print terms in OCaml syntax *)
+     top : bool; (** print let/type as in top-level *)
+     unused : bool} (** print unused arguments *)
+
+val config_default : config ref
+
+val set_print_as_ocaml : unit -> unit
+val set_print_unused : unit -> unit
+
 val typ : Format.formatter -> typ -> unit
 val id : Format.formatter -> id -> unit
 val id_typ : Format.formatter -> id -> unit
@@ -7,12 +18,17 @@ val pattern : Format.formatter -> pattern -> unit
 val const : Format.formatter -> const -> unit
 val desc : Format.formatter -> desc -> unit
 val term : Format.formatter -> term -> unit
+val term_top : Format.formatter -> term -> unit
 val term' : Format.formatter -> term -> unit
 val term_typ : Format.formatter -> term -> unit
+val term_typ_top : Format.formatter -> term -> unit
 val defs : Format.formatter -> (id * (id list * term)) list -> unit
 val constr : Format.formatter -> term -> unit
 val attr : Format.formatter -> attr list -> unit
 val decls : Format.formatter -> declaration list -> unit
+val as_ocaml : Format.formatter -> term -> unit
+val as_ocaml_typ : Format.formatter -> term -> unit
+val term_custom : config -> Format.formatter -> term -> unit
 
 val int : Format.formatter -> int -> unit
 val float : Format.formatter -> float -> unit

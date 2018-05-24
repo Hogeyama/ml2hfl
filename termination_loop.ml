@@ -52,8 +52,7 @@ let save_to_file t =
   let filename = Filename.change_extension !!Flag.mainfile ext in
   let cout = open_out filename in
   let fm = Format.formatter_of_out_channel cout in
-  Ref.tmp_set Flag.Print.as_ocaml true (fun () ->
-    Format.fprintf fm "%a@." Print.term_typ t);
+  Format.fprintf fm "%a@." Print.as_ocaml_typ t;
   close_out cout
 
 let verify_with holed exparam_sol pred =

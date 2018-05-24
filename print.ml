@@ -5,14 +5,30 @@ open Syntax
 
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-let rec print_typ fm t = Type.print ~occur:occur_typ (print_term 0 false) fm t
-and print_ids ?fv typ fm xs =
+type config =
+    {ty : bool; (** print types of arguments *)
+     as_ocaml : bool; (** print terms in OCaml syntax *)
+     top : bool; (** print let/type as in top-level *)
+     unused : bool} (** print unused arguments *)
+let config_default = ref {ty=false; as_ocaml=false; top=false; unused=false}
+
+let set_print_as_ocaml () =
+  Id.set_print_as_ocaml;
+  config_default := {!config_default with as_ocaml=true}
+let set_print_unused () =
+  config_default := {!config_default with unused=true}
+
+let is_definitions desc =
+  (snd @@ decomp_locals {desc;typ=Ty.unit;attr=[]}).desc = Const End_of_definitions
+
+let rec print_typ fm t = Type.print ~occur:occur_typ (print_term {!config_default with ty=false} 0) fm t
+and print_ids ?fv cfg fm xs =
   if xs <> [] then
     let xs' =
       match fv with
       | None -> xs
       | Some fv ->
-          if !!Debug.check || !Flag.Print.unused_arg then
+          if !!Debug.check || cfg.unused then
             xs
           else
             let aux x =
@@ -25,7 +41,7 @@ and print_ids ?fv typ fm xs =
             in
             List.map aux xs
     in
-    let p_id = if typ then print_id_typ else print_id in
+    let p_id = if cfg.ty then print_id_typ else print_id in
     print_list p_id "@ " ~first:true fm xs'
 
 (*
@@ -33,11 +49,7 @@ and print_ids ?fv typ fm xs =
  *)
 and print_id fm x = Id.print fm x
 
-and print_id_typ fm x =
-  if !Flag.Print.as_ocaml then
-    print_id fm x
-  else
-    fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
+and print_id_typ fm x = fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
 
 (* priority (low -> high)
    10 : Local, Letrec, If, Match, TryWith
@@ -69,12 +81,12 @@ and print_binop fm = function
   | Mult -> fprintf fm "*"
   | Div -> fprintf fm "/"
 
-and print_termlist pri typ fm ts =
-  print_list (print_term pri typ) "@ " fm ts
+and print_termlist cfg pri fm ts =
+  print_list (print_term cfg pri) "@ " fm ts
 
-and print_const fm c =
+and print_const cfg fm c =
   match c with
-  | End_of_definitions when !Flag.Print.as_ocaml -> fprintf fm "()"
+  | End_of_definitions when cfg.as_ocaml -> fprintf fm "()"
   | End_of_definitions -> fprintf fm "EOD"
   | Unit -> fprintf fm "()"
   | True -> fprintf fm "true"
@@ -88,7 +100,7 @@ and print_const fm c =
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result -> fprintf fm "{end}"
-  | RandValue(TBase TInt,false) when !Flag.Print.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
+  | RandValue(TBase TInt,false) when cfg.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
   | RandValue(TBase TInt,false) -> fprintf fm "rand_int"
   | RandValue(TBase TInt,true) -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
@@ -110,7 +122,7 @@ and ignore_attr_list = ADoNotInline::const_attr
 and print_attr_list fm attrs =
   List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
 
-and print_term pri typ fm t =
+and print_term cfg pri fm t =
   let decomp_comment a =
     match a with
     | AComment s -> Some s
@@ -119,8 +131,8 @@ and print_term pri typ fm t =
   let pr attr fm desc =
     let comments = List.filter_map decomp_comment t.attr in
     if comments = []
-    then fprintf fm "@[%a@]" (print_desc attr pri typ) desc
-    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc attr pri typ) desc
+    then fprintf fm "@[%a@]" (print_desc cfg pri attr) desc
+    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc cfg pri attr) desc
   in
   let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
   let ignore_attr_list' =
@@ -129,28 +141,68 @@ and print_term pri typ fm t =
     else
       ignore_attr_list
   in
-  if List.Set.subset attr ignore_attr_list' || !Flag.Print.as_ocaml
+  if List.Set.subset attr ignore_attr_list' || cfg.as_ocaml
   then pr t.attr fm t.desc
   else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list (List.Set.diff t.attr ignore_attr_list')
 
-and print_desc attr pri typ fm desc =
+and print_let_decls cfg bang fm bindings =
+  let first = ref true in
+  let non_rec = is_non_rec bindings in
+  let print_binding fm (f,t1) =
+    let pre =
+      if !first then
+        "let" ^ (if bang then "!" else "") ^ (if non_rec then "" else " rec")
+      else
+        "and"
+    in
+    let xs,t1' = decomp_funs t1 in
+    let fv = get_fv t1' in
+    fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids ~fv cfg) xs (print_term cfg 0) t1';
+    first := false
+  in
+  print_list print_binding "@ " fm bindings
+
+and print_type_decls bang =
+  let b = ref true in
+  let print_decl fm (name,ty) =
+    let pre =
+      if !b then
+        "type" ^ (if bang then "!" else "")
+      else
+        "and"
+    in
+    fprintf fm "@[<hov 2>%s @[<hov 2>%s@] =@ %a@]" pre name print_typ ty;
+    b := false
+  in
+  print_list print_decl "@ "
+
+and print_decl cfg bang fm decl =
+  match decl with
+  | Decl_type decls -> print_type_decls bang fm decls
+  | Decl_let bindings -> print_let_decls cfg bang fm bindings
+
+and print_decls cfg fm decls =
+  Format.fprintf fm "@[%a@]" (print_list (print_decl cfg false) "@\n") decls
+
+and print_desc cfg pri attr fm desc =
+  let pr_t = print_term {cfg with top=false} in
   match desc with
-  | Const c -> print_const fm c
+  | Const c -> print_const {cfg with top=false} fm c
   | Var x -> print_id fm x
   | Fun _ ->
       let xs,t = decomp_funs {desc; typ=typ_unknown; attr=[]} in
       let fv = get_fv t in
       let p = 15 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids ~fv typ) xs (print_term 0 typ) t s2
-  | App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}]) when !Flag.Print.as_ocaml ->
+      fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids ~fv {cfg with top=false}) xs (pr_t 0) t s2
+  | App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}]) when cfg.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[<hov 2>%sRandom.int 0%s@]" s1 s2
   | App(t, ts) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "@[<hov 2>%s%a@ %a%s@]" s1 (print_term p typ) t (print_termlist p typ) ts s2
+      fprintf fm "@[<hov 2>%s%a@ %a%s@]" s1 (pr_t p) t (print_termlist {cfg with top=false} p) ts s2
   | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
@@ -162,7 +214,7 @@ and print_desc attr pri typ fm desc =
         else
           ""
       in
-      fprintf fm "@[<hov 2>%sassert%s %a%s@]" s1 label (print_term p typ) t1 s2
+      fprintf fm "@[<hov 2>%sassert%s %a%s@]" s1 label (pr_t p) t1 s2
   | If(t1, t2, t3) ->
       let p = 10 in
       let s1,s2 = paren pri (if t3.desc = Const Unit then p else p+1) in
@@ -174,21 +226,24 @@ and print_desc attr pri typ fm desc =
         else
           ""
       in
-      fprintf fm "%s@[<hv>if%s@[@ %a@]@ then@ " s1 label (print_term p typ) t1;
+      fprintf fm "%s@[<hv>if%s@[@ %a@]@ then@ " s1 label (pr_t p) t1;
       pp_print_if_newline fm ();
       pp_print_string fm "  ";
-      fprintf fm "@[%a@]" (print_term p typ) t2;
+      fprintf fm "@[%a@]" (pr_t p) t2;
       if t3.desc <> Const Unit then
         begin
           fprintf fm "@ else@ ";
           pp_print_if_newline fm ();
           pp_print_string fm "  ";
-          fprintf fm "@[%a@]" (print_term p typ) t3
+          fprintf fm "@[%a@]" (pr_t p) t3
         end;
       fprintf fm "@]%s" s2
   | Local(Decl_let [], t) ->
-      Format.eprintf "@.%a@." (print_term 0 typ) t;
+      Format.eprintf "@.%a@." (pr_t 0) t;
       assert false
+  | Local(Decl_let _, _) when cfg.top && is_definitions desc ->
+      let decls,_ = decomp_locals {desc;typ=Ty.unit;attr=[]} in
+      print_decls cfg fm decls
   | Local(Decl_let [_, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}], {desc=Bottom}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
@@ -196,51 +251,21 @@ and print_desc attr pri typ fm desc =
   | Local(Decl_let [u,t1], t2) when not !!Debug.check && Id.typ u = TBase TUnit && not @@ Id.mem u @@ get_fv t2 ->
       let p = 9 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[%a;@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
-  | Local(Decl_let bindings, t2) ->
+      fprintf fm "%s@[%a;@ %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
+  | Local(decl, t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      let s_rec = if is_non_rec bindings then "" else " rec" in
-      let b = ref true in
-      let print_binding fm (f,t1) =
-        let pre =
-          if !b then
-            "let" ^ (if List.mem ADoNotInline attr && not !Flag.Print.as_ocaml then "!" else "") ^ s_rec
-          else
-            "and"
-        in
-        let xs,t1' = decomp_funs t1 in
-        let fv = get_fv t1' in
-        fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids ~fv typ) xs (print_term 0 typ) t1';
-        b := false
-      in
-      let print_bindings bs = print_list print_binding "@ " ~last:true bs in
-      fprintf fm "%s@[<v>@[<hv>%a@]in@ @[<hov>%a@]@]%s" s1 print_bindings bindings (print_term p typ) t2 s2
-  | Local(Decl_type decls, t) ->
-      let p = 10 in
-      let s1,s2 = paren pri (p+1) in
-      let b = ref true in
-      let print_decl fm (name,ty) =
-        let pre =
-          if !b then
-            "type" ^ (if List.mem ADoNotInline attr && not !Flag.Print.as_ocaml then "!" else "")
-          else
-            "and"
-        in
-        fprintf fm "@[<hov 2>%s @[<hov 2>%s@] =@ %a@]" pre name print_typ ty;
-        b := false
-      in
-      let print_decls bs = print_list print_decl "@ " ~last:true bs in
-      fprintf fm "%s@[<v>@[<hv>%a@]in@ @[<hov>%a@]@]%s" s1 print_decls decls (print_term p typ) t s2
+      let bang = List.mem ADoNotInline attr && not cfg.as_ocaml in
+      fprintf fm "%s@[<v>@[<hv>%a@]@ in@ @[<hov>%a@]@]%s" s1 (print_decl {cfg with top=false} bang) decl (pr_t p) t2 s2
   | Not{desc = BinOp(Eq, t1, t2)} ->
       let p = 50 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+      fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 8 in
       let s1,s2 = paren pri p in
-      if !Flag.Print.as_ocaml then
+      if cfg.as_ocaml then
         fprintf fm "%sRandom.bool@ ()%s" s1 s2
       else
         fprintf fm "%srand_bool@ ()%s" s1 s2
@@ -251,18 +276,18 @@ and print_desc attr pri typ fm desc =
   | BinOp(op, t1, t2) ->
       let p = match op with Mult|Div -> 70 | Add|Sub -> 65 | And -> 40 | Or -> 30 | _ -> 50 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[%a@ %a@ %a@]%s" s1 (print_term p typ) t1 print_binop op (print_term p typ) t2 s2
+      fprintf fm "%s@[%a@ %a@ %a@]%s" s1 (pr_t p) t1 print_binop op (pr_t p) t2 s2
   | Not t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[not@ %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[not@ %a@]%s" s1 (pr_t p) t s2
   | Event(s,false) -> fprintf fm "<%s>" s
   | Event(s,true) -> fprintf fm "<|%s|>" s
   | Record fields ->
-      let aux fm (s,t) = fprintf fm "%s=%a" s (print_term 0 typ) t in
+      let aux fm (s,t) = fprintf fm "%s=%a" s (pr_t 0) t in
       fprintf fm "{%a}" (print_list aux ";@ ") fields
-  | Field(t,s) -> fprintf fm "%a.%s" (print_term 9 typ) t s
-  | SetField(t1,s,t2) -> fprintf fm "%a.%s@ <-@ %a" (print_term 9 typ) t1 s (print_term 3 typ) t2
+  | Field(t,s) -> fprintf fm "%a.%s" (pr_t 9) t s
+  | SetField(t1,s,t2) -> fprintf fm "%a.%s@ <-@ %a" (pr_t 9) t1 s (pr_t 3) t2
   | Nil -> fprintf fm "[]"
   | Cons(t1,t2) ->
       let rec decomp_list desc =
@@ -276,16 +301,16 @@ and print_desc attr pri typ fm desc =
         | None ->
             let p = 60 in
             let s1,s2 = paren pri p in
-            fprintf fm "%s@[%a::@,%a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+            fprintf fm "%s@[%a::@,%a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
         | Some ts' ->
-            Format.fprintf fm "%a" (List.print @@ print_term 0 typ) ts'
+            Format.fprintf fm "%a" (List.print @@ pr_t 0) ts'
       end
   | Constr(s,ts) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       if ts = []
       then pp_print_string fm s
-      else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (print_term 20 typ) ",") ts s2
+      else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (pr_t 20) ",") ts s2
   | Match(t,pats) ->
       let p = 10 in
       let s1,s2 = paren pri p in
@@ -294,21 +319,21 @@ and print_desc attr pri typ fm desc =
         let print_cond fm =
           match cond.desc with
           | Const True -> ()
-          | _ -> fprintf fm "when@ @[<hov 2>%a@]@ " (print_term p typ) cond
+          | _ -> fprintf fm "when@ @[<hov 2>%a@]@ " (pr_t p) cond
         in
         fprintf fm "@ @[<hov 4>";
         if !first then pp_print_if_newline fm ();
         first := false;
         pp_print_string fm "| ";
-        fprintf fm "@[<hov 2>%a %t->@ %a@]@]" print_pattern pat print_cond (print_term p typ) t
+        fprintf fm "@[<hov 2>%a %t->@ %a@]@]" print_pattern pat print_cond (pr_t p) t
       in
-      fprintf fm "%s@[<hv>@[@[<hov 2>match@ %a@]@ with@]" s1 (print_term p typ) t;
+      fprintf fm "%s@[<hv>@[@[<hov 2>match@ %a@]@ with@]" s1 (pr_t p) t;
       List.iter aux pats;
       fprintf fm "@]%s" s2
   | Raise t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[raise@ %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[raise@ %a@]%s" s1 (pr_t p) t s2
   | TryWith(t1,{desc=Fun(e,{desc=Match({desc=Var e'},pats)})})
        when Id.(e = e') && (function ({pat_desc=PAny},{desc=Const True},{desc=Raise {desc=Var e''}}) -> Id.same e e'' | _ -> false) @@ List.last pats ->
       let p = 10 in
@@ -317,70 +342,64 @@ and print_desc attr pri typ fm desc =
         let print_cond fm =
           match cond.desc with
           | Const True -> ()
-          | _ -> fprintf fm "when@ @[<hov 2>%a@]@ " (print_term p typ) cond
+          | _ -> fprintf fm "when@ @[<hov 2>%a@]@ " (pr_t p) cond
         in
         let bar = if List.length pats = 2 then "" else "| " in
-        fprintf fm "@ @[<hov 4>%s@[<hov 2>%a %t->@]@ %a@]" bar print_pattern pat print_cond (print_term p typ) t
+        fprintf fm "@ @[<hov 4>%s@[<hov 2>%a %t->@]@ %a@]" bar print_pattern pat print_cond (pr_t p) t
       in
-      fprintf fm "%s@[@[<hov 2>try@ %a@]@ @[<hv 2>with" s1 (print_term p typ) t1;
+      fprintf fm "%s@[@[<hov 2>try@ %a@]@ @[<hv 2>with" s1 (pr_t p) t1;
       List.iter aux @@ fst @@ List.decomp_snoc pats;
       fprintf fm "@]@]%s" s2
   | TryWith(t1,t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[@[<hov 2>try@ %a@]@ with@ %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+      fprintf fm "%s@[@[<hov 2>try@ %a@]@ with@ %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
   | Tuple ts ->
       let p = 20 in
-      fprintf fm "@[(%a)@]" (print_list (print_term p typ) ",@ ") ts
+      fprintf fm "@[(%a)@]" (print_list (pr_t p) ",@ ") ts
   | Proj(0,t) when tuple_num t.typ = Some 2 ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[fst@ %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[fst@ %a@]%s" s1 (pr_t p) t s2
   | Proj(1,t) when tuple_num t.typ = Some 2 ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[snd@ %a@]%s" s1 (print_term p typ) t s2
-  | Proj(i,t) when !Flag.Print.as_ocaml ->
+      fprintf fm "%s@[snd@ %a@]%s" s1 (pr_t p) t s2
+  | Proj(i,t) when cfg.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
       let s = "fun (" ^ String.join "," (List.init (Option.get @@ tuple_num t.typ) (fun j -> if i = j then "x" else "_") ) ^ ") -> x" in
-      fprintf fm "%s@[(%s)@ %a@]%s" s1 s (print_term p typ) t s2
+      fprintf fm "%s@[(%s)@ %a@]%s" s1 s (pr_t p) t s2
   | Proj(i,t) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[#%d@ %a@]%s" s1 i (print_term p typ) t s2
-  | Bottom when !Flag.Print.as_ocaml -> fprintf fm "let rec bot() = bot() in bot()"
+      fprintf fm "%s@[#%d@ %a@]%s" s1 i (pr_t p) t s2
+  | Bottom when cfg.as_ocaml -> fprintf fm "let rec bot() = bot() in bot()"
   | Bottom -> fprintf fm "_|_"
   | Label(info, t) ->
-      fprintf fm "(@[label[@[%a@]]@ %a@])" print_info info (print_term 80 typ) t
+      fprintf fm "(@[label[@[%a@]]@ %a@])" print_info info (pr_t 80) t
   | Ref t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[ref@ %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[ref@ %a@]%s" s1 (pr_t p) t s2
   | Deref t ->
       let p = 90 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[!%a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[!%a@]%s" s1 (pr_t p) t s2
   | SetRef(t1, t2) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[%a := %a@]%s" s1 (print_term p typ) t1 (print_term p typ) t2 s2
+      fprintf fm "%s@[%a := %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
   | TNone -> fprintf fm "None"
   | TSome t ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[Some %a@]%s" s1 (print_term p typ) t s2
+      fprintf fm "%s@[Some %a@]%s" s1 (pr_t p) t s2
   | Module decls ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[<v>@[<v 2>module@ @[%a@]@]@ end@]%s" s1 (print_declaration typ) decls s2
+      fprintf fm "%s@[<v>@[<v 2>module@ @[%a@]@]@ end@]%s" s1 (print_decls {cfg with top=true}) decls s2
 
-and print_declaration typ fm decls = (* TODO: fix *)
-  let t =
-    let aux decl t0 = {desc=Local(decl,t0);typ=typ_unknown;attr=[]} in
-    List.fold_right aux decls {desc=Const End_of_definitions; typ=TBase TUnit; attr=[]}
-  in
-  print_term 0 typ fm t
 
 
 and print_info fm info =
@@ -392,9 +411,9 @@ and print_info fm info =
   | InfoInt n ->
       fprintf fm "Int %d" n
   | InfoTerm t ->
-      fprintf fm "Term %a" (print_term 80 false) t
+      fprintf fm "Term %a" (print_term {!config_default with ty=false} 80) t
   | InfoIdTerm(x,t) ->
-      fprintf fm "IdTerm(%a,@ %a)" print_id x (print_term 80 false) t
+      fprintf fm "IdTerm(%a,@ %a)" print_id x (print_term {!config_default with ty=false} 80) t
 
 
 
@@ -404,7 +423,7 @@ and print_pattern fm pat =
   | PNondet -> pp_print_string fm "*"
   | PVar x -> print_id fm x
   | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
-  | PConst c -> print_term 1 false fm c
+  | PConst c -> print_term !config_default 1 fm c
   | PConstr(c,pats) ->
       let aux' = function
           [] -> ()
@@ -432,12 +451,12 @@ and print_pattern fm pat =
   | PTuple pats -> fprintf fm "(%a)" (print_list print_pattern ", ") pats
   | PNone -> fprintf fm "None"
   | PSome p -> fprintf fm "(Some %a)" print_pattern p
-let print_term typ fm = print_term 0 typ fm
+let print_term cfg fm = print_term cfg 0 fm
 
 let rec print_term' pri fm t =
   fprintf fm "(@[";(
     match t.desc with
-    | Const c -> print_const fm c
+    | Const c -> print_const !config_default fm c
     | Var x when t.typ = Id.typ x -> print_id fm x
     | Var x -> print_id_typ fm x
     | Fun(x, t) ->
@@ -461,7 +480,7 @@ let rec print_term' pri fm t =
         let print_binding fm (f,t1) =
           let xs,t1' = decomp_funs t1 in
           let pre = if !b then "let" ^ s_rec else "and" in
-          fprintf fm "@[<hov 2>%s%a =@ %a@ @]" pre (print_ids true) (f::xs) (print_term' p) t1';
+          fprintf fm "@[<hov 2>%s%a =@ %a@ @]" pre (print_ids {!config_default with ty=true}) (f::xs) (print_term' p) t1';
           b := false
         in
         let print_bindings bs = print_list print_binding "" bs in
@@ -623,12 +642,12 @@ and print_termlist' pri = print_list (print_term' pri) "@ "
 
 let print_defs fm (defs:(id * (id list * term)) list) =
   let print_fundef (f, (xs, t)) =
-    fprintf fm "%a %a-> %a.\n" print_id f (print_ids false) xs (print_term false) t
+    fprintf fm "%a %a-> %a.\n" print_id f (print_ids {!config_default with ty=false}) xs (print_term {!config_default with ty=false}) t
   in
   List.iter print_fundef defs
 
 
-let string_of_const c = Format.asprintf "%a" print_const c
+let string_of_const c = Format.asprintf "%a" (print_const !config_default) c
 let string_of_binop op = Format.asprintf "%a" print_binop op
 let string_of_typ typ = Format.asprintf "%a" print_typ typ
 let string_of_constr t =
@@ -667,15 +686,20 @@ let typ = print_typ
 let id = print_id
 let id_typ = print_id_typ
 let pattern = print_pattern
-let const = print_const
-let desc = print_desc [] 0 false
-let term = print_term false
+let const fm = print_const !config_default fm
+let desc fm = print_desc !config_default 0 [] fm
+let term fm = print_term !config_default fm
+let term_top fm = print_term {!config_default with top=true} fm
 let term' = print_term' 0
-let term_typ = print_term true
+let term_typ fm = print_term {!config_default with ty=true} fm
+let term_typ_top fm = print_term {!config_default with ty=true; top=true} fm
 let defs = print_defs
-let constr fm t = pp_print_string fm @@ string_of_constr t
+let constr fm = pp_print_string fm -| string_of_constr
 let attr = print_attr_list
-let decls = print_declaration false
+let decls = print_decls {!config_default with ty=false; top=true}
+let as_ocaml fm = print_term {!config_default with top=true; as_ocaml=true} fm
+let as_ocaml_typ fm = print_term {!config_default with ty=true; top=true; as_ocaml=true} fm
+let term_custom = print_term
 
 let int = Format.pp_print_int
 let float = Format.pp_print_float

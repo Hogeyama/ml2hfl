@@ -79,9 +79,7 @@ module Print = struct
   let fun_arg_typ = ref true
   let rd_constraints = ref true
   let abst_typ = ref false
-  let as_ocaml = ref false
   let only_if_id = ref false
-  let unused_arg = ref false
   let result = ref true
   let certificate = ref false
 end

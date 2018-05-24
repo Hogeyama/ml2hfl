@@ -76,12 +76,13 @@ let rec print_list_aux print punc last fm xs =
       Format.fprintf fm "%a" (print_list_aux print punc last) xs
 
 let print_list print ?(first=false) ?(last=false) punc fm xs =
-  let punc' = format_of_string punc in
-  Format.fprintf fm "@[";
-  if first && xs<>[] then Format.fprintf fm punc';
-  Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
-  if last && xs<>[] then Format.fprintf fm punc';
-  Format.fprintf fm "@]"
+  if xs <> [] then
+    let punc' = format_of_string punc in
+    Format.fprintf fm "@[";
+    if first then Format.fprintf fm punc';
+    Format.fprintf fm "%a" (print_list_aux print punc' last) xs;
+    if last then Format.fprintf fm punc';
+    Format.fprintf fm "@]"
 
 module IntSet =
   Set.Make(

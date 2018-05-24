@@ -2,7 +2,7 @@ open Util
 
 let print_info_default () =
   if !Flag.Termination.add_closure_exparam && !Flag.Log.result = "terminating" then
-    Format.printf "exparam inserted program:@. %a@." Print.term !ExtraParamInfer.origWithExparam;
+    Format.printf "exparam inserted program:@. %a@." Print.(term_custom {!config_default with unused=true}) !ExtraParamInfer.origWithExparam;
   if Flag.Method.(!mode = Termination) && !Flag.Log.result = "terminating" then
     begin
       List.iter
@@ -344,9 +344,9 @@ let rec arg_spec () =
      "", Arg.Unit ignore, "Options_for_printing";
      "-print-abst-types", Arg.Set Flag.Print.abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit (fun () -> Flag.Mode.just_print_non_CPS_abst := true; Flag.Mode.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
-     "-print-as-ocaml", Arg.Set Flag.Print.as_ocaml, " Print terms in OCaml syntax";
+     "-print-as-ocaml", Arg.Unit Print.set_print_as_ocaml, " Print terms in OCaml syntax";
      "-print-progress", Arg.Set Flag.Print.progress, " Print progress (use after -modular/-imodular)";
-     "-print-unused-arg", Arg.Set Flag.Print.unused_arg, " Print unused arguments";
+     "-print-unused-arg", Arg.Unit Print.set_print_unused, " Print unused arguments";
      "-print-cert", Arg.Set Flag.Print.certificate, " Print certificates even if the model checker does not support certificates (need TRecS)";
      (* preprocessing *)
      "", Arg.Unit ignore, "Options_for_preprocessing";

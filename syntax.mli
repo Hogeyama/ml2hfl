@@ -250,3 +250,4 @@ val is_non_rec : (id * term) list -> bool
 
 val is_prim_var : id -> bool
 val decomp_funs : term -> id list * term
+val decomp_locals : term -> declaration list * term

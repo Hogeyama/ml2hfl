@@ -45,7 +45,7 @@ let print_kind fm kind =
 
 let print fm {term; env; attr; kind} =
   Format.fprintf fm "@[{@[term:%a@];@ @[env:%a@];@ @[attr:%a@];@ @[kind:%a@]}@]"
-                 Print.term_typ term
+                 Print.term_typ_top term
                  Print.(list @@ pair id Ref_type.print) env
                  (Print.list print_attr) attr
                  print_kind kind

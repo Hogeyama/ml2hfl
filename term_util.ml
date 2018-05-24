@@ -412,7 +412,7 @@ let rec decomp_lets t =
   match t.desc with
   | Local(Decl_let bindings, t2) ->
       let fbindings,t2' = decomp_lets t2 in
-      (bindings)::fbindings, t2'
+      bindings::fbindings, t2'
   | _ -> [], t
 
 

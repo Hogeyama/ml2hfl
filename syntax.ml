@@ -1586,3 +1586,10 @@ let rec decomp_funs t =
       let xs,t' = decomp_funs t in
       x::xs, t'
   | _ -> [], t
+
+let rec decomp_locals t =
+  match t.desc with
+  | Local(decl, t2) ->
+      let decls,t2' = decomp_locals t2 in
+      decl::decls, t2'
+  | _ -> [], t
