@@ -183,7 +183,7 @@ let rec print occur print_pred fm typ =
         | [] ->
             print' fm typ
         | x::xs' ->
-            if occur x typ || List.exists (occur x) (List.map Id.typ xs)
+            if List.exists (occur x) (typ :: List.map Id.typ xs)
             then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print' (Id.typ x) aux (xs',typ)
       in
@@ -193,7 +193,7 @@ let rec print occur print_pred fm typ =
         match xs with
         | [] -> Format.fprintf fm "[%a]" print' typ
         | x::xs' ->
-            if occur x typ || List.exists (occur x) (List.map Id.typ xs)
+            if List.exists (occur x) (typ :: List.map Id.typ xs)
             then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print' (Id.typ x) aux (xs',typ)
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print' (Id.typ x) aux (xs',typ)
       in

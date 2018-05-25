@@ -52,9 +52,9 @@ and print_typ_aux var fm = function
       if preds <> [] then
         Format.fprintf fm "[@[%a@]]" (Color.blue @@ print_list print_linear_exp ";@ ") preds
   | TApp(TConstr (TFixPred p), ty) ->
-      let x = new_id "x" in
+      let x = match var with None -> new_id "x" | Some(x,_) -> x in
       let pred = p (Var x) in
-      Format.fprintf fm "{%a:%a|%a}" print_var x (print_typ_aux var) ty print_linear_exp pred
+      Format.fprintf fm "{%a:%a|%a}" print_var x (print_typ_aux None) ty print_linear_exp pred
   | TConstr constr ->
       print_typ_constr fm constr
   | TFun _ as typ ->

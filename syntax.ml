@@ -1564,6 +1564,7 @@ let occur_typ =
         let aux a =
           match a with
           | TAPred(y,ps) -> List.exists (List.exists (Id.same x) -| get_fv) ps
+          | TARefPred(y,p) -> List.exists (Id.same x) @@ get_fv p
           | _ -> false
         in
         List.exists aux attr || col.col2_typ x typ
