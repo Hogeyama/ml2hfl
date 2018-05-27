@@ -38,13 +38,18 @@ let rec lift env sty =
         List.fold_left aux ([],env) xs
       in
       RT.Tuple xtyps
-  | TAttr(_,sty') -> lift env sty'
+  | TAttr([],sty') -> lift env sty'
+  | TAttr(TARefPred(x,p)::_,sty') ->
+      let base = Option.get @@ decomp_base sty' in
+      RT.Base(base, x, p)
+  | TAttr(_::attrs,sty') -> lift env (TAttr(attrs,sty'))
   | _ ->
       Format.eprintf "LIFT: %a@." Print.typ sty;
       assert false
 let lift env t =
+  Debug.printf "LIFT: (%a): %a@." Print.term t Print.typ t.typ;
   lift env t.typ
-  |@> Debug.printf "LIFT: (%a): %a@." Print.term t RT.print
+  |@> Debug.printf "   => %a@." RT.print
 
 let print_env = Print.(list (pair id RT.print))
 

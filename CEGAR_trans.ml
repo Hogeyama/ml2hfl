@@ -174,10 +174,6 @@ and trans_typ ty =
   | Type.TAttr(Type.TARefPred(x,p)::attrs, typ) ->
       let p' y = subst (trans_var x) y @@ snd @@ trans_term "" [] [] p in
       TApp(TConstr (TFixPred p'), trans_typ @@ Type.TAttr(attrs,typ))
-  | Type.TAttr(attr, typ) when List.mem Type.TAAssumePredTrue attr ->
-      let attr' = List.filter ((<>) Type.TAAssumePredTrue) attr in
-      let ty' = trans_typ @@ Type._TAttr attr' typ in
-      TApp(TConstr (TFixPred(fun _ -> Const True)), ty')
   | Type.TAttr(_, typ) when Term_util.get_tapred ty <> None ->
       let x,ps = Option.get @@ Term_util.get_tapred ty in
       begin

@@ -174,7 +174,6 @@ let trans_typ trans = function
         | TARefPred(x,p) -> TARefPred(trans.tr_var x, trans.tr_term p)
         | TAPureFun -> TAPureFun
         | TAEffect e -> TAEffect e
-        | TAAssumePredTrue -> TAAssumePredTrue
       in
       TAttr(List.map tr attr, trans.tr_typ typ)
   | TVariant(poly,labels) -> TVariant(poly, List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
@@ -345,7 +344,6 @@ let trans2_gen_typ tr env = function
         | TARefPred(x,p) -> TARefPred(tr.tr2_var env x, tr.tr2_term env p)
         | TAPureFun -> TAPureFun
         | TAEffect e -> TAEffect e
-        | TAAssumePredTrue -> TAAssumePredTrue
       in
       TAttr(List.map aux attr, tr.tr2_typ env typ)
   | TVariant(poly,labels) -> TVariant(poly, List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
@@ -527,7 +525,6 @@ let col_typ col typ =
         | TARefPred(x,p) -> col.col_var x -@- col.col_term p -@- acc
         | TAPureFun -> acc
         | TAEffect e -> acc
-        | TAAssumePredTrue -> acc
       in
       List.fold_left aux (col.col_typ typ) attr
   | TVariant(_,labels) -> List.fold_left (fun init (_,typs) -> col_list col col.col_typ ~init typs) col.col_empty labels
@@ -710,7 +707,6 @@ let col2_typ col env typ =
             col.col2_var env x -@- col.col2_term env p -@- acc
         | TAPureFun -> acc
         | TAEffect _ -> acc
-        | TAAssumePredTrue -> acc
       in
       List.fold_left aux (col.col2_typ env typ) attr
   | TVariant(_,labels) -> List.fold_left (fun init (_,typs) -> col2_list col (col.col2_typ env) ~init typs) col.col2_empty labels
@@ -907,7 +903,6 @@ let tr_col2_typ tc env = function
             acc', TARefPred(x',p')
         | TAPureFun -> tc.tr_col2_empty, TAPureFun
         | TAEffect e -> tc.tr_col2_empty, TAEffect e
-        | TAAssumePredTrue -> tc.tr_col2_empty, TAAssumePredTrue
       in
       let acc,typ' = tc.tr_col2_typ env typ in
       let acc',attr' = tr_col2_list tc aux ~init:acc env attr in
@@ -1239,7 +1234,6 @@ let fold_tr_typ fld env ty =
             env'', TARefPred(x',p')
         | TAPureFun -> env, TAPureFun
         | TAEffect e -> env, TAEffect e
-        | TAAssumePredTrue -> env, TAAssumePredTrue
       in
       let env',attr' = fold_tr_list aux env attr in
       let env'',typ' = fld.fld_typ env' typ in

@@ -27,7 +27,6 @@ and 'a attr =
   | TARefPred of 'a t Id.t * 'a
   | TAPureFun
   | TAEffect of effect
-  | TAAssumePredTrue
 and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
