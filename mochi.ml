@@ -330,7 +330,11 @@ let rec arg_spec () =
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";
      "-just-run", Arg.String just_run_other_command, " (just for experiments, %i is replaced with the filename)";
-     "-print-ref-constr", Arg.Unit (fun () -> set_only_result (); Flag.Method.(mode := PrintRefConstr)), " Just print constraints for refinement types";
+     "-print-ref-constr",
+       Arg.Unit (fun () -> Flag.Method.(mode := PrintRefConstr);
+                           Flag.PredAbst.shift_pred := true;
+                           set_only_result ()),
+       " Just print constraints for refinement types";
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
