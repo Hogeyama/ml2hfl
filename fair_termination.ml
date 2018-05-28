@@ -346,7 +346,7 @@ let rec run spec t =
   Debug.printf "MAIN: %a@." Id.print main;
   let top_funs = List.filter_out (Id.same main) @@ get_top_funs t' in
   let top_funs' = List.filter (is_fun_typ -| Id.typ) top_funs in
-  Debug.printf "TOP_FUNS: %a@." (List.print Id.print) top_funs';
+  Debug.printf "TOP_FUNS: %a@." Print.(list id_typ) top_funs';
   let verify f =
     let rank_funs = [] in
     let vs,t'' = trans f fairness t' in
@@ -355,7 +355,7 @@ let rec run spec t =
     Debug.printf "arg_vars: %a@." (List.print Print.id) arg_vars;
     let t''' =
       t''
-      |> Trans.replace_main ~force:true ~main:unit_term
+      |> Trans.replace_main ~force:true ~main:end_of_definitions
       |> Trans.tfuns_to_tfun
       |@> pr @@ Format.asprintf "trans for %a" Print.id f
       |> Trans.flatten_let

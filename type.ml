@@ -11,7 +11,7 @@ and 'a t =
   | TBase of base
   | TVar of 'a t option ref * int option
   | TFun of 'a t Id.t * 'a t
-  | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)
+  | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination. TODO: Refactor *)
   | TTuple of 'a t Id.t list
   | TData of string
   | TVariant of bool * (string * 'a t list) list (** true means polymorphic variant *)

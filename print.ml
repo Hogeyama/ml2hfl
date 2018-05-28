@@ -155,7 +155,7 @@ and print_let_decls cfg bang fm bindings =
       else
         "and"
     in
-    let xs,t1' = decomp_funs t1 in
+    let xs,t1' = if !!Debug.check then [], t1 else decomp_funs t1 in
     let fv = get_fv t1' in
     fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids ~fv cfg) xs (print_term cfg 0) t1';
     first := false
@@ -189,8 +189,13 @@ and print_desc cfg pri attr fm desc =
   match desc with
   | Const c -> print_const {cfg with top=false} fm c
   | Var x -> print_id fm x
-  | Fun _ ->
-      let xs,t = decomp_funs {desc; typ=typ_unknown; attr=[]} in
+  | Fun(x,t1) ->
+      let xs,t =
+        if !!Debug.check then
+          [x], t1
+        else
+          decomp_funs {desc; typ=typ_unknown; attr=[]}
+      in
       let fv = get_fv t in
       let p = 15 in
       let s1,s2 = paren pri (p+1) in

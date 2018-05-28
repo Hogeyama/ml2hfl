@@ -3,6 +3,8 @@ open Term_util
 open Type
 open Util
 
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
+
 type index = IVar of string | ITerm of int
 type typ = TVar of typ option ref | TBase | TFun of typ * int * typ | TTuple of typ list
 
@@ -34,7 +36,7 @@ let rec from_type typ =
   | Type.TFuns _
   | Type.TVariant _
   | Type.TRecord _
-  | Type.TModule _ -> unsupported "uncurry"
+  | Type.TModule _ -> unsupported "Uncurry.from_type"
 
 let rec decomp_tfun sol = function
   | TVar {contents = Some typ} -> decomp_tfun sol typ
@@ -98,8 +100,11 @@ let rec infer (env,counter) t =
       if false then Format.printf "x: %a@." Print.id x;
       unify (get_typ env t) @@ get_typ_var env x
   | App(t1, ts) ->
+Format.printf "%s@." __LOC__;
       assert (ts <> []);
-      let constr = List.flatten_map (infer (env,counter)) (t1::ts) in
+        Format.printf "App t1: %a@." Print.term t1;
+        Format.printf "App ts: %a@." Print.(list term) ts;
+        let constr = List.flatten_map (infer (env,counter)) (t1::ts) in
       let id = ref None in
       let aux t typ =
         let id' = gen counter in
@@ -110,8 +115,11 @@ let rec infer (env,counter) t =
       if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
       (0, Option.get !id) :: unify (get_typ env t1) typ @ constr
   | Local(Decl_let bindings, t2) ->
+Format.printf "%s@." __LOC__;
       let aux (f,t1) =
         let xs,t1 = decomp_funs t1 in
+        Format.printf "Local t1: %a@." Print.term t1;
+        Format.printf "Local t2: %a@." Print.term t2;
         List.iter (add_env_var env) (f::xs);
         let id = ref None in
         let aux x typ =
@@ -122,20 +130,29 @@ let rec infer (env,counter) t =
         let typ = List.fold_right aux xs @@ get_typ env t1 in
         if false then Format.printf "id[%a]: %a@." Id.print f (Option.print Format.pp_print_int) !id;
         if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
-        (if xs <> [] then [0, Option.get !id] else []) @ unify (get_typ_var env f) typ
+        let constr1 = (if xs <> [] then [0, Option.get !id] else []) @ unify (get_typ_var env f) typ in
+        let constr2 = infer (env,counter) t1 in
+        constr1 @ constr2
       in
-      List.flatten_map (infer (env,counter) -| snd) bindings @ infer (env,counter) t2 @
-      List.flatten_map aux bindings
+      infer (env,counter) t2 @ List.flatten_map aux bindings
   | BinOp(op, t1, t2) ->
+Format.printf "%s@." __LOC__;
       infer (env,counter) t1 @ infer (env,counter) t2
   | Not t1 ->
+Format.printf "%s@." __LOC__;
       infer (env,counter) t1
   | If(t1, t2, t3) ->
+Format.printf "%s@." __LOC__;
       infer (env,counter) t1 @ infer (env,counter) t2 @ infer (env,counter) t3
   | Tuple ts ->
+Format.printf "%s@." __LOC__;
       List.flatten_map (infer (env,counter)) ts
-  | Proj(i,t) ->infer (env,counter) t
-  | _ -> Format.eprintf "%a@." Print.term t; unsupported "uncurry"
+  | Proj(i,t) ->
+Format.printf "%s@." __LOC__;
+      infer (env,counter) t
+  | _ ->
+      Format.eprintf "%a@." Print.term t;
+      unsupported "Uncurry.infer"
 
 
 
@@ -226,20 +243,6 @@ let uncurry t =
   |> uncurry (env,sol)
   |> Trans.remove_id
 
-(*
-let infer t =
-  let counter = ref 0 in
-  let env = Hashtbl.create 0 in
-  let t' = init (counter,env) t in
-  let constr = infer (env,counter) t' in
-  let sol = solve constr in
-  let rec aux typ =
-    let typs,typ' = decomp_tfun sol typ in
-    if typs = [] then [] else List.length typs :: aux typ'
-  in
-  List.map (fun x -> x, aux @@ get_typ_var env x) @@ get_bound_variables t
-*)
-
 let to_tfuns = make_trans2 ()
 
 let to_funs_var env sol x =
@@ -289,11 +292,12 @@ let to_tfuns_desc (env,sol) desc =
 let () = to_tfuns.tr2_desc <- to_tfuns_desc
 
 let to_tfuns t =
-  if false then Format.printf "INPUT; %a@." Print.term t;
+  Debug.printf "[UNCURRY] INPUT; %a@." Print.term t;
   let counter = ref 0 in
   let env = Hashtbl.create 0 in
   let t' = init (counter,env) t in
+  Debug.printf "[UNCURRY] t'; %a@." Print.term t';
   let constr = infer (env,counter) t' in
-  if false then Format.printf "constr: %a@." (List.print print_constr) constr;
+  Debug.printf "[UNCURRY] constr: %a@." (List.print print_constr) constr;
   let sol = solve constr in
   Trans.reconstruct @@ to_tfuns.tr2_term (env,sol) t
