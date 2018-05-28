@@ -12,11 +12,35 @@ type mode = Default | Allow_recursive | Use_empty_pred
 
 type sub_constr = RT.env * (RT.t * RT.t)
 
-let rec lift env sty =
+let filter_env env =
+  let check =
+    if !Flag.Method.bool_to_int then
+      RT.decomp_base |- Option.exists (Triple.fst |- (=) TInt)
+    else
+      RT.is_base
+  in
+  RT.Env.filter_value check env
+
+let is_base_const t =
+  match t.desc with
+  | Const _ -> is_base_typ t.typ
+  | _ -> false
+
+let is_simple_expr t =
+  let r = is_simple_bexp t || is_simple_aexp t || is_base_const t in
+  if false then Format.printf "is_simple_expr (%a): %b@." Print.term t r;
+  r
+
+let simple_expr_ty t =
+  let x = new_var_of_term t in
+  let base = Option.get @@ decomp_base t.typ in
+  RT.Base(base, x, Term.(var x = t))
+
+let rec lift_ty env sty =
   match sty with
   | TBase base ->
       let x = Id.new_var sty in
-      let base_env = RT.Env.filter_value RT.is_base env in
+      let base_env = filter_env env in
       let args = x :: RT.Env.keys base_env in
       let pred =
         let pvar = PredVar.new_pvar @@ List.map Id.typ args in
@@ -24,13 +48,13 @@ let rec lift env sty =
       in
       RT.Base(base, x, pred)
   | TFun(x,sty2) ->
-      let rty1 = lift env @@ Id.typ x in
-      let rty2 = lift (RT.Env.add x rty1 env) sty2 in
+      let rty1 = lift_ty env @@ Id.typ x in
+      let rty2 = lift_ty (RT.Env.add x rty1 env) sty2 in
       RT.Fun(x, rty1, rty2)
   | TTuple xs ->
       let xtyps,_ =
         let aux (acc,env) x =
-          let rty = lift env @@ Id.typ x in
+          let rty = lift_ty env @@ Id.typ x in
           let env' = RT.Env.add x rty env in
           let acc' = acc @ [x, rty] in
           acc', env'
@@ -38,26 +62,30 @@ let rec lift env sty =
         List.fold_left aux ([],env) xs
       in
       RT.Tuple xtyps
-  | TAttr([],sty') -> lift env sty'
+  | TAttr([],sty') -> lift_ty env sty'
   | TAttr(TARefPred(x,p)::_,sty') ->
       let base = Option.get @@ decomp_base sty' in
       RT.Base(base, x, p)
-  | TAttr(_::attrs,sty') -> lift env (TAttr(attrs,sty'))
+  | TAttr(_::attrs,sty') -> lift_ty env (TAttr(attrs,sty'))
   | _ ->
       Format.eprintf "LIFT: %a@." Print.typ sty;
       assert false
 let lift env t =
   Debug.printf "LIFT: (%a): %a@." Print.term t Print.typ t.typ;
-  lift env t.typ
-  |@> Debug.printf "   => %a@." RT.print
+  let r =
+  if is_simple_expr t then
+    simple_expr_ty t
+  else
+    lift_ty env t.typ
+  in
+  Debug.printf "   => %a@." RT.print r;
+  r
 
 let print_env = Print.(list (pair id RT.print))
 
-let is_simple_expr t = is_simple_bexp t || is_simple_aexp t
-
 let print_sub_constrs fm (cs:sub_constr list) =
   let pr fm (env,(rty1,rty2)) =
-    let env' = RT.Env.filter_value RT.is_base env in
+    let env' = filter_env env in
     Format.fprintf fm "@[<hov 2>%a |- %a <:@ %a@]" RT.Env.print env' RT.print rty1 RT.print rty2
   in
   List.print pr fm cs
@@ -67,11 +95,6 @@ let print_constrs fm cs =
     Format.fprintf fm "@[<hov 2>%a |=@ %a@]" (List.print Print.term) pre Print.term ant
   in
   List.print pr fm cs
-
-let simple_expr_ty t =
-  let x = new_var_of_term t in
-  let base = Option.get @@ decomp_base t.typ in
-  RT.Base(base, x, Term.(var x = t))
 
 let const_ty c =
   match c with
@@ -202,6 +225,7 @@ let rec gen_sub mode env t ty : sub_constr list =
 
 let denote_ty x ty =
   match ty with
+  | RT.Base(TBool,y,p) when !Flag.Method.bool_to_int -> true_term
   | RT.Base(b,y,p) -> subst_var y x p
   | RT.Fun _ -> true_term
   | RT.Tuple _ -> true_term
@@ -240,16 +264,21 @@ let rec simplify pre1 pre2 ant =
       if ant = true_term then
         []
       else
-        [pre1, ant]
+        begin
+          match ant.desc with
+          | BinOp(Eq, t1, t2) when is_simple_expr t1 && same_term t1 t2 -> []
+          | _ -> [pre1, ant]
+        end
   | p::pre2' ->
       match p.desc with
       | Const True -> simplify pre1 pre2' ant
       | Const False -> []
+      | BinOp(Eq, t1, t2) when is_simple_expr t1 && same_term t1 t2 -> simplify pre1 pre2' ant
       | BinOp(And, p1, p2) -> simplify pre1 (p1::p2::pre2') ant
       | BinOp(Eq, {desc=Var x}, t) ->
           let sb = subst x t in
           let sbs = List.map sb in
-          simplify (sbs pre1) (sbs pre2') (sb ant)
+          simplify [] (sbs pre1 @ sbs pre2') (sb ant)
       | _ -> simplify (p::pre1) pre2' ant
 let simplify (pre,ant) =
   simplify [] pre ant
@@ -259,6 +288,7 @@ let gen_hcs mode env t ty =
   let env = RT.Env.map_value (RT.rename ~full:true) env in
   Debug.printf "Ref_type_check:@.";
   Debug.printf "  t: %a@." Print.term t;
+  Debug.printf "  ty: %a@." RT.print ty;
   Debug.printf "  env: %a@." RT.Env.print env;
   gen_sub mode env t ty
   |@> Debug.printf "Subtyping constraints:@.  @[%a@.@." print_sub_constrs

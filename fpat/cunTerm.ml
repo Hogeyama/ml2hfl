@@ -332,7 +332,7 @@ and sexp_of t =
   fold
     (object
       method fvar x [] = Idnt.string_of x
-      method funit () = assert false
+      method funit () = "0" (* TODO: fix *)
       method ftrue () = "true"
       method ffalse () = "false"
       method fint n =
