@@ -12,14 +12,7 @@ type mode = Default | Allow_recursive | Use_empty_pred
 
 type sub_constr = RT.env * (RT.t * RT.t)
 
-let filter_env env =
-  let check =
-    if !Flag.Method.bool_to_int then
-      RT.decomp_base |- Option.exists (Triple.fst |- (=) TInt)
-    else
-      RT.is_base
-  in
-  RT.Env.filter_value check env
+let filter_env env = RT.Env.filter_value RT.is_base env
 
 let is_base_const t =
   match t.desc with
@@ -225,7 +218,6 @@ let rec gen_sub mode env t ty : sub_constr list =
 
 let denote_ty x ty =
   match ty with
-  | RT.Base(TBool,y,p) when !Flag.Method.bool_to_int -> true_term
   | RT.Base(b,y,p) -> subst_var y x p
   | RT.Fun _ -> true_term
   | RT.Tuple _ -> true_term

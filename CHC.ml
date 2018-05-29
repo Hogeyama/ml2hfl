@@ -116,11 +116,12 @@ let rec simplify_trivial need_rerun body1 body2 head head_fv =
       | Const False -> None
       | BinOp(Eq, t1, t2) when is_simple_expr t1 && same_term t1 t2 -> simplify_trivial true body1 body2' head head_fv
       | BinOp(And, p1, p2) -> simplify_trivial need_rerun body1 (p1::p2::body2') head head_fv
-      | BinOp(Eq, {desc=Var x}, t) when not @@ Id.mem x head_fv || List.Set.disjoint (get_fv t) head_fv || not @@ is_app head ->
+      | BinOp(Eq, {desc=Var x}, t) when not (Id.mem x head_fv && is_app head) ->
           let sb = subst x t in
           let sbs = List.map sb in
           let head' = sb head in
-          simplify_trivial true [] (sbs body1 @ sbs body2') head' (get_fv head')
+          let head_fv' = List.filter_out (Id.(=) x) head_fv in
+          simplify_trivial true [] (sbs body1 @ sbs body2') head' head_fv'
       | _ -> simplify_trivial need_rerun (p::body1) body2' head head_fv
 let simplify_trivial {body;head} = simplify_trivial false [] body head (get_fv head)
 
