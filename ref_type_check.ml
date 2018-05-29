@@ -258,31 +258,6 @@ let rec flatten env (ty1,ty2) =
       Format.eprintf "ty2: %a@." RT.print ty2;
       unsupported __LOC__
 
-let rec simplify pre1 pre2 ant =
-  match pre2 with
-  | [] ->
-      if ant = true_term then
-        []
-      else
-        begin
-          match ant.desc with
-          | BinOp(Eq, t1, t2) when is_simple_expr t1 && same_term t1 t2 -> []
-          | _ -> [pre1, ant]
-        end
-  | p::pre2' ->
-      match p.desc with
-      | Const True -> simplify pre1 pre2' ant
-      | Const False -> []
-      | BinOp(Eq, t1, t2) when is_simple_expr t1 && same_term t1 t2 -> simplify pre1 pre2' ant
-      | BinOp(And, p1, p2) -> simplify pre1 (p1::p2::pre2') ant
-      | BinOp(Eq, {desc=Var x}, t) ->
-          let sb = subst x t in
-          let sbs = List.map sb in
-          simplify [] (sbs pre1 @ sbs pre2') (sb ant)
-      | _ -> simplify (p::pre1) pre2' ant
-let simplify (pre,ant) =
-  simplify [] pre ant
-
 let gen_hcs mode env t ty =
   let ty = RT.rename ~full:true ty in
   let env = RT.Env.map_value (RT.rename ~full:true) env in
@@ -294,7 +269,7 @@ let gen_hcs mode env t ty =
   |@> Debug.printf "Subtyping constraints:@.  @[%a@.@." print_sub_constrs
   |> List.flatten_map (Fun.uncurry flatten)
   |@> Debug.printf "Constraints:@.  @[%a@.@." print_constrs
-  |> List.flatten_map simplify
+  |> (CHC.of_term_list |- CHC.simplify ~normalized:true |- snd |- CHC.to_term_list)
   |@> Debug.printf "Simplified:@.  @[%a@.@." print_constrs
   |> FpatInterface.to_hcs
   |@> Debug.printf "Constraints:@.  @[%a@.@." Fpat.HCCS.pr

@@ -36,6 +36,8 @@ let rec is_value t =
   | Tuple ts -> List.for_all is_value ts
   | _ -> false
 
+let has_safe_attr t = List.Set.subset [ANotFail;ATerminate] t.attr
+
 let end_of_definitions = {desc=Const End_of_definitions; typ=Ty.unit; attr=[]}
 let unit_term = {desc=Const Unit; typ=Ty.unit; attr=const_attr}
 let true_term = {desc=Const True; typ=Ty.bool; attr=const_attr}
@@ -123,7 +125,7 @@ let make_and t1 t2 =
     t2
   else if t2 = true_term then
     t1
-  else if t2 = false_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
+  else if t2 = false_term && has_safe_attr t1 then
     false_term
   else
     {desc=BinOp(And, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
@@ -135,7 +137,7 @@ let make_or t1 t2 =
     t2
   else if t2 = false_term then
     t1
-  else if t2 = true_term && List.Set.subset [ANotFail;ATerminate] t1.attr then
+  else if t2 = true_term && has_safe_attr t1 then
     true_term
   else
     {desc=BinOp(Or, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
@@ -153,9 +155,9 @@ let make_sub t1 t2 =
   else
     {desc=BinOp(Sub, t1, t2); typ=TBase TInt; attr=make_attr[t1;t2]}
 let make_mul t1 t2 =
-  if t1.desc = Const (Int 0) && List.Set.subset [ANotFail;ATerminate] t2.attr then
+  if t1.desc = Const (Int 0) && has_safe_attr t2 then
     make_int 0
-  else if t2.desc = Const (Int 0) && List.Set.subset [ANotFail;ATerminate] t1.attr then
+  else if t2.desc = Const (Int 0) && has_safe_attr t1 then
     make_int 0
   else if t2.desc = Const (Int 1) then
     t1
@@ -187,7 +189,10 @@ let make_eq t1 t2 =
   match t1.desc, t2.desc with
   | Const c1, Const c2 -> make_bool (c1 = c2)
   | _ ->
-      {desc=BinOp(Eq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
+      if t1.typ = Ty.unit && has_safe_attr t1 && has_safe_attr t2 then
+        true_term
+      else
+        {desc=BinOp(Eq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_neq t1 t2 =
   make_not (make_eq t1 t2)
 let make_lt t1 t2 =
@@ -408,6 +413,11 @@ let is_var t = Option.is_some @@ decomp_var t
 
 let is_fun t = [] <> fst @@ decomp_funs t
 
+let is_app t =
+  match t.desc with
+  | App _ -> true
+  | _ -> false
+
 let rec decomp_lets t =
   match t.desc with
   | Local(Decl_let bindings, t2) ->
@@ -588,7 +598,7 @@ let make_single_match ?(total=false) t1 p t2 =
   then make_match t1 [p, true_term, t2]
   else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
 let make_trywith t x pats =
-  if List.Set.subset [ANotFail;ATerminate] t.attr then
+  if has_safe_attr t then
     t
   else
     let handler = make_fun x @@ make_match (make_var x) pats in
@@ -770,7 +780,7 @@ let make_if t1 t2 t3 =
   match t1.desc with
   | Const True -> t2
   | Const False -> t3
-  | _ when List.Set.subset [ANotFail;ATerminate] t2.attr && same_term' t2 t3 -> t2
+  | _ when has_safe_attr t2 && same_term' t2 t3 -> t2
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
 let make_assert t = make_if t unit_term fail_unit_term
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
@@ -1019,7 +1029,7 @@ let rec get_body t =
   | _ -> t
 
 let count_occurrence x t =
-  List.length @@ List.filter (Id.same x) @@ get_fv ~eq:(fun _ _ -> false) t
+  List.count Id.((=) x) @@ get_fv ~eq:(fun _ _ -> false) t
 
 let add_attr attr t = {t with attr=attr::t.attr}
 let add_attrs attrs t = List.fold_right add_attr attrs t

@@ -749,6 +749,9 @@ module Combination = struct
     | xs::xxs' ->
         let cmb = take_each xxs' in
         List.flatten_map (fun x -> List.map (List.cons x) cmb) xs
+
+  let product xs ys =
+    List.flatten_map (fun p -> List.map (fun p' -> p',p) xs) ys
 end
 
 module Arg = struct

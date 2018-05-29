@@ -147,6 +147,7 @@ val is_randint_unit : term -> bool
 val is_randbool_unit : term -> bool
 val is_none : term -> bool
 val is_fun : term -> bool
+val is_app : term -> bool
 val is_value : term -> bool
 val is_simple_aexp : term -> bool
 val is_simple_bexp : term -> bool
