@@ -142,6 +142,7 @@ val is_base_var : id -> bool
 val is_fun_var : id -> bool
 val is_list_literal : term -> bool
 val is_var : term -> bool
+val is_const : term -> bool
 val is_fail : term -> bool
 val is_randint_unit : term -> bool
 val is_randbool_unit : term -> bool

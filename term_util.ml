@@ -413,6 +413,11 @@ let is_var t = Option.is_some @@ decomp_var t
 
 let is_fun t = [] <> fst @@ decomp_funs t
 
+let is_const t =
+  match t.desc with
+  | Const _ -> true
+  | _ -> false
+
 let is_app t =
   match t.desc with
   | App _ -> true
@@ -823,6 +828,7 @@ let has_no_effect =
   col.col_term
 
 
+let is_const_or_var t = is_const t || is_var t
 
 let rec is_simple_aexp t =
   if elim_tattr t.typ <> Ty.int then
@@ -843,7 +849,8 @@ and is_simple_bexp t =
     | Var _ -> true
     | BinOp(_, t1, t2) ->
         is_simple_bexp t1 && is_simple_bexp t2 ||
-        is_simple_aexp t1 && is_simple_aexp t2
+        is_simple_aexp t1 && is_simple_aexp t2 ||
+        is_const_or_var t1 && is_const_or_var t2
     | Not t -> is_simple_bexp t
     | _ -> false
 
