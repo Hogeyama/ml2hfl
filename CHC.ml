@@ -291,19 +291,19 @@ let simplify_inlining_forward (deps,ps,constrs,sol as x : data) =
     n_head = 1 && not @@ List.exists (self_implication p) constrs
   in
   let ps' = List.filter check ps in
-  Debug.printf "ps': %a@." Print.(list id) ps';
-  let assoc p = List.find (fun {head} -> is_app_of head p) constrs in
-  let sol' =
-    let aux p =
-      let {head;body} = assoc p in
-      let _,xs = Option.get @@ decomp_app head in
-      p, (xs, body)
-    in
-    List.map aux ps'
-  in
-  if sol' = [] then
+  if ps' = [] then
     None
   else
+    let assoc p = List.find (fun {head} -> is_app_of head p) constrs in
+    let sol' =
+      let aux p =
+        let {head;body} = assoc p in
+        let _,xs = Option.get @@ decomp_app head in
+        p, (xs, body)
+      in
+      List.map aux ps'
+    in
+    Debug.printf "inline': %a@." Print.(list id) ps';
     Some (true, apply_sol true sol' x)
 
 (* Backward inlinining *)
@@ -361,6 +361,42 @@ let simplify_head_in_body (deps,ps,constrs,sol : data) =
   else
     Some(true, (deps,ps,constrs2,sol))
 
+(* Merge simple constraints for the same head *)
+let simplify_same_head (deps,ps,constrs,sol as x : data) =
+  let check p =
+    let constrs' = List.filter (fun {head} -> is_app_of head p) constrs in
+    List.length constrs' >= 2 &&
+    List.for_all (fun {body} -> List.for_all is_term body) constrs'
+  in
+  let ps1,ps2 = List.partition check ps in
+  if ps1 = [] then
+    None
+  else
+    let assoc p =
+      let aux {head;body} =
+        match decomp_app head with
+        | Some (p', xs) when Id.(p = p') ->
+            let fv = List.Set.diff ~eq:Id.eq (get_fv_constr {head;body}) xs in
+            let t = make_ands @@ List.map term_of_atom body in
+            let fv' = List.map Id.new_var_id fv in
+            Some (xs, subst_var_map (List.combine fv fv') t)
+        | _ -> None
+      in
+      constrs
+      |> List.filter_map aux
+      |> List.reduce (fun (xs,t) (xs',t') -> xs, make_or t (subst_var_map (List.combine xs xs') t'))
+    in
+    Debug.printf "merge: %a@." Print.(list id) ps1;
+    let sol' =
+      let aux p =
+        let xs,t = assoc p in
+        p, (xs, [Term t])
+      in
+      List.map aux ps1
+    in
+    Debug.printf "[simplify_same_head] sol': %a@." print_sol sol';
+    Some (true, apply_sol true sol' x)
+
 let simplifiers : (data -> (bool * data) option) list =
   [simplify_unused;
    simplify_empty_body;
@@ -368,7 +404,8 @@ let simplifiers : (data -> (bool * data) option) list =
    simplify_inlining_forward;
 (* simplify_inlining_backward; *)
    simplify_head_in_body;
-   simplify_unsat]
+   simplify_unsat;
+   simplify_same_head]
 
 let simplify ?(normalized=false) (constrs:t) =
   let constrs = if normalized then constrs else normalize constrs in
@@ -388,7 +425,9 @@ let simplify ?(normalized=false) (constrs:t) =
     | f::rest' ->
         match f x with
         | None -> loop orig rest' x
-        | Some(true, x') -> loop orig orig x'
+        | Some(true, x') ->
+            Debug.printf "constrs: %a@." print ((fun (_,_,c,_) -> c) x');
+            loop orig orig x'
         | Some(false, x') -> loop orig rest' x'
   in
   let loop orig x = loop orig orig x in
