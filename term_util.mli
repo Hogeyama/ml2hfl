@@ -249,7 +249,9 @@ module Term : sig
   val fun_ : id -> term -> term
   val not : term -> term
   val (&&) : term -> term -> term
+  val ands : term list -> term
   val (||) : term -> term -> term
+  val ors : term list -> term
   val (+) : term -> term -> term
   val (-) : term -> term -> term
   val ( * ) : term -> term -> term

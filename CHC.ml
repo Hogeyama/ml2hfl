@@ -178,7 +178,7 @@ let apply_sol_atom sol fv a =
 let apply_sol_constr remove_matched_head sol {head;body} =
   if not remove_matched_head then unsupported "CHC.apply_sol_constr";
   let fv = get_fv_constr {head;body} in
-  let body = List.flatten_map (apply_sol_atom sol fv) body in
+  let body = unique @@ List.flatten_map (apply_sol_atom sol fv) body in
   if List.exists (fun (p,_) -> is_app_of head p) sol then
     []
   else
@@ -279,8 +279,8 @@ let simplify_unused (deps,ps,constrs,sol as x : data) =
     let () = Debug.printf "REMOVE1: %a@." Print.(list id) ps2 in
     Some (true, replace_with_true x ps2)
 
-(* Inlinining *)
-let simplify_inlining (deps,ps,constrs,sol as x) =
+(* Forwarad inlinining *)
+let simplify_inlining_forward (deps,ps,constrs,sol as x : data) =
   let check p =
     let count (n_head,n_body) {head;body} =
       (if is_app_of head p then 1+n_head else n_head),
@@ -301,12 +301,58 @@ let simplify_inlining (deps,ps,constrs,sol as x) =
     in
     List.map aux ps'
   in
-  let sol' = match sol' with []-> [] | x::_ -> [x] in
   if sol' = [] then
     None
   else
     Some (true, apply_sol true sol' x)
 
+(* Backward inlinining *)
+let simplify_inlining_backward (deps,ps,constrs,sol as x : data) =
+  let aux {head;body} =
+    let body1,body2 = List.partition is_app body in
+    if is_term head then
+      match body1 with
+      | [PApp(p,xs)] ->
+          let ts = List.map term_of_atom body2 in
+          let t = term_of_atom head in
+          Some(p, (xs, Term (Term.(not (ands ts) || t))))
+      | _ -> None
+    else
+      None
+  in
+  let goals = List.filter_map aux constrs in
+  if goals = [] then
+    None
+  else
+    let () = Debug.printf "goals: %a@." Print.(list (pair id (pair (list id) print_atom))) goals in
+    let deps' = assert false in
+    let ps' = assert false in
+    let constrs' = assert false in
+    let sol' = assert false in
+    Some (true, (deps', ps', constrs', sol'))
+
+(* Remove clause whose body is unsatisfiable *)
+let simplify_unsat (deps,ps,constrs,sol as x : data) =
+  let is_sat {body} =
+    body
+    |> List.filter is_term
+    |> List.map term_of_atom
+    |> make_ands
+    |> FpatInterface.of_term
+    |> Fpat.Formula.of_term
+    |> FpatInterface.is_sat
+  in
+  let constrs1,constrs2 = List.partition is_sat constrs in
+  if constrs2 = [] then
+    None
+  else
+    let deps' = get_dependencies constrs in
+    let ps' = ps in
+    let constrs' = constrs1 in
+    let sol' = sol in
+    Some (true, (deps', ps', constrs', sol'))
+
+(* Remove trivially satisfiable clauses *)
 let simplify_head_in_body (deps,ps,constrs,sol : data) =
   let is_sat {head;body} = List.exists (same_atom head) body in
   let constrs1,constrs2 = List.partition is_sat constrs in
@@ -319,8 +365,10 @@ let simplifiers : (data -> (bool * data) option) list =
   [simplify_unused;
    simplify_empty_body;
    simplify_trivial;
-   simplify_inlining;
-   simplify_head_in_body]
+   simplify_inlining_forward;
+(* simplify_inlining_backward; *)
+   simplify_head_in_body;
+   simplify_unsat]
 
 let simplify ?(normalized=false) (constrs:t) =
   let constrs = if normalized then constrs else normalize constrs in

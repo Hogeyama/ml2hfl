@@ -117,6 +117,7 @@ let make_not t =
   match t.desc with
   | Const True -> false_term
   | Const False -> true_term
+  | Not t -> t
   | _ -> {desc=Not t; typ=(TBase TBool); attr=make_attr[t]}
 let make_and t1 t2 =
   if t1 = false_term then
@@ -1298,7 +1299,9 @@ module Term = struct
   let fun_ = make_fun
   let not = make_not
   let (&&) = make_and
+  let ands = make_ands
   let (||) = make_or
+  let ors = make_ors
   let (+) = make_add
   let (-) = make_sub
   let ( * ) = make_mul
