@@ -231,7 +231,13 @@ let simplify_trivial (deps,ps,constrs,sol : data) =
           match head with
           | Term {desc=Const True} -> None
           | Term {desc=BinOp(Eq, t1, t2)} when is_simple_expr t1 && same_term t1 t2 -> None
-          | _ -> Some (need_rerun, {body=body1; head})
+          | _ ->
+              if List.exists (same_atom head) body1 then
+                None
+              else if body1 = [] && not @@ same_atom head (Term false_term) then
+                None
+              else
+                Some (need_rerun, {body=body1; head})
         end
     | a::body2' ->
         match a with
@@ -256,19 +262,6 @@ let simplify_trivial (deps,ps,constrs,sol : data) =
   in
   let deps' = if need_rerun then get_dependencies constrs' else deps in
   Some (need_rerun, (deps',ps,constrs',sol))
-
-(* Remove constraint whose body is empty *)
-let simplify_empty_body (deps,ps,constrs,sol as x : data) =
-  let ps' =
-    constrs
-    |> List.filter_map (fun {head;body} -> if body = [] then decomp_app head else None)
-    |> List.map fst
-  in
-  if ps' = [] then
-    None
-  else
-    let () = Debug.printf "REMOVE2: %a@." Print.(list id) ps' in
-    Some (true, replace_with_true x ps')
 
 (* Remove predicates which do not occur in a body *)
 let simplify_unused (deps,ps,constrs,sol as x : data) =
@@ -307,7 +300,7 @@ let simplify_inlining_forward (deps,ps,constrs,sol as x : data) =
     Some (true, apply_sol true sol' x)
 
 (* Backward inlinining *)
-let simplify_inlining_backward (deps,ps,constrs,sol as x : data) =
+let simplify_inlining_backward (deps,ps,constrs,sol : data) =
   let aux {head;body} =
     let body1,body2 = List.partition is_app body in
     if is_term head then
@@ -332,7 +325,7 @@ let simplify_inlining_backward (deps,ps,constrs,sol as x : data) =
     Some (true, (deps', ps', constrs', sol'))
 
 (* Remove clause whose body is unsatisfiable *)
-let simplify_unsat (deps,ps,constrs,sol as x : data) =
+let simplify_unsat (deps,ps,constrs,sol : data) =
   let is_sat {body} =
     body
     |> List.filter is_term
@@ -352,14 +345,22 @@ let simplify_unsat (deps,ps,constrs,sol as x : data) =
     let sol' = sol in
     Some (true, (deps', ps', constrs', sol'))
 
-(* Remove trivially satisfiable clauses *)
-let simplify_head_in_body (deps,ps,constrs,sol : data) =
-  let is_sat {head;body} = List.exists (same_atom head) body in
-  let constrs1,constrs2 = List.partition is_sat constrs in
-  if constrs1 = [] then
+(* Remove clause whose body is unsatisfiable *)
+let simplify_not_in_head (deps,ps,constrs,sol as x : data) =
+  let check p = not @@ List.exists (fun {head} -> is_app_of head p) constrs in
+  let ps1,ps2 = List.partition check ps in
+  if ps1 = [] then
     None
   else
-    Some(true, (deps,ps,constrs2,sol))
+    let sol' =
+      let aux p =
+        let xs,_ = decomp_tfun @@ Id.typ p in
+        p, (xs, [Term false_term])
+      in
+      List.map aux ps1
+    in
+    Some (true, apply_sol true sol' x)
+
 
 (* Merge simple constraints for the same head *)
 let simplify_same_head (deps,ps,constrs,sol as x : data) =
@@ -384,7 +385,7 @@ let simplify_same_head (deps,ps,constrs,sol as x : data) =
       in
       constrs
       |> List.filter_map aux
-      |> List.reduce (fun (xs,t) (xs',t') -> xs, make_or t (subst_var_map (List.combine xs xs') t'))
+      |> List.reduce (fun (xs,t) (xs',t') -> xs, make_or t (subst_var_map (List.combine xs' xs) t'))
     in
     Debug.printf "merge: %a@." Print.(list id) ps1;
     let sol' =
@@ -394,16 +395,14 @@ let simplify_same_head (deps,ps,constrs,sol as x : data) =
       in
       List.map aux ps1
     in
-    Debug.printf "[simplify_same_head] sol': %a@." print_sol sol';
     Some (true, apply_sol true sol' x)
 
 let simplifiers : (data -> (bool * data) option) list =
   [simplify_unused;
-   simplify_empty_body;
    simplify_trivial;
+   simplify_not_in_head;
    simplify_inlining_forward;
 (* simplify_inlining_backward; *)
-   simplify_head_in_body;
    simplify_unsat;
    simplify_same_head]
 
