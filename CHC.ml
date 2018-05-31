@@ -51,6 +51,11 @@ let print fm (constrs:t) = List.print print_constr fm constrs
 let print_one_sol fm (p,(xs,atoms)) = Format.fprintf fm "@[%a := %a@]" print_atom (PApp(p,xs)) (List.print print_atom) atoms
 let print_sol fm sol = List.print print_one_sol fm sol
 
+let check_type_atom a = try Type_check.check (term_of_atom a) Ty.bool with _ -> Format.printf "UNTYPABLE: %a@." Print.term' @@ term_of_atom a ;assert false
+let check_type_constr {head;body} = List.iter check_type_atom (head::body)
+let check_type_constrs = List.iter check_type_constr
+
+
 let of_term_list (constrs : (term list * term) list) =
   List.map (fun (body,head) -> {body=List.map atom_of_term body; head=atom_of_term head}) constrs
 
@@ -81,7 +86,7 @@ let rename_map ?(body=false) map a =
   match a with
   | PApp(p,xs) ->
       let dom,range = List.split map in
-      if not body && List.Set.(disjoint ~eq:Id.eq range (diff ~eq:Id.eq xs dom)) then
+      if not (body || List.Set.(disjoint ~eq:Id.eq range (diff ~eq:Id.eq xs dom))) then
         (Format.eprintf "%a %a@." Print.(list (pair id id)) map print_atom a;
          invalid_arg "CHC.rename_map");
       PApp(p, List.map (fun z -> List.assoc_default ~eq:Id.eq z z map) xs)
@@ -110,8 +115,23 @@ type data = (pvar * pvar) list * PVarSet.t * constr list * (pvar * (pvar list * 
 
 let dummy_pred = Id.new_predicate Ty.int
 
-let normalize constrs =
-  unsupported "CHC.normalized"
+let normalize_constr {head;body} =
+    match head with
+    | PApp(p,xs) when List.length xs <> List.length @@ List.unique ~eq:Id.eq xs ->
+        let rec aux cond acc_rev xs =
+          match xs with
+          | [] -> cond, List.rev acc_rev
+          | x::xs' ->
+              if Id.mem x xs' then
+                let x' = Id.new_var_id x in
+                aux (Term Term.(var x = var x')::cond) (x'::acc_rev) xs'
+              else
+                aux cond (x::acc_rev) xs'
+        in
+        let cond,xs' = aux [] [] xs in
+        {head=PApp(p,xs'); body=cond@body}
+    | _ -> {head; body}
+let normalize constrs = List.map normalize_constr constrs
 
 let rec once acc fv =
   match fv with
@@ -181,22 +201,10 @@ let apply_sol sol' (deps,ps,constrs,sol : data) : data =
   Debug.printf "[apply_sol] input: %a@." print constrs;
   let add_fv (p,(xs,atoms)) = p, (xs, atoms, List.unique ~eq:Id.eq @@ List.Set.diff ~eq:Id.eq (List.flatten_map get_fv atoms) xs) in
   Debug.printf "[apply_sol] sol': %a@." print_sol sol';
-  let fixed_sol =
-    let aux sol =
-      let sol' = List.map add_fv sol in
-      let aux (p,(xs,atoms)) =
-        let fv = List.Set.diff (List.flatten_map get_fv atoms) xs in
-        p, (xs, unique @@ List.flatten_map (apply_sol_atom sol' fv) atoms)
-      in
-      List.map aux sol
-    in
-    fixed_point aux sol'
-  in
-  Debug.printf "[apply_sol] fixed_sol: %a@." print_sol fixed_sol;
-  let constrs' = List.flatten_map (apply_sol_constr @@ List.map add_fv fixed_sol) constrs in
+  let constrs' = List.flatten_map (apply_sol_constr @@ List.map add_fv sol') constrs in
   let deps' = get_dependencies constrs' in
   let ps' = get_pvars deps' in
-  let sol'' = fixed_sol @ sol in
+  let sol'' = sol' @ sol in
   Debug.printf "[apply_sol] output: %a@." print constrs';
   deps', ps', constrs', sol''
 
@@ -204,6 +212,8 @@ let apply_sol sol' (deps,ps,constrs,sol : data) : data =
 
 (* Trivial simplification *)
 let simplify_trivial (deps,ps,constrs,sol : data) =
+  Debug.printf "INPUT: %a@." print constrs;
+  check_type_constrs constrs;
   let rec loop need_rerun body1 body2 head head_fv =
     if !!Debug.check then assert (List.Set.eq ~eq:Id.eq (get_fv head) head_fv);
     match body2 with
@@ -223,7 +233,7 @@ let simplify_trivial (deps,ps,constrs,sol : data) =
         | Term {desc=Const True} -> loop need_rerun body1 body2' head head_fv
         | Term {desc=Const False} -> None
         | Term {desc=BinOp(Eq, t1, t2)} when is_simple_expr t1 && same_term t1 t2 -> loop true body1 body2' head head_fv
-        | Term {desc=BinOp(And, t1, t2)} -> loop need_rerun body1 ((Term t1)::(Term t2)::body2') head head_fv
+        | Term {desc=BinOp(And, t1, t2)} -> loop need_rerun body1 (Term t1::Term t2::body2') head head_fv
         | Term {desc=BinOp(Eq, {desc=Var x}, {desc=Var y})} when not (Id.mem x head_fv && is_app head && Id.mem y head_fv) ->
             let head' = rename x y head in
             let rn = List.map (rename ~body:true x y) in
@@ -298,7 +308,9 @@ let simplify_inlining_backward (deps,ps,constrs,sol : data) =
       | [PApp(p,xs)] ->
           let ts = List.map term_of_atom body2 in
           let t = term_of_atom head in
-          Some(p, (xs, Term (Term.(not (ands ts) || t))))
+          let t' = Term.(not (ands ts) || t) in
+          let fv = List.Set.diff ~eq:Id.eq (Syntax.get_fv t') xs in
+          Some(p, (xs, fv, Term t'))
       | _ -> None
     else
       None
@@ -307,12 +319,30 @@ let simplify_inlining_backward (deps,ps,constrs,sol : data) =
   if goals = [] then
     None
   else
-    let () = Debug.printf "goals: %a@." Print.(list (pair id (pair (list id) print_atom))) goals in
-    let deps' = assert false in
-    let ps' = assert false in
-    let constrs' = assert false in
-    let sol' = assert false in
-    Some (true, (deps', ps', constrs', sol'))
+    let () = Debug.printf "goals: %a@." Print.(list (pair id (triple (list id) __ print_atom))) goals in
+    let new_constrs =
+      let aux {head;body} =
+        match head with
+        | Term _ -> None
+        | PApp(f,xs) ->
+            match Id.assoc_option f goals with
+            | None -> None
+            | Some (ys, fv, a) ->
+                let fv' = List.map Id.new_var_id fv in
+                let a' =
+                  a
+                  |> rename_map (List.combine fv fv')
+                  |> rename_map (List.combine ys xs)
+                in
+                Some {head=a'; body}
+      in
+      List.filter_map aux constrs
+    in
+    let constrs' = new_constrs @ constrs in
+    let deps' = get_dependencies constrs' in
+    let ps' = get_pvars deps' in
+    let sol' = sol in
+    Some (false, (deps', ps', constrs', sol'))
 
 (* Remove clause whose body is unsatisfiable *)
 let simplify_unsat (deps,ps,constrs,sol : data) =
@@ -329,9 +359,9 @@ let simplify_unsat (deps,ps,constrs,sol : data) =
   if constrs2 = [] then
     None
   else
-    let deps' = get_dependencies constrs in
-    let ps' = ps in
     let constrs' = constrs1 in
+    let deps' = get_dependencies constrs' in
+    let ps' = get_pvars deps' in
     let sol' = sol in
     Some (true, (deps', ps', constrs', sol'))
 
@@ -392,17 +422,9 @@ let simplifiers : (string * (data -> (bool * data) option)) list =
    "simplify_trivial", simplify_trivial;
    "simplify_not_in_head", simplify_not_in_head;
    "simplify_inlining_forward", simplify_inlining_forward;
-   (*   "simplify_inlining_backward", simplify_inlining_backward;*)
    "simplify_unsat", simplify_unsat;
-   "simplify_same_head", simplify_same_head]
-let simplifiers =
-  ["simplify_unused", simplify_unused;
-   "simplify_trivial", simplify_trivial;
-   "simplify_not_in_head", simplify_not_in_head;
-   "simplify_inlining_forward", simplify_inlining_forward;
-   (*   "simplify_inlining_backward", simplify_inlining_backward;*)
-   "simplify_unsat", simplify_unsat;
-   "simplify_same_head", simplify_same_head]
+   "simplify_same_head", simplify_same_head;
+   "simplify_inlining_backward", simplify_inlining_backward]
 
 let check_data_validity (deps,ps,constrs,sol : data) =
   let deps' = get_dependencies constrs in
@@ -421,7 +443,7 @@ let check_data_validity (deps,ps,constrs,sol : data) =
     end
 
 let simplify ?(normalized=false) (constrs:t) =
-  let constrs = if normalized then constrs else normalize constrs in
+  let constrs = normalize constrs in
   Debug.printf "dummy_pred: %a@." Id.print dummy_pred;
   Debug.printf "INPUT: %a@." print constrs;
   let deps = get_dependencies constrs in

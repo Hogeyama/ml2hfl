@@ -38,8 +38,7 @@ let rec lift_ty env ?np sty =
       let pred =
         let name = Option.map (fun (name,path) -> if path = [] then name else name ^ ":" ^ (String.join ":" @@ List.rev_map string_of_int path)) np in
         let pvar = PredVar.new_pvar ?name @@ List.map Id.typ args in
-        let pvar' = if np = None then pvar else Id.set_id pvar 0 in
-        Term.(var pvar' @ vars args)
+        Term.(var pvar @ vars args)
       in
       RT.Base(base, x, pred)
   | TFun(x,sty2) ->
@@ -263,7 +262,7 @@ let gen_hcs mode env t ty =
   let ty = RT.rename ~full:true ty in
   let env = RT.Env.map_value (RT.rename ~full:true) env in
   Debug.printf "Ref_type_check:@.";
-  Debug.printf "  t: %a@." Print.term t;
+  Debug.printf "  t: %a@." Print.term_typ t;
   Debug.printf "  ty: %a@." RT.print ty;
   Debug.printf "  env: %a@." RT.Env.print env;
   gen_sub mode env t ty
@@ -286,7 +285,6 @@ let check ?(mode=Default) env t ty =
   with _ -> false
 
 let print cout ?(mode=Default) env t ty =
-  set_id_counter_to_max t;
   let hcs = gen_hcs mode env t ty in
   let filename = Filename.change_extension !!Flag.mainfile "smt2" in
   Fpat.HCCS.save_smtlib2 filename hcs;
