@@ -25,11 +25,11 @@ let solve_file filename =
 
 let print_sol = Print.(list (pair string (pair (list (pair string CEGAR_print.typ)) CEGAR_print.term)))
 
-let preprocess_rec_hccs hcs =
+let preprocess_rec_hccs ?(for_debug=false) hcs =
   let map =
     let rename x =
       x
-      |> F.Idnt.reset_uid
+      |> (if for_debug then Fun.id else F.Idnt.reset_uid)
       |> Format.asprintf "|%a|" F.Idnt.pr
       |> F.Idnt.make
     in
@@ -38,7 +38,14 @@ let preprocess_rec_hccs hcs =
     |> List.map (Pair.add_right rename)
   in
   let rev_map = List.map (fun (x,y) -> F.Idnt.string_of y, x) map in
-  let filename = Filename.change_extension !!Flag.mainfile "smt2" in
+  let filename =
+    let ext =
+      let ext = "smt2" in
+      let ext = if for_debug then "orig." ^ ext else ext in
+      let ext = if !!Debug.check then string_of_int !Flag.Log.cegar_loop ^ "." ^ ext else ext in
+      ext
+    in
+    Filename.change_extension !!Flag.mainfile ext in
   hcs
   |> F.HCCS.rename map
   |@> Debug.printf "HCCS: %a@." F.HCCS.pr
@@ -101,6 +108,7 @@ let approximate (args, t) =
 let solve hcs =
   let to_pred = Pair.map (List.map (Pair.map F.Idnt.make FpatInterface.conv_typ)) FpatInterface.conv_formula in
   let rev_map,filename = preprocess_rec_hccs hcs in
+  if !!Debug.check then ignore (preprocess_rec_hccs ~for_debug:true hcs);
   solve_file filename
   |> Smtlib2_interface.parse_model
   |@> Debug.printf "Sol: %a@." print_sol
