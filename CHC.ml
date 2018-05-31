@@ -10,6 +10,8 @@ type constr = {head:atom; body:atom list} (* if head is the form of `PApp(p,xs)`
 type t = constr list
 type pvar = id
 
+module PVarSet = Set.Make(ID)
+
 let is_base_const t =
   match t.desc with
   | Const _ -> is_base_typ t.typ
@@ -104,25 +106,7 @@ let map_head f {head; body} = {head=f head; body}
 let map_body f {head; body} = {head; body=f body}
 let map f {head;body} = {head=f head; body=List.map f body}
 
-type data = (pvar * pvar) list * pvar list * constr list * (pvar * (pvar list * atom list)) list
-
-let replace_with_true (deps, ps, constrs, sol : data) ps_true =
-  let deps' = List.filter_out (fun (p1,p2) -> List.exists (fun p -> Id.(p = p1 || p = p2)) ps_true) deps in
-  let sol' =
-    let aux p =
-      let xs,_ = decomp_tfun @@ Id.typ p in
-      p, (xs, [])
-    in
-    List.map aux ps_true @ sol
-  in
-  let ps' = List.Set.diff ps ps_true in
-  let constrs' =
-    constrs
-    |> List.filter_out (fun {head} -> List.exists (is_app_of head) ps_true)
-    |> List.map (map_body @@ List.filter_out (fun a -> List.exists (is_app_of a) ps_true))
-  in
-  Debug.printf "SIMPLIFIED: %a@.@.@." print constrs';
-  deps', ps', constrs', sol'
+type data = (pvar * pvar) list * PVarSet.t * constr list * (pvar * (pvar list * atom list)) list
 
 let dummy_pred = Id.new_predicate Ty.int
 
@@ -143,11 +127,19 @@ let once xs = once [] xs
 let get_dependencies constrs : (pvar * pvar) list =
   let aux {body;head} =
     let p_head = match pvar_of head with None -> dummy_pred | Some p -> p in
-    Combination.product (List.filter_map pvar_of body) [p_head]
+    List.map (fun p -> p, p_head) @@ List.filter_map pvar_of body
   in
   constrs
   |> List.flatten_map aux
-  |> List.unique ~eq:(Compare.eq_on (Pair.map_same Id.id))
+  |> List.unique ~eq:(Pair.eq Id.eq Id.eq)
+
+let get_pvars deps =
+  deps
+  |> List.flatten_map Pair.to_list
+  |> PVarSet.of_list
+  |> PVarSet.remove dummy_pred
+
+
 
 let apply_sol_atom sol fv a =
   match a with
@@ -175,19 +167,17 @@ let apply_sol_atom sol fv a =
       end
   | _ -> [a]
 
-let apply_sol_constr remove_matched_head sol {head;body} =
-  if not remove_matched_head then unsupported "CHC.apply_sol_constr";
+let apply_sol_constr sol {head;body} =
   let fv = get_fv_constr {head;body} in
   let body = unique @@ List.flatten_map (apply_sol_atom sol fv) body in
-  if List.exists (fun (p,_) -> is_app_of head p) sol then
+  if List.exists (is_app_of head -| fst) sol then
     []
   else
     let heads = apply_sol_atom sol fv head in
     List.map (fun head -> {head; body}) heads
     |@> Debug.printf "[apply_sol_constr] input: %a@.[apply_sol_constr] output: %a@.@." print_constr {head;body} (List.print print_constr)
 
-let apply_sol remove_matched_head sol' (deps,ps,constrs,sol : data) : data =
-  if not remove_matched_head then unsupported "CHC.apply_sol";
+let apply_sol sol' (deps,ps,constrs,sol : data) : data =
   Debug.printf "[apply_sol] input: %a@." print constrs;
   let add_fv (p,(xs,atoms)) = p, (xs, atoms, List.unique ~eq:Id.eq @@ List.Set.diff ~eq:Id.eq (List.flatten_map get_fv atoms) xs) in
   Debug.printf "[apply_sol] sol': %a@." print_sol sol';
@@ -203,23 +193,14 @@ let apply_sol remove_matched_head sol' (deps,ps,constrs,sol : data) : data =
     fixed_point aux sol'
   in
   Debug.printf "[apply_sol] fixed_sol: %a@." print_sol fixed_sol;
-  let deps' =
-    let deps_sol = List.flatten_map (fun (p,(_,atoms)) -> List.map (fun p' -> p, p') @@ List.filter_map pvar_of atoms) fixed_sol in
-    let aux (p1,p2) =
-      if Id.mem_assoc p2 deps_sol then
-        []
-      else
-        match List.filter_map (fun (p1',p2') -> if Id.(p1 = p1') then Some p2' else None) deps_sol with
-        | [] -> [p1,p2]
-        | ps -> List.map (fun p -> p, p2) ps
-    in
-    List.flatten_map aux deps
-  in
-  let ps' = List.filter_out (Id.mem_assoc -$- sol') ps in
-  let constrs' = List.flatten_map (apply_sol_constr remove_matched_head @@ List.map add_fv fixed_sol) constrs in
+  let constrs' = List.flatten_map (apply_sol_constr @@ List.map add_fv fixed_sol) constrs in
+  let deps' = get_dependencies constrs' in
+  let ps' = get_pvars deps' in
   let sol'' = fixed_sol @ sol in
   Debug.printf "[apply_sol] output: %a@." print constrs';
   deps', ps', constrs', sol''
+
+
 
 (* Trivial simplification *)
 let simplify_trivial (deps,ps,constrs,sol : data) =
@@ -233,8 +214,6 @@ let simplify_trivial (deps,ps,constrs,sol : data) =
           | Term {desc=BinOp(Eq, t1, t2)} when is_simple_expr t1 && same_term t1 t2 -> None
           | _ ->
               if List.exists (same_atom head) body1 then
-                None
-              else if body1 = [] && not @@ same_atom head (Term false_term) then
                 None
               else
                 Some (need_rerun, {body=body1; head})
@@ -261,16 +240,26 @@ let simplify_trivial (deps,ps,constrs,sol : data) =
     List.fold_right aux constrs (false,[])
   in
   let deps' = if need_rerun then get_dependencies constrs' else deps in
-  Some (need_rerun, (deps',ps,constrs',sol))
+  let ps' = if need_rerun then get_pvars deps' else ps in
+  Debug.printf "[simplify_trivial]  input: %a@." print constrs;
+  Debug.printf "[simplify_trivial] output: %a@." print constrs';
+  Some (need_rerun, (deps',ps',constrs',sol))
 
 (* Remove predicates which do not occur in a body *)
 let simplify_unused (deps,ps,constrs,sol as x : data) =
-  let ps1,ps2 = List.partition (fun p -> List.exists (fun (p1,_) -> Id.(p = p1)) deps) ps in
-  if ps2 = [] then
+  let ps1,ps2 = PVarSet.partition (fun p -> List.exists (fun (p1,_) -> Id.(p = p1)) deps) ps in
+  if PVarSet.is_empty ps2 then
     None
   else
-    let () = Debug.printf "REMOVE1: %a@." Print.(list id) ps2 in
-    Some (true, replace_with_true x ps2)
+    let () = Debug.printf "REMOVE1: %a@." Print.(list id) @@ PVarSet.elements ps2 in
+    let sol' =
+      let aux p =
+        let xs,_ = decomp_tfun @@ Id.typ p in
+        p, (xs, [])
+      in
+      List.map aux (PVarSet.elements ps2)
+    in
+    Some (true, apply_sol sol' x)
 
 (* Forwarad inlinining *)
 let simplify_inlining_forward (deps,ps,constrs,sol as x : data) =
@@ -283,10 +272,11 @@ let simplify_inlining_forward (deps,ps,constrs,sol as x : data) =
     let self_implication p {head;body} = is_app_of head p && List.exists (is_app_of -$- p) body in
     n_head = 1 && not @@ List.exists (self_implication p) constrs
   in
-  let ps' = List.filter check ps in
-  if ps' = [] then
+  let ps' = PVarSet.filter check ps in
+  if PVarSet.is_empty ps' then
     None
   else
+    let ps' = [List.hd @@ PVarSet.elements ps'] in (* TODO: fix *)
     let assoc p = List.find (fun {head} -> is_app_of head p) constrs in
     let sol' =
       let aux p =
@@ -297,7 +287,7 @@ let simplify_inlining_forward (deps,ps,constrs,sol as x : data) =
       List.map aux ps'
     in
     Debug.printf "inline': %a@." Print.(list id) ps';
-    Some (true, apply_sol true sol' x)
+    Some (true, apply_sol sol' x)
 
 (* Backward inlinining *)
 let simplify_inlining_backward (deps,ps,constrs,sol : data) =
@@ -348,8 +338,8 @@ let simplify_unsat (deps,ps,constrs,sol : data) =
 (* Remove clause whose body is unsatisfiable *)
 let simplify_not_in_head (deps,ps,constrs,sol as x : data) =
   let check p = not @@ List.exists (fun {head} -> is_app_of head p) constrs in
-  let ps1,ps2 = List.partition check ps in
-  if ps1 = [] then
+  let ps1,ps2 = PVarSet.partition check ps in
+  if PVarSet.is_empty ps1 then
     None
   else
     let sol' =
@@ -357,9 +347,9 @@ let simplify_not_in_head (deps,ps,constrs,sol as x : data) =
         let xs,_ = decomp_tfun @@ Id.typ p in
         p, (xs, [Term false_term])
       in
-      List.map aux ps1
+      List.map aux @@ PVarSet.elements ps1
     in
-    Some (true, apply_sol true sol' x)
+    Some (true, apply_sol sol' x)
 
 
 (* Merge simple constraints for the same head *)
@@ -369,8 +359,8 @@ let simplify_same_head (deps,ps,constrs,sol as x : data) =
     List.length constrs' >= 2 &&
     List.for_all (fun {body} -> List.for_all is_term body) constrs'
   in
-  let ps1,ps2 = List.partition check ps in
-  if ps1 = [] then
+  let ps1,ps2 = PVarSet.partition check ps in
+  if PVarSet.is_empty ps1 then
     None
   else
     let assoc p =
@@ -387,24 +377,48 @@ let simplify_same_head (deps,ps,constrs,sol as x : data) =
       |> List.filter_map aux
       |> List.reduce (fun (xs,t) (xs',t') -> xs, make_or t (subst_var_map (List.combine xs' xs) t'))
     in
-    Debug.printf "merge: %a@." Print.(list id) ps1;
+    Debug.printf "merge: %a@." Print.(list id) @@ PVarSet.elements ps1;
     let sol' =
       let aux p =
         let xs,t = assoc p in
         p, (xs, [Term t])
       in
-      List.map aux ps1
+      List.map aux @@ PVarSet.elements ps1
     in
-    Some (true, apply_sol true sol' x)
+    Some (true, apply_sol sol' x)
 
-let simplifiers : (data -> (bool * data) option) list =
-  [simplify_unused;
-   simplify_trivial;
-   simplify_not_in_head;
-   simplify_inlining_forward;
-(* simplify_inlining_backward; *)
-   simplify_unsat;
-   simplify_same_head]
+let simplifiers : (string * (data -> (bool * data) option)) list =
+  ["simplify_unused", simplify_unused;
+   "simplify_trivial", simplify_trivial;
+   "simplify_not_in_head", simplify_not_in_head;
+   "simplify_inlining_forward", simplify_inlining_forward;
+   (*   "simplify_inlining_backward", simplify_inlining_backward;*)
+   "simplify_unsat", simplify_unsat;
+   "simplify_same_head", simplify_same_head]
+let simplifiers =
+  ["simplify_unused", simplify_unused;
+   "simplify_trivial", simplify_trivial;
+   "simplify_not_in_head", simplify_not_in_head;
+   "simplify_inlining_forward", simplify_inlining_forward;
+   (*   "simplify_inlining_backward", simplify_inlining_backward;*)
+   "simplify_unsat", simplify_unsat;
+   "simplify_same_head", simplify_same_head]
+
+let check_data_validity (deps,ps,constrs,sol : data) =
+  let deps' = get_dependencies constrs in
+  let ps' = get_pvars deps' in
+  if not (List.Set.eq ~eq:(Pair.eq Id.eq Id.eq) deps deps') then
+    begin
+      Format.eprintf "deps: %a@." Print.(list (pair id id)) deps;
+      Format.eprintf "deps': %a@." Print.(list (pair id id)) deps';
+      assert false
+    end;
+  if not (PVarSet.equal ps' ps) then
+    begin
+      Format.eprintf "ps: %a@." Print.(list id) @@ PVarSet.elements ps;
+      Format.eprintf "ps': %a@." Print.(list id) @@ PVarSet.elements ps';
+      assert false
+    end
 
 let simplify ?(normalized=false) (constrs:t) =
   let constrs = if normalized then constrs else normalize constrs in
@@ -412,26 +426,24 @@ let simplify ?(normalized=false) (constrs:t) =
   Debug.printf "INPUT: %a@." print constrs;
   let deps = get_dependencies constrs in
   Debug.printf "deps: %a@." Print.(list (pair id id)) deps;
-  let ps =
-    deps
-    |> List.flatten_map Pair.to_list
-    |> List.unique ~eq:Id.eq
-    |> List.filter_out (Id.(=) dummy_pred)
-  in
-  let rec loop orig rest x =
+  let ps = get_pvars deps in
+  let rec loop ?(cnt=0) orig rest x =
+    Debug.printf "cnt: %d@." cnt;
+    if !!Debug.check then check_data_validity x;
     match rest with
     | [] -> x
-    | f::rest' ->
-        match f x with
-        | None -> loop orig rest' x
-        | Some(true, x') ->
-            Debug.printf "constrs: %a@." print ((fun (_,_,c,_) -> c) x');
-            loop orig orig x'
-        | Some(false, x') -> loop orig rest' x'
+    | (desc,f)::rest' ->
+        let r = f x in
+        if r <> None then Debug.printf "%s is applied@." desc;
+        match r with
+        | None -> loop ~cnt:(cnt+1) orig rest' x
+        | Some(true, x') -> loop ~cnt:(cnt+1) orig orig x'
+        | Some(false, x') -> loop ~cnt:(cnt+1) orig rest' x'
   in
   let loop orig x = loop orig orig x in
   let deps',ps',constrs',sol = loop simplifiers (deps, ps, constrs, []) in
   Debug.printf "REMOVED: %a@." Print.(list id) @@ List.map fst sol;
   Debug.printf "deps': %a@." Print.(list (pair id id)) @@ List.sort (Compare.on (Pair.map_same Id.id)) deps';
   Debug.printf "SIMPLIFIED: %a@." print constrs';
+  Debug.printf "sol: %a@." print_sol sol;
   sol, constrs'

@@ -105,7 +105,7 @@ end
 module PredVar : sig
   val pvar_name : string
   val is_pvar : id -> bool
-  val new_pvar : typ list -> id
+  val new_pvar : ?name:string -> typ list -> id
 end
 
 val const_attr : attr list

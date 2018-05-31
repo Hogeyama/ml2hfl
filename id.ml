@@ -33,6 +33,10 @@ let name x = x.name
 let typ x = x.typ
 let attr x = x.attr
 
+let is_external x = List.mem External x.attr
+let is_coefficient x = List.mem Coefficient x.attr
+let is_predicate x = List.mem Predicate x.attr
+
 let to_string x =
   let s =
     let n = id x in
@@ -41,9 +45,12 @@ let to_string x =
     else
       name x ^ "_" ^ string_of_int n
   in
-  if s <> "" && s.[0] = '@' then
+  if s <> "" && s.[0] = '@' then (* for modular? *)
     "$" ^ String.sub s 1 (String.length s - 1) ^ "$"
   else
+    let s = if is_coefficient x then "#" ^ s else s in
+    let s = if is_external x then "$" ^ s else s in
+    let s = if is_predicate x then "|" ^ s ^ "|" else s in
     s
 
 let from_string name typ =
@@ -75,10 +82,6 @@ let map_name f x = {x with name = f x.name}
 let map_typ f x = {x with typ = f x.typ}
 let map_attr f x = {x with attr = f x.attr}
 
-let is_external x = List.mem External x.attr
-let is_coefficient x = List.mem Coefficient x.attr
-let is_predicate x = List.mem Predicate x.attr
-
 let print_as_ocaml = ref false
 let set_print_as_ocaml () = print_as_ocaml := true
 
@@ -89,12 +92,9 @@ let print fm x =
     if !print_as_ocaml then
       String.sign_to_letters @@ String.uncapitalize s
     else
-      let s = if is_coefficient x then "#" ^ s else s in
-      let s = if is_external x then "$" ^ s else s in
-      let s = if is_predicate x then "%" ^ s else s in
       s
   in
-      Format.fprintf fm "@[%s@]" s
+  Format.pp_print_string fm s
 
 let prefix_for_module m = name m ^ "."
 let add_module_prefix_to_string m s = prefix_for_module m ^ s

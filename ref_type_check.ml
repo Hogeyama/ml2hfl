@@ -29,47 +29,56 @@ let simple_expr_ty t =
   let base = Option.get @@ decomp_base t.typ in
   RT.Base(base, x, Term.(var x = t))
 
-let rec lift_ty env sty =
+let rec lift_ty env ?np sty =
   match sty with
   | TBase base ->
       let x = Id.new_var sty in
       let base_env = filter_env env in
       let args = x :: RT.Env.keys base_env in
       let pred =
-        let pvar = PredVar.new_pvar @@ List.map Id.typ args in
-        Term.(var pvar @ vars args)
+        let name = Option.map (fun (name,path) -> if path = [] then name else name ^ ":" ^ (String.join ":" @@ List.rev_map string_of_int path)) np in
+        let pvar = PredVar.new_pvar ?name @@ List.map Id.typ args in
+        let pvar' = if np = None then pvar else Id.set_id pvar 0 in
+        Term.(var pvar' @ vars args)
       in
       RT.Base(base, x, pred)
   | TFun(x,sty2) ->
-      let rty1 = lift_ty env @@ Id.typ x in
-      let rty2 = lift_ty (RT.Env.add x rty1 env) sty2 in
+      let rty1 =
+        let np = Option.map (Pair.map_snd @@ List.cons 0) np in
+        lift_ty env ?np @@ Id.typ x
+      in
+      let rty2 =
+        let np = Option.map (Pair.map_snd @@ List.cons 1) np in
+        lift_ty (RT.Env.add x rty1 env) ?np sty2
+      in
       RT.Fun(x, rty1, rty2)
   | TTuple xs ->
-      let xtyps,_ =
-        let aux (acc,env) x =
-          let rty = lift_ty env @@ Id.typ x in
+      let xtyps,_,_ =
+        let aux (acc,env,i) x =
+          let np = Option.map (Pair.map_snd @@ List.cons i) np in
+          let rty = lift_ty env ?np @@ Id.typ x in
           let env' = RT.Env.add x rty env in
           let acc' = acc @ [x, rty] in
-          acc', env'
+          acc', env', i+1
         in
-        List.fold_left aux ([],env) xs
+        List.fold_left aux ([],env,0) xs
       in
       RT.Tuple xtyps
-  | TAttr([],sty') -> lift_ty env sty'
+  | TAttr([],sty') -> lift_ty env ?np sty'
   | TAttr(TARefPred(x,p)::_,sty') ->
       let base = Option.get @@ decomp_base sty' in
       RT.Base(base, x, p)
-  | TAttr(_::attrs,sty') -> lift_ty env (TAttr(attrs,sty'))
+  | TAttr(_::attrs,sty') -> lift_ty env ?np (TAttr(attrs,sty'))
   | _ ->
       Format.eprintf "LIFT: %a@." Print.typ sty;
       assert false
-let lift env t =
+let lift env ?name t =
   Debug.printf "LIFT: (%a): %a@." Print.term t Print.typ t.typ;
   let r =
-  if is_simple_expr t then
-    simple_expr_ty t
-  else
-    lift_ty env t.typ
+    if is_simple_expr t then
+      simple_expr_ty t
+    else
+      lift_ty env ?np:(Option.map (Pair.pair -$- []) name) t.typ
   in
   Debug.printf "   => %a@." RT.print r;
   r
@@ -138,11 +147,11 @@ let rec gen_sub mode env t ty : sub_constr list =
         | Default ->
             let aux (x,t) =
               if Id.mem x @@ get_fv t then raise Ref_type_not_found;
-              lift env t
+              lift ~name:(Id.to_string x) env t
             in
             List.map aux bindings
         | Allow_recursive ->
-            List.map (snd |- lift env) bindings
+            List.map (fun (x,t) -> lift env ~name:(Id.to_string x) t) bindings
         | Use_empty_pred -> unsupported "Ref_type_check.Use_empty_pred"
       in
       let sub =
@@ -277,6 +286,7 @@ let check ?(mode=Default) env t ty =
   with _ -> false
 
 let print cout ?(mode=Default) env t ty =
+  set_id_counter_to_max t;
   let hcs = gen_hcs mode env t ty in
   let filename = Filename.change_extension !!Flag.mainfile "smt2" in
   Fpat.HCCS.save_smtlib2 filename hcs;

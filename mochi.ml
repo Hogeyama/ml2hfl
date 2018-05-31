@@ -224,7 +224,11 @@ let main_quick_check spec t =
   |> Quick_check.repeat_forever
 
 let print_ref_constr spec t =
-  let t' = Preprocess.(run_on_term (before CPS @@ all spec)) t in
+  let t' =
+    t
+    |> Preprocess.(run_on_term (before CPS @@ all spec))
+    |> Trans.alpha_rename ~whole:true
+  in
   let ty = Ref_type.of_simple t'.Syntax.typ in
   let env = Ref_type.Env.empty in
   Ref_type_check.(print stdout ~mode:Allow_recursive env t' ty)

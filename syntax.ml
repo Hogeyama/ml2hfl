@@ -103,12 +103,6 @@ and pat_desc =
 
 type env = (id * typ) list
 
-module ID = struct
-  type t = id
-  let compare = Id.compare
-  let print = Id.print
-end
-
 let typ t = t.typ
 let desc t = t.desc
 let attr t = t.attr
@@ -125,12 +119,18 @@ module Id = struct
     make !!new_int name attr typ
 end
 
+module ID = struct
+  type t = id
+  let compare = Id.compare
+  let print = Id.print
+end
+
 module PredVar = struct
   let pvar_name = "P"
   let is_pvar = Id.is_predicate
-  let new_pvar tys =
+  let new_pvar ?(name=pvar_name) tys =
     let ty = List.fold_right make_tfun tys Ty.bool in
-    Id.new_var ~name:pvar_name ~attr:[Id.Predicate] ty
+    Id.new_var ~name ~attr:[Id.Predicate] ty
 end
 
 
