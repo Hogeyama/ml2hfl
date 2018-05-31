@@ -308,9 +308,25 @@ let simplify_inlining_backward (deps,ps,constrs,sol : data) =
       | [PApp(p,xs)] ->
           let ts = List.map term_of_atom body2 in
           let t = term_of_atom head in
-          let t' = Term.(not (ands ts) || t) in
-          let fv = List.Set.diff ~eq:Id.eq (Syntax.get_fv t') xs in
-          Some(p, (xs, fv, Term t'))
+          let ts',xs' =
+            if List.length xs = List.length @@ List.unique ~eq:Id.eq xs then
+              ts, xs
+            else
+              let rec aux ts acc_rev xs =
+                match xs with
+                | [] -> ts, List.rev acc_rev
+                | x::xs' ->
+                    if Id.mem x xs' then
+                      let x' = Id.new_var_id x in
+                      aux (Term.(var x = var x')::ts) (x'::acc_rev) xs'
+                    else
+                      aux ts (x::acc_rev) xs'
+              in
+              aux ts [] xs
+          in
+          let goal = Term.(not (ands ts') || t) in
+          let fv = List.Set.diff ~eq:Id.eq (Syntax.get_fv goal) xs' in
+          Some(p, (xs', fv, Term goal))
       | _ -> None
     else
       None
