@@ -6,7 +6,7 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 
 
-let preprocess make_pps ?(fun_list=None) prog spec =
+let preprocess ?make_pps ?fun_list prog spec =
   let pps' =
     match make_pps with
     | None -> Preprocess.all spec
@@ -196,10 +196,10 @@ let improve_precision e =
       incr Fpat.RefTypInfer.number_of_extra_params
   | _ -> raise e
 
-let rec loop make_pps fun_list exparam_sol spec prog =
+let rec loop ?make_pps ?fun_list exparam_sol spec prog =
   let ex_param_inserted = Fun.cond !Flag.Method.relative_complete (Problem.map insert_extra_param) prog in
   let exparam = List.filter Id.is_coefficient @@ Term_util.get_fv @@ Problem.term ex_param_inserted in
-  let preprocessed, make_get_rtyp, set_main, main = preprocess make_pps ~fun_list ex_param_inserted spec in
+  let preprocessed, make_get_rtyp, set_main, main = preprocess ?make_pps ?fun_list ex_param_inserted spec in
   let cegar_prog =
     if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
       begin
@@ -225,7 +225,7 @@ let rec loop make_pps fun_list exparam_sol spec prog =
   with e ->
     if !!Debug.check then Printexc.print_backtrace stdout;
     improve_precision e;
-    loop make_pps fun_list exparam_sol spec prog
+    loop ?make_pps ?fun_list exparam_sol spec prog
 
 let print_result_delimiter () =
   if not !!is_only_result then
@@ -237,7 +237,7 @@ let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   List.filter_map aux top_funs
 
 let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
-  let result, make_get_rtyp, ex_param_inserted, set_main, main = loop make_pps fun_list exparam_sol spec parsed in
+  let result, make_get_rtyp, ex_param_inserted, set_main, main = loop ?make_pps ?fun_list exparam_sol spec parsed in
   print_result_delimiter ();
   match result with
   | CEGAR.Safe env ->

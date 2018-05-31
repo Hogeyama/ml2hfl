@@ -316,7 +316,7 @@ let check prog f typ depth =
       |> Trans.map_main Term.(seq -$- eod) (* ??? *)
       |> Problem.safety
       |@> Debug.printf "Problem: %a@.@." Problem.print
-      |> Main_loop.loop Preprocess.(Some (all |- and_after CPS)) (Some []) [] Spec.init
+      |> Main_loop.loop ~make_pps:Preprocess.(all |- and_after CPS) ~fun_list:[] [] Spec.init
     in
     match result with
     | CEGAR.Safe env ->
