@@ -259,7 +259,7 @@ let rec flatten env (ty1,ty2) =
       unsupported __LOC__
 
 let gen_hcs mode env t ty =
-  let t = Trans.alpha_rename t in
+  let t = Trans.alpha_rename ~whole:true t in
   let ty = RT.rename ~full:true ty in
   let env = RT.Env.map_value (RT.rename ~full:true) env in
   Debug.printf "Ref_type_check:@.";

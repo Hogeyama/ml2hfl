@@ -45,8 +45,11 @@ let print_atom fm a =
   match a with
   | Term t -> Print.term fm t
   | PApp(p, xs) -> Format.fprintf fm "@[%a(%a)@]" Id.print p (print_list Id.print ", ") xs
-let print_constr fm {head;body} = Format.fprintf fm "@[<hov 2>%a |=@ %a@]" (List.print print_atom) body print_atom head
-let print fm (constrs:t) = List.print print_constr fm constrs
+let print_constr fm {head;body} = Format.fprintf fm "@[<hv>%a@\n  |= %a@]" (List.print print_atom) body print_atom head
+let print fm (constrs:t) =
+  Format.fprintf fm "@[";
+  List.iter (fun c -> Format.fprintf fm "%a@\n@\n" print_constr c) constrs;
+  Format.fprintf fm "@]"
 
 let print_one_sol fm (p,(xs,atoms)) = Format.fprintf fm "@[%a := %a@]" print_atom (PApp(p,xs)) (List.print print_atom) atoms
 let print_sol fm sol = List.print print_one_sol fm sol
@@ -440,7 +443,7 @@ let simplifiers : (string * (data -> (bool * data) option)) list =
    "simplify_inlining_forward", simplify_inlining_forward;
    "simplify_unsat", simplify_unsat;
    "simplify_same_head", simplify_same_head;
-   "simplify_inlining_backward", simplify_inlining_backward]
+(*   "simplify_inlining_backward", simplify_inlining_backward*)]
 
 let check_data_validity (deps,ps,constrs,sol : data) =
   let deps' = get_dependencies constrs in

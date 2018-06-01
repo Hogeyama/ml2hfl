@@ -100,9 +100,9 @@ let rec print fm = function
       Format.fprintf fm "{true}"
   | Base(T.TBool,x,p) when U.make_not (U.make_var x) = p ->
       Format.fprintf fm "{false}"
-  | Base(T.TInt,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, {S.desc=S.Const(S.Int n)})})
-  | Base(T.TInt,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Const (S.Int n)}, {S.desc=S.Var y})}) when x = y ->
-      Format.fprintf fm "{%d}" n
+  | Base(_,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, t)})
+  | Base(_,x,{S.desc=S.BinOp(S.Eq, t, {S.desc=S.Var y})}) when x = y ->
+      Format.fprintf fm "{%a}" Print.term t
   | Base(base,x,p) when p.S.desc = S.Const S.False ->
       Format.fprintf fm "Bot"
   | Base(base,x,p) ->
