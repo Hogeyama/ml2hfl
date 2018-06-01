@@ -328,6 +328,7 @@ let infer ?(for_cps=false) t =
 
 
 let rec exists_dest ty =
+  effect_of_typ ty = ENone &&
   match elim_tattr ty with
   | _ when is_base_typ ty -> true
   | TFun(x,ty2) when is_base_var x -> true
@@ -341,7 +342,7 @@ let mark =
     match elim_tattr ty with
     | _ when is_base_typ ty -> ty
     | TTuple _ -> ty
-    | TFun(x,ty2) when effect_of_typ ty2 = ENone && exists_dest ty2 ->
+    | TFun(x,ty2) when exists_dest ty2 ->
         let x' = Id.map_typ (_TAttr [TARefPred(Id.new_var_id x, Term.true_)] |- mark) x in
         TFun(x', mark ty2)
     | TFun(x,ty2) -> TFun(Id.map_typ mark x, mark ty2)
