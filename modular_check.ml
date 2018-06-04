@@ -278,6 +278,7 @@ let check_simple f ty prog =
   else
     false
 
+(* TODO Refactor *)
 let check prog f typ depth =
   Debug.printf "MODULAR_CHECK prog: %a@." print_prog prog;
   if !Flag.Modular.check_simple && check_simple f typ prog then
@@ -301,7 +302,7 @@ let check prog f typ depth =
         env
         |> Ref_type.Env.to_list
         |> List.cons (f, typ)
-        |> List.map (Pair.map_snd Ref_type.to_abst_typ)
+        |> List.map (Pair.map_snd @@ Ref_type.to_abst_typ ~decomp_pred:true)
       in
       Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
       Trans.merge_bound_var_typ map

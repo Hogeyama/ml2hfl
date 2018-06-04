@@ -178,7 +178,11 @@ and trans_typ ty =
       let x,ps = Option.get @@ Term_util.get_tapred ty in
       begin
         let x' = trans_var x in
-        let ps' = List.map (snd -| trans_term "" [] []) ps in
+        let ps' =
+          ps
+          |> List.filter S.(function {desc=Const True} -> false | _ -> true)
+          |> List.map (snd -| trans_term "" [] [])
+        in
         match trans_typ @@ Id.typ x with
         | TBase(b, preds) ->
             let preds' y = List.map (subst x' y) ps' @ preds y in

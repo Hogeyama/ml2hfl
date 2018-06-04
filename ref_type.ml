@@ -296,7 +296,7 @@ let rec of_simple typ =
       unsupported "Ref_type.of_simple"
 
 
-let rec to_abst_typ ?(with_pred=false) typ =
+let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
   let r =
   match typ with
   | Base(b, x, ({S.desc=S.Const _} as p)) ->
@@ -304,7 +304,13 @@ let rec to_abst_typ ?(with_pred=false) typ =
       if with_pred then
         T.add_tattr (T.TARefPred(x,p)) sty
       else
-        T.add_tattr (T.TAPred(x,[p])) sty
+        let ps =
+          if decomp_pred then
+            U.decomp_and p
+          else
+            [p]
+        in
+        T.add_tattr (T.TAPred(x,ps)) sty
   | Base(b, x, t) ->
       let x' = Id.new_var_id x in
       let typ' = T.TBase b in
@@ -316,30 +322,30 @@ let rec to_abst_typ ?(with_pred=false) typ =
       in
       U.add_tapred x' ps typ'
   | Fun(x,typ1,typ2) ->
-      let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ ~with_pred typ1 in
-      let typ2' = to_abst_typ ~with_pred @@ subst_var x x' typ2 in
+      let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ ~decomp_pred ~with_pred typ1 in
+      let typ2' = to_abst_typ ~decomp_pred ~with_pred @@ subst_var x x' typ2 in
       T.TFun(x', typ2')
   | Tuple xtyps ->
       let aux (x,typ) xs =
-        let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ ~with_pred typ in
+        let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ ~decomp_pred ~with_pred typ in
         List.map (Id.map_typ @@ U.subst_type_var x x') (x'::xs)
       in
       T.TTuple (List.fold_right aux xtyps [])
   | Inter(styp, typs)
   | Union(styp, typs) ->
-      List.fold_right (Term_util.merge_typ -| to_abst_typ ~with_pred) typs styp
+      List.fold_right (Term_util.merge_typ -| to_abst_typ ~decomp_pred ~with_pred) typs styp
   | ExtArg _ -> unsupported "Ref_type.to_abst_typ"
   | List(x,p_len,y,p_i,typ1) ->
       if p_i.S.desc <> S.Const S.True || occur y typ1 then
         unsupported "Ref_type.to_abst_typ"
       else
-        let typ1' = to_abst_typ ~with_pred typ1 in
+        let typ1' = to_abst_typ ~decomp_pred ~with_pred typ1 in
         let x' = Id.new_var ~name:"xs" @@ T.make_tlist typ1' in
         if p_len = U.true_term then
           Id.typ x'
         else
           U.add_tapred x' [U.subst x (U.make_length @@ U.make_var x') p_len] @@ Id.typ x'
-  | Exn(typ1, _) -> to_abst_typ ~with_pred typ1
+  | Exn(typ1, _) -> to_abst_typ ~decomp_pred ~with_pred typ1
   in
   Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;
   Debug.printf "Ref_type.to_abst_typ OUT: %a@." Print.typ r;

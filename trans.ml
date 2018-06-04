@@ -655,11 +655,6 @@ let rec normalize_bool_exp t =
   in
   {t with desc}
 
-let rec decomp_and t =
-  match t.desc with
-  | BinOp(And, t1, t2) -> decomp_and t1 @@@ decomp_and t2
-  | _ -> [t]
-
 let rec merge_geq_leq t =
   let desc =
     match t.desc with

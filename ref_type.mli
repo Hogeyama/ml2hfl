@@ -54,7 +54,7 @@ val map_pred : (Syntax.term -> Syntax.term) -> t -> t
 (** {6 Translator} *)
 val of_simple : Syntax.typ -> t
 val to_simple : ?with_pred:bool -> t -> Syntax.typ
-val to_abst_typ : ?with_pred:bool -> t -> Syntax.typ
+val to_abst_typ : ?decomp_pred:bool -> ?with_pred:bool -> t -> Syntax.typ
 
 
 (** {6 Printer} *)

@@ -118,6 +118,7 @@ val make_module : declaration list -> term
 
 
 (** {6 Term destructor / Inspector} *)
+val decomp_and : term -> term list
 val decomp_some : term -> term option
 val decomp_is_none : term -> term option
 val decomp_get_val : term -> term option

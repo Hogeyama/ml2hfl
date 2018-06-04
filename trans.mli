@@ -18,7 +18,6 @@ val trans_let : term -> term
 val propagate_typ_arg : term -> term
 val replace_typ : (Syntax.id * Syntax.typ) list -> term -> term
 val eval : term -> term
-val decomp_and : term -> term list
 val elim_fun : term -> term
 val make_ext_env : term -> env
 val init_base_rand : term -> term (** replace rand_int() with a fresh variable*)

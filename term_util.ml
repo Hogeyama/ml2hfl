@@ -431,6 +431,11 @@ let rec decomp_lets t =
       bindings::fbindings, t2'
   | _ -> [], t
 
+let rec decomp_and t =
+  match t.desc with
+  | BinOp(And, t1, t2) -> decomp_and t1 @@@ decomp_and t2
+  | _ -> [t]
+
 
 let get_int = make_col [] (@@@)
 let get_int_term t =
