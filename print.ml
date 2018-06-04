@@ -13,7 +13,8 @@ type config =
 let config_default = ref {ty=false; as_ocaml=false; top=false; unused=false}
 
 let set_print_as_ocaml () =
-  Id.set_print_as_ocaml;
+  Id.set_print_as_ocaml ();
+  Type.set_print_as_ocaml ();
   config_default := {!config_default with as_ocaml=true}
 let set_print_unused () =
   config_default := {!config_default with unused=true}

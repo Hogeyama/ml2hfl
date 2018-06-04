@@ -1238,9 +1238,10 @@ let get_max_var_id =
   col.col_term <- col_id_term;
   col.col_term
 
-let effect_of_typ ty =
+let rec effect_of_typ ty =
   match ty with
   | TAttr(TAEffect e::_, _) -> e
+  | TAttr(_, ty) -> effect_of_typ ty
   | _ ->
       Format.eprintf "%a@." Print.typ ty;
       invalid_arg "effect_of_typ"

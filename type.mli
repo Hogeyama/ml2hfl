@@ -42,6 +42,7 @@ val has_pred : 'a t -> bool
 val is_mutable_record : 'a t -> bool
 val is_tvar : 'a t -> bool
 val occurs : 'a t option ref -> 'a t -> bool
+val set_print_as_ocaml : unit -> unit
 
 val typ_unknown : 'a t
 val elim_tattr : 'a t -> 'a t

@@ -35,6 +35,9 @@ and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
 
+let print_as_ocaml = ref false
+let set_print_as_ocaml () = print_as_ocaml := true
+
 let _TFun x typ = TFun(x, typ)
 let _TAttr attr typ =
   if attr = [] then
@@ -75,8 +78,8 @@ let make_toption typ = TApp(TOption, [typ])
 let make_tarray typ = TApp(TArray, [typ])
 
 
-let elim_tattr = function
-  | TAttr(_,typ) -> typ
+let rec elim_tattr = function
+  | TAttr(_,typ) -> elim_tattr typ
   | typ -> typ
 
 let is_fun_typ typ =
@@ -153,6 +156,13 @@ let print_effect fm e =
   | ECont -> Format.fprintf fm "cont"
   | EExcep -> Format.fprintf fm "excep"
 
+let print_attr fm a =
+  match a with
+  | TAPred _ -> Format.fprintf fm "TAPred"
+  | TARefPred _ -> Format.fprintf fm "TARefPred"
+  | TAPureFun -> Format.fprintf fm "TAPureFun"
+  | TAEffect e -> Format.fprintf fm "TAEffect %a" print_effect e
+
 let print_tvar fm n =
   let c = char_of_int @@ int_of_char 'a' + n mod 26 in
   let d = if n < 26 then "" else string_of_int (n/26) in
@@ -206,16 +216,19 @@ let rec print occur print_pred fm typ =
   | TData s -> Format.pp_print_string fm s
   | TAttr([], typ) -> print' fm typ
   | TAttr(TAPred(x,ps)::preds, typ) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (TAttr(preds,typ)) Id.print x print_preds ps
-  | TAttr([TAPureFun], TFun(x,typ)) ->
-      if occur x typ
-      then Format.fprintf fm "(@[<hov 2>%a:%a -+>@ %a@])" Id.print x print' (Id.typ x) print' typ
-      else Format.fprintf fm "(@[<hov 2>%a -+>@ %a@])" print' (Id.typ x) print' typ
+  | TAttr([TAPureFun], (TFun(x,typ) as ty)) ->
+      if !print_as_ocaml then
+        print' fm ty
+      else
+        if occur x typ
+        then Format.fprintf fm "(@[<hov 2>%a:%a -+>@ %a@])" Id.print x print' (Id.typ x) print' typ
+        else Format.fprintf fm "(@[<hov 2>%a -+>@ %a@])" print' (Id.typ x) print' typ
   | TAttr([TAEffect e], typ) ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
   | TAttr(TARefPred(x,p)::attrs, ty) ->
       let ty' = TAttr(attrs,ty) in
       Format.fprintf fm "@[{%a:%a|%a}@]" Id.print x print' ty' print_pred p
-  | TAttr _ -> unsupported "Type.print TAttr"
+  | TAttr(attrs, ty) -> Format.fprintf fm "(%a @ %a)" print' ty (List.print print_attr) attrs
   | TVariant(poly,labels) ->
       let pr fm (s, typs) =
         let s' = if poly then "`" ^ s else s in
