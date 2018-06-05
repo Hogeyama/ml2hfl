@@ -354,7 +354,7 @@ let mark =
   let rec mark ty =
     match elim_tattr ty with
     | _ when is_base_typ ty -> ty
-    | TTuple _ -> ty
+    | TTuple xs -> TTuple (List.map (Id.map_typ mark) xs)
     | TFun(x,ty2) when exists_dest ty2 ->
         let x' = Id.map_typ (_TAttr [TARefPred(Id.new_var_id x, Term.true_)] |- mark) x in
         TFun(x', mark ty2)

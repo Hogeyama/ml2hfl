@@ -181,7 +181,9 @@ let rec remove_pair_typ ty =
         | Node _ -> fatal "Not implemented CPS.remove_pair_typ(TPred)"
       in
       leaf (add_tapred x ps' typ')
-  | TAttr(attr, typ) -> leaf @@ TAttr(attr, root @@ remove_pair_typ typ)
+  | TAttr(attr, typ) ->
+      Format.printf "typ: %a@." Print.typ typ;
+      leaf @@ TAttr(attr, root @@ remove_pair_typ typ)
   | typ ->
       Format.eprintf "remove_pair_typ: %a@." Print.typ typ;
       assert false
