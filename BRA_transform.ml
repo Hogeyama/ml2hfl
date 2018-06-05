@@ -57,8 +57,8 @@ let place_signature = function
   | "" -> ""
   | signature -> " : " ^ signature
 
-let modify_id v = if v.Id.name = "_" then "_" else Id.to_string v
-let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string v ^ place_signature (show_typ (Id.typ v)))
+let modify_id v = if v.Id.name = "_" then "_" else Id.to_string ~plain:true v
+let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string ~plain:true v ^ place_signature (show_typ (Id.typ v)))
 let rec show_term ?(top=false) t = show_desc top t.desc
 and show_desc top = function
   | Const Unit -> "()"
