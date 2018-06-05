@@ -195,7 +195,6 @@ let make_spec n : spec =
         let qm = List.fold_left (fun acc (n,_,_) -> max acc n) 0 spec in
         let spec' = List.rev_flatten_map (make_base_spec n) @@ List.init (qm+1) Std.identity in
         spec @@@ spec'
-    | FM.NonTermination
-    | FM.FairNonTermination -> assert false
+    | _ -> assert false
   in
   List.sort compare spec

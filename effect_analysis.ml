@@ -155,7 +155,6 @@ let rec gen_constr env tenv t =
         | TFun(x,ty2) -> Id.typ x, effect_of_typ ty2
         | TBase _ -> assert false
         | TVar _ -> assert false
-        | TFun _ -> assert false
         | TFuns _ -> assert false
         | TTuple _ -> assert false
         | TData _ -> assert false
@@ -164,9 +163,6 @@ let rec gen_constr env tenv t =
         | TApp _ -> assert false
         | TAttr _ -> assert false
         | TModule _ -> assert false
-        | _ ->
-            Format.printf "%a@." Print.typ @@ elim_tattr_all t1'.typ;
-            assert false
       in
       let e = new_evar env in
       env.constraints <- (e1, e) :: env.constraints;

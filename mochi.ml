@@ -163,7 +163,6 @@ let main_termination orig parsed =
   let parsed = if !Flag.Termination.add_closure_exparam then ExtraParamInfer.addTemplate parsed else parsed in
   let _ = if !Flag.Termination.add_closure_exparam then Verbose.printf "closure exparam inserted::@. @[%a@.@." Print.term parsed in
   let holed_list = BRA_transform.to_holed_programs parsed in
-  let fv = Term_util.get_fv parsed in
   let coeffs = List.filter Id.is_coefficient @@ Term_util.get_fv parsed in
   let result =
     try

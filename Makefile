@@ -6,7 +6,7 @@ PACKAGES = fpat,str,unix,batteries,compiler-libs.common,Z3
 
 MOCHI_BIN_DIR = mochi_bin
 
-WARN_FLAGS = -w -52-58
+WARN_FLAGS = -w -52-57-58
 OCAMLCFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
 OCAMLOPTFLAGS = -g -annot -bin-annot $(WARN_FLAGS) -package $(PACKAGES)
 
