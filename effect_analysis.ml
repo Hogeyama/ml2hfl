@@ -23,9 +23,9 @@ let add_effect_typ e ty =
   _TAttr [TAEffect e] ty
 
 let rec make_template env ty =
-  let ty' =
+  let ty', is_attr =
     match ty with
-    | TBase _ -> ty
+    | TBase _ -> ty, false
     | TVar _ -> unsupported __MODULE__
     | TFun(x, ty2) ->
         let x' = Id.map_typ (make_template env) x in
@@ -36,17 +36,20 @@ let rec make_template env ty =
           | _ -> ()
         else
           ();
-        TFun(x', ty2')
+        TFun(x', ty2'), false
+    | TTuple xs -> TTuple (List.map (Id.map_typ (make_template env)) xs), false
+    | TAttr(attrs, ty1) -> TAttr(attrs, make_template env ty1), true
     | TFuns _ -> unsupported __MODULE__
-    | TTuple xs -> TTuple (List.map (Id.map_typ (make_template env)) xs)
     | TData _ -> unsupported __MODULE__
     | TVariant _ -> unsupported __MODULE__
     | TRecord _ -> unsupported __MODULE__
     | TApp _ -> unsupported __MODULE__
-    | TAttr(attrs, ty1) -> TAttr(attrs, make_template env ty1)
     | TModule _ -> unsupported __MODULE__
   in
-  add_effect_typ (new_evar env) ty'
+  if is_attr then
+    ty'
+  else
+    add_effect_typ (new_evar env) ty'
 
 let set_effect e t =
   let ty =
@@ -119,9 +122,10 @@ let rec gen_constr env tenv t =
   | Const (RandValue(_, true)) -> unsupported __MODULE__
   | Const _ -> add_evar env t
   | Bottom ->
-      let e = new_evar env in
+      let t' = add_evar env t in
+      let e = effect_of t' in
       env.constraints <- (ECont, e) :: env.constraints;
-      set_effect e t
+      t'
   | Var x ->
       let ty =
 	try

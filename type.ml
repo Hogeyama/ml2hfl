@@ -228,7 +228,7 @@ let rec print occur print_pred fm typ =
   | TAttr(TARefPred(x,p)::attrs, ty) ->
       let ty' = TAttr(attrs,ty) in
       Format.fprintf fm "@[{%a:%a|%a}@]" Id.print x print' ty' print_pred p
-  | TAttr(attrs, ty) -> Format.fprintf fm "(%a @ %a)" print' ty (List.print print_attr) attrs
+  | TAttr(attrs, ty) -> Format.fprintf fm "(%a @@ %a)" print' ty (List.print print_attr) attrs
   | TVariant(poly,labels) ->
       let pr fm (s, typs) =
         let s' = if poly then "`" ^ s else s in
