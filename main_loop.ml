@@ -116,16 +116,7 @@ let report_safe env orig {Problem.term=t0} =
 
 
 let report_unsafe main ce set_main =
-  let s =
-    if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
-      "Unknown."
-    else
-      if !Flag.use_abst <> [] then
-        Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
-      else
-        "Unsafe!"
-  in
-  Color.printf Color.Bright "%s@.@." s;
+  Color.printf Color.Bright "%s@.@." !Flag.Log.result;
   if !Flag.use_abst = [] then
     let pr main_fun =
       let arg_num = Type.arity @@ Id.typ main_fun in
@@ -248,7 +239,15 @@ let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
           report_safe env' orig ex_param_inserted;
       true
   | CEGAR.Unsafe(sol,_) ->
-      Flag.Log.result := "Unsafe";
+      let s =
+        if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
+          "Unknown."
+        else if !Flag.use_abst <> [] then
+          Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
+        else
+          "Unsafe!"
+      in
+      Flag.Log.result := s;
       if !Flag.Print.result then
         report_unsafe main sol set_main;
       false
