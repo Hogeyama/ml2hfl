@@ -2810,6 +2810,7 @@ let abst_recdata =
           in
           Match(t1', pats'')
       | Constr _ when check t.typ tys ->
+          Flag.add_use_abst "abst_recdata";
           Term.randi.desc
       | _ -> tr.tr2_desc_rec (check,tys) t.desc
     in
@@ -2824,7 +2825,9 @@ let abst_recdata =
   in
   let tr_pat (check,tys) p =
     match p.pat_desc with
-    | PConstr _ when check p.pat_typ tys -> {pat_desc=PNondet; pat_typ=Ty.int}
+    | PConstr _ when check p.pat_typ tys ->
+        Flag.add_use_abst "abst_recdata";
+        {pat_desc=PNondet; pat_typ=Ty.int}
     | _ -> tr.tr2_pat_rec (check,tys) p
   in
   tr.tr2_term <- tr_term;

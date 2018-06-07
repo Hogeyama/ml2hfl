@@ -95,7 +95,10 @@ let rec flatten_sub ?(ignore_top=false) env ty1 ty2 =
   | TFun(x1,ty12), TFun(x2,ty22) ->
       flatten_sub ~ignore_top:true env (Id.typ x2) (Id.typ x1);
       flatten_sub env ty12 ty22
-  | TFun _, _ -> assert false
+  | TFun _, _ ->
+      Format.printf "ty1: %a@." Print.typ ty1;
+      Format.printf "ty2: %a@." Print.typ ty2;
+      assert false
   | TFuns _, _ -> unsupported __MODULE__
   | TTuple xs1, TTuple xs2 ->
       List.iter2 (fun x1 x2 -> flatten_sub env (Id.typ x2) (Id.typ x1)) xs1 xs2
@@ -157,16 +160,7 @@ let rec gen_constr env tenv t =
       let ty_arg,e1 =
         match elim_tattr t1'.typ with
         | TFun(x,ty2) -> Id.typ x, effect_of_typ ty2
-        | TBase _ -> assert false
-        | TVar _ -> assert false
-        | TFuns _ -> assert false
-        | TTuple _ -> assert false
-        | TData _ -> assert false
-        | TVariant _ -> assert false
-        | TRecord _ -> assert false
-        | TApp _ -> assert false
-        | TAttr _ -> assert false
-        | TModule _ -> assert false
+        | _ -> assert false
       in
       let e = new_evar env in
       env.constraints <- (e1, e) :: env.constraints;
@@ -239,11 +233,12 @@ let rec gen_constr env tenv t =
   | TryWith(t1, t2) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
-      let ty = make_template env t.typ in
+      let ty = make_template env t2.typ in
+      let ty_exn, ty' = match elim_tattr ty with TFun(x,ty') -> Id.typ x, ty' | _ -> Format.printf "ty: %a@." Print.typ ty; assert false in
       let e = effect_of_typ ty in
-      flatten_sub env t1'.typ ty;
+      flatten_sub env t1'.typ ty';
       flatten_sub env t2'.typ ty;
-      set_effect e @@ {desc=TryWith(t1',t2'); typ=ty; attr=t.attr}
+      set_effect e @@ {desc=TryWith(t1',t2'); typ=ty'; attr=t.attr}
   | Raise t1 ->
       let t1' = gen_constr env tenv t1 in
       let ty = make_template env t.typ in

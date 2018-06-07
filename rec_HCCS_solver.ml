@@ -115,7 +115,9 @@ let solve hcs =
   |> unfold
   |@> Debug.printf "Unfold: %a@." print_sol
   |> List.map (Pair.map_snd @@ Pair.map_snd QE.eliminate)
+  |@> Debug.printf "QEed: %a@." print_sol
   |> List.map (Pair.map_snd approximate)
+  |@> Debug.printf "Approximated: %a@." print_sol
   |> List.map (Pair.map (fun f -> List.assoc f rev_map) to_pred)
 
 let check_sat hcs =
