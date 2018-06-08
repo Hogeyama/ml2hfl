@@ -37,7 +37,7 @@ let is_external x = List.mem External x.attr
 let is_coefficient x = List.mem Coefficient x.attr
 let is_predicate x = List.mem Predicate x.attr
 
-let to_string ?(plain=false) x =
+let to_string ?(plain=true) x =
   let s =
     let n = id x in
     if n <= 0 then
@@ -88,7 +88,7 @@ let print_as_ocaml = ref false
 let set_print_as_ocaml () = print_as_ocaml := true
 
 let print fm x =
-  let s = to_string x in
+  let s = to_string ~plain:false x in
   assert (s <> "");
   let s =
     if !print_as_ocaml then
