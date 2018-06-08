@@ -52,6 +52,29 @@ let preprocess_rec_hccs ?(for_debug=false) hcs =
   |> F.HCCS.save_smtlib2 filename;
   rev_map, filename
 
+let rec subst_map' map t =
+  let open CEGAR_syntax in
+  match t with
+  | Const c -> Const c
+  | Var x when List.mem_assoc x map -> List.assoc x map
+  | Var x -> Var x
+  | App _ ->
+      let t1,ts = CEGAR_syntax.decomp_app t in
+      let map' =
+        match t1,ts with
+        | CEGAR_syntax.Var ("exists"|"forall"), [args; _] ->
+            let xs =
+              match CEGAR_syntax.decomp_app args with
+              | Var "args", xs -> List.map (Option.get -| CEGAR_syntax.decomp_var) xs
+              | _ -> assert false
+            in
+            List.filter_out (fst |- List.mem -$- xs) map
+        | _ -> map
+      in
+      make_app (subst_map' map' t1) (List.map (subst_map' map') ts)
+  | Let _ -> assert false
+  | Fun _ -> assert false
+
 let unfold sol =
   let sol' = Hashtbl.create @@ List.length sol in
   List.iter (Fun.uncurry @@ Hashtbl.add sol') sol;
@@ -64,7 +87,7 @@ let unfold sol =
         let xs = List.map fst args in
         let ts' = List.map aux ts in
         let t'' = update f args t' in
-        CEGAR_util.subst_map (List.combine xs ts') t''
+        subst_map' (List.combine xs ts') t''
     | t1, ts -> CEGAR_syntax.make_app t1 (List.map aux ts)
   and update f args t =
     let t' = aux t in

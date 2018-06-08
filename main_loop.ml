@@ -245,7 +245,7 @@ let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
         else if !Flag.use_abst <> [] then
           Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
         else
-          "Unsafe!"
+          "Unsafe"
       in
       Flag.Log.result := s;
       if !Flag.Print.result then

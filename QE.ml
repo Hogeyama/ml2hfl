@@ -11,9 +11,13 @@ let rec conv_formula' t =
   match t with
   | App(App(Var ("exists"|"forall" as q), args), t1) ->
       let args' =
-        match decomp_app args with
-        | Var "args", ts -> List.map (function Var x -> F.Idnt.make x, F.Type.mk_int | _ -> invalid_arg "FpatInterface.conv_term") ts
-        | _ -> invalid_arg "FpatInterface.conv_term"
+        try
+          match decomp_app args with
+          | Var "args", ts -> List.map (fun t -> F.Idnt.make @@ Option.get @@ decomp_var t, F.Type.mk_int) ts
+          | _ -> assert false
+        with _ ->
+          Format.eprintf "%a@." CEGAR_print.term t;
+          invalid_arg "QE.conv_formula'"
       in
       let f = match q with "exists" -> F.Formula.exists | "forall" -> F.Formula.forall | _ -> assert false in
       f args' @@ conv_formula' t1

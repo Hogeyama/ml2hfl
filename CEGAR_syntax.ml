@@ -251,6 +251,9 @@ let rec get_typ_arity = function
   | typ -> 0
 
 
+let decomp_var = function
+  | Var x -> Some x
+  | _ -> None
 let rec decomp_app = function
   | App(t1,t2) ->
       let t,ts = decomp_app t1 in
