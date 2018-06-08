@@ -590,10 +590,19 @@ let rec formula_of p =
   else if Boolean.is_eq p then
     Expr.get_args p
     |> (fun [zt1; zt2] ->
-        let t1 = term_of zt1 in
-        let t2 = term_of zt2 in
-        let ty = Expr.get_sort zt1 |> of_sort in
-        Formula.eq ty t1 t2)
+        let sort = Expr.get_sort zt1 in
+        match sort |> Sort.get_sort_kind with
+        | Z3enums.INT_SORT ->
+            let t1 = term_of zt1 in
+            let t2 = term_of zt2 in
+            let ty = Type.mk_int in
+            Formula.eq ty t1 t2
+        | Z3enums.BOOL_SORT ->
+            let t1 = formula_of zt1 in
+            let t2 = formula_of zt2 in
+            let ty = of_sort sort in
+            Formula.mk_iff t1 t2
+        | _ -> raise (Global.NotImplemented "eq in Z3Interface.formula_of"))
   else if Arithmetic.is_le p then
     Expr.get_args p
     |> (fun [zt1; zt2] ->
@@ -647,62 +656,62 @@ let rec formula_of p =
     |> Idnt.deserialize
     |> flip Formula.mk_var []
   else if Expr.ast_of_expr p |> AST.is_quantifier then begin
-    let q = Quantifier.quantifier_of_expr p in
-    if !SMTProver.print_z3 then
-      Format.printf "quantifier: %a@." String.pr (Quantifier.to_string q);
-    if Quantifier.is_universal q then
-      Quantifier.get_body q |> formula_of
-    else
-      let env =
-        List.zip
-          (Quantifier.get_bound_variable_names q
-           |> List.map (Symbol.to_string >> Idnt.make))
-          (Quantifier.get_bound_variable_sorts q
-           |> List.map of_sort)
-      in
-      Quantifier.get_body q
-      |> formula_of
-      |> (fun x ->
-          if !SMTProver.print_z3 then
-            Format.printf "exist: %a@.env: %a@." Formula.pr x TypEnv.pr env; x)
-      |> Formula.exists env
-  end
+                                                      let q = Quantifier.quantifier_of_expr p in
+                                                      if !SMTProver.print_z3 then
+                                                        Format.printf "quantifier: %a@." String.pr (Quantifier.to_string q);
+                                                      if Quantifier.is_universal q then
+                                                        Quantifier.get_body q |> formula_of
+                                                      else
+                                                        let env =
+                                                          List.zip
+                                                            (Quantifier.get_bound_variable_names q
+                                                             |> List.map (Symbol.to_string >> Idnt.make))
+                                                            (Quantifier.get_bound_variable_sorts q
+                                                             |> List.map of_sort)
+                                                        in
+                                                        Quantifier.get_body q
+                                                        |> formula_of
+                                                        |> (fun x ->
+                                                            if !SMTProver.print_z3 then
+                                                              Format.printf "exist: %a@.env: %a@." Formula.pr x TypEnv.pr env; x)
+                                                        |> Formula.exists env
+                                                    end
   else begin
-    let to_string p =
-      match p |> Expr.ast_of_expr |> AST.get_ast_kind with
-      | Z3enums.APP_AST -> "APP_AST"
-      | Z3enums.NUMERAL_AST -> "NUMERAL_AST"
-      | Z3enums.FUNC_DECL_AST -> "FUNC_DECL_AST"
-      | Z3enums.SORT_AST -> "SORT_AST"
-      | Z3enums.QUANTIFIER_AST -> "QUANTIFIER_AST"
-      | Z3enums.VAR_AST -> "VAR_AST"
-      | Z3enums.UNKNOWN_AST -> "UNKNOWN_AST"
-      | _ -> "Not matched: to_string"
-    in
-    let to_typterm sorts args =
-      assert (List.length sorts = List.length args);
-      List.map2
-        (fun sort arg ->
+      let to_string p =
+        match p |> Expr.ast_of_expr |> AST.get_ast_kind with
+        | Z3enums.APP_AST -> "APP_AST"
+        | Z3enums.NUMERAL_AST -> "NUMERAL_AST"
+        | Z3enums.FUNC_DECL_AST -> "FUNC_DECL_AST"
+        | Z3enums.SORT_AST -> "SORT_AST"
+        | Z3enums.QUANTIFIER_AST -> "QUANTIFIER_AST"
+        | Z3enums.VAR_AST -> "VAR_AST"
+        | Z3enums.UNKNOWN_AST -> "UNKNOWN_AST"
+        | _ -> "Not matched: to_string"
+      in
+      let to_typterm sorts args =
+        assert (List.length sorts = List.length args);
+        List.map2
+          (fun sort arg ->
            let ty = of_sort sort in
            let term_of =
              if Type.is_bool ty then formula_of >> Formula.term_of
              else term_of
            in
            term_of arg, ty)
-        sorts args
-    in
-    try
-      let decl = Expr.get_func_decl p in
-      let args = Expr.get_args p |> to_typterm (FuncDecl.get_domain decl) in
-      let id = FuncDecl.get_name decl |> Symbol.to_string |> Idnt.deserialize in
-      Pva.make id args
-      |> Pva.to_formula
-    with e ->
-      Format.printf "raise %a@\nAST_kind: %a@\n"
-        String.pr (Printexc.to_string e) String.pr (to_string p);
-      Format.printf "error Z3:@,  %a@," String.pr (Expr.to_string p);
-      assert false
-  end
+          sorts args
+      in
+      try
+        let decl = Expr.get_func_decl p in
+        let args = Expr.get_args p |> to_typterm (FuncDecl.get_domain decl) in
+        let id = FuncDecl.get_name decl |> Symbol.to_string |> Idnt.deserialize in
+        Pva.make id args
+        |> Pva.to_formula
+      with e ->
+        Format.printf "raise %a@\nAST_kind: %a@\n"
+                      String.pr (Printexc.to_string e) String.pr (to_string p);
+        Format.printf "error Z3:@,  %a@," String.pr (Expr.to_string p);
+        assert false
+    end
 let formula_of =
   Logger.log_block1 "Z3Interface.formula_of"
     ~before:(fun p -> Logger.printf "input: %a@," String.pr (Expr.to_string p))
