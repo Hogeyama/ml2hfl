@@ -68,7 +68,13 @@ let rec subst_map' map t =
               | Var "args", xs -> List.map (Option.get -| CEGAR_syntax.decomp_var) xs
               | _ -> assert false
             in
-            List.filter_out (fst |- List.mem -$- xs) map
+            let map' =
+              if List.Set.disjoint xs (List.flatten_map (get_fv -| snd) map) then
+                []
+              else
+                List.map (fun x -> let x' = rename_id x in x, Var x') xs
+            in
+            map' @ List.filter_out (fst |- List.mem -$- xs) map
         | _ -> map
       in
       make_app (subst_map' map' t1) (List.map (subst_map' map') ts)
