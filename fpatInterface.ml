@@ -227,7 +227,7 @@ let inv_const c =
             && F.Type.is_ext ty && F.Type.let_ext ty ((=) "X") ->
      CPS_result
   | F.Const.Proj(typs, i) -> Proj(List.length typs, i)
-  | F.Const.Iff -> And (* for -safe-fun-arg-pred_true (to fix) *)
+  | F.Const.Iff -> EqBool
   | _ -> Format.eprintf "%s@." (F.Const.string_of c); assert false
 
 let rec inv_term t =
