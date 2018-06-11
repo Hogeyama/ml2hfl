@@ -342,16 +342,35 @@ let rec exists_dest ty =
   | TFun(x,ty2) when is_base_var x -> true
   | TFun({Id.typ=TTuple xs},ty2) when List.exists is_base_var xs -> true
   | TFun(_,ty2) -> exists_dest ty2
+  | TTuple xs -> List.exists (Id.typ |- exists_dest) xs
   | _ -> false
 
 
 let mark =
   let rec mark ty =
+    let mark_id x = Id.map_typ (_TAttr [TARefPred(Id.new_var_id x, Term.true_)] -| mark) x in
     match elim_tattr ty with
     | _ when is_base_typ ty -> ty
-    | TTuple xs -> TTuple (List.map (Id.map_typ mark) xs)
+    | TTuple xs ->
+        let _,last =
+          let check ty = ENone = effect_of_typ ty && is_base_typ ty in
+          let aux (i,last) x = i+1, if check @@ Id.typ x then Some i else last in
+          List.fold_left aux (0,None) xs
+        in
+        begin
+          match last with
+          | None -> TTuple (List.map (Id.map_typ mark) xs)
+          | Some i ->
+              let aux (acc,b,j) x =
+                let x' = if b && is_base_var x then mark_id x else Id.map_typ mark x in
+                let b' = b || j <= i in
+                acc@[x'], b', j+1
+              in
+              let xs',_,_ = List.fold_left aux ([],false,0) xs in
+              TTuple xs'
+        end
     | TFun(x,ty2) when exists_dest ty2 ->
-        let x' = Id.map_typ (_TAttr [TARefPred(Id.new_var_id x, Term.true_)] |- mark) x in
+        let x' = mark_id x in
         TFun(x', mark ty2)
     | TFun(x,ty2) -> TFun(Id.map_typ mark x, mark ty2)
     | _ -> assert false
