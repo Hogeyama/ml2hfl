@@ -73,16 +73,16 @@ let rec force_cont ty =
   let ty1' =
     match ty1 with
     | TBase _ -> ty
-    | TVar _ -> unsupported __MODULE__
     | TFun(x, ty2) -> TFun(Id.map_typ force_cont x, force_cont ty2)
-    | TFuns _ -> unsupported __MODULE__
     | TTuple xs -> TTuple (List.map (Id.map_typ force_cont) xs)
+    | TVar _ -> unsupported __MODULE__
+    | TFuns _ -> unsupported __MODULE__
     | TData _ -> unsupported __MODULE__
     | TVariant _ -> unsupported __MODULE__
     | TRecord _ -> unsupported __MODULE__
     | TApp _ -> unsupported __MODULE__
-    | TAttr _ -> assert false
     | TModule _ -> unsupported __MODULE__
+    | TAttr _ -> assert false
   in
   TAttr(attrs, ty1')
 
