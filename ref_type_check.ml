@@ -12,7 +12,20 @@ type mode = Default | Allow_recursive | Use_empty_pred
 
 type sub_constr = RT.env * (RT.t * RT.t)
 
-let filter_env env = RT.Env.filter_value RT.is_base env
+let to_base_env env =
+  let rec aux (x,ty) =
+    match ty with
+    | RT.Base _ -> [x, ty]
+    | RT.Tuple xtys ->
+        xtys
+        |> List.map (Pair.map_fst @@ Id.add_name_after "'")
+        |> List.rev_flatten_map aux
+    | _ -> []
+  in
+  env
+  |> RT.Env.to_list
+  |> List.flatten_map aux
+  |> RT.Env.of_list
 
 let is_base_const t =
   match t.desc with
@@ -33,7 +46,7 @@ let rec lift_ty env ?np sty =
   match sty with
   | TBase base ->
       let x = Id.new_var sty in
-      let base_env = filter_env env in
+      let base_env = to_base_env env in
       let args = x :: RT.Env.keys base_env in
       let pred =
         let name = Option.map (fun (name,path) -> if path = [] then name else name ^ ":" ^ (String.join ":" @@ List.rev_map string_of_int path)) np in
@@ -64,7 +77,7 @@ let rec lift_ty env ?np sty =
       in
       RT.Tuple xtyps
   | TAttr([],sty') -> lift_ty env ?np sty'
-  | TAttr(TARefPred(x,p)::_,sty') ->
+  | TAttr(TARefPred(x,p)::_,sty') when is_base_typ sty' ->
       let base = Option.get @@ decomp_base sty' in
       RT.Base(base, x, p)
   | TAttr(_::attrs,sty') -> lift_ty env ?np (TAttr(attrs,sty'))
@@ -86,8 +99,8 @@ let print_env = Print.(list (pair id RT.print))
 
 let print_sub_constrs fm (cs:sub_constr list) =
   let pr fm (env,(rty1,rty2)) =
-    let env' = filter_env env in
-    Format.fprintf fm "@[<hov 2>%a |- %a <:@ %a@]" RT.Env.print env' RT.print rty1 RT.print rty2
+    let env' = to_base_env env in
+    Format.fprintf fm "@[<hov 2>%a |-@ @[%a <:@ %a@]@]" RT.Env.print env' RT.print rty1 RT.print rty2
   in
   List.print pr fm cs
 
@@ -112,12 +125,22 @@ let rec gen_sub mode env t ty : sub_constr list =
   match t.desc with
   | _ when is_simple_expr t ->
       let aty = simple_expr_ty t in
-      [env, (aty, ty)]
+      if RT.equiv aty ty then
+        []
+      else
+        [env, (aty, ty)]
   | Const c ->
       let aty = const_ty c in
-      [env, (aty, ty)]
+      if RT.equiv aty ty then
+        []
+      else
+        [env, (aty, ty)]
   | Var x ->
-      [env, (RT.Env.assoc x env, ty)]
+      let ty' = RT.Env.assoc x env in
+      if RT.equiv ty' ty then
+        []
+      else
+        [env, (ty', ty)]
   | Fun(x, t') ->
       begin
         match ty with
@@ -185,9 +208,14 @@ let rec gen_sub mode env t ty : sub_constr list =
       in
       [env, (aty, ty)]
   | Tuple ts ->
-      let xs = List.map new_var_of_term ts in
-      let t0 = Term.(tuple (vars xs)) in
-      let t' = List.fold_right2 (fun x t acc -> Term.(let_ [x,t] acc)) xs ts t0 in
+      let xs = List.map (fun t -> match decomp_var t with None -> new_var_of_term t | Some x -> x) ts in
+      let x = new_var_of_term t in
+      let t0 = Term.(let_ [x, tuple (vars xs)] (var x)) in
+      let t' =
+        let aux x t acc = if is_var t then acc else Term.(let_ [x,t] acc) in
+        List.fold_right2 aux xs ts t0
+      in
+      Debug.printf "NORMALIZE: @[%a =>@ @[%a@." Print.term t Print.term t';
       gen_sub mode env t' ty
   | Proj(i,{desc=Var x}) ->
       let env',aty =
@@ -233,6 +261,7 @@ let denote_ty x ty =
 
 let denote_env env =
   env
+  |> to_base_env
   |> RT.Env.to_list
   |> List.map (Fun.uncurry denote_ty)
   |> List.filter_out (fun p -> p.desc = Const True)
@@ -241,22 +270,44 @@ let rec flatten env (ty1,ty2) =
   match ty1, ty2 with
   | RT.Base(b1,x,_), RT.Base(b2,_,_) ->
       if b1 <> b2 then (Format.eprintf "%a cannot unify with %a@." RT.print ty1 RT.print ty2; invalid_arg "flatten");
-      [denote_ty x ty1::denote_env env, denote_ty x ty2]
+      let p = denote_ty x ty2 in
+      if p.desc = Const True then
+        []
+      else
+        [denote_ty x ty1::denote_env env, denote_ty x ty2]
   | RT.Fun(x1,ty11,ty12), RT.Fun(x2,ty21,ty22) ->
       flatten env (ty21,ty11) @
       flatten (RT.Env.add x2 ty21 env) (RT.subst_var x1 x2 ty12, ty22)
   | RT.Tuple xtys1, RT.Tuple xtys2 ->
-      let aux (x1,ty1) (x2,ty2) (env,sbst,acc) =
+      let aux (env,sbst,acc) (x1,ty1) (x2,ty2) =
         let env' = RT.Env.add x2 ty1 env in
         let sbst' = RT.subst_var x1 x2 -| sbst in
-        let acc' = flatten env (ty1,ty2) @ acc in
+        let acc' = flatten env (sbst ty1, ty2) @ acc in
         env', sbst', acc'
       in
-      Triple.trd @@ List.fold_right2 aux xtys1 xtys2 (env,Fun.id,[])
+      Triple.trd @@ List.fold_left2 aux (env,Fun.id,[]) xtys1 xtys2
   | _ ->
       Format.eprintf "ty1: %a@." RT.print ty1;
       Format.eprintf "ty2: %a@." RT.print ty2;
       unsupported __LOC__
+let flatten env (ty1,ty2) =
+  let r = flatten env (ty1,ty2) in
+  Debug.printf "FLATTEN env: @[%a@." RT.Env.print env;
+  Debug.printf "FLATTEN INPUT: @[%a <: %a@." RT.print ty1 RT.print ty2;
+  Debug.printf "FLATTEN OUTPUT: @[%a@.@." print_constrs r;
+  r
+
+let wrap_id constrs =
+  let aux x =
+    let name = Id.to_string x in
+    if Id.is_predicate x || String.fold_left (fun acc c -> acc && (Char.is_letter c || Char.is_digit c || List.mem c ['~';'!';'@';'$';'%';'^';'&';'*';'_';'-';'+';'=';'<';'>';'.';'?'])) true name then
+      x
+    else
+      Id.make 0 ("|" ^ name ^ "|") [] @@ Id.typ x
+  in
+  let wrap = Trans.map_id aux in
+  List.map (fun (ts,t) -> List.map wrap ts, wrap t) constrs
+
 
 let gen_hcs mode env t ty =
   let t = Trans.alpha_rename ~whole:true t in
@@ -271,6 +322,7 @@ let gen_hcs mode env t ty =
   |> List.flatten_map (Fun.uncurry flatten)
   |@> Debug.printf "Constraints:@.  @[%a@.@." print_constrs
   |> (CHC.of_term_list |- CHC.simplify ~normalized:true |- snd |- CHC.to_term_list)
+  |> wrap_id
   |@> Debug.printf "Simplified:@.  @[%a@.@." print_constrs
   |> FpatInterface.to_hcs
   |@> Debug.printf "Constraints:@.  @[%a@.@." Fpat.HCCS.pr
