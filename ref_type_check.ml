@@ -146,11 +146,11 @@ let rec gen_sub mode env t ty : sub_constr list =
         | Default ->
             let aux (x,t) =
               if Id.mem x @@ get_fv t then raise Ref_type_not_found;
-              lift ~name:(Id.to_string x) env t
+              lift ~name:(Id.to_string ~plain:false x) env t
             in
             List.map aux bindings
         | Allow_recursive ->
-            List.map (fun (x,t) -> lift env ~name:(Id.to_string x) t) bindings
+            List.map (fun (x,t) -> lift env ~name:(Id.to_string ~plain:false x) t) bindings
         | Use_empty_pred -> unsupported "Ref_type_check.Use_empty_pred"
       in
       let sub =

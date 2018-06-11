@@ -133,7 +133,7 @@ let rec of_term t =
   | S.Const S.False -> F.Term.mk_const @@ F.Const.False
   | S.Const (S.Int n) -> F.Term.mk_const @@ F.Const.Int n
   | S.Const (S.String s) -> F.Term.mk_const @@ F.Const.String s
-  | S.Var x -> F.Term.mk_var @@ F.Idnt.make @@ Id.to_string x
+  | S.Var x -> F.Term.mk_var @@ F.Idnt.make @@ Id.to_string ~plain:false x
   | S.Not t1 -> F.Term.mk_app (F.Term.mk_const F.Const.Not) [of_term t1]
   | S.BinOp(op, t1, t2) ->
       let op' =
@@ -167,7 +167,7 @@ let rec of_term t =
         |> List.map @@ Pair.add_right @@ of_typ -| S.typ
         |> List.map @@ Pair.map_fst of_term
       in
-      F.Pva.make (F.Idnt.make @@ Id.to_string p) ts'
+      F.Pva.make (F.Idnt.make @@ Id.to_string ~plain:false p) ts'
       |> F.Pva.to_formula
       |> F.Formula.term_of
   | S.Proj(i, t) ->
@@ -543,13 +543,13 @@ let insert_extra_param t =
                  let bvs =
                    bvs
                    |> List.filter (fun x -> x.Id.typ = Type.Ty.int)
-                   |> List.map (Id.to_string >> F.Idnt.make)
+                   |> List.map (Id.to_string ~plain:false >> F.Idnt.make)
                  in
-                 let exs = List.map (Id.to_string >> F.Idnt.make) exs in
+                 let exs = List.map (Id.to_string ~plain:false >> F.Idnt.make) exs in
                  F.RefTypInfer.new_params
                    (if recursive then
                       Some(F.Util.List.nth xss i
-                           |> List.map (Id.to_string >> F.Idnt.make))
+                           |> List.map (Id.to_string ~plain:false >> F.Idnt.make))
                     else
                       None)
                    bvs exs
