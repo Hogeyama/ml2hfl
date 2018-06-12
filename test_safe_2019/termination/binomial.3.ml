@@ -1,23 +1,23 @@
-let rec bin (x_DO_NOT_CARE_98:bool) (x_DO_NOT_CARE_99:int)
-           (x_DO_NOT_CARE_100:int) (n:int) (prev_set_flag_bin_83:bool)
-           (s_prev_bin_n_81:int) (s_prev_bin_k_82:int) (k:int) =
-  if prev_set_flag_bin_83
+let rec bin (x_DO_NOT_CARE_99:bool) (x_DO_NOT_CARE_100:int)
+           (x_DO_NOT_CARE_101:int) (n:int) (prev_set_flag_bin_84:bool)
+           (s_prev_bin_n_82:int) (s_prev_bin_k_83:int) (k:int) =
+  if prev_set_flag_bin_84
   then
-    if s_prev_bin_n_81 + -s_prev_bin_k_82 > n + -k && n + -k >= 0
+    if s_prev_bin_n_82 + -s_prev_bin_k_83 > n + -k && n + -k >= 0
     then
       ()
     else
       assert false;
-  bin_without_checking_96
-    x_DO_NOT_CARE_98 x_DO_NOT_CARE_99 x_DO_NOT_CARE_100 n
-    prev_set_flag_bin_83 s_prev_bin_n_81 s_prev_bin_k_82 k
-and bin_without_checking_96 (_:bool) (_:int) (_:int) (n:int) (_:bool) 
+  bin_without_checking_97
+    x_DO_NOT_CARE_99 x_DO_NOT_CARE_100 x_DO_NOT_CARE_101 n
+    prev_set_flag_bin_84 s_prev_bin_n_82 s_prev_bin_k_83 k
+and bin_without_checking_97 (_:bool) (_:int) (_:int) (n:int) (_:bool) 
                            (_:int) (_:int) (k:int) =
-  let set_flag_bin_84 = true
+  let set_flag_bin_85 = true
   in
-  let s_bin_k_80 = k
+  let s_bin_k_81 = k
   in
-  let s_bin_n_79 = n
+  let s_bin_n_80 = n
   in
   if n = 0
   then
@@ -27,14 +27,14 @@ and bin_without_checking_96 (_:bool) (_:int) (_:int) (n:int) (_:bool)
     then
       1
     else
-      bin_without_checking_96
-        set_flag_bin_84 s_bin_n_79 s_bin_k_80 (n - 1) set_flag_bin_84
-        s_bin_n_79 s_bin_k_80 (k - 1)
+      bin_without_checking_97
+        set_flag_bin_85 s_bin_n_80 s_bin_k_81 (n - 1) set_flag_bin_85
+        s_bin_n_80 s_bin_k_81 (k - 1)
       +
-      bin_without_checking_96
-        set_flag_bin_84 s_bin_n_79 s_bin_k_80 (n - 1) set_flag_bin_84
-        s_bin_n_79 s_bin_k_80 k
-let main (set_flag_bin_84:bool) (s_bin_n_79:int) (s_bin_k_80:int) (():unit) =
+      bin_without_checking_97
+        set_flag_bin_85 s_bin_n_80 s_bin_k_81 (n - 1) set_flag_bin_85
+        s_bin_n_80 s_bin_k_81 k
+let main (set_flag_bin_85:bool) (s_bin_n_80:int) (s_bin_k_81:int) (():unit) =
   let n = Random.int 0
   in
   let k = Random.int 0
@@ -42,8 +42,8 @@ let main (set_flag_bin_84:bool) (s_bin_n_79:int) (s_bin_k_80:int) (():unit) =
   if n >= 0 && k >= 0
   then
     bin
-      set_flag_bin_84 s_bin_n_79 s_bin_k_80 n set_flag_bin_84 s_bin_n_79
-      s_bin_k_80 k
+      set_flag_bin_85 s_bin_n_80 s_bin_k_81 n set_flag_bin_85 s_bin_n_80
+      s_bin_k_81 k
   else
     0
-let u_3512 = main false 0 0 ()
+let u_3513 = main false 0 0 ()

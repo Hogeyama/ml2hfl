@@ -1,30 +1,27 @@
-let c1_COEFFICIENT_82 = 0
-let c0_COEFFICIENT_81 = 0
 let succ (_:bool) (_:int) (n:int) = n + 1
 let g (_:bool) (_:int) (_:int) (_:bool) (_:int)
-     (r:(bool -> int -> int -> int)) (set_flag_f_177:bool) (s_f_n_174:int)
-     (a:int) = r set_flag_f_177 s_f_n_174 (r set_flag_f_177 s_f_n_174 a)
-let rec f (prev_set_flag_f_176:bool) (s_prev_f_n_175:int) (n:int) =
-  if prev_set_flag_f_176 then assert false;
-  f_without_checking_185 prev_set_flag_f_176 s_prev_f_n_175 n
-and f_without_checking_185 (_:bool) (_:int) (n:int) =
-  let set_flag_f_177 = true
+     (r:(bool -> int -> int -> int)) (set_flag_f_178:bool) (s_f_n_175:int)
+     (a:int) = r set_flag_f_178 s_f_n_175 (r set_flag_f_178 s_f_n_175 a)
+let rec f (prev_set_flag_f_177:bool) (s_prev_f_n_176:int) (n:int) =
+  if prev_set_flag_f_177 then assert false;
+  f_without_checking_186 prev_set_flag_f_177 s_prev_f_n_176 n
+and f_without_checking_186 (_:bool) (_:int) (n:int) =
+  let set_flag_f_178 = true
   in
-  let s_f_n_174 = n
+  let s_f_n_175 = n
   in
   if n = 0
   then
     succ
   else
     g
-      set_flag_f_177 s_f_n_174
-      (c1_COEFFICIENT_82 * n + c0_COEFFICIENT_81) set_flag_f_177
-      s_f_n_174 (f_without_checking_185 set_flag_f_177 s_f_n_174 (n - 1))
-let main (_:bool) (_:int) (n:int) (set_flag_f_177:bool) (s_f_n_174:int)
+      set_flag_f_178 s_f_n_175 (0 * n + 0) set_flag_f_178 s_f_n_175
+      (f_without_checking_186 set_flag_f_178 s_f_n_175 (n - 1))
+let main (_:bool) (_:int) (n:int) (set_flag_f_178:bool) (s_f_n_175:int)
         (x:int) =
   if n >= 0 && x >= 0
   then
-    f set_flag_f_177 s_f_n_174 n set_flag_f_177 s_f_n_174 x
+    f set_flag_f_178 s_f_n_175 n set_flag_f_178 s_f_n_175 x
   else
     0
-let u_9187 = main false 0 (Random.int 0) false 0 (Random.int 0)
+let u_9188 = main false 0 (Random.int 0) false 0 (Random.int 0)

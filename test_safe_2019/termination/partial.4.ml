@@ -1,38 +1,30 @@
-let c3_COEFFICIENT_65 = 0
-let c2_COEFFICIENT_62 = 0
-let c1_COEFFICIENT_61 = 0
-let c0_COEFFICIENT_60 = 0
-let rec f_58 (x_DO_NOT_CARE_134:bool) (x_DO_NOT_CARE_135:int)
-            (x_DO_NOT_CARE_136:int) (lb:int) (prev_set_flag_f_121:bool)
-            (s_prev_f_lb_119:int) (s_prev_f_n_120:int) (n:int) =
-  if prev_set_flag_f_121 then assert false;
-  f_without_checking_132
-    x_DO_NOT_CARE_134 x_DO_NOT_CARE_135 x_DO_NOT_CARE_136 lb
-    prev_set_flag_f_121 s_prev_f_lb_119 s_prev_f_n_120 n
-and f_without_checking_132 (_:bool) (_:int) (_:int) (lb:int) (_:bool)
+let rec f_59 (x_DO_NOT_CARE_135:bool) (x_DO_NOT_CARE_136:int)
+            (x_DO_NOT_CARE_137:int) (lb:int) (prev_set_flag_f_122:bool)
+            (s_prev_f_lb_120:int) (s_prev_f_n_121:int) (n:int) =
+  if prev_set_flag_f_122 then assert false;
+  f_without_checking_133
+    x_DO_NOT_CARE_135 x_DO_NOT_CARE_136 x_DO_NOT_CARE_137 lb
+    prev_set_flag_f_122 s_prev_f_lb_120 s_prev_f_n_121 n
+and f_without_checking_133 (_:bool) (_:int) (_:int) (lb:int) (_:bool)
                           (_:int) (_:int) (n:int) =
-  let set_flag_f_122 = true
+  let set_flag_f_123 = true
   in
-  let s_f_n_118 = n
+  let s_f_n_119 = n
   in
-  let s_f_lb_117 = lb
+  let s_f_lb_118 = lb
   in
   n > lb
 and f (_:bool) (_:int) (_:int) (x:int) (_:bool) (_:int) (_:int)
-     (p_EXPARAM_59:int) (set_flag_f_122:bool) (s_f_lb_117:int)
-     (s_f_n_118:int) (p:(bool -> int -> int -> int -> bool)) =
-  if p set_flag_f_122 s_f_lb_117 s_f_n_118 x
+     (p_EXPARAM_60:int) (set_flag_f_123:bool) (s_f_lb_118:int)
+     (s_f_n_119:int) (p:(bool -> int -> int -> int -> bool)) =
+  if p set_flag_f_123 s_f_lb_118 s_f_n_119 x
   then
     f
-      set_flag_f_122 s_f_lb_117 s_f_n_118 (x - 1) set_flag_f_122
-      s_f_lb_117 s_f_n_118
-      (c2_COEFFICIENT_62 * p_EXPARAM_59 +
-       (c1_COEFFICIENT_61 * x + c0_COEFFICIENT_60))
-      set_flag_f_122 s_f_lb_117 s_f_n_118 p
-and u_56 =
-  let gt = f_58
+      set_flag_f_123 s_f_lb_118 s_f_n_119 (x - 1) set_flag_f_123
+      s_f_lb_118 s_f_n_119 (0 * p_EXPARAM_60 + (0 * x + 0))
+      set_flag_f_123 s_f_lb_118 s_f_n_119 p
+and u_57 =
+  let gt = f_59
   in
-  f
-    false 0 0 (Random.int 0) false 0 0 c3_COEFFICIENT_65 false 0 0
-    (gt false 0 0 0)
-let u_7454 = ()
+  f false 0 0 (Random.int 0) false 0 0 0 false 0 0 (gt false 0 0 0)
+let u_7455 = ()

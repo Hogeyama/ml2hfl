@@ -1,19 +1,19 @@
-let rec zip (x_DO_NOT_CARE_72:bool) (x_DO_NOT_CARE_73:int)
-           (x_DO_NOT_CARE_74:int) (xs:int) (prev_set_flag_zip_55:bool)
-           (s_prev_zip_xs_53:int) (s_prev_zip_ys_54:int) (ys:int) =
-  if prev_set_flag_zip_55
+let rec zip (x_DO_NOT_CARE_73:bool) (x_DO_NOT_CARE_74:int)
+           (x_DO_NOT_CARE_75:int) (xs:int) (prev_set_flag_zip_56:bool)
+           (s_prev_zip_xs_54:int) (s_prev_zip_ys_55:int) (ys:int) =
+  if prev_set_flag_zip_56
   then
-    if s_prev_zip_xs_53 > xs && xs >= 0 then () else assert false;
-  zip_without_checking_70
-    x_DO_NOT_CARE_72 x_DO_NOT_CARE_73 x_DO_NOT_CARE_74 xs
-    prev_set_flag_zip_55 s_prev_zip_xs_53 s_prev_zip_ys_54 ys
-and zip_without_checking_70 (_:bool) (_:int) (_:int) (xs:int)
+    if s_prev_zip_xs_54 > xs && xs >= 0 then () else assert false;
+  zip_without_checking_71
+    x_DO_NOT_CARE_73 x_DO_NOT_CARE_74 x_DO_NOT_CARE_75 xs
+    prev_set_flag_zip_56 s_prev_zip_xs_54 s_prev_zip_ys_55 ys
+and zip_without_checking_71 (_:bool) (_:int) (_:int) (xs:int)
                            (_:bool) (_:int) (_:int) (ys:int) =
-  let set_flag_zip_56 = true
+  let set_flag_zip_57 = true
   in
-  let s_zip_ys_52 = ys
+  let s_zip_ys_53 = ys
   in
-  let s_zip_xs_51 = xs
+  let s_zip_xs_52 = xs
   in
   if xs <= 0
   then
@@ -29,15 +29,15 @@ and zip_without_checking_70 (_:bool) (_:int) (_:int) (xs:int)
       in
       1 +
       zip
-        set_flag_zip_56 s_zip_xs_51 s_zip_ys_52 xs' set_flag_zip_56
-        s_zip_xs_51 s_zip_ys_52 ys'
-let main (set_flag_zip_56:bool) (s_zip_xs_51:int) (s_zip_ys_52:int)
+        set_flag_zip_57 s_zip_xs_52 s_zip_ys_53 xs' set_flag_zip_57
+        s_zip_xs_52 s_zip_ys_53 ys'
+let main (set_flag_zip_57:bool) (s_zip_xs_52:int) (s_zip_ys_53:int)
         (():unit) =
   let l1 = Random.int 0
   in
   let l2 = Random.int 0
   in
-  zip_without_checking_70
-    set_flag_zip_56 s_zip_xs_51 s_zip_ys_52 l1 set_flag_zip_56
-    s_zip_xs_51 s_zip_ys_52 l2
-let u_3760 = main false 0 0 ()
+  zip_without_checking_71
+    set_flag_zip_57 s_zip_xs_52 s_zip_ys_53 l1 set_flag_zip_57
+    s_zip_xs_52 s_zip_ys_53 l2
+let u_3761 = main false 0 0 ()

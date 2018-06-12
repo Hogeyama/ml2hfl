@@ -1,43 +1,37 @@
-let c5_COEFFICIENT_115 = 0
-let c4_COEFFICIENT_114 = 0
-let c3_COEFFICIENT_113 = 0
-let c2_COEFFICIENT_112 = 0
-let c1_COEFFICIENT_109 = 0
-let c0_COEFFICIENT_108 = 0
-let rec app (x_DO_NOT_CARE_171:bool) (x_DO_NOT_CARE_172:int)
-           (x_DO_NOT_CARE_173:int) (x_DO_NOT_CARE_174:int) (i:int)
-           (x_DO_NOT_CARE_167:bool) (x_DO_NOT_CARE_168:int)
-           (x_DO_NOT_CARE_169:int) (x_DO_NOT_CARE_170:int)
-           (h_EXPARAM_111:int) (x_DO_NOT_CARE_163:bool)
-           (x_DO_NOT_CARE_164:int) (x_DO_NOT_CARE_165:int)
-           (x_DO_NOT_CARE_166:int)
+let rec app (x_DO_NOT_CARE_172:bool) (x_DO_NOT_CARE_173:int)
+           (x_DO_NOT_CARE_174:int) (x_DO_NOT_CARE_175:int) (i:int)
+           (x_DO_NOT_CARE_168:bool) (x_DO_NOT_CARE_169:int)
+           (x_DO_NOT_CARE_170:int) (x_DO_NOT_CARE_171:int)
+           (h_EXPARAM_112:int) (x_DO_NOT_CARE_164:bool)
+           (x_DO_NOT_CARE_165:int) (x_DO_NOT_CARE_166:int)
+           (x_DO_NOT_CARE_167:int)
            (h:(bool ->
                  int ->
                    int ->
                      int -> int -> bool -> int -> int -> int -> unit -> unit))
-           (x_DO_NOT_CARE_159:bool) (x_DO_NOT_CARE_160:int)
-           (x_DO_NOT_CARE_161:int) (x_DO_NOT_CARE_162:int) (v:int)
-           (prev_set_flag_app_128:bool) (s_prev_app_i_123:int)
-           (s_prev_app_h_EXPARAM_124:int) (s_prev_app_v_126:int) (u:unit) =
-  if prev_set_flag_app_128
+           (x_DO_NOT_CARE_160:bool) (x_DO_NOT_CARE_161:int)
+           (x_DO_NOT_CARE_162:int) (x_DO_NOT_CARE_163:int) (v:int)
+           (prev_set_flag_app_129:bool) (s_prev_app_i_124:int)
+           (s_prev_app_h_EXPARAM_125:int) (s_prev_app_v_127:int) (u:unit) =
+  if prev_set_flag_app_129
   then
     if
-      s_prev_app_v_126 > v && v >= 0 ||
-      s_prev_app_v_126 >= v && (1 + s_prev_app_i_123 > 1 + i && 1 + i >= 0)
+      s_prev_app_v_127 > v && v >= 0 ||
+      s_prev_app_v_127 >= v && (1 + s_prev_app_i_124 > 1 + i && 1 + i >= 0)
     then
       ()
     else
       assert false;
-  app_without_checking_157
-    x_DO_NOT_CARE_171 x_DO_NOT_CARE_172 x_DO_NOT_CARE_173 x_DO_NOT_CARE_174 
-    i x_DO_NOT_CARE_167 x_DO_NOT_CARE_168 x_DO_NOT_CARE_169 x_DO_NOT_CARE_170
-    h_EXPARAM_111 x_DO_NOT_CARE_163 x_DO_NOT_CARE_164 x_DO_NOT_CARE_165
-    x_DO_NOT_CARE_166 h x_DO_NOT_CARE_159 x_DO_NOT_CARE_160 x_DO_NOT_CARE_161
-    x_DO_NOT_CARE_162 v prev_set_flag_app_128 s_prev_app_i_123
-    s_prev_app_h_EXPARAM_124 s_prev_app_v_126 u
-and app_without_checking_157 (_:bool) (_:int) (_:int) (_:int) (i:int)
+  app_without_checking_158
+    x_DO_NOT_CARE_172 x_DO_NOT_CARE_173 x_DO_NOT_CARE_174 x_DO_NOT_CARE_175 
+    i x_DO_NOT_CARE_168 x_DO_NOT_CARE_169 x_DO_NOT_CARE_170 x_DO_NOT_CARE_171
+    h_EXPARAM_112 x_DO_NOT_CARE_164 x_DO_NOT_CARE_165 x_DO_NOT_CARE_166
+    x_DO_NOT_CARE_167 h x_DO_NOT_CARE_160 x_DO_NOT_CARE_161 x_DO_NOT_CARE_162
+    x_DO_NOT_CARE_163 v prev_set_flag_app_129 s_prev_app_i_124
+    s_prev_app_h_EXPARAM_125 s_prev_app_v_127 u
+and app_without_checking_158 (_:bool) (_:int) (_:int) (_:int) (i:int)
                             (_:bool) (_:int) (_:int) (_:int)
-                            (h_EXPARAM_111:int) (_:bool) (_:int) (_:int)
+                            (h_EXPARAM_112:int) (_:bool) (_:int) (_:int)
                             (_:int)
                             (h:(bool ->
                                   int ->
@@ -48,46 +42,44 @@ and app_without_checking_157 (_:bool) (_:int) (_:int) (_:int) (i:int)
                                             int -> int -> int -> unit -> unit))
                             (_:bool) (_:int) (_:int) (_:int) (v:int) 
                             (_:bool) (_:int) (_:int) (_:int) (u:unit) =
-  let set_flag_app_129 = true
+  let set_flag_app_130 = true
   in
-  let s_app_v_121 = v
+  let s_app_v_122 = v
   in
-  let s_app_h_EXPARAM_119 = h_EXPARAM_111
+  let s_app_h_EXPARAM_120 = h_EXPARAM_112
   in
-  let s_app_i_118 = i
+  let s_app_i_119 = i
   in
   if i >= 0
   then
     app
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 (i - 1)
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121
-      (c5_COEFFICIENT_115 * v +
-       (c4_COEFFICIENT_114 * h_EXPARAM_111 +
-        (c3_COEFFICIENT_113 * i + c2_COEFFICIENT_112)))
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 h
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 v
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 u
+      set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 (i - 1)
+      set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122
+      (0 * v + (0 * h_EXPARAM_112 + (0 * i + 0))) set_flag_app_130
+      s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 h set_flag_app_130
+      s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 v set_flag_app_130
+      s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 u
   else
     h
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 v
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 u
+      set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 v
+      set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 u
 let g (_:bool) (_:int) (_:int) (_:int) (():unit) = ()
-let rec f (set_flag_app_129:bool) (s_app_i_118:int) (s_app_h_EXPARAM_119:int)
-         (s_app_v_121:int) (x:int) =
+let rec f (set_flag_app_130:bool) (s_app_i_119:int) (s_app_h_EXPARAM_120:int)
+         (s_app_v_122:int) (x:int) =
   if x > 0
   then
-    app_without_checking_157
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121
-      (Random.int 0) set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119
-      s_app_v_121 (c1_COEFFICIENT_109 * x + c0_COEFFICIENT_108)
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 f
-      set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121 (x - 1)
+    app_without_checking_158
+      set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122
+      (Random.int 0) set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120
+      s_app_v_122 (0 * x + 0) set_flag_app_130 s_app_i_119
+      s_app_h_EXPARAM_120 s_app_v_122 f set_flag_app_130 s_app_i_119
+      s_app_h_EXPARAM_120 s_app_v_122 (x - 1)
   else
     g
-let main (set_flag_app_129:bool) (s_app_i_118:int) (s_app_h_EXPARAM_119:int)
-        (s_app_v_121:int) (():unit) =
+let main (set_flag_app_130:bool) (s_app_i_119:int) (s_app_h_EXPARAM_120:int)
+        (s_app_v_122:int) (():unit) =
   f
-    set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119 s_app_v_121
-    (Random.int 0) set_flag_app_129 s_app_i_118 s_app_h_EXPARAM_119
-    s_app_v_121 ()
-let u_38141 = main false 0 0 0 ()
+    set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122
+    (Random.int 0) set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120
+    s_app_v_122 ()
+let u_38142 = main false 0 0 0 ()
