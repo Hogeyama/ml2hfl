@@ -269,7 +269,13 @@ let main cin =
         Main_loop.run orig ~spec problem
     in
     if Flag.Method.(!mode = PrintRefConstr) then
-      (print_ref_constr spec parsed; exit 0)
+      try
+        print_ref_constr spec parsed;
+        exit 0
+      with e ->
+        Format.eprintf "%s@." (Printexc.to_string e);
+        Format.printf ")@.(get-proof)@."; (* for hoice *)
+        exit 1
     else if !Flag.Method.quick_check then
       main_quick_check spec parsed
     else if !Flag.Method.split_assert then
