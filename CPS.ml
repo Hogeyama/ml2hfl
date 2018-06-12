@@ -208,7 +208,6 @@ let rec infer_effect env tenv t =
   | Const(RandValue(typ, true)) -> assert false
   | Const(RandValue(typ, false)) ->
       let e = new_evar () in
-      Format.printf "typ: %a@." Print.typ typ;
       let typ' = _TFunCPS env (e, TBaseCPS Ty.unit, etyp_of_typ typ) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=RandValueCPS typ; typ_cps=typ'; effect=new_evar()}

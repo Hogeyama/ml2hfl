@@ -56,10 +56,15 @@ let to_string ?(plain=true) x =
     s
 
 let from_string name typ =
+  if name = "" then invalid_arg "Id.from_string";
+  let attr = [] in
+  let name,attr = if name.[0] = '#' then String.lchop name, Coefficient::attr else name, attr in
+  let name,attr = if name.[0] = '$' then String.lchop name, External::attr else name, attr in
+  let name,attr = if name.[0] = '$' && String.length name >= 3 && String.right name 1 = "$" then String.chop name, Predicate::attr else name, attr in
   try
     let s1,s2 = String.rsplit name "_" in
-    {id=int_of_string s2; name=s1; typ=typ; attr=[]}
-  with _ -> {id=0; name; typ; attr=[]}
+    {id=int_of_string s2; name=s1; typ=typ; attr}
+  with _ -> {id=0; name; typ; attr}
 
 let compare x y = Compare.on to_string x y
 let eq x y = compare x y = 0

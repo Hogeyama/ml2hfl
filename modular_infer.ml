@@ -722,7 +722,7 @@ let solve hcs =
       Debug.printf "p: %a@." Print.id_typ p;
       let var_of_env (x,typ) = Id.from_string (Fpat.Idnt.string_of x) (tr_typ typ) in
       let sbst xtyp y = subst_var (var_of_env xtyp) y in
-      let sol' = List.assoc_all (Fpat.Idnt.make @@ Id.to_string p) sol in
+      let sol' = List.assoc_all (Fpat.Idnt.make @@ Id.to_string ~plain:false p) sol in
       match sol' with
       | [] -> fst @@ Type.decomp_tfun @@ Id.typ p, false_term
       | (env,_)::_ ->
