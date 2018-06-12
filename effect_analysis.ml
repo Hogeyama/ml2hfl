@@ -348,7 +348,16 @@ let rec exists_dest ty =
 
 let mark =
   let rec mark ty =
-    let mark_id x = Id.map_typ (_TAttr [TARefPred(Id.new_var_id x, Term.true_)] -| mark) x in
+    let mark_id x =
+      let ty = mark @@ Id.typ x in
+      let ty' =
+        if is_base_typ ty then
+          _TAttr [TARefPred(Id.new_var_id x, Term.true_)] ty
+        else
+          ty
+      in
+      Id.set_typ x ty'
+    in
     match elim_tattr ty with
     | _ when is_base_typ ty -> ty
     | TTuple xs ->
