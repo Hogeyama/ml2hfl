@@ -230,7 +230,7 @@ let print_ref_constr spec t =
   in
   let ty = Ref_type.of_simple t'.Syntax.typ in
   let env = Ref_type.Env.empty in
-  Ref_type_check.(print stdout ~mode:Allow_recursive env t' ty)
+  Ref_type_check.print stdout env t' ty
 
 let main cin =
   let input_string =
@@ -272,7 +272,7 @@ let main cin =
       try
         print_ref_constr spec parsed;
         exit 0
-      with e ->
+      with e when !Flag.Debug.debug_module = [] ->
         Format.eprintf "%s@." (Printexc.to_string e);
         Format.printf ")@.(get-proof)@."; (* for hoice *)
         exit 1
@@ -309,7 +309,7 @@ let set_exp_filename filename =
 let just_run_other_command cmd =
   if !Flag.filenames = [] then
     (Format.eprintf "Option \"-just-run\" must follow input file@."; exit 1);
-  let filename = !Flag.mainfile in
+  let filename = List.hd !Flag.filenames in
   let total,r = Time.measure (fun () -> Sys.command @@ snd @@ String.replace ~str:cmd ~sub:"%i" ~by:filename) in
   let result = if r = 0 then "Safe" else "Error" in
   Format.printf "{filename:%S, result:%S, total:%f}@." filename result total;

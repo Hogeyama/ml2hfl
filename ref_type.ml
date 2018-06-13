@@ -216,7 +216,14 @@ let rec subst_map map typ =
       Base(base, y, U.subst_map map' p)
   | Fun(y,typ1,typ2) ->
       let map' = List.filter_out (fst |- Id.eq y) map in
-      Fun(y, subst_map map typ1, subst_map map' typ2)
+      let y',typ2' =
+        if Id.mem y @@ List.flatten_map (snd |- S.get_fv) map then
+          let y' = Id.new_var_id y in
+          y', subst_map [y, U.make_var y'] typ2
+        else
+          y, typ2
+      in
+      Fun(y', subst_map map typ1, subst_map map' typ2')
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ subst_map map) xtyps)
   | Inter(typ, typs) -> Inter(typ, List.map (subst_map map) typs)
   | Union(typ, typs) -> Union(typ, List.map (subst_map map) typs)
@@ -273,14 +280,7 @@ let rec rename full var ty =
       let typ'' = subst_var y y' typ' in
       List(x', p_len', y', p_i', rename full None typ'')
   | Exn(typ1, typ2) -> Exn(rename full var typ1, rename full var typ2)
-let rename ?(full=false) typ =
-  Debug.printf "RENAME: %a@." print typ;
-  Id.save_counter ();
-  Id.clear_counter ();
-  let typ' = rename full None typ in
-  Id.reset_counter ();
-  Debug.printf "RENAME: %a@.@." print typ';
-  typ'
+let rename ?(full=false) typ = rename full None typ
 
 
 let rec of_simple typ =

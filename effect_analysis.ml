@@ -394,4 +394,5 @@ let mark_safe_fun_arg t =
   |@> Debug.printf "INFERRED: %a@." Print.term_typ
   |> mark
   |> Trans.remove_effect_attribute
+  |> Trans.reconstruct
   |@> Debug.printf "MARKED: %a@." Print.term'

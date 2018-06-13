@@ -8,8 +8,6 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 exception Ref_type_not_found
 
-type mode = Default | Allow_recursive | Use_empty_pred
-
 type sub_constr = RT.env * (RT.t * RT.t)
 
 let to_base_env env =
@@ -119,9 +117,10 @@ let const_ty c =
       Format.printf "c: %a@." Print.const c;
       assert false
 
-let rec gen_sub mode env t ty : sub_constr list =
+let rec gen_sub env t ty : sub_constr list =
   if false then Debug.printf "env: %a@." RT.Env.print env;
-  if false then Debug.printf "t: %a@.@." Print.term t;
+  if false then Debug.printf "t: %a@." Print.term' t;
+  if false then Debug.printf "ty: %a@.@." RT.print ty;
   match t.desc with
   | _ when is_simple_expr t ->
       let aty = simple_expr_ty t in
@@ -146,7 +145,7 @@ let rec gen_sub mode env t ty : sub_constr list =
         match ty with
         | RT.Fun(y,ty1,ty2) ->
             let ty2' = RT.subst_var y x ty2 in
-            gen_sub mode (RT.Env.add x ty1 env) t' ty2'
+            gen_sub (RT.Env.add x ty1 env) t' ty2'
         | _ ->
             Format.eprintf "%a cannot unify with %a@." Print.typ (TFun(x,t'.typ)) RT.print ty;
             invalid_arg "gen_sub"
@@ -154,48 +153,30 @@ let rec gen_sub mode env t ty : sub_constr list =
   | App(t1,ts) ->
       let tys = List.map (lift env) ts in
       let t1_ty = List.fold_right RT.make_fun tys ty in
-      List.flatten @@ List.map2 (gen_sub mode env) (t1::ts) (t1_ty::tys)
+      List.flatten @@ List.map2 (gen_sub env) (t1::ts) (t1_ty::tys)
   | If(t1,t2,t3) when is_simple_expr t1 ->
       let y = Id.new_var Ty.int in
       let env2 = RT.Env.add y (RT.Base(TInt, y, t1)) env in
       let env3 = RT.Env.add y (RT.Base(TInt, y, make_not t1)) env in
-      gen_sub mode env2 t2 ty @ gen_sub mode env3 t3 ty
+      gen_sub env2 t2 ty @ gen_sub env3 t3 ty
   | If(t1,t2,t3) ->
       let x = Id.new_var Ty.bool in
-      gen_sub mode env Term.(let_ [x,t1] (if_ (var x) t2 t3)) ty
+      gen_sub env Term.(let_ [x,t1] (if_ (var x) t2 t3)) ty
   | Local(Decl_let bindings, t1) ->
-      let tys =
-        match mode with
-        | Default ->
-            let aux (x,t) =
-              if Id.mem x @@ get_fv t then raise Ref_type_not_found;
-              lift ~name:(Id.to_string ~plain:false x) env t
-            in
-            List.map aux bindings
-        | Allow_recursive ->
-            List.map (fun (x,t) -> lift env ~name:(Id.to_string ~plain:false x) t) bindings
-        | Use_empty_pred -> unsupported "Ref_type_check.Use_empty_pred"
-      in
-      let sub =
-        let env' = List.fold_right2 (fst |- RT.Env.add) bindings tys env in
-        gen_sub mode env' t1 ty
-      in
-      let aux (env,acc) (x,t) ty =
-        let env' = if is_base_var x then env else RT.Env.add x ty env in
-        let acc' = gen_sub mode env' t ty @ acc in
-        Debug.printf "TEMPLATE: %a: %a@." Id.print x RT.print ty;
-        env', acc'
-      in
-      snd @@ List.fold_left2 aux (env,sub) bindings tys
+      let tys = List.map (fun (x,t) -> lift env ~name:(Id.to_string ~plain:false x) t) bindings in
+      let env' = List.fold_right2 (fst |- RT.Env.add) bindings tys env in
+      let sub = gen_sub env' t1 ty in
+      let aux (x,t) ty = gen_sub env' t ty in
+      sub @ List.flatten @@ List.map2 aux bindings tys
   | BinOp(op,t1,t2) when is_simple_expr t1 ->
       let x2 = new_var_of_term t2 in
-      gen_sub mode env Term.(let_ [x2,t2] (make_binop op t1 (var x2))) ty
+      gen_sub env Term.(let_ [x2,t2] (make_binop op t1 (var x2))) ty
   | BinOp(op,t1,t2) ->
       let x1 = new_var_of_term t1 in
-      gen_sub mode env Term.(let_ [x1,t1] (make_binop op (var x1) t2)) ty
+      gen_sub env Term.(let_ [x1,t1] (make_binop op (var x1) t2)) ty
   | Not t1 ->
       let x = new_var_of_term t1 in
-      gen_sub mode env Term.(let_ [x,t1] (not (var x))) ty
+      gen_sub env Term.(let_ [x,t1] (not (var x))) ty
   | Event("fail",false) ->
       let x = Id.new_var Ty.unit in
       let aty = RT.Fun(x, RT.Base(TUnit, x, Term.false_), RT.Base(TUnit, x, Term.false_)) in
@@ -216,7 +197,7 @@ let rec gen_sub mode env t ty : sub_constr list =
         List.fold_right2 aux xs ts t0
       in
       Debug.printf "NORMALIZE: @[%a =>@ @[%a@." Print.term t Print.term t';
-      gen_sub mode env t' ty
+      gen_sub env t' ty
   | Proj(i,{desc=Var x}) ->
       let env',aty =
         match RT.Env.assoc x env with
@@ -230,7 +211,7 @@ let rec gen_sub mode env t ty : sub_constr list =
       [RT.Env.merge env' env, (aty, ty)]
   | Proj(i,t1) ->
       let x = new_var_of_term t1 in
-      gen_sub mode env Term.(let_ [x,t1] (proj i (var x))) ty
+      gen_sub env Term.(let_ [x,t1] (proj i (var x))) ty
   | Bottom -> []
   | Local _ -> unsupported __LOC__
   | Label _ -> unsupported __LOC__
@@ -309,15 +290,14 @@ let wrap_id constrs =
   List.map (fun (ts,t) -> List.map wrap ts, wrap t) constrs
 
 
-let gen_hcs mode env t ty =
-  let t = Trans.alpha_rename ~whole:true t in
+let gen_hcs env t ty =
   let ty = RT.rename ~full:true ty in
   let env = RT.Env.map_value (RT.rename ~full:true) env in
   Debug.printf "Ref_type_check:@.";
   Debug.printf "  t: %a@." Print.term_typ t;
   Debug.printf "  ty: %a@." RT.print ty;
   Debug.printf "  env: %a@." RT.Env.print env;
-  gen_sub mode env t ty
+  gen_sub env t ty
   |@> Debug.printf "Subtyping constraints:@.  @[%a@.@." print_sub_constrs
   |> List.flatten_map (Fun.uncurry flatten)
   |@> Debug.printf "Constraints:@.  @[%a@.@." print_constrs
@@ -330,15 +310,15 @@ let gen_hcs mode env t ty =
   |@> Debug.printf "Simplified by Fpat:@.  @[%a@.@." Fpat.HCCS.pr
   |*@> Fpat.HCCS.save_graphviz "test.dot"
 
-let check ?(mode=Default) env t ty =
-  let hcs = gen_hcs mode env t ty in
+let check env t ty =
+  let hcs = gen_hcs env t ty in
   Fpat.HCCS.save_smtlib2 "test.smt2" hcs;
   try
     Rec_HCCS_solver.check_sat hcs
   with _ -> false
 
-let print cout ?(mode=Default) env t ty =
-  let hcs = gen_hcs mode env t ty in
+let print cout env t ty =
+  let hcs = gen_hcs env t ty in
   let filename = Filename.change_extension !Flag.mainfile "smt2" in
   Fpat.HCCS.save_smtlib2 filename hcs;
   Printf.fprintf cout "%s" @@ IO.input_file filename
