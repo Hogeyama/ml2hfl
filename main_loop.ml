@@ -70,10 +70,10 @@ let preprocess ?make_pps ?fun_list prog spec =
 let write_annot env orig =
   env
   |> List.map (Pair.map_fst Id.name)
-  |> WriteAnnot.f !!Flag.mainfile orig
+  |> WriteAnnot.f !Flag.mainfile orig
 
 let report_safe env orig {Problem.term=t0} =
-  if !Flag.PrettyPrinter.write_annot && List.length !Flag.filenames = 1 then write_annot env orig;
+  if !Flag.PrettyPrinter.write_annot then write_annot env orig;
 
   let s =
     match !Flag.Method.mode with

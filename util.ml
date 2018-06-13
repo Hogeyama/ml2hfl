@@ -662,10 +662,15 @@ end
 
 module Random = struct
   include Random
+
   let gaussian d =
     let x = float 1. in
     let y = float 1. in
     d *. sqrt (-2. *. log x) *. cos (2. *. Math.pi *. y)
+
+  let string ?(cs="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz") n =
+    let len = String.length cs in
+    String.init n (fun _ -> cs.[Random.int len])
 end
 
 module Format = struct
@@ -703,6 +708,9 @@ module IO = struct
   let input_all = BatPervasives.input_all
   let input_file = BatPervasives.input_file
   let output_file = BatPervasives.output_file
+  let copy_file ~src ~dest =
+    let text = input_file src in
+    output_file ~filename:dest ~text
 end
 
 module Ref = struct
@@ -807,16 +815,18 @@ end
 module Unix = struct
   include Unix
   module CPS = struct
-    let open_process cmd k =
+    let open_process ?(check=ignore) cmd k =
       let cin,cout = open_process cmd in
       let r = k cin cout in
-      let _st = close_process (cin, cout) in
+      let st = close_process (cin, cout) in
+      check st;
       r
 
-    let open_process_in cmd k =
+    let open_process_in ?(check=ignore) cmd k =
       let cin = open_process_in cmd in
       let r = k cin in
-      let _st = close_process_in cin in
+      let st = close_process_in cin in
+      check st;
       r
   end
 end
@@ -852,8 +862,14 @@ module Time = struct
   let string_of_tm {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
     Format.sprintf "%04d/%02d/%02d %02d:%02d:%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec
 
-  let print fm =
-    Format.pp_print_string fm @@ string_of_tm @@ Unix.localtime !!get
+  let string_of_tm_simple {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
+    Format.sprintf "%04d%02d%02d%02d%02d%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec
+
+  let print fm t =
+    Format.pp_print_string fm @@ string_of_tm @@ Unix.localtime t
+
+  let print_simple fm t =
+    Format.pp_print_string fm @@ string_of_tm_simple @@ Unix.localtime t
 end
 
 

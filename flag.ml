@@ -2,10 +2,7 @@ let omega = ref Mconfig.omega
 let cvc3 = ref Mconfig.cvc3
 
 let filenames : string list ref = ref []
-let mainfile () =
-  match !filenames with
-  | filename::_ -> filename
-  | _ -> invalid_arg "Flag.mainfile"
+let mainfile : string ref = ref ""
 let spec_file = ref ""
 
 let time_limit = ref 0
@@ -13,6 +10,8 @@ let time_limit = ref 0
 let use_abst : string list ref = ref []
 let add_use_abst s = if not @@ List.mem s !use_abst then use_abst := s :: !use_abst
 let pp : string option ref = ref None
+
+let use_temp = ref false
 
 module TRecS = struct
   let param1 = ref 1000

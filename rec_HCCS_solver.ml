@@ -45,7 +45,7 @@ let preprocess_rec_hccs ?(for_debug=false) hcs =
       let ext = if !!Debug.check then string_of_int !Flag.Log.cegar_loop ^ "." ^ ext else ext in
       ext
     in
-    Filename.change_extension !!Flag.mainfile ext in
+    Filename.change_extension !Flag.mainfile ext in
   hcs
   |> F.HCCS.rename map
   |@> Debug.printf "HCCS: %a@." F.HCCS.pr

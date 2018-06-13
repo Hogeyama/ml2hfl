@@ -28,7 +28,7 @@ let output_csv filename =
   let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
   let pr fmt = Printf.fprintf oc fmt in
   let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
-  pr "%s," @@ Filename.chop_extension_if_any @@ Filename.basename !!Flag.mainfile;
+  pr "%s," @@ Filename.chop_extension_if_any @@ Filename.basename !Flag.mainfile;
   pr "%S," !Flag.Log.result;
   pr "%d," !Flag.Log.cegar_loop;
   pr "%f," !!Time.get;
@@ -52,7 +52,7 @@ let output_json filename =
   let pr fmt = Printf.fprintf oc fmt in
   let pr_ter fmt = if Flag.Method.(!mode = Termination) then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
-  pr "{filename: %S" !!Flag.mainfile;
+  pr "{filename: %S" !Flag.mainfile;
   pr ", result: %S" !Flag.Log.result;
   pr ", cycles: %d" !Flag.Log.cegar_loop;
   pr_ter ", ranking: {";
@@ -208,8 +208,8 @@ let main_module_verification orig spec parsed =
 let output_randint_refinement_log input_string =
   let cout =
     let input =
-      let dirname = Filename.dirname !!Flag.mainfile in
-      let basename = Filename.basename !!Flag.mainfile in
+      let dirname = Filename.dirname !Flag.mainfile in
+      let basename = Filename.basename !Flag.mainfile in
       dirname ^ "/refinement/" ^ Filename.change_extension basename "refinement"
     in
     open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o644 input
@@ -241,7 +241,7 @@ let main cin =
   in
   let lb = Lexing.from_string input_string in
   lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename !!Flag.mainfile;
+    {Lexing.pos_fname = Filename.basename !Flag.mainfile;
      Lexing.pos_lnum = 1;
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
@@ -309,7 +309,7 @@ let set_exp_filename filename =
 let just_run_other_command cmd =
   if !Flag.filenames = [] then
     (Format.eprintf "Option \"-just-run\" must follow input file@."; exit 1);
-  let filename = !!Flag.mainfile in
+  let filename = !Flag.mainfile in
   let total,r = Time.measure (fun () -> Sys.command @@ snd @@ String.replace ~str:cmd ~sub:"%i" ~by:filename) in
   let result = if r = 0 then "Safe" else "Error" in
   Format.printf "{filename:%S, result:%S, total:%f}@." filename result total;
@@ -344,6 +344,7 @@ let rec arg_spec () =
                            Flag.PredAbst.shift_pred := true;
                            set_only_result ()),
        " Just print constraints for refinement types";
+     "-use-temp", Arg.Set Flag.use_temp, " Use temporary files for intermediate/log files";
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
@@ -560,8 +561,23 @@ let read_option_conf () =
   | Sys_error _
   | End_of_file -> ()
 
+let make_temp_file () =
+  let template = Format.asprintf "/tmp/mochi_%a_XXXXXXXX.ml" Time.print_simple !!Unix.time in
+  Unix.CPS.open_process_in ("mktemp " ^ template) input_line
+  |@> Verbose.printf "Temporary file \"%s\" is created@.@."
+
+let copy_input_file file =
+  let temp_file = !!make_temp_file in
+  IO.copy_file ~src:file ~dest:temp_file;
+  temp_file
+
 let merge_input_files files =
-  let filename = Filename.change_extension (List.hd files) "merge.ml" in
+  let filename =
+    if !Flag.use_temp then
+      !!make_temp_file
+    else
+      Filename.change_extension (List.hd files) "merge.ml"
+  in
   let cout = open_out filename in
   let ocf = Format.formatter_of_out_channel cout in
   let append file =
@@ -584,12 +600,14 @@ let merge_input_files files =
 let parse_arg () =
   Arg.parse arg_spec set_file usage;
   Flag.Log.args := Array.to_list Sys.argv;
-  if not !Flag.Mode.ignore_conf then read_option_conf ();
+  if not !Flag.Mode.ignore_conf then read_option_conf ()
+
+let open_input_file () =
   let filename =
     match !Flag.filenames with
     | []
     | ["-"] ->
-        let filename = "stdin.ml" in
+        let filename = if !Flag.use_temp then !!make_temp_file else "stdin.ml" in
         Flag.filenames := [filename];
         IO.output_file filename (IO.input_all stdin);
         filename
@@ -597,13 +615,14 @@ let parse_arg () =
         let filename =
           match !Flag.filenames with
           | [] -> assert false
-          | [file] -> file
+          | [file] -> if !Flag.use_temp then copy_input_file file else file
           | files -> merge_input_files files
         in
-        Config.load_path := Filename.dirname !!Flag.mainfile :: !Config.load_path;
+        Config.load_path := List.map Filename.dirname !Flag.filenames @ !Config.load_path;
         filename
   in
-  Flag.Method.input_cegar := String.ends_with !!Flag.mainfile ".cegar";
+  Flag.Method.input_cegar := List.length !Flag.filenames = 1 && String.ends_with (List.hd !Flag.filenames) ".cegar";
+  Flag.mainfile := filename;
   open_in filename
 
 (* called before parsing options *)
@@ -613,7 +632,7 @@ let fpat_init1 () =
 (* called after parsing options *)
 let fpat_init2 () =
   let open Fpat in
-  Global.target_filename := !!Flag.mainfile;
+  Global.target_filename := !Flag.mainfile;
   SMTProver.cvc3_command := !Flag.cvc3;
   SMTProver.initialize ()
 
@@ -707,9 +726,10 @@ let () =
   else
     try
       init_before_parse_arg ();
-      let cin = parse_arg () in
-      init_after_parse_arg ();
+      parse_arg ();
       if not !!is_only_result then print_env true false;
+      let cin = open_input_file () in
+      init_after_parse_arg ();
       if main cin then decr Flag.Log.cegar_loop;
       Fpat.SMTProver.finalize ();
       print_info ()
