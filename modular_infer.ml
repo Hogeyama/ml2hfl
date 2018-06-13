@@ -834,7 +834,7 @@ let trans_CPS env funs t =
     |> CPS.trans_as_direct
   in
   Debug.printf "trans_CPS t': %a@." Print.term t';
-  Type_check.check t' Ty.unit;
+  Type_check.check t';
   let t'',make_get_rtyp_pair = Curry.remove_pair_direct t' in
   Debug.printf "trans_CPS t'': %a@." Print.term t'';
   let env',t_main =

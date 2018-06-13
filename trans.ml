@@ -830,7 +830,7 @@ let rec inlined_f inlined fs t =
   in
   {t with desc}
 
-let inlined_f inlined t = inlined_f inlined [] t |@> Type_check.check ~ty:Ty.unit
+let inlined_f inlined t = inlined_f inlined [] t |@> Type_check.check
 
 
 
@@ -1963,10 +1963,10 @@ let copy_poly_funs =
     let map,t' = fld.fld_term [] t in
     let t'' =
       t'
-      |@> Type_check.check ~ty:Ty.unit
+      |@> Type_check.check
       |> flatten_tvar
       |> inline_var_const
-      |@> Type_check.check ~ty:Ty.unit
+      |@> Type_check.check
       |> inst_tvar Ty.int
     in
     let make_get_rtyp get_rtyp f =

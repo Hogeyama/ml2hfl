@@ -54,7 +54,7 @@ let print fm (constrs:t) =
 let print_one_sol fm (p,(xs,atoms)) = Format.fprintf fm "@[%a := %a@]" print_atom (PApp(p,xs)) (List.print print_atom) atoms
 let print_sol fm sol = List.print print_one_sol fm sol
 
-let check_type_atom a = try Type_check.check (term_of_atom a) Ty.bool with _ -> Format.printf "UNTYPABLE: %a@." Print.term' @@ term_of_atom a ;assert false
+let check_type_atom a = try Type_check.check (term_of_atom a) ~ty:Ty.bool with _ -> Format.printf "UNTYPABLE: %a@." Print.term' @@ term_of_atom a ;assert false
 let check_type_constr {head;body} = List.iter check_type_atom (head::body)
 let check_type_constrs = List.iter check_type_constr
 

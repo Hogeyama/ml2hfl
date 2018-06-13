@@ -166,4 +166,4 @@ let rec check env t typ =
       Format.eprintf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false
 
-let check t ~ty = if Flag.Debug.check_typ then check [] t ty
+let check ?(ty=Ty.unit) t = if Flag.Debug.check_typ then check [] t ty

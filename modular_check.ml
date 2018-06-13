@@ -313,7 +313,7 @@ let check prog f typ depth =
       |> make_lets fun_env'
       |> add_preds
       |@> Debug.printf "  t with def: %a@.@." Print.term_typ
-      |@> Type_check.check ~ty:Ty.unit
+      |@> Type_check.check
       |> Trans.map_main Term.(seq -$- eod) (* ??? *)
       |> Problem.safety
       |@> Debug.printf "Problem: %a@.@." Problem.print

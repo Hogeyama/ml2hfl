@@ -464,7 +464,7 @@ let trans_opt t =
   let t' = Trans.subst_let_xy t' in
 *)
   if false then Format.printf "abst_list::@. @[%a@.@." Print.term t';
-  Type_check.check t' ~ty:Ty.unit;
+  Type_check.check t';
   t', fun _ _ -> raise Not_found
 
 

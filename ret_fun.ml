@@ -234,7 +234,7 @@ let trans t = t
   |@> Debug.printf "inline_var_const:@.%a@.@." Print.term
   |> Trans.flatten_let
   |@> Debug.printf "flatten_let:@.%a@.@." Print.term
-  |@> Type_check.check ~ty:Ty.unit
+  |@> Type_check.check
   |> add_proj_info
   |@> Debug.printf "add_proj_info:@.%a@.@." Print.term
   |> trans.tr2_term []
@@ -245,7 +245,7 @@ let trans t = t
   |@> Debug.printf "remove_label:@.%a@.@." Print.term_typ
   |> Trans.flatten_tuple
   |@> Debug.printf "flatten_tuple:@.%a@.@." Print.term_typ
-  |@> Type_check.check ~ty:Ty.unit
+  |@> Type_check.check
   |*> Trans.inline_no_effect
   |> Trans.inline_var_const
   |@> Debug.printf "inline_var_const:@.%a@.@." Print.term_typ
@@ -258,7 +258,7 @@ let trans t = t
   |@> Debug.printf "beta_var_tuple:@.%a@.@." Print.term
   |> Trans.reduce_bottom
   |@> Debug.printf "%a:@.%a@.@." Color.s_red "reduce_bottom" Print.term
-  |@> Type_check.check ~ty:Ty.unit
+  |@> Type_check.check
 
 let trans t =
   trans t, fun _ _ -> raise Not_found

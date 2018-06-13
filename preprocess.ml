@@ -275,7 +275,7 @@ let rec trans_and_print
         if !!Debug.check then
           let t = Problem.term prog' in
           try
-            Type_check.check t t.Syntax.typ
+            Type_check.check t ~ty:t.Syntax.typ
           with e ->
             Format.eprintf "@.%s@." @@ Printexc.to_string e;
             Format.eprintf "%a@.@." Print.term' t;
