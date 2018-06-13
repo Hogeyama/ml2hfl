@@ -260,6 +260,18 @@ let from_ident_aux name binding_time attr typ =
 (*
   let name = wrap_letters_with_sign name in
  *)
+(*
+  let name,binding_time =
+    match String.split_on_char '_' name with
+    | [] -> assert false
+    | [_] -> name, 0
+    | ss ->
+        try
+          let names,id = List.decomp_snoc ss in
+          String.join "_" names, int_of_string id
+        with Failure _ | Invalid_argument _ -> name, 0
+  in
+ *)
   let name = if name.[0] = '_' then "u" ^ name else name in
   let name =
     if name.[0] = '*' && name.[String.length name - 1] = '*' then

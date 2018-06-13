@@ -1237,7 +1237,7 @@ let get_max_var_id =
   let col = make_col (-1) max in
   let col_id_term t =
     match t.desc with
-    | Var x -> Id.id x
+    | Var x -> max (Id.id x) (Id.id @@ Id.from_string (Id.name x) typ_unknown)
     | _ -> col.col_term_rec t
   in
   col.col_term <- col_id_term;

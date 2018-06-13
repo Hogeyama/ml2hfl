@@ -24,6 +24,7 @@ let (!!) f = f ()
 let (-|) f g x = f (g x)
 let (|-) f g x = g (f x)
 let (|@>) x f = f x; x
+let (|@-) f g x = f x |@> g
 let (|*>) x f = x
 let (|*@>) x f = x
 let (|@*>) x f = x
