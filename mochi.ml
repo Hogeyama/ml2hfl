@@ -562,7 +562,9 @@ let read_option_conf () =
   | End_of_file -> ()
 
 let make_temp_file () =
-  let template = Format.asprintf "/tmp/mochi_%a_XXXXXXXX.ml" Time.print_simple !!Unix.time in
+  let dir = "/tmp/mochi" in
+  let template = Format.asprintf "%s/%a_XXXXXXXX.ml" dir Time.print_simple !!Unix.time in
+  (try Unix.mkdir dir 0o755 with Unix.Unix_error(Unix.EEXIST, _, _) -> ());
   Unix.CPS.open_process_in ("mktemp " ^ template) input_line
   |@> Verbose.printf "Temporary file \"%s\" is created@.@."
 

@@ -103,15 +103,15 @@ let normalize add_id t =
   |@> Debug.printf "NORMALIZE6: %a@.@." Print.term
   |> fixed_point ~eq:same_term
        (Trans.inline_var
-        |@- Format.printf "NORMALIZE6.1: %a@.@." Print.term
+        |@- Debug.printf "NORMALIZE6.1: %a@.@." Print.term
         |- Trans.inline_simple_exp
-        |@- Format.printf "NORMALIZE6.2: %a@.@." Print.term
+        |@- Debug.printf "NORMALIZE6.2: %a@.@." Print.term
         |- Trans.bool_eta_reduce
-        |@- Format.printf "NORMALIZE6.3: %a@.@." Print.term
+        |@- Debug.printf "NORMALIZE6.3: %a@.@." Print.term
         |- Trans.reconstruct
-        |@- Format.printf "NORMALIZE6.4: %a@.@." Print.term
+        |@- Debug.printf "NORMALIZE6.4: %a@.@." Print.term
         |- Trans.elim_unused_let ~leave_last:true
-        |@- Format.printf "NORMALIZE6.5: %a@.@." Print.term)
+        |@- Debug.printf "NORMALIZE6.5: %a@.@." Print.term)
   |@> Debug.printf "NORMALIZE7: %a@.@." Print.term
   |> Trans.add_id_if (function {desc=If _} -> add_id | _ -> false)
   |> snd

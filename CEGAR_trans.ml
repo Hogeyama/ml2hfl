@@ -295,7 +295,8 @@ and trans_term post xs env t =
         | Type.TBase Type.TUnit -> EqUnit
         | Type.TBase Type.TBool -> EqBool
         | Type.TBase Type.TInt -> EqInt
-        | Type.TData typ -> CmpPoly(typ, "=")
+        | Type.TBase (Type.TPrim ty) -> CmpPoly(ty, "=")
+        | Type.TData ty -> CmpPoly(ty, "=")
         | typ -> Format.eprintf "trans_term: %a@." Print.typ typ; assert false
       in
       defs1@defs2, make_app (Const op) [t1'; t2']
@@ -341,7 +342,8 @@ let rec formula_of t =
         | Type.TBase Type.TUnit -> EqUnit
         | Type.TBase Type.TBool -> EqBool
         | Type.TBase Type.TInt -> EqInt
-        | Type.TData typ -> CmpPoly(typ, "=")
+        | Type.TBase (Type.TPrim ty) -> CmpPoly(ty, "=")
+        | Type.TData ty -> CmpPoly(ty, "=")
         | _ -> Format.eprintf "%a@." Print.typ t1.S.typ; assert false
       in
       make_app (Const op) [t1'; t2']
