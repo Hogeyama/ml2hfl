@@ -1145,12 +1145,7 @@ let rec trans_ref_typ is_CPS typ =
       let typ1' = trans_ref_typ is_CPS typ1 in
       let typ2' = trans_ref_typ is_CPS typ2 in
       let r = Id.new_var @@ to_simple typ2' in
-      let ret_typ =
-        if is_CPS then
-          typ_result
-        else
-          Base(TUnit, Id.new_var Ty.unit, true_term)
-      in
+      let ret_typ = if is_CPS then typ_result else !!Ty.unit in
       let typ' = Fun(r, typ2', ret_typ) in
       let k = Id.new_var @@ to_simple typ' in
       Fun(x', typ1', Fun(k, typ', ret_typ))
@@ -1176,12 +1171,7 @@ let rec trans_ref_typ is_CPS typ =
       let typ2' = trans_ref_typ is_CPS typ2 in
       let r1 = Id.new_var @@ to_simple typ1' in
       let r2 = Id.new_var @@ to_simple typ2' in
-      let ret_typ =
-        if is_CPS then
-          typ_result
-        else
-          Base(TUnit, Id.new_var Ty.unit, true_term)
-      in
+      let ret_typ = if is_CPS then typ_result else !!Ty.unit in
       let typ_k = Fun(r1, typ1', ret_typ) in
       let typ_h = Fun(r2, typ2', ret_typ) in
       let k = Id.new_var @@ to_simple typ_k in

@@ -865,6 +865,9 @@ module Time = struct
   let string_of_tm_simple {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
     Format.sprintf "%04d%02d%02d%02d%02d%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec
 
+  let string_of_current_local () =
+    string_of_tm @@ Unix.localtime !!Unix.time
+
   let print fm t =
     Format.pp_print_string fm @@ string_of_tm @@ Unix.localtime t
 

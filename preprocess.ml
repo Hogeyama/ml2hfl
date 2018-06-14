@@ -119,8 +119,14 @@ let get_rtyp_id get_rtyp f = get_rtyp f
 let cond_trans b (tr:tr) x : tr_result list option = if b then tr x else None
 let map_trans (tr:Problem.t->Problem.t) r : tr_result list option = Some [tr r, get_rtyp_id]
 
+let assoc label pps =
+  List.find ((=) label -| fst) pps
+
 let before label (pps:t list) =
   List.takewhile ((<>) label -| fst) pps
+
+let before_and label (pps:t list) =
+  List.takewhile ((<>) label -| fst) pps @ [assoc label pps]
 
 let and_after label (pps:t list) =
   List.dropwhile ((<>) label -| fst) pps

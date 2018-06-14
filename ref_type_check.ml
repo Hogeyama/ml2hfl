@@ -42,6 +42,7 @@ let simple_expr_ty t =
 
 let rec lift_ty env ?np sty =
   match sty with
+  | TData _ when sty = typ_result -> RT.typ_result
   | TBase base ->
       let x = Id.new_var sty in
       let base_env = to_base_env env in
@@ -110,9 +111,12 @@ let print_constrs fm cs =
 
 let const_ty c =
   match c with
-  | Unit -> RT.make_base TUnit
+  | Unit -> !!RT.Ty.unit
+  | CPS_result -> RT.Ty.result
   | RandValue(TBase TInt, false) ->
-      RT.make_fun (RT.make_base TUnit) (RT.make_base TInt)
+      RT.Ty.(fun_ !!unit !!int)
+  | RandValue(TBase TInt, true) ->
+      RT.Ty.(fun_ !!unit (fun_ (fun_ !!int result) result))
   | _ ->
       Format.printf "c: %a@." Print.const c;
       assert false
@@ -156,8 +160,8 @@ let rec gen_sub env t ty : sub_constr list =
       List.flatten @@ List.map2 (gen_sub env) (t1::ts) (t1_ty::tys)
   | If(t1,t2,t3) when is_simple_expr t1 ->
       let y = Id.new_var Ty.int in
-      let env2 = RT.Env.add y (RT.Base(TInt, y, t1)) env in
-      let env3 = RT.Env.add y (RT.Base(TInt, y, make_not t1)) env in
+      let env2 = RT.(Env.add y (Ty.int ~pred:t1 ()) env) in
+      let env3 = RT.(Env.add y (Ty.int ~pred:(make_not t1) ()) env) in
       gen_sub env2 t2 ty @ gen_sub env3 t3 ty
   | If(t1,t2,t3) ->
       let x = Id.new_var Ty.bool in
@@ -178,9 +182,11 @@ let rec gen_sub env t ty : sub_constr list =
       let x = new_var_of_term t1 in
       gen_sub env Term.(let_ [x,t1] (not (var x))) ty
   | Event("fail",false) ->
-      let x = Id.new_var Ty.unit in
-      let aty = RT.Fun(x, RT.Base(TUnit, x, Term.false_), RT.Base(TUnit, x, Term.false_)) in
+      let aty = RT.Ty.(fun_ (unit ~pred:Term.false_ ()) !!unit) in
       [env, (aty, ty)]
+  | Event("fail",true) ->
+      let aty = RT.Ty.(fun_ (unit ~pred:Term.false_ ()) @@ fun_ (fun_ !!unit result) result) in
+      [env, (aty, ty)];
   | Tuple ts when List.for_all is_var ts ->
       let aty =
         let xs = List.map (Option.get -| decomp_var) ts in

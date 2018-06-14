@@ -24,7 +24,7 @@ val union : Syntax.typ -> t list -> t
 val top : Syntax.typ -> t
 val bottom : Syntax.typ -> t
 val make_fun : t -> t -> t
-val make_base : Type.base -> t
+val make_base : ?pred:Syntax.term -> Type.base -> t
 
 
 (** {6 Destructor} *)
@@ -83,3 +83,13 @@ val subtype : t -> t -> bool
 val suptype : t -> t -> bool
 val equiv : t -> t -> bool
 val split_inter : t -> t list
+
+
+module Ty : sig
+  val result : t
+  val unit : ?pred:Syntax.term -> unit -> t
+  val bool : ?pred:Syntax.term -> unit -> t
+  val int : ?pred:Syntax.term -> unit -> t
+  val base : ?pred:Syntax.term -> Type.base -> t
+  val fun_ : t -> t -> t
+end

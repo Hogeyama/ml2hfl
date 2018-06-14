@@ -225,7 +225,7 @@ let main_quick_check spec t =
 let print_ref_constr spec t =
   let t' =
     t
-    |> Preprocess.(run_on_term (before CPS @@ all spec))
+    |> Preprocess.(run_on_term (before_and CPS (all spec)))
     |> Trans.alpha_rename ~whole:true
   in
   let ty = Ref_type.of_simple t'.Syntax.typ in

@@ -368,7 +368,7 @@ let rec to_simple ?(with_pred=false) typ =
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
   | Exn(typ1, _) -> to_simple ~with_pred typ1
 
-let make_base base = Base(base, Id.new_var (Type.TBase base), U.true_term)
+let make_base ?(pred=U.true_term) base = Base(base, Id.new_var (Type.TBase base), pred)
 let make_fun ty1 ty2 = Fun(Id.new_var @@ to_simple ty1, ty1, ty2)
 
 let rec set_base_var x = function
@@ -778,3 +778,12 @@ let rec has_inter_union ty =
   | ExtArg(_, ty1, ty2) -> has_inter_union ty1 || has_inter_union ty2
   | List(_,_,_,_,ty') -> has_inter_union ty'
   | Exn(ty1,ty2) -> has_inter_union ty1 || has_inter_union ty2
+
+module Ty = struct
+  let result = typ_result
+  let base = make_base
+  let unit ?pred () = base ?pred TUnit
+  let bool ?pred () = base ?pred TBool
+  let int ?pred () = base ?pred TInt
+  let fun_ = make_fun
+end
