@@ -75,7 +75,7 @@ let rec insertExparam scope expr =
     | Local(Decl_let bindings, e) ->
       let rec extend sc = function
 	| [] -> sc
-	| (x, body) :: bs when (Id.typ x) = Ty.int -> extend (x :: sc) bs
+	| (x, body) :: bs when (Id.typ x) = Ty.int && List.for_all Util.(fst |- Id.(<>) x) bindings -> extend (x :: sc) bs
 	| _ :: bs -> extend sc bs
       in
       let scope = extend scope bindings in

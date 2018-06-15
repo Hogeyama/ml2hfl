@@ -938,10 +938,15 @@ let save_smtlib2 filename hcs =
              (HornClause.formula_of
               >> Formula.bnot
               >> CunFormula.sexp_of
-              >> Format.fprintf ocf
-                "(assert (not (exists (%a) %a)))@,"
-                (List.pr String.pr "") vs
-                String.pr)
+              >> (if vs = [] then
+                    Format.fprintf ocf
+                    "(assert (not %a))@,"
+                    String.pr
+                  else
+                    Format.fprintf ocf
+                    "(assert (not (exists (%a) %a)))@,"
+                    (List.pr String.pr "") vs
+                    String.pr))
              (HornClause.formula_of
               >> (CunFormula.sexp_of ~smt2:true)
               >> Format.fprintf ocf
