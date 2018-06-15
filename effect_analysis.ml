@@ -101,7 +101,7 @@ let rec flatten_sub ?(ignore_top=false) env ty1 ty2 =
       assert false
   | TFuns _, _ -> unsupported __MODULE__
   | TTuple xs1, TTuple xs2 ->
-      List.iter2 (fun x1 x2 -> flatten_sub env (Id.typ x2) (Id.typ x1)) xs1 xs2
+      List.iter2 (fun x1 x2 -> flatten_sub env (Id.typ x1) (Id.typ x2)) xs1 xs2
   | TTuple _, _ -> assert false
   | TData _, _ -> unsupported __MODULE__
   | TVariant _, _ -> unsupported __MODULE__
@@ -228,13 +228,21 @@ let rec gen_constr env tenv t =
       let ts' = List.map (gen_constr env tenv) ts in
       let ty = make_template env t.typ in
       let e = effect_of_typ ty in
+      let ty' = make_ttuple @@ List.map Syntax.typ ts' in
+      flatten_sub ~ignore_top:true env ty' ty;
       List.iter (fun t -> env.constraints <- (effect_of t, e) :: env.constraints) ts';
       set_effect e @@ {desc=Tuple ts'; typ=ty; attr=t.attr}
   | TryWith(t1, t2) ->
       let t1' = gen_constr env tenv t1 in
       let t2' = gen_constr env tenv t2 in
       let ty = make_template env t2.typ in
-      let ty_exn, ty' = match elim_tattr ty with TFun(x,ty') -> Id.typ x, ty' | _ -> Format.printf "ty: %a@." Print.typ ty; assert false in
+      let ty_exn, ty' =
+        match elim_tattr ty with
+        | TFun(x,ty') -> Id.typ x, ty'
+        | _ ->
+            Format.eprintf "ty: %a@." Print.typ ty;
+            assert false
+      in
       let e = effect_of_typ ty in
       flatten_sub env t1'.typ ty';
       flatten_sub env t2'.typ ty;
@@ -367,11 +375,13 @@ let mark =
           List.fold_left aux (0,None) xs
         in
         begin
+          let n = List.length xs in
           match last with
-          | None -> TTuple (List.map (Id.map_typ mark) xs)
+          | None -> TTuple (List.mapi (fun i x -> if i+1<n then Id.map_typ mark x else x) xs)
           | Some i ->
               let aux (acc,b,j) x =
-                let x' = if b && is_base_var x then mark_id x else Id.map_typ mark x in
+                let j' = j + 1 in
+                let x' = if b && is_base_var x && j'<n then mark_id x else Id.map_typ mark x in
                 let b' = b || j <= i in
                 acc@[x'], b', j+1
               in
@@ -391,7 +401,7 @@ let mark =
 let mark_safe_fun_arg t =
   t
   |> infer
-  |@> Debug.printf "INFERRED: %a@." Print.term_typ
+  |@> Debug.printf "INFERRED: %a@." Print.term'
   |> mark
   |> Trans.remove_effect_attribute
   |> Trans.reconstruct
