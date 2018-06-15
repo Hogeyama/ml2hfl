@@ -1,25 +1,25 @@
 let rec app (_:bool) (_:int) (_:int) (_:bool) (_:int)
-           (f:(bool -> int -> int -> unit)) (set_flag_up_94:bool)
-           (s_up_x_91:int) (x:int) = f set_flag_up_94 s_up_x_91 x
-and down (set_flag_up_94:bool) (s_up_x_91:int) (x:int) =
-  if x = 0 then () else down set_flag_up_94 s_up_x_91 (x - 1)
-and up (prev_set_flag_up_93:bool) (s_prev_up_x_92:int) (x:int) =
-  if prev_set_flag_up_93
+           (f:(bool -> int -> int -> unit)) (set_flag_up_86:bool)
+           (s_up_x_83:int) (x:int) = f set_flag_up_86 s_up_x_83 x
+and down (set_flag_up_86:bool) (s_up_x_83:int) (x:int) =
+  if x = 0 then () else down set_flag_up_86 s_up_x_83 (x - 1)
+and up (prev_set_flag_up_85:bool) (s_prev_up_x_84:int) (x:int) =
+  if prev_set_flag_up_85
   then
-    if -s_prev_up_x_92 > -x && -x >= 0 then () else assert false;
-  up_without_checking_120
-    prev_set_flag_up_93 s_prev_up_x_92 x
-and up_without_checking_120 (_:bool) (_:int) (x:int) =
-  let set_flag_up_94 = true
+    if -s_prev_up_x_84 > -x && -x >= 0 then () else assert false;
+  up_without_checking_112
+    prev_set_flag_up_85 s_prev_up_x_84 x
+and up_without_checking_112 (_:bool) (_:int) (x:int) =
+  let set_flag_up_86 = true
   in
-  let s_up_x_91 = x
+  let s_up_x_83 = x
   in
   if x = 0
   then
     ()
   else
-    up set_flag_up_94 s_up_x_91 (x + 1)
-let main (set_flag_up_94:bool) (s_up_x_91:int) (():unit) =
+    up set_flag_up_86 s_up_x_83 (x + 1)
+let main (set_flag_up_86:bool) (s_up_x_83:int) (():unit) =
   let t1 = Random.int 0
   in
   let t2 = Random.int 0
@@ -27,16 +27,12 @@ let main (set_flag_up_94:bool) (s_up_x_91:int) (():unit) =
   if t1 > 0
   then
     app
-      set_flag_up_94 s_up_x_91
-      (0 * t2 + (0 * t2 + (0 * t1 + (0 * t1 + 0))))
-      set_flag_up_94 s_up_x_91 down set_flag_up_94 s_up_x_91
-      t1
+      set_flag_up_86 s_up_x_83 0 set_flag_up_86 s_up_x_83
+      down set_flag_up_86 s_up_x_83 t1
   else
     (if t2 < 0
      then
        app
-         set_flag_up_94 s_up_x_91
-         (0 * t2 + (0 * t2 + (0 * t1 + (0 * t1 + 0))))
-         set_flag_up_94 s_up_x_91 up_without_checking_120
-         set_flag_up_94 s_up_x_91 t2)
-let u_4886 = main false 0 ()
+         set_flag_up_86 s_up_x_83 0 set_flag_up_86 s_up_x_83
+         up_without_checking_112 set_flag_up_86 s_up_x_83 t2)
+let u_4598 = main false 0 ()
