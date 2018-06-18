@@ -342,8 +342,15 @@ let rec arg_spec () =
      "-print-ref-constr",
        Arg.Unit (fun () -> Flag.Method.(mode := PrintRefConstr);
                            Flag.PredAbst.shift_pred := true;
+                           Ref_type_check.use_simplification := false;
                            set_only_result ()),
-       " Just print constraints for refinement types";
+       " Just print constraints for refinement types without simplification";
+     "-print-ref-constr-simpl",
+       Arg.Unit (fun () -> Flag.Method.(mode := PrintRefConstr);
+                           Flag.PredAbst.shift_pred := true;
+                           Ref_type_check.use_simplification := true;
+                           set_only_result ()),
+       " Just print constraints for refinement types with simplification";
      "-use-temp", Arg.Set Flag.use_temp, " Use temporary files for intermediate/log files";
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";

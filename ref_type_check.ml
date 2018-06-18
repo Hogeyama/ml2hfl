@@ -10,6 +10,8 @@ exception Ref_type_not_found
 
 type sub_constr = RT.env * (RT.t * RT.t)
 
+let use_simplification = ref false
+
 let to_base_env env =
   let rec aux (x,ty) =
     match ty with
@@ -296,6 +298,7 @@ let wrap_id constrs =
   List.map (fun (ts,t) -> List.map wrap ts, wrap t) constrs
 
 
+
 let gen_hcs env t ty =
   let ty = RT.rename ~full:true ty in
   let env = RT.Env.map_value (RT.rename ~full:true) env in
@@ -307,13 +310,13 @@ let gen_hcs env t ty =
   |@> Debug.printf "Subtyping constraints:@.  @[%a@.@." print_sub_constrs
   |> List.flatten_map (Fun.uncurry flatten)
   |@> Debug.printf "Constraints:@.  @[%a@.@." print_constrs
-  |> (CHC.of_term_list |- CHC.simplify ~normalized:true |- snd |- CHC.to_term_list)
+  |&!use_simplification&> (CHC.of_term_list |- CHC.simplify ~normalized:true |- snd |- CHC.to_term_list)
   |> wrap_id
-  |@> Debug.printf "Simplified:@.  @[%a@.@." print_constrs
+  |@!use_simplification&> Debug.printf "Simplified:@.  @[%a@.@." print_constrs
   |> FpatInterface.to_hcs
   |@> Debug.printf "Constraints:@.  @[%a@.@." Fpat.HCCS.pr
-  |> Fpat.HCCS.simplify_full []
-  |@> Debug.printf "Simplified by Fpat:@.  @[%a@.@." Fpat.HCCS.pr
+  |&!use_simplification&> Fpat.HCCS.simplify_full []
+  |@!use_simplification&> Debug.printf "Simplified by Fpat:@.  @[%a@.@." Fpat.HCCS.pr
   |*@> Fpat.HCCS.save_graphviz "test.dot"
 
 let check env t ty =
