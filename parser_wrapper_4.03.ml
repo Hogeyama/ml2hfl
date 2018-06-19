@@ -413,12 +413,15 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
   | Var {Id.name="Pervasives./"}, [t1;t2] ->
       let t2' =
-        let make_check t = make_seq (make_assert (make_neq t @@ make_int 0)) t in
-        if has_no_effect t2 then
-          make_check t2
+        if !Flag.Method.check_div_operand then
+          let make_check t = make_seq (make_assert (make_neq t @@ make_int 0)) t in
+          if has_no_effect t2 then
+            make_check t2
+          else
+            let x = Id.new_var Ty.int in
+            make_let [x,t2] @@ make_check @@ make_var x
         else
-          let x = Id.new_var Ty.int in
-          make_let [x,t2] @@ make_check @@ make_var x
+          t2
       in
       make_div t1 t2'
   | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
