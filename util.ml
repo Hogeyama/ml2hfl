@@ -509,6 +509,11 @@ module List = struct
         let n = List.length xs in
         init n (fun i -> init m (fun j -> List.nth (nth xss j) i))
 
+  let rec is_unique ?(eq=(=)) xs =
+    match xs with
+    | [] | [_] -> true
+    | x::xs' -> List.for_all (not -| eq x) xs' && is_unique xs'
+
   module Set = struct
     let diff ?(eq=(=)) l1 l2 = filter_out (mem ~eq -$- l2) l1
     let inter ?(eq=(=)) l1 l2 = filter (mem ~eq -$- l2) l1

@@ -147,9 +147,6 @@ let all spec : t list =
       map_trans unify_app;
     Mark_fv_as_external,
       map_trans mark_fv_as_external;
-    Alpha_rename,
-      cond_trans Flag.Method.(!mode <> Termination) @@
-      map_trans @@ alpha_rename ~set_counter:true;
     Eliminate_unused_let,
       map_trans @@ elim_unused_let ~leave_last:true;
     Encode_bool_as_int,

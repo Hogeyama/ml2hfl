@@ -19,7 +19,7 @@ module TRecS = struct
 end
 
 module Method = struct
-  type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | PrintRefConstr
+  type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | PrintRefConstr | Trans
   let mode = ref Reachability
   let input_cegar = ref false
   let nondet = ref false (* eager evaluation for branch *)
@@ -96,6 +96,28 @@ module Log = struct
 
   let output_csv : string option ref = ref None
   let output_json : string option ref = ref None
+end
+
+module Trans = struct
+  type destination = Before_CPS | CPS | CHC
+
+  let destination = ref CPS
+
+  let destinations =
+    ["Before_CPS", (Before_CPS, "ML program before CPS transformation (ADT is encoded)");
+     "CPS", (CPS, "ML program after CPS transformation");
+     "CHC", (CHC, "CHC for refinement types")]
+
+  let string_of_destinations () =
+    List.fold_left (fun acc (s,(_,desc)) -> acc ^ Format.sprintf "%s: %s\n" s desc) "" destinations
+
+  let set_trans s =
+    Method.(mode := Trans);
+    try
+      let dest,_ = List.assoc s destinations in
+      destination := dest
+    with Not_found ->
+      raise @@ Arg.Bad (Format.sprintf "Invalaid argument of -trans")
 end
 
 (** TODO merge with Method *)

@@ -207,6 +207,8 @@ let rec print occur print_pred fm typ =
             else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print' (Id.typ x) aux (xs',typ)
       in
       Format.fprintf fm "(%a)" aux (xs, typ)
+  | TTuple [] -> (* TODO: fix *)
+      Format.fprintf fm "unit"
   | TTuple xs ->
       let pr fm x =
         if occur x typ then Format.fprintf fm "%a:" Id.print x;
@@ -214,15 +216,15 @@ let rec print occur print_pred fm typ =
       in
       Format.fprintf fm "(@[<hov 2>%a@])" (print_list pr "@ *@ ") xs
   | TData s -> Format.pp_print_string fm s
+  | TAttr(attrs, ty) when !print_as_ocaml -> print' fm ty
   | TAttr([], typ) -> print' fm typ
   | TAttr(TAPred(x,ps)::preds, typ) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (TAttr(preds,typ)) Id.print x print_preds ps
-  | TAttr([TAPureFun], (TFun(x,typ) as ty)) ->
-      if !print_as_ocaml then
-        print' fm ty
-      else
-        if occur x typ
-        then Format.fprintf fm "(@[<hov 2>%a:%a -+>@ %a@])" Id.print x print' (Id.typ x) print' typ
-        else Format.fprintf fm "(@[<hov 2>%a -+>@ %a@])" print' (Id.typ x) print' typ
+  | TAttr([TAPureFun], (TFun(x,typ))) ->
+      let pr_arg fm x = if occur x typ then Format.printf "%a:" Id.print x in
+      Format.fprintf fm "(@[<hov 2>%a%a -*>@ %a@])" pr_arg x print' (Id.typ x) print' typ
+  | TAttr([TASafeFun], (TFun(x,typ))) ->
+      let pr_arg fm x = if occur x typ then Format.printf "%a:" Id.print x in
+      Format.fprintf fm "(@[<hov 2>%a%a -+>@ %a@])" pr_arg x print' (Id.typ x) print' typ
   | TAttr([TAEffect e], typ) ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
   | TAttr(TARefPred(x,p)::attrs, ty) ->

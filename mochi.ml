@@ -232,6 +232,24 @@ let print_ref_constr spec t =
   let env = Ref_type.Env.empty in
   Ref_type_check.print stdout env t' ty
 
+let main_trans spec t =
+  let pps =
+    let open Flag.Trans in
+    let pps_all = Preprocess.all spec in
+    match !destination with
+    | Before_CPS -> Preprocess.(before CPS pps_all)
+    | CPS -> Preprocess.(before_and CPS pps_all)
+    | CHC -> unsupported "-trans CHC. Use -print-ref-constr insted"
+  in
+  Type.set_print_as_ocaml();
+  t
+  |> Preprocess.(run_on_term pps)
+  |> Trans.remove_unambiguous_id
+  |> Trans.replace_typ_result_with_unit
+  |> Trans.rename_for_ocaml
+  |> Format.printf "%a@." Print.as_ocaml_typ;
+  exit 0
+
 let main cin =
   let input_string =
     let s = IO.input_all cin in
@@ -276,6 +294,8 @@ let main cin =
         Format.eprintf "%s@." (Printexc.to_string e);
         Format.printf ")@.(get-proof)@."; (* for hoice *)
         exit 1
+    else if Flag.Method.(!mode = Trans) then
+        main_trans spec parsed
     else if !Flag.Method.quick_check then
       main_quick_check spec parsed
     else if !Flag.Method.split_assert then
@@ -352,6 +372,12 @@ let rec arg_spec () =
                            set_only_result ()),
        " Just print constraints for refinement types with simplification";
      "-use-temp", Arg.Set Flag.use_temp, " Use temporary files for intermediate/log files";
+     "-trans",
+       Arg.String (fun s -> Flag.Method.(mode := Trans);
+                            Flag.Trans.set_trans s;
+                            set_only_result ()),
+       Format.asprintf "<desc>  Translate the input to <dest> which must be one of the following:\n%s"
+                       !!Flag.Trans.string_of_destinations;
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
@@ -564,7 +590,7 @@ let read_option_conf () =
     Flag.Log.args := !Flag.Log.args @ args
   with
   | Arg.Bad s
-  | Arg.Help s -> Format.printf "%s@." s; exit 1
+  | Arg.Help s -> Format.eprintf "%s@." s; exit 1
   | Sys_error _
   | End_of_file -> ()
 

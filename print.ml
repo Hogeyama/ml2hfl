@@ -100,9 +100,11 @@ and print_const cfg fm c =
   | Int32 n -> fprintf fm "%ldl" n
   | Int64 n -> fprintf fm "%LdL" n
   | Nativeint n -> fprintf fm "%ndn" n
+  | CPS_result when cfg.as_ocaml -> fprintf fm "()"
   | CPS_result -> fprintf fm "{end}"
   | RandValue(TBase TInt,false) when cfg.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
   | RandValue(TBase TInt,false) -> fprintf fm "rand_int"
+  | RandValue(TBase TInt,true) when cfg.as_ocaml -> fprintf fm "(fun () k -> k (Random.int 0))"
   | RandValue(TBase TInt,true) -> fprintf fm "rand_int_cps"
   | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
   | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
@@ -288,6 +290,7 @@ and print_desc cfg pri attr fm desc =
       let s1,s2 = paren pri p in
       fprintf fm "%s@[not@ %a@]%s" s1 (pr_t p) t s2
   | Event(s,false) -> fprintf fm "<%s>" s
+  | Event("fail",true) when cfg.as_ocaml -> fprintf fm "(fun () _ -> assert false)"
   | Event(s,true) -> fprintf fm "<|%s|>" s
   | Record fields ->
       let aux fm (s,t) = fprintf fm "%s=%a" s (pr_t 0) t in

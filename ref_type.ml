@@ -782,8 +782,8 @@ let rec has_inter_union ty =
 module Ty = struct
   let result = typ_result
   let base = make_base
-  let unit ?pred () = base ?pred TUnit
-  let bool ?pred () = base ?pred TBool
-  let int ?pred () = base ?pred TInt
+  let unit ?pred () = base ?pred Type.TUnit
+  let bool ?pred () = base ?pred Type.TBool
+  let int ?pred () = base ?pred Type.TInt
   let fun_ = make_fun
 end

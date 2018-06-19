@@ -63,6 +63,10 @@ val split_mutual_rec : ?only_top:bool -> term -> term
 val get_set_main : term -> id option
 val abst_literal : term -> term
 val encode_bool_as_int : term -> term
+val remove_unambiguous_id : term -> term
+val replace_typ_result_with_unit : term -> term
+val rename_for_ocaml : term -> term
+val remove_tattr : term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc

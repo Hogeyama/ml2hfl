@@ -3117,3 +3117,69 @@ let encode_bool_as_int =
   tr.tr_typ <- tr_typ;
   tr.tr_desc <- tr_desc;
   tr.tr_term
+
+(* only for closed terms *)
+let remove_unambiguous_id =
+  let col = make_col2 [] (@) in
+  let col_term env t =
+    match t.desc with
+    | Var x ->
+        let x' = List.find (fun x' -> Id.name x' = Id.name x) env in
+        if Id.id x' = Id.id x' then [x] else []
+    | Fun(x, _) ->
+        let env' = x::env in
+        col.col2_term_rec env' t
+    | Local(Decl_let bindings as decl, t) ->
+        let env' = List.map fst bindings @ env in
+        col.col2_decl env' decl @ col.col2_term env' t
+    | Match _ -> unsupported "Trans.remove_unambiguous_id: Match"
+    | _ -> col.col2_term_rec env t
+  in
+  col.col2_term <- col_term;
+  fun t ->
+    let t' = alpha_rename ~whole:true t in
+    let xs = col.col2_term [] t' in
+    let bv = get_bv t' in
+    let xs' = List.Set.diff ~eq:Id.eq bv xs in
+    map_id (fun x -> if Id.mem x xs' then Id.set_id x 0 else x) t'
+
+let replace_typ_result_with_unit =
+  let tr = make_trans () in
+  let tr_typ typ =
+    if typ = typ_result then
+      Ty.unit
+    else
+      tr.tr_typ_rec typ
+  in
+  tr.tr_typ <- tr_typ;
+  tr.tr_term
+
+let rename_for_ocaml =
+  let reserved =
+    ["and";"as";"assert";"asr";"begin";"class";"constraint";"do";"done";"downto";
+     "else";"end";"exception";"external";"false";"for";"fun";"function";"functor";
+     "if";"in";"include";"inherit";"initializer";"land";"lazy";"let";"lor";"lsl";
+     "lsr";"lxor";"match";"method";"mod";"module";"mutable";"new";"nonrec";"object";
+     "of";"open";"or";"private";"rec";"sig";"struct";"then";"to";"true";"try";"type";
+     "val";"virtual";"when";"while";"with"]
+  in
+  let tr = make_trans () in
+  let tr_var x =
+    let s = String.sign_to_letters @@ Id.name x in
+    let s' =
+      if Char.is_uppercase s.[0] then
+        "_" ^ s
+      else if List.mem (Id.to_string x) reserved then
+        s ^ "_"
+      else
+        s
+    in
+    Id.set_name x s'
+  in
+  tr.tr_var <- tr_var;
+  tr.tr_term
+
+let remove_tattr =
+  let tr = make_trans () in
+  tr.tr_typ <- Type.elim_tattr_all;
+  tr.tr_term
