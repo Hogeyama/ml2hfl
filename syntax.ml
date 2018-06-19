@@ -1238,6 +1238,7 @@ let fold_tr_typ fld env ty =
             let env'',p' = fld.fld_term env' p in
             env'', TARefPred(x',p')
         | TAPureFun -> env, TAPureFun
+        | TASafeFun -> env, TASafeFun
         | TAEffect e -> env, TAEffect e
       in
       let env',attr' = fold_tr_list aux env attr in
