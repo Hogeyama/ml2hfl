@@ -424,7 +424,8 @@ let conv_primitive_app t ts typ =
           t2
       in
       if !Flag.Method.abst_div then
-        Term.(seq t1 (seq t2' randi))
+        (Flag.add_use_abst "abst_div";
+         Term.(seq t1 (seq t2' randi)))
       else
         Term.(t1 / t2')
   | Var {Id.name="Pervasives.~-"}, [t] -> Term.(~- t)
