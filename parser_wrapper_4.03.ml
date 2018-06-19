@@ -399,18 +399,18 @@ and from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
 let conv_primitive_app t ts typ =
   match t.desc,ts with
   | Var {Id.name="List.length"}, [t1] -> make_length t1
-  | Var {Id.name="Pervasives.@@"}, [t1;t2] -> make_app t1 [t2]
-  | Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
-  | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
-  | Var {Id.name="Pervasives.<"}, [t1;t2] -> make_lt t1 t2
-  | Var {Id.name="Pervasives.>"}, [t1;t2] -> make_gt t1 t2
-  | Var {Id.name="Pervasives.<="}, [t1;t2] -> make_leq t1 t2
-  | Var {Id.name="Pervasives.>="}, [t1;t2] -> make_geq t1 t2
-  | Var {Id.name="Pervasives.&&"}, [t1;t2] -> make_and t1 t2
-  | Var {Id.name="Pervasives.||"}, [t1;t2] -> make_or t1 t2
-  | Var {Id.name="Pervasives.+"}, [t1;t2] -> make_add t1 t2
-  | Var {Id.name="Pervasives.-"}, [t1;t2] -> make_sub t1 t2
-  | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
+  | Var {Id.name="Pervasives.@@"}, [t1;t2] -> Term.(t1 @ [t2])
+  | Var {Id.name="Pervasives.="}, [t1;t2] -> Term.(t1 = t2)
+  | Var {Id.name="Pervasives.<>"}, [t1;t2] -> Term.(t1 <> t2)
+  | Var {Id.name="Pervasives.<"}, [t1;t2] -> Term.(t1 < t2)
+  | Var {Id.name="Pervasives.>"}, [t1;t2] -> Term.(t1 > t2)
+  | Var {Id.name="Pervasives.<="}, [t1;t2] -> Term.(t1 <= t2)
+  | Var {Id.name="Pervasives.>="}, [t1;t2] -> Term.(t1 >= t2)
+  | Var {Id.name="Pervasives.&&"}, [t1;t2] -> Term.(t1 && t2)
+  | Var {Id.name="Pervasives.||"}, [t1;t2] -> Term.(t1 || t2)
+  | Var {Id.name="Pervasives.+"}, [t1;t2] -> Term.(t1 + t2)
+  | Var {Id.name="Pervasives.-"}, [t1;t2] -> Term.(t1 - t2)
+  | Var {Id.name="Pervasives.*"}, [t1;t2] -> Term.(t1 * t2)
   | Var {Id.name="Pervasives./"}, [t1;t2] ->
       let t2' =
         if !Flag.Method.check_div_operand then
@@ -423,11 +423,14 @@ let conv_primitive_app t ts typ =
         else
           t2
       in
-      make_div t1 t2'
-  | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
-  | Var {Id.name="Pervasives.not"}, [t] -> make_not t
-  | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
-  | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
+      if !Flag.Method.abst_div then
+        Term.(seq t1 (seq t2' randi))
+      else
+        Term.(t1 / t2')
+  | Var {Id.name="Pervasives.~-"}, [t] -> Term.(~- t)
+  | Var {Id.name="Pervasives.not"}, [t] -> Term.(not t)
+  | Var {Id.name="Pervasives.fst"}, [t] -> Term.(fst t)
+  | Var {Id.name="Pervasives.snd"}, [t] -> Term.(snd t)
   | Var {Id.name="Pervasives.raise"}, [t] -> make_raise t typ
   | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
   | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] ->
