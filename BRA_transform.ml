@@ -39,12 +39,15 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 (* conversion to parse-able string *)
 let parens s = "(" ^ s ^ ")"
 let rec show_typ t =
-  let rec aux = function
+  let rec aux ty =
+    match Type.elim_tattr ty with
     | TBase TUnit -> ["unit"]
     | TBase TBool -> ["bool"]
     | TBase TInt -> ["int"]
     | TFun ({Id.typ = t1}, t2) -> !stateType @ [show_typ t1] @ aux t2
-    | _ -> []
+    | ty ->
+        Format.eprintf "%a@." Print.typ ty;
+        assert false
   in
   let rec aux2 = function
     | [] -> ""
