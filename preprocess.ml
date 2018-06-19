@@ -230,7 +230,7 @@ let all spec : t list =
       map_trans make_ext_funs;
     Mark_safe_fun_arg,
       cond_trans !Flag.PredAbst.shift_pred @@
-      map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;
+      map_trans @@ Problem.map Effect_analysis.fix_safe_fun_arg_pred;
     Abst_polymorphic_comparison,
       map_trans Encode.abst_poly_comp;
     CPS,

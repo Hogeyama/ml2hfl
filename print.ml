@@ -3,6 +3,7 @@ open Util
 open Type
 open Syntax
 
+module Debug_attr = Debug.Make(struct let check = Flag.Debug.make_check (__MODULE__^".attr") end)
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type config =
@@ -35,8 +36,8 @@ and print_ids ?fv cfg fm xs =
             let aux x =
               if Id.mem x fv then
                 x
-              else if Id.typ x = TBase TUnit then
-                Id.make 0 "()" [] (TBase TUnit)
+              else if Id.typ x = Ty.unit then
+                Id.make 0 "()" [] Ty.unit
               else
                 Id.make 0 "_" [] @@ Id.typ x
             in
@@ -45,10 +46,7 @@ and print_ids ?fv cfg fm xs =
     let p_id = if cfg.ty then print_id_typ else print_id in
     print_list p_id "@ " ~first:true fm xs'
 
-(*
-  and print_id fm x = fprintf fm "(%a:%a)" Id.print x print_typ (Id.typ x)
- *)
-and print_id fm x = Id.print fm x
+and print_id = Id.print
 
 and print_id_typ fm x = fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
 
@@ -120,10 +118,18 @@ and print_attr fm = function
   | ADoNotInline -> fprintf fm "ADoNotInline"
   | AEffect e -> print_effect fm e
 
-and ignore_attr_list = ADoNotInline::const_attr
+and attr_filter attrs =
+  let ignore_attr_list = ADoNotInline::const_attr in
+  let attrs' = List.filter (function AComment _ -> false | _ -> true) attrs in
+  if !!Debug_attr.check then
+    attrs'
+  else
+    attrs'
+    |> List.filter_out (List.mem -$- ignore_attr_list)
+    |&!Flag.Print.only_if_id&> List.filter (function AId _ -> true | _ -> false)
 
 and print_attr_list fm attrs =
-  List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
+  List.print print_attr fm attrs
 
 and print_term cfg pri fm t =
   let decomp_comment a =
@@ -137,16 +143,10 @@ and print_term cfg pri fm t =
     then fprintf fm "@[%a@]" (print_desc cfg pri attr) desc
     else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc cfg pri attr) desc
   in
-  let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
-  let ignore_attr_list' =
-    if !Flag.Print.only_if_id then
-      List.filter (function AId _ -> true | _ -> false) t.attr @ ignore_attr_list
-    else
-      ignore_attr_list
-  in
-  if List.Set.subset attr ignore_attr_list' || cfg.as_ocaml
+  let attr = attr_filter t.attr in
+  if attr = [] || cfg.as_ocaml
   then pr t.attr fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list (List.Set.diff t.attr ignore_attr_list')
+  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list attr
 
 and print_let_decls cfg bang fm bindings =
   let first = ref true in
@@ -706,8 +706,13 @@ let defs = print_defs
 let constr fm = pp_print_string fm -| string_of_constr
 let attr = print_attr_list
 let decls = print_decls {!config_default with ty=false; top=true}
-let as_ocaml fm = print_term {!config_default with top=true; as_ocaml=true} fm
-let as_ocaml_typ fm = print_term {!config_default with ty=true; top=true; as_ocaml=true} fm
+let as_ocaml fm =
+  Id.tmp_set_print_as_ocaml @@ fun () ->
+  print_term {!config_default with top=true; as_ocaml=true} fm
+let as_ocaml_typ fm t =
+  Id.tmp_set_print_as_ocaml @@ fun () ->
+  Type.tmp_set_print_as_ocaml @@ fun () ->
+  print_term {!config_default with ty=true; top=true; as_ocaml=true} fm t
 let term_custom = print_term
 
 let int = Format.pp_print_int

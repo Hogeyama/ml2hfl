@@ -58,6 +58,7 @@ module Method = struct
   let quick_check = ref false
   let bool_to_int = ref false
   let check_div_operand = ref false
+  let abst_for_loop = ref true
 end
 
 module Print = struct

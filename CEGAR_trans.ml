@@ -171,6 +171,8 @@ and trans_typ ty =
       TFun(typ1, subst_typ (trans_var x) -$- typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
   | Type.TAttr([], typ) -> trans_typ typ
+  | Type.TAttr((Type.TAPureFun|Type.TASafeFun)::attrs, typ) ->
+      trans_typ (Type.TAttr(attrs, typ))
   | Type.TAttr(Type.TARefPred(x,p)::attrs, typ) ->
       let p' y = subst (trans_var x) y @@ snd @@ trans_term "" [] [] p in
       TApp(TConstr (TFixPred p'), trans_typ @@ Type.TAttr(attrs,typ))

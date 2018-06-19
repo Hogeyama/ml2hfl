@@ -40,7 +40,7 @@ val make_app : term -> term list -> term
 val make_app_raw : term -> term list -> term (** Does not merge arguments *)
 val make_fail : typ -> term
 val make_local : declaration -> term -> term
-val make_let : (id * term) list -> term -> term
+val make_let : ?simplify_seq:bool -> (id * term) list -> term -> term
 val make_let_s : (id * term) list -> term -> term
 val make_lets : (id * term) list -> term -> term
 val make_lets_s : (id * term) list -> term -> term

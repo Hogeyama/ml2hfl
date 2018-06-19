@@ -443,10 +443,7 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
   | Var {Id.name="Random.int"}, [t] ->
       let x = Id.new_var ~name:"n" Ty.int in
-      make_let [x, randint_unit_term] @@
-        make_assume
-          (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
-          (make_var x)
+      Term.(let_ [x, randi] (assume (int 0 <= var x && var x < t) (var x)))
   | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
   | Var {Id.name="Pervasives.close_in"}, [{typ=TBase TUnit}] -> make_event_unit "close"
   | Var {Id.name="Pervasives.invalid_arg"}, [{desc=Const(String s)}] ->
@@ -502,7 +499,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         in
         decls', make_var @@ from_ident_path id_env path typ'
     | Texp_constant c ->
-        [], {desc = Const (from_constant c); typ = typ'; attr=[]}
+        [], {desc = Const (from_constant c); typ = typ'; attr=const_attr}
     | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
          when (function Tpat_var _ -> false | _ -> true) vb_pat.pat_desc ->
         let decls0,p' = from_pattern vb_pat in
@@ -627,7 +624,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let pats'' = pats' @ [make_pany typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
         let decls2,t = from_expression id_env e in
         decls2 @ List.flatten declss,
-        {desc=TryWith(t, make_fun x (make_match (make_var x) pats'')); typ=typ'; attr=[]}
+        {desc=TryWith(t, Term.(fun_ x (match_ (var x) pats''))); typ=typ'; attr=[]}
     | Texp_tuple es ->
         let declss,ts = List.split_map (from_expression id_env) es in
         decls1 @ List.flatten declss,
@@ -745,23 +742,31 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let f = Id.new_var ~name:"for" Ty.(TFun(Id.new_var ~name:"i" int, unit)) in
         let init = Id.new_var ~name:"init" Ty.int in
         let last = Id.new_var ~name:"last" Ty.int in
-        let t31 =
-          match dir with
-          | Upto -> make_leq (make_var x') (make_var last)
-          | Downto -> make_geq (make_var x') (make_var last)
+        let t =
+          if !Flag.Method.abst_for_loop then
+            let op =
+              match dir with
+              | Upto -> Term.(<=)
+              | Downto -> Term.(>=)
+            in
+            Term.(if_ (op (var init) (var last)) (let_ [x', randi] (assume (var init <= var x' && var x' <= var last) t3)) unit)
+          else
+            let t31 =
+              match dir with
+              | Upto -> Term.(var x' <= var last)
+              | Downto -> Term.(var x' >= var last)
+            in
+            let t32 =
+              let x'' =
+                match dir with
+                | Upto -> Term.(var x' + int 1)
+                | Downto -> Term.(var x' - int 1)
+              in
+              Term.(seq t3 (var f @ [x'']))
+            in
+            Term.(let_ [f, fun_ x' (if_ t31 t32 unit)] (var f @ [var init]))
         in
-        let t32 =
-          let x'' =
-            match dir with
-            | Upto -> make_add (make_var x') (make_int 1)
-            | Downto -> make_sub (make_var x') (make_int 1)
-          in
-          make_seq t3 @@ make_app (make_var f) [x'']
-        in
-        assert (Flag.Debug.check_typ => Type.can_unify t31.typ Ty.bool);
-        let t3' = make_if t31 t32 unit_term in
-        decls2 @ decls3 @ decls4,
-        make_lets [init,t1; last,t2] @@ make_let [f, make_fun x' t3'] @@ make_app (make_var f) [make_var init]
+        decls2 @ decls3 @ decls4, Term.(lets [init,t1; last,t2] t)
     | Texp_send _
     | Texp_new _ -> unsupported "expression (class)"
     | Texp_instvar _ -> unsupported "expression (instvar)"

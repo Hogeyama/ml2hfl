@@ -1231,7 +1231,12 @@ let make_ext_funs ?(fvs=[]) env t =
     List.fold_right aux env ([],[],[])
   in
   let defs = List.map snd (genv @ cenv) @ defs2 in
-  lift_type_decl @@ remove_ext_attr @@ remove_id_let @@ make_lets defs @@ make_lets defs1 t''
+  t''
+  |> make_lets defs1
+  |> make_lets defs
+  |> remove_id_let
+  |> remove_ext_attr
+  |> lift_type_decl
 
 let assoc_typ =
   let col = make_col2 [] (@@@) in
@@ -2244,28 +2249,37 @@ let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
 
 
 let reconstruct =
-  let tr = make_trans () in
-  let tr_term t =
+  let tr = make_trans2 () in
+  let tr_term env t =
     let t' =
       match t.desc with
       | Const _ -> {t with attr = const_attr}
-      | Var x -> make_var x
-      | Fun(x, t) -> make_fun x @@ tr.tr_term t
-      | App(t1, ts) -> make_app (tr.tr_term t1) @@ List.map tr.tr_term ts
-      | If(t1, t2, t3) -> make_if (tr.tr_term t1) (tr.tr_term t2) (tr.tr_term t3)
-      | Local(Decl_let bindings, t) -> make_let (List.map (Pair.map_snd tr.tr_term) bindings) @@ tr.tr_term t
-      | BinOp(op, t1, t2) -> make_binop op (tr.tr_term t1) (tr.tr_term t2)
-      | Not t -> make_not @@ tr.tr_term t
-      | Tuple ts -> make_tuple @@ List.map tr.tr_term ts
-      | Proj(i, t) -> make_proj i @@ tr.tr_term t
-      | Field(t1, s) -> make_field (tr.tr_term t1) s
-      | _ -> tr.tr_term_rec t
+      | Var x -> make_var @@ List.assoc_default ~eq:Id.eq x x env
+      | Fun(x, t) -> make_fun x @@ tr.tr2_term env t
+      | App(t1, ts) -> make_app (tr.tr2_term env t1) @@ List.map (tr.tr2_term env) ts
+      | If(t1, t2, t3) -> make_if (tr.tr2_term env t1) (tr.tr2_term env t2) (tr.tr2_term env t3)
+      | Local(Decl_let bindings, t) ->
+          let bindings' =
+            let aux (x,t) =
+              let t' = tr.tr2_term env t in
+              Id.set_typ x t'.typ, t'
+            in
+            List.map aux bindings
+          in
+          let env' = List.map2 (fun (x,_) (x',_) -> x, x') bindings bindings' @ env in
+          make_let ~simplify_seq:true bindings' @@ tr.tr2_term env' t
+      | BinOp(op, t1, t2) -> make_binop op (tr.tr2_term env t1) (tr.tr2_term env t2)
+      | Not t -> make_not @@ tr.tr2_term env t
+      | Tuple ts -> make_tuple @@ List.map (tr.tr2_term env) ts
+      | Proj(i, t) -> make_proj i @@ tr.tr2_term env t
+      | Field(t1, s) -> make_field (tr.tr2_term env t1) s
+      | _ -> tr.tr2_term_rec env t
     in
     let attr' = List.unique (t.attr @ t'.attr) in
     {t' with attr=attr'}
   in
-  tr.tr_term <- tr_term;
-  tr.tr_term
+  tr.tr2_term <- tr_term;
+  tr.tr2_term []
 
 
 let simplify_if_cond = make_trans2 ()
