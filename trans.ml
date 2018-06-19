@@ -1521,7 +1521,7 @@ let elim_unused_let =
             let leave' = get_fv t1 @ leave in
             let used (f,t) =
               Id.mem f leave' ||
-              List.exists (fun (_,t2) -> Id.mem f @@ get_fv t2) bindings ||
+              List.exists (fun (g,t2) -> Id.(f <> g) && Id.mem f @@ get_fv t2) bindings || (* TODO: fix *)
               cbv && not @@ has_no_effect t
             in
             let bindings' = List.filter used bindings in
@@ -2644,7 +2644,7 @@ let elim_redundant_arg =
     | _ -> tr.tr2_desc_rec vars desc
   in
   tr.tr2_desc <- tr_desc;
-  tr.tr2_term []
+  tr.tr2_term [] -| alpha_rename
 
 let split_let =
   let tr = make_trans () in
