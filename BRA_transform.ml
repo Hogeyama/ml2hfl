@@ -207,7 +207,7 @@ let rec find_main_function = function
   | _ -> None
 
 let remove_unit_wraping = function
-  | {desc = Local(Decl_let [{Id.name="u"}, t], {desc = Const Unit; typ = TBase TUnit})} -> t
+  | {desc = Local(Decl_let [{Id.name="u"}, t], {desc = Const (Unit|End_of_definitions); typ = TBase TUnit})} -> t
   | t -> t
 
 let rec lambda_lift t =
