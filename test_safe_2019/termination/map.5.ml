@@ -2,7 +2,8 @@ let rec map (_:bool) (_:int) (_:int) (_:int) (f_EXPARAM_121:int) (_:bool)
            (_:int) (_:int) (_:int)
            (f:(bool -> int -> int -> int -> int -> int))
            (set_flag_compose_204:bool) (s_compose_f_EXPARAM_193:int)
-           (s_compose_g_EXPARAM_195:int) (s_compose_x_197:int) (xs:int) =
+           (s_compose_g_EXPARAM_195:int) (s_compose_x_197:int) (xs:int) : 
+  int =
   if xs = 0
   then
     0
@@ -32,7 +33,7 @@ let rec compose (x_DO_NOT_CARE_243:bool) (x_DO_NOT_CARE_244:int)
                (prev_set_flag_compose_203:bool)
                (s_prev_compose_f_EXPARAM_198:int)
                (s_prev_compose_g_EXPARAM_200:int) (s_prev_compose_x_202:int)
-               (x:int) =
+               (x:int) : int =
   if prev_set_flag_compose_203 then assert false;
   compose_without_checking_229
     x_DO_NOT_CARE_243 x_DO_NOT_CARE_244 x_DO_NOT_CARE_245
@@ -53,14 +54,15 @@ and compose_without_checking_229 (_:bool) (_:int) (_:int) (_:int)
                                 (_:int) (_:int)
                                 (g:(bool ->
                                       int -> int -> int -> int -> int))
-                                (_:bool) (_:int) (_:int) (_:int) (x:int) =
-  let set_flag_compose_204 = true
+                                (_:bool) (_:int) (_:int) (_:int) (x:int) : 
+  int =
+  let set_flag_compose_204 : bool = true
   in
-  let s_compose_x_197 = x
+  let s_compose_x_197 : int = x
   in
-  let s_compose_g_EXPARAM_195 = g_EXPARAM_118
+  let s_compose_g_EXPARAM_195 : int = g_EXPARAM_118
   in
-  let s_compose_f_EXPARAM_193 = f_EXPARAM_117
+  let s_compose_f_EXPARAM_193 : int = f_EXPARAM_117
   in
   f
     set_flag_compose_204 s_compose_f_EXPARAM_193 s_compose_g_EXPARAM_195
@@ -69,10 +71,11 @@ and compose_without_checking_229 (_:bool) (_:int) (_:int) (_:int)
       set_flag_compose_204 s_compose_f_EXPARAM_193
       s_compose_g_EXPARAM_195 s_compose_x_197 x)
 let add (_:bool) (_:int) (_:int) (_:int) (x:int) (_:bool) (_:int) (_:int)
-       (_:int) (y:int) = x + y
+       (_:int) (y:int) : int = x + y
 let main (set_flag_compose_204:bool) (s_compose_f_EXPARAM_193:int)
-        (s_compose_g_EXPARAM_195:int) (s_compose_x_197:int) (():unit) =
-  let l = Random.int 0
+        (s_compose_g_EXPARAM_195:int) (s_compose_x_197:int) (():unit) : 
+  int =
+  let l : int = Random.int 0
   in
   if l >= 0
   then
@@ -97,4 +100,4 @@ let main (set_flag_compose_204:bool) (s_compose_f_EXPARAM_193:int)
       s_compose_g_EXPARAM_195 s_compose_x_197 l
   else
     0
-let u_15314 = main false 0 0 0 ()
+let u_15314 : int = main false 0 0 0 ()

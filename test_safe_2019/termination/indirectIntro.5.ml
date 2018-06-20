@@ -12,7 +12,8 @@ let rec app (x_DO_NOT_CARE_172:bool) (x_DO_NOT_CARE_173:int)
            (x_DO_NOT_CARE_160:bool) (x_DO_NOT_CARE_161:int)
            (x_DO_NOT_CARE_162:int) (x_DO_NOT_CARE_163:int) (v:int)
            (prev_set_flag_app_129:bool) (s_prev_app_i_124:int)
-           (s_prev_app_h_EXPARAM_125:int) (s_prev_app_v_127:int) (u:unit) =
+           (s_prev_app_h_EXPARAM_125:int) (s_prev_app_v_127:int) (u:unit) : 
+  unit =
   if prev_set_flag_app_129
   then
     if
@@ -41,14 +42,15 @@ and app_without_checking_158 (_:bool) (_:int) (_:int) (_:int) (i:int)
                                           bool ->
                                             int -> int -> int -> unit -> unit))
                             (_:bool) (_:int) (_:int) (_:int) (v:int) 
-                            (_:bool) (_:int) (_:int) (_:int) (u:unit) =
-  let set_flag_app_130 = true
+                            (_:bool) (_:int) (_:int) (_:int) (u:unit) : 
+  unit =
+  let set_flag_app_130 : bool = true
   in
-  let s_app_v_122 = v
+  let s_app_v_122 : int = v
   in
-  let s_app_h_EXPARAM_120 = h_EXPARAM_112
+  let s_app_h_EXPARAM_120 : int = h_EXPARAM_112
   in
-  let s_app_i_119 = i
+  let s_app_i_119 : int = i
   in
   if i >= 0
   then
@@ -63,9 +65,10 @@ and app_without_checking_158 (_:bool) (_:int) (_:int) (_:int) (i:int)
     h
       set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 v
       set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122 u
-let g (_:bool) (_:int) (_:int) (_:int) (():unit) = ()
+let g (_:bool) (_:int) (_:int) (_:int) (():unit) : unit = ()
 let rec f (set_flag_app_130:bool) (s_app_i_119:int) (s_app_h_EXPARAM_120:int)
-         (s_app_v_122:int) (x:int) =
+         (s_app_v_122:int) (x:int) : (bool ->
+                                        int -> int -> int -> unit -> unit) =
   if x > 0
   then
     app
@@ -77,9 +80,9 @@ let rec f (set_flag_app_130:bool) (s_app_i_119:int) (s_app_h_EXPARAM_120:int)
   else
     g
 let main (set_flag_app_130:bool) (s_app_i_119:int) (s_app_h_EXPARAM_120:int)
-        (s_app_v_122:int) (():unit) =
+        (s_app_v_122:int) (():unit) : unit =
   f
     set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120 s_app_v_122
     (Random.int 0) set_flag_app_130 s_app_i_119 s_app_h_EXPARAM_120
     s_app_v_122 ()
-let u_29976 = main false 0 0 0 ()
+let u_29976 : unit = main false 0 0 0 ()

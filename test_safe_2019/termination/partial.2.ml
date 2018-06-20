@@ -1,36 +1,31 @@
-let rec f_59 (_:bool) (_:int) (_:int) (lb:int) (_:bool) (_:int) (_:int)
-            (n:int) = n > lb
-and f (x_DO_NOT_CARE_100:bool) (x_DO_NOT_CARE_101:int)
-     (x_DO_NOT_CARE_102:int) (x:int) (x_DO_NOT_CARE_97:bool)
-     (x_DO_NOT_CARE_98:int) (x_DO_NOT_CARE_99:int) (p_EXPARAM_60:int)
-     (prev_set_flag_f_74:bool) (s_prev_f_x_71:int)
-     (s_prev_f_p_EXPARAM_72:int) (p:(bool -> int -> int -> int -> bool)) =
-  if prev_set_flag_f_74
-  then
-    if s_prev_f_x_71 > x && x >= 0 then () else assert false;
-  f_without_checking_95
-    x_DO_NOT_CARE_100 x_DO_NOT_CARE_101 x_DO_NOT_CARE_102 x
-    x_DO_NOT_CARE_97 x_DO_NOT_CARE_98 x_DO_NOT_CARE_99 p_EXPARAM_60
-    prev_set_flag_f_74 s_prev_f_x_71 s_prev_f_p_EXPARAM_72 p
-and f_without_checking_95 (_:bool) (_:int) (_:int) (x:int) (_:bool)
-                         (_:int) (_:int) (p_EXPARAM_60:int) (_:bool)
-                         (_:int) (_:int)
-                         (p:(bool -> int -> int -> int -> bool)) =
-  let set_flag_f_75 = true
+let gt (_:bool) (_:int) (_:int) (lb:int) (_:bool) (_:int) (_:int) (n:int) : 
+  bool = n > lb
+let rec f (x_DO_NOT_CARE_131:bool) (x_DO_NOT_CARE_132:int)
+         (x_DO_NOT_CARE_133:int) (x:int) (x_DO_NOT_CARE_128:bool)
+         (x_DO_NOT_CARE_129:int) (x_DO_NOT_CARE_130:int) (p_EXPARAM_61:int)
+         (prev_set_flag_f_114:bool) (s_prev_f_x_111:int)
+         (s_prev_f_p_EXPARAM_112:int) (p:(bool -> int -> int -> int -> bool)) : 
+  unit =
+  if prev_set_flag_f_114 then assert false;
+  f_without_checking_126
+    x_DO_NOT_CARE_131 x_DO_NOT_CARE_132 x_DO_NOT_CARE_133 x
+    x_DO_NOT_CARE_128 x_DO_NOT_CARE_129 x_DO_NOT_CARE_130 p_EXPARAM_61
+    prev_set_flag_f_114 s_prev_f_x_111 s_prev_f_p_EXPARAM_112 p
+and f_without_checking_126 (_:bool) (_:int) (_:int) (x:int) (_:bool)
+                          (_:int) (_:int) (p_EXPARAM_61:int) (_:bool)
+                          (_:int) (_:int)
+                          (p:(bool -> int -> int -> int -> bool)) : unit =
+  let set_flag_f_115 : bool = true
   in
-  let s_f_p_EXPARAM_69 = p_EXPARAM_60
+  let s_f_p_EXPARAM_109 : int = p_EXPARAM_61
   in
-  let s_f_x_68 = x
+  let s_f_x_108 : int = x
   in
-  (if p set_flag_f_75 s_f_x_68 s_f_p_EXPARAM_69 x
+  (if p set_flag_f_115 s_f_x_108 s_f_p_EXPARAM_109 x
    then
-     f
-       set_flag_f_75 s_f_x_68 s_f_p_EXPARAM_69 (x - 1) set_flag_f_75
-       s_f_x_68 s_f_p_EXPARAM_69 (0 * p_EXPARAM_60 + (0 * x + 0))
-       set_flag_f_75 s_f_x_68 s_f_p_EXPARAM_69 p)
-and u_57 =
-  let gt = f_59
-  in
-  f_without_checking_95
-    false 0 0 (Random.int 0) false 0 0 0 false 0 0 (gt false 0 0 0)
-let u_2782 = ()
+     f_without_checking_126
+       set_flag_f_115 s_f_x_108 s_f_p_EXPARAM_109 (x - 1) set_flag_f_115
+       s_f_x_108 s_f_p_EXPARAM_109 (0 * p_EXPARAM_61 + (0 * x + 0))
+       set_flag_f_115 s_f_x_108 s_f_p_EXPARAM_109 p)
+let u_3094 : unit =
+  f false 0 0 (Random.int 0) false 0 0 0 false 0 0 (gt false 0 0 0)

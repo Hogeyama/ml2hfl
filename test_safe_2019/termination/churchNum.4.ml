@@ -12,14 +12,14 @@ let succ (_:bool) (_:int) (_:int) (m_EXPARAM_238:int) (_:bool) (_:int)
         (_:bool) (_:int) (_:int) (s_EXPARAM_240:int) (_:bool) (_:int) 
         (_:int) (s:(bool -> int -> int -> int -> int))
         (set_flag_two_426:bool) (s_two_f_EXPARAM_417:int)
-        (s_two_z_EXPARAM_419:int) (z:int) =
+        (s_two_z_EXPARAM_419:int) (z:int) : int =
   m
     set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419
     (0 * z + (0 * s_EXPARAM_240 + (0 * m_EXPARAM_238 + 0))) set_flag_two_426
     s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 s set_flag_two_426
     s_two_f_EXPARAM_417 s_two_z_EXPARAM_419
     (s set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 z)
-let id (_:bool) (_:int) (_:int) (x:int) = x
+let id (_:bool) (_:int) (_:int) (x:int) : int = x
 let rec two (x_DO_NOT_CARE_458:bool) (x_DO_NOT_CARE_459:int)
            (x_DO_NOT_CARE_460:int) (f_EXPARAM_212:int)
            (x_DO_NOT_CARE_455:bool) (x_DO_NOT_CARE_456:int)
@@ -64,7 +64,24 @@ let rec two (x_DO_NOT_CARE_458:bool) (x_DO_NOT_CARE_459:int)
                          int ->
                            int ->
                              (bool -> int -> int -> int -> int) ->
-                               bool -> int -> int -> int -> int)) =
+                               bool -> int -> int -> int -> int)) : (
+                                                                    bool ->
+                                                                    int ->
+                                                                    int ->
+                                                                    int ->
+                                                                    bool ->
+                                                                    int ->
+                                                                    int ->
+                                                                    (bool ->
+                                                                    int ->
+                                                                    int ->
+                                                                    int ->
+                                                                    int) ->
+                                                                    bool ->
+                                                                    int ->
+                                                                    int ->
+                                                                    int ->
+                                                                    int) =
   if prev_set_flag_two_425 then assert false;
   two_without_checking_450
     x_DO_NOT_CARE_458 x_DO_NOT_CARE_459 x_DO_NOT_CARE_460 f_EXPARAM_212
@@ -128,12 +145,21 @@ and two_without_checking_450 (_:bool) (_:int) (_:int) (f_EXPARAM_212:int)
                                                  int -> int -> int -> int) ->
                                                 bool ->
                                                   int ->
-                                                    int -> int -> int)) =
-  let set_flag_two_426 = true
+                                                    int -> int -> int)) : 
+  (bool ->
+     int ->
+       int ->
+         int ->
+           bool ->
+             int ->
+               int ->
+                 (bool -> int -> int -> int -> int) ->
+                   bool -> int -> int -> int -> int) =
+  let set_flag_two_426 : bool = true
   in
-  let s_two_z_EXPARAM_419 = z_EXPARAM_216
+  let s_two_z_EXPARAM_419 : int = z_EXPARAM_216
   in
-  let s_two_f_EXPARAM_417 = f_EXPARAM_212
+  let s_two_f_EXPARAM_417 : int = f_EXPARAM_212
   in
   f
     set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419
@@ -145,9 +171,9 @@ and two_without_checking_450 (_:bool) (_:int) (_:int) (f_EXPARAM_212:int)
       s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 z)
 let zero (_:bool) (_:int) (_:int) (_:int) (_:bool) (_:int) (_:int)
         (_:(bool -> int -> int -> int -> int)) (_:bool) (_:int) (_:int)
-        (z:int) = z
+        (z:int) : int = z
 let main (set_flag_two_426:bool) (s_two_f_EXPARAM_417:int)
-        (s_two_z_EXPARAM_419:int) (():unit) =
+        (s_two_z_EXPARAM_419:int) (():unit) : int =
   two
     set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 0
     set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 succ
@@ -156,4 +182,4 @@ let main (set_flag_two_426:bool) (s_two_f_EXPARAM_417:int)
     set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 0
     set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 id
     set_flag_two_426 s_two_f_EXPARAM_417 s_two_z_EXPARAM_419 0
-let u_24386 = main false 0 0 ()
+let u_24386 : int = main false 0 0 ()

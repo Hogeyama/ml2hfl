@@ -13,12 +13,12 @@ let rec qs (_:bool) (_:int) (_:int) (_:int) (_:int) (_:int)
                                   int -> int -> int -> int -> int -> bool))
           (set_flag_par_245:bool) (s_par_cmp_EXPARAM_232:int)
           (s_par_x_234:int) (s_par_l_235:int) (s_par_r_236:int)
-          (s_par_xs_237:int) (n:int) =
+          (s_par_xs_237:int) (n:int) : int =
   if n <= 0
   then
     0
   else
-    let xs' = n - 1
+    let xs_prime_ : int = n - 1
     in
     par
       set_flag_par_245 s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235
@@ -30,7 +30,7 @@ let rec qs (_:bool) (_:int) (_:int) (_:int) (_:int) (_:int)
       s_par_r_236 s_par_xs_237 0 set_flag_par_245 s_par_cmp_EXPARAM_232
       s_par_x_234 s_par_l_235 s_par_r_236 s_par_xs_237 0 set_flag_par_245
       s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235 s_par_r_236 s_par_xs_237
-      xs'
+      xs_prime_
 and par (x_DO_NOT_CARE_311:bool) (x_DO_NOT_CARE_312:int)
        (x_DO_NOT_CARE_313:int) (x_DO_NOT_CARE_314:int)
        (x_DO_NOT_CARE_315:int) (x_DO_NOT_CARE_316:int) (cmp_EXPARAM_202:int)
@@ -57,7 +57,7 @@ and par (x_DO_NOT_CARE_311:bool) (x_DO_NOT_CARE_312:int)
        (x_DO_NOT_CARE_291:int) (x_DO_NOT_CARE_292:int) (r:int)
        (prev_set_flag_par_244:bool) (s_prev_par_cmp_EXPARAM_238:int)
        (s_prev_par_x_240:int) (s_prev_par_l_241:int) (s_prev_par_r_242:int)
-       (s_prev_par_xs_243:int) (xs:int) =
+       (s_prev_par_xs_243:int) (xs:int) : int =
   if prev_set_flag_par_244
   then
     if
@@ -99,18 +99,18 @@ and par_without_checking_285 (_:bool) (_:int) (_:int) (_:int) (_:int)
                             (_:int) (_:int) (_:int) (l:int) (_:bool) 
                             (_:int) (_:int) (_:int) (_:int) (_:int) (r:int)
                             (_:bool) (_:int) (_:int) (_:int) (_:int) 
-                            (_:int) (xs:int) =
-  let set_flag_par_245 = true
+                            (_:int) (xs:int) : int =
+  let set_flag_par_245 : bool = true
   in
-  let s_par_xs_237 = xs
+  let s_par_xs_237 : int = xs
   in
-  let s_par_r_236 = r
+  let s_par_r_236 : int = r
   in
-  let s_par_l_235 = l
+  let s_par_l_235 : int = l
   in
-  let s_par_x_234 = x
+  let s_par_x_234 : int = x
   in
-  let s_par_cmp_EXPARAM_232 = cmp_EXPARAM_202
+  let s_par_cmp_EXPARAM_232 : int = cmp_EXPARAM_202
   in
   if xs <= 0
   then
@@ -131,15 +131,16 @@ and par_without_checking_285 (_:bool) (_:int) (_:int) (_:int) (_:int)
        s_par_r_236 s_par_xs_237 cmp set_flag_par_245 s_par_cmp_EXPARAM_232
        s_par_x_234 s_par_l_235 s_par_r_236 s_par_xs_237 r)
   else
-    let x' = Random.int 0
+    let x_prime_ : int = Random.int 0
     in
-    let xs' = xs - 1
+    let xs_prime_ : int = xs - 1
     in
     if
       cmp
         set_flag_par_245 s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235
-        s_par_r_236 s_par_xs_237 x' set_flag_par_245 s_par_cmp_EXPARAM_232
-        s_par_x_234 s_par_l_235 s_par_r_236 s_par_xs_237 x
+        s_par_r_236 s_par_xs_237 x_prime_ set_flag_par_245
+        s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235 s_par_r_236
+        s_par_xs_237 x
     then
       par_without_checking_285
         set_flag_par_245 s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235
@@ -152,7 +153,7 @@ and par_without_checking_285 (_:bool) (_:int) (_:int) (_:int) (_:int)
         s_par_xs_237 (1 + l) set_flag_par_245 s_par_cmp_EXPARAM_232
         s_par_x_234 s_par_l_235 s_par_r_236 s_par_xs_237 r set_flag_par_245
         s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235 s_par_r_236
-        s_par_xs_237 xs'
+        s_par_xs_237 xs_prime_
     else
       par_without_checking_285
         set_flag_par_245 s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235
@@ -165,13 +166,13 @@ and par_without_checking_285 (_:bool) (_:int) (_:int) (_:int) (_:int)
         s_par_xs_237 l set_flag_par_245 s_par_cmp_EXPARAM_232 s_par_x_234
         s_par_l_235 s_par_r_236 s_par_xs_237 (1 + r) set_flag_par_245
         s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235 s_par_r_236
-        s_par_xs_237 xs'
+        s_par_xs_237 xs_prime_
 let cmp (_:bool) (_:int) (_:int) (_:int) (_:int) (_:int) (x:int) (_:bool)
-       (_:int) (_:int) (_:int) (_:int) (_:int) (y:int) = x >= y
+       (_:int) (_:int) (_:int) (_:int) (_:int) (y:int) : bool = x >= y
 let main (set_flag_par_245:bool) (s_par_cmp_EXPARAM_232:int)
         (s_par_x_234:int) (s_par_l_235:int) (s_par_r_236:int)
-        (s_par_xs_237:int) (():unit) =
-  let n = Random.int 0
+        (s_par_xs_237:int) (():unit) : int =
+  let n : int = Random.int 0
   in
   qs
     set_flag_par_245 s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235
@@ -179,4 +180,4 @@ let main (set_flag_par_245:bool) (s_par_cmp_EXPARAM_232:int)
     s_par_x_234 s_par_l_235 s_par_r_236 s_par_xs_237 cmp set_flag_par_245
     s_par_cmp_EXPARAM_232 s_par_x_234 s_par_l_235 s_par_r_236 s_par_xs_237 
     n
-let u_44547 = main false 0 0 0 0 0 ()
+let u_44547 : int = main false 0 0 0 0 0 ()

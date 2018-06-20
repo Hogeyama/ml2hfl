@@ -1,25 +1,21 @@
-let rec f_65 (_:bool) (_:int) (x:int) = x
-and omega (prev_set_flag_omega_162:bool) (s_prev_omega_x_161:int) (x:int) =
-  if prev_set_flag_omega_162 then assert false;
-  omega_without_checking_178 prev_set_flag_omega_162 s_prev_omega_x_161 x
-and omega_without_checking_178 (_:bool) (_:int) (x:int) =
-  let set_flag_omega_163 = true
+let rec id (prev_set_flag_id_79:bool) (s_prev_id_x_78:int) (x:int) : 
+  int =
+  if prev_set_flag_id_79 then assert false;
+  id_without_checking_107 prev_set_flag_id_79 s_prev_id_x_78 x
+and id_without_checking_107 (_:bool) (_:int) (x:int) : int =
+  let set_flag_id_80 : bool = true
   in
-  let s_omega_x_160 = x
+  let s_id_x_77 : int = x
   in
-  omega set_flag_omega_163 s_omega_x_160 x
-and f_66 (_:bool) (_:int) (_:int) (_:bool) (_:int)
-        (_:(bool -> int -> int -> int)) (_:bool) (_:int) (_:int) (_:bool)
-        (_:int) (y:(bool -> int -> int -> int)) (set_flag_omega_163:bool)
-        (s_omega_x_160:int) (z:int) =
-  y set_flag_omega_163 s_omega_x_160 z
-and u_63 =
-  let id = f_65
-  in
-  let f = f_66
-  in
+  x
+let rec omega (set_flag_id_80:bool) (s_id_x_77:int) (x:int) : int =
+  omega set_flag_id_80 s_id_x_77 x
+let f (_:bool) (_:int) (_:int) (_:bool) (_:int)
+     (_:(bool -> int -> int -> int)) (_:bool) (_:int) (_:int) (_:bool)
+     (_:int) (y:(bool -> int -> int -> int)) (set_flag_id_80:bool)
+     (s_id_x_77:int) (z:int) : int = y set_flag_id_80 s_id_x_77 z
+let u_1936 : int =
   f
     false 0 0 false 0
-    (f false 0 0 false 0 id false 0 0 false 0 omega_without_checking_178)
+    (f false 0 0 false 0 id_without_checking_107 false 0 0 false 0 omega)
     false 0 0 false 0 id false 0 1
-let u_4193 = ()

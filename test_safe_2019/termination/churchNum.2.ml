@@ -22,7 +22,7 @@ let rec succ (x_DO_NOT_CARE_318:bool) (x_DO_NOT_CARE_319:int)
             (s:(bool -> int -> int -> int -> int -> int))
             (prev_set_flag_succ_259:bool) (s_prev_succ_m_EXPARAM_254:int)
             (s_prev_succ_s_EXPARAM_256:int) (s_prev_succ_z_258:int) (
-            z:int) =
+            z:int) : int =
   if prev_set_flag_succ_259
   then
     if
@@ -64,14 +64,15 @@ and succ_without_checking_304 (_:bool) (_:int) (_:int) (_:int)
                              (s_EXPARAM_240:int) (_:bool) (_:int) (_:int)
                              (_:int)
                              (s:(bool -> int -> int -> int -> int -> int))
-                             (_:bool) (_:int) (_:int) (_:int) (z:int) =
-  let set_flag_succ_260 = true
+                             (_:bool) (_:int) (_:int) (_:int) (z:int) : 
+  int =
+  let set_flag_succ_260 : bool = true
   in
-  let s_succ_z_253 = z
+  let s_succ_z_253 : int = z
   in
-  let s_succ_s_EXPARAM_251 = s_EXPARAM_240
+  let s_succ_s_EXPARAM_251 : int = s_EXPARAM_240
   in
-  let s_succ_m_EXPARAM_249 = m_EXPARAM_238
+  let s_succ_m_EXPARAM_249 : int = m_EXPARAM_238
   in
   m
     set_flag_succ_260 s_succ_m_EXPARAM_249 s_succ_s_EXPARAM_251 s_succ_z_253
@@ -82,7 +83,7 @@ and succ_without_checking_304 (_:bool) (_:int) (_:int) (_:int)
     (s
       set_flag_succ_260 s_succ_m_EXPARAM_249 s_succ_s_EXPARAM_251
       s_succ_z_253 z)
-let id (_:bool) (_:int) (_:int) (_:int) (x:int) = x
+let id (_:bool) (_:int) (_:int) (_:int) (x:int) : int = x
 let two (_:bool) (_:int) (_:int) (_:int) (f_EXPARAM_212:int) (_:bool) 
        (_:int) (_:int) (_:int)
        (f:(bool ->
@@ -140,7 +141,18 @@ let two (_:bool) (_:int) (_:int) (_:int) (f_EXPARAM_212:int) (_:bool)
                          int ->
                            int ->
                              (bool -> int -> int -> int -> int -> int) ->
-                               bool -> int -> int -> int -> int -> int)) =
+                               bool -> int -> int -> int -> int -> int)) : 
+  (bool ->
+     int ->
+       int ->
+         int ->
+           int ->
+             bool ->
+               int ->
+                 int ->
+                   int ->
+                     (bool -> int -> int -> int -> int -> int) ->
+                       bool -> int -> int -> int -> int -> int) =
   f
     set_flag_succ_260 s_succ_m_EXPARAM_249 s_succ_s_EXPARAM_251 s_succ_z_253
     ((-5) * z_EXPARAM_216 + ((-8) * f_EXPARAM_212 + 1)) set_flag_succ_260
@@ -152,9 +164,9 @@ let two (_:bool) (_:int) (_:int) (_:int) (f_EXPARAM_212:int) (_:bool)
       s_succ_z_253 z)
 let zero (_:bool) (_:int) (_:int) (_:int) (_:int) (_:bool) (_:int) (_:int)
         (_:int) (_:(bool -> int -> int -> int -> int -> int)) (_:bool)
-        (_:int) (_:int) (_:int) (z:int) = z
+        (_:int) (_:int) (_:int) (z:int) : int = z
 let main (set_flag_succ_260:bool) (s_succ_m_EXPARAM_249:int)
-        (s_succ_s_EXPARAM_251:int) (s_succ_z_253:int) (():unit) =
+        (s_succ_s_EXPARAM_251:int) (s_succ_z_253:int) (():unit) : int =
   two
     set_flag_succ_260 s_succ_m_EXPARAM_249 s_succ_s_EXPARAM_251 s_succ_z_253
     (-8) set_flag_succ_260 s_succ_m_EXPARAM_249 s_succ_s_EXPARAM_251
@@ -165,4 +177,4 @@ let main (set_flag_succ_260:bool) (s_succ_m_EXPARAM_249:int)
     7 set_flag_succ_260 s_succ_m_EXPARAM_249 s_succ_s_EXPARAM_251
     s_succ_z_253 id set_flag_succ_260 s_succ_m_EXPARAM_249
     s_succ_s_EXPARAM_251 s_succ_z_253 0
-let u_13055 = main false 0 0 0 ()
+let u_13055 : int = main false 0 0 0 ()

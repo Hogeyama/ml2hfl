@@ -1,27 +1,27 @@
-let rec loop1 (set_flag_loop2_51:bool) (s_loop2_n2_48:int) (n1:int) =
-  if n1 > 0 then loop1 set_flag_loop2_51 s_loop2_n2_48 (n1 - 1) else 0
-and loop2 (prev_set_flag_loop2_50:bool) (s_prev_loop2_n2_49:int)
-         (n2:int) =
-  if prev_set_flag_loop2_50
+let rec loop1 (prev_set_flag_loop1_50:bool) (s_prev_loop1_n1_49:int) (n1:int) : 
+  int =
+  if prev_set_flag_loop1_50
   then
-    if s_prev_loop2_n2_49 > n2 && n2 >= 0
-    then
-      ()
-    else
-      assert false;
-  loop2_without_checking_64
-    prev_set_flag_loop2_50 s_prev_loop2_n2_49 n2
-and loop2_without_checking_64 (_:bool) (_:int) (n2:int) =
-  let set_flag_loop2_51 = true
+    if s_prev_loop1_n1_49 > n1 && n1 >= 0 then () else assert false;
+  loop1_without_checking_64
+    prev_set_flag_loop1_50 s_prev_loop1_n1_49 n1
+and loop1_without_checking_64 (_:bool) (_:int) (n1:int) : int =
+  let set_flag_loop1_51 : bool = true
   in
-  let s_loop2_n2_48 = n2
+  let s_loop1_n1_48 : int = n1
   in
-  if n2 > 0
+  if n1 > 0
   then
-    loop1 set_flag_loop2_51 s_loop2_n2_48 n2 +
-    loop2_without_checking_64
-      set_flag_loop2_51 s_loop2_n2_48 (n2 - 1)
+    loop1_without_checking_64
+      set_flag_loop1_51 s_loop1_n1_48 (n1 - 1)
   else
     0
-and u_46 = loop2 false 0 (Random.int 0)
-let u_1786 = ()
+let rec loop2 (set_flag_loop1_51:bool) (s_loop1_n1_48:int) (n2:int) : 
+  int =
+  if n2 > 0
+  then
+    loop1 set_flag_loop1_51 s_loop1_n1_48 n2 +
+    loop2 set_flag_loop1_51 s_loop1_n1_48 (n2 - 1)
+  else
+    0
+let u_1773 : int = loop2 false 0 (Random.int 0)

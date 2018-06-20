@@ -13,7 +13,7 @@ let rec compose (x_DO_NOT_CARE_197:bool) (x_DO_NOT_CARE_198:int)
                (prev_set_flag_compose_142:bool)
                (s_prev_compose_f_EXPARAM_137:int)
                (s_prev_compose_g_EXPARAM_139:int) (s_prev_compose_x_141:int)
-               (x:int) =
+               (x:int) : int =
   if prev_set_flag_compose_142 then assert false;
   compose_without_checking_183
     x_DO_NOT_CARE_197 x_DO_NOT_CARE_198 x_DO_NOT_CARE_199
@@ -34,14 +34,15 @@ and compose_without_checking_183 (_:bool) (_:int) (_:int) (_:int)
                                 (_:int) (_:int)
                                 (g:(bool ->
                                       int -> int -> int -> int -> int))
-                                (_:bool) (_:int) (_:int) (_:int) (x:int) =
-  let set_flag_compose_143 = true
+                                (_:bool) (_:int) (_:int) (_:int) (x:int) : 
+  int =
+  let set_flag_compose_143 : bool = true
   in
-  let s_compose_x_136 = x
+  let s_compose_x_136 : int = x
   in
-  let s_compose_g_EXPARAM_134 = g_EXPARAM_129
+  let s_compose_g_EXPARAM_134 : int = g_EXPARAM_129
   in
-  let s_compose_f_EXPARAM_132 = f_EXPARAM_128
+  let s_compose_f_EXPARAM_132 : int = f_EXPARAM_128
   in
   f
     set_flag_compose_143 s_compose_f_EXPARAM_132 s_compose_g_EXPARAM_134
@@ -49,13 +50,18 @@ and compose_without_checking_183 (_:bool) (_:int) (_:int) (_:int)
     (g
       set_flag_compose_143 s_compose_f_EXPARAM_132
       s_compose_g_EXPARAM_134 s_compose_x_136 x)
-let id (_:bool) (_:int) (_:int) (_:int) (x:int) = x
-let succ (_:bool) (_:int) (_:int) (_:int) (x:int) = x + 1
+let id (_:bool) (_:int) (_:int) (_:int) (x:int) : int = x
+let succ (_:bool) (_:int) (_:int) (_:int) (x:int) : int = x + 1
 let rec toChurch (_:bool) (_:int) (_:int) (_:int) (n:int) (_:bool)
                 (_:int) (_:int) (_:int) (f_EXPARAM_114:int)
                 (set_flag_compose_143:bool) (s_compose_f_EXPARAM_132:int)
                 (s_compose_g_EXPARAM_134:int) (s_compose_x_136:int)
-                (f:(bool -> int -> int -> int -> int -> int)) =
+                (f:(bool -> int -> int -> int -> int -> int)) : (bool ->
+                                                                   int ->
+                                                                    int ->
+                                                                    int ->
+                                                                    int ->
+                                                                    int) =
   if n = 0
   then
     id
@@ -78,12 +84,13 @@ let rec toChurch (_:bool) (_:int) (_:int) (_:int) (n:int) (_:bool)
         s_compose_f_EXPARAM_132 s_compose_g_EXPARAM_134 s_compose_x_136 
         f)
 let main (set_flag_compose_143:bool) (s_compose_f_EXPARAM_132:int)
-        (s_compose_g_EXPARAM_134:int) (s_compose_x_136:int) (():unit) =
-  let x = Random.int 0
+        (s_compose_g_EXPARAM_134:int) (s_compose_x_136:int) (():unit) : 
+  unit =
+  let x : int = Random.int 0
   in
   (if x >= 0
    then
-     let tos =
+     let tos : (bool -> int -> int -> int -> int -> int) =
        toChurch
          set_flag_compose_143 s_compose_f_EXPARAM_132
          s_compose_g_EXPARAM_134 s_compose_x_136 x set_flag_compose_143
@@ -92,4 +99,4 @@ let main (set_flag_compose_143:bool) (s_compose_f_EXPARAM_132:int)
          s_compose_g_EXPARAM_134 s_compose_x_136 succ
      in
      ())
-let u_2284 = main false 0 0 0 ()
+let u_2284 : unit = main false 0 0 0 ()

@@ -1,6 +1,6 @@
 let rec ack (x_DO_NOT_CARE_95:bool) (x_DO_NOT_CARE_96:int)
            (x_DO_NOT_CARE_97:int) (m:int) (prev_set_flag_ack_80:bool)
-           (s_prev_ack_m_78:int) (s_prev_ack_n_79:int) (n:int) =
+           (s_prev_ack_m_78:int) (s_prev_ack_n_79:int) (n:int) : int =
   if prev_set_flag_ack_80
   then
     if
@@ -14,12 +14,12 @@ let rec ack (x_DO_NOT_CARE_95:bool) (x_DO_NOT_CARE_96:int)
     x_DO_NOT_CARE_95 x_DO_NOT_CARE_96 x_DO_NOT_CARE_97 m prev_set_flag_ack_80
     s_prev_ack_m_78 s_prev_ack_n_79 n
 and ack_without_checking_93 (_:bool) (_:int) (_:int) (m:int) (_:bool) 
-                           (_:int) (_:int) (n:int) =
-  let set_flag_ack_81 = true
+                           (_:int) (_:int) (n:int) : int =
+  let set_flag_ack_81 : bool = true
   in
-  let s_ack_n_77 = n
+  let s_ack_n_77 : int = n
   in
-  let s_ack_m_76 = m
+  let s_ack_m_76 : int = m
   in
   if m = 0
   then
@@ -37,10 +37,11 @@ and ack_without_checking_93 (_:bool) (_:int) (_:int) (m:int) (_:bool)
         (ack
           set_flag_ack_81 s_ack_m_76 s_ack_n_77 m set_flag_ack_81 s_ack_m_76
           s_ack_n_77 (n - 1))
-let main (set_flag_ack_81:bool) (s_ack_m_76:int) (s_ack_n_77:int) (():unit) =
-  let m = Random.int 0
+let main (set_flag_ack_81:bool) (s_ack_m_76:int) (s_ack_n_77:int) (():unit) : 
+  int =
+  let m : int = Random.int 0
   in
-  let n = Random.int 0
+  let n : int = Random.int 0
   in
   if n > 0 && m > 0
   then
@@ -49,4 +50,4 @@ let main (set_flag_ack_81:bool) (s_ack_m_76:int) (s_ack_n_77:int) (():unit) =
       s_ack_n_77 n
   else
     0
-let u_12614 = main false 0 0 ()
+let u_12614 : int = main false 0 0 ()
