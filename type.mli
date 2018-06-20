@@ -43,6 +43,7 @@ val is_mutable_record : 'a t -> bool
 val is_tvar : 'a t -> bool
 val occurs : 'a t option ref -> 'a t -> bool
 val set_print_as_ocaml : unit -> unit
+val tmp_set_print_as_ocaml : (unit -> 'a) -> 'a
 
 val typ_unknown : 'a t
 val elim_tattr : 'a t -> 'a t

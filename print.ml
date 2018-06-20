@@ -8,9 +8,11 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 type config =
     {ty : bool; (** print types of arguments *)
      as_ocaml : bool; (** print terms in OCaml syntax *)
+     (** Unimplemented *)
+     for_dmochi : bool; (** print terms for dmochi when as_ocaml=true *)
      top : bool; (** print let/type as in top-level *)
      unused : bool} (** print unused arguments *)
-let config_default = ref {ty=false; as_ocaml=false; top=false; unused=false}
+let config_default = ref {ty=false; as_ocaml=false; for_dmochi=false; top=false; unused=false}
 
 let set_print_as_ocaml () =
   Id.set_print_as_ocaml ();
@@ -160,7 +162,8 @@ and print_let_decls cfg bang fm bindings =
     in
     let xs,t1' = if !!Debug.check then [], t1 else decomp_funs t1 in
     let fv = get_fv t1' in
-    fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@] =@ %a@]" pre print_id f (print_ids ~fv cfg) xs (print_term cfg 0) t1';
+    let pr_ty fm = if cfg.ty then Format.fprintf fm " : %a" print_typ t1'.typ in
+    fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@]%t =@ %a@]" pre print_id f (print_ids ~fv cfg) xs pr_ty (print_term cfg 0) t1';
     first := false
   in
   print_list print_binding "@ " fm bindings
@@ -706,8 +709,14 @@ let defs = print_defs
 let constr fm = pp_print_string fm -| string_of_constr
 let attr = print_attr_list
 let decls = print_decls {!config_default with ty=false; top=true}
-let as_ocaml fm = print_term {!config_default with top=true; as_ocaml=true} fm
-let as_ocaml_typ fm = print_term {!config_default with ty=true; top=true; as_ocaml=true} fm
+let as_ocaml fm t =
+  Id.tmp_set_print_as_ocaml @@ fun () ->
+  Type.tmp_set_print_as_ocaml @@ fun () ->
+  print_term {!config_default with top=true; as_ocaml=true} fm t
+let as_ocaml_typ fm t =
+  Id.tmp_set_print_as_ocaml @@ fun () ->
+  Type.tmp_set_print_as_ocaml @@ fun () ->
+  print_term {!config_default with ty=true; top=true; as_ocaml=true} fm t
 let term_custom = print_term
 
 let int = Format.pp_print_int

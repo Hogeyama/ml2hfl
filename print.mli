@@ -3,6 +3,7 @@ open Syntax
 type config =
     {ty : bool; (** print types of arguments *)
      as_ocaml : bool; (** print terms in OCaml syntax *)
+     for_dmochi : bool; (** print terms for dmochi when as_ocaml=true *)
      top : bool; (** print let/type as in top-level *)
      unused : bool} (** print unused arguments *)
 

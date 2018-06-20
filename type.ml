@@ -37,6 +37,7 @@ exception CannotUnify
 
 let print_as_ocaml = ref false
 let set_print_as_ocaml () = print_as_ocaml := true
+let tmp_set_print_as_ocaml f = Ref.tmp_set print_as_ocaml true f
 
 let _TFun x typ = TFun(x, typ)
 let _TAttr attr typ =
