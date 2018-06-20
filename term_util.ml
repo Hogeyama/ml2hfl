@@ -141,7 +141,7 @@ let make_fun x t =
     in
     tfun x t.typ
   in
-  {desc=Fun(x,t); typ; attr=pure_attr}
+  {desc=Fun(x,t); typ; attr=[]} (* TO FIX: `attr=pure_attr` makes somewhere broken *)
 let make_funs = List.fold_right make_fun
 let make_not t =
   match t.desc with
