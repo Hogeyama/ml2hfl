@@ -742,23 +742,31 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let f = Id.new_var ~name:"for" Ty.(TFun(Id.new_var ~name:"i" int, unit)) in
         let init = Id.new_var ~name:"init" Ty.int in
         let last = Id.new_var ~name:"last" Ty.int in
-        let t31 =
-          match dir with
-          | Upto -> make_leq (make_var x') (make_var last)
-          | Downto -> make_geq (make_var x') (make_var last)
+        let t =
+          if !Flag.Method.abst_for_loop then
+            let op =
+              match dir with
+              | Upto -> Term.(<=)
+              | Downto -> Term.(>=)
+            in
+            Term.(if_ (op (var init) (var last)) (let_ [x', randi] (assume (var init <= var x' && var x' <= var last) t3)) unit)
+          else
+            let t31 =
+              match dir with
+              | Upto -> Term.(var x' <= var last)
+              | Downto -> Term.(var x' >= var last)
+            in
+            let t32 =
+              let x'' =
+                match dir with
+                | Upto -> Term.(var x' + int 1)
+                | Downto -> Term.(var x' - int 1)
+              in
+              Term.(seq t3 (var f @ [x'']))
+            in
+            Term.(let_ [f, fun_ x' (if_ t31 t32 unit)] (var f @ [var init]))
         in
-        let t32 =
-          let x'' =
-            match dir with
-            | Upto -> make_add (make_var x') (make_int 1)
-            | Downto -> make_sub (make_var x') (make_int 1)
-          in
-          make_seq t3 @@ make_app (make_var f) [x'']
-        in
-        assert (Flag.Debug.check_typ => Type.can_unify t31.typ Ty.bool);
-        let t3' = make_if t31 t32 unit_term in
-        decls2 @ decls3 @ decls4,
-        make_lets [init,t1; last,t2] @@ make_let [f, make_fun x' t3'] @@ make_app (make_var f) [make_var init]
+        decls2 @ decls3 @ decls4, Term.(lets [init,t1; last,t2] t)
     | Texp_send _
     | Texp_new _ -> unsupported "expression (class)"
     | Texp_instvar _ -> unsupported "expression (instvar)"
