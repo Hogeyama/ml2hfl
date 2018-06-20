@@ -222,9 +222,6 @@ let rec print occur print_pred fm typ =
   | TAttr([TAPureFun], (TFun(x,typ))) ->
       let pr_arg fm x = if occur x typ then Format.printf "%a:" Id.print x in
       Format.fprintf fm "(@[<hov 2>%a%a -*>@ %a@])" pr_arg x print' (Id.typ x) print' typ
-  | TAttr([TASafeFun], (TFun(x,typ))) ->
-      let pr_arg fm x = if occur x typ then Format.printf "%a:" Id.print x in
-      Format.fprintf fm "(@[<hov 2>%a%a -+>@ %a@])" pr_arg x print' (Id.typ x) print' typ
   | TAttr([TAEffect e], typ) ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
   | TAttr(TARefPred(x,p)::attrs, ty) ->
