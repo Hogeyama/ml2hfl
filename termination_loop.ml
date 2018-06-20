@@ -72,7 +72,7 @@ let verify_with holed exparam_sol pred =
   in
   if !!Debug.check then
     transformed
-    |> Term_util.subst_map @@ List.map (Pair.map_snd Term_util.make_int) exparam_sol''
+    |> List.fold_right (fun (x,n) -> Term_util.subst x @@ Term_util.make_int n) exparam_sol''
     |> save_to_file;
   Main_loop.run ~exparam_sol:exparam_sol'' orig @@ Problem.safety transformed
 

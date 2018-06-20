@@ -36,10 +36,7 @@ let rec is_value t =
   | Tuple ts -> List.for_all is_value ts
   | _ -> false
 
-let safe_attr = [ANotFail;ATerminate]
-let pure_attr = [ANotFail;ATerminate;ADeterministic]
-let has_safe_attr t = List.Set.subset safe_attr t.attr
-let has_pure_attr t = List.Set.subset pure_attr t.attr
+let has_safe_attr t = List.Set.subset [ANotFail;ATerminate] t.attr
 
 let end_of_definitions = {desc=Const End_of_definitions; typ=Ty.unit; attr=[]}
 let unit_term = {desc=Const Unit; typ=Ty.unit; attr=const_attr}
@@ -65,23 +62,16 @@ let rec make_app t ts =
         assert false
       end
   in
-  let attr =
-    let fun_attr,_ = decomp_tattr t.typ in
-    match ts with
-    | t::_ when List.mem TAPureFun fun_attr -> make_attr ~attrs:pure_attr [t]
-    | t::_ when List.mem TASafeFun fun_attr -> make_attr ~attrs:safe_attr [t]
-    | _ -> []
-  in
   match t.desc, tfuns_to_tfun @@ elim_tattr t.typ, ts with
   | _, _, [] -> t
   | App(t1,ts1), TFun(x,typ), t2::ts2 ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t1,ts1@[t2]); typ; attr} ts2
+      make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
   | App(t1,ts1), typ, t2::ts2 when typ = typ_unknown || is_tvar typ ->
       make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
   | _, TFun(x,typ), t2::ts ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t,[t2]); typ; attr} ts
+      make_app {desc=App(t,[t2]); typ; attr=[]} ts
   | _, typ, t2::ts when typ = typ_unknown || is_tvar typ ->
       make_app {desc=App(t,[t2]); typ; attr=[]} ts
   | _ when not Flag.Debug.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
@@ -96,16 +86,8 @@ let make_local decl t =
     t
   else
     {desc=Local(decl,t); typ=t.typ; attr=[]}
-let make_let ?(simplify_seq=false) bindings t2 =
-  let t = make_local (Decl_let bindings) t2 in
-  if simplify_seq then
-    let fv = get_fv t2 in
-    if simplify_seq && List.for_all (fun (x,t) -> t.typ = Ty.unit && has_safe_attr t && not @@ Id.mem x fv) bindings then
-      t2
-    else
-      t
-  else
-    t
+let make_let bindings t2 =
+  make_local (Decl_let bindings) t2
 let make_let_s bindings t2 =
   let bindings' = List.filter (fun (f,_) -> List.exists (snd |- occur_in f) bindings || occur_in f t2) bindings in
   make_let bindings' t2
@@ -118,7 +100,7 @@ let make_lets_type decls t2 =
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
 let make_seq t1 t2 =
-  if has_safe_attr t1 then
+  if is_value t1 then
     t2
   else
     make_let [Id.new_var ~name:"u" t1.typ, t1] t2
@@ -129,19 +111,7 @@ let make_ignore t =
     make_seq t unit_term
 let fail_unit_term = make_app fail_term [unit_term]
 let make_fail typ = make_seq fail_unit_term @@ make_bottom typ
-let make_fun x t =
-  let typ =
-    let tfun =
-      if has_pure_attr t then
-        Type.pureTFun
-      else if has_safe_attr t then
-        Type.safeTFun
-      else
-        Type._TFun
-    in
-    tfun x t.typ
-  in
-  {desc=Fun(x,t); typ; attr=[]} (* TO FIX: `attr=pure_attr` makes somewhere broken *)
+let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_funs = List.fold_right make_fun
 let make_not t =
   match t.desc with
@@ -251,10 +221,7 @@ let make_binop op t1 t2 =
   in
   f t1 t2
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
-let make_tuple ts =
-  let attr = make_attr ts in
-  let typ = make_ttuple @@ List.map Syntax.typ ts in
-  {desc=Tuple ts; typ; attr}
+let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
 let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=[]}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=[]}
 let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ; attr=[]}
@@ -331,9 +298,8 @@ let is_length_var x = Id.name x = "List.length"
 let make_length_var typ =
   let x = Id.make (-1) "l" [] typ in
   Id.make (-1) "List.length" [] (TFun(x, Ty.int))
-let make_length (t:term) =
-  let attr = make_attr [t] in
-  {(make_app (make_var @@ make_length_var t.typ) [t]) with attr}
+let make_length t =
+  {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
 
 let make_module decls =
   let decls' = List.filter_out (fun decl -> decl = Decl_type [] || decl = Decl_let []) decls in
@@ -357,7 +323,7 @@ let rec make_randvalue_unit typ =
   | TTuple tys -> make_tuple @@ List.map (Id.typ |- make_randvalue_unit) tys
   | TFun(x,ty) -> make_fun x @@ make_randvalue_unit ty
   | TAttr(_,ty) -> make_randvalue_unit ty
-  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=safe_attr}
+  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
 
 let make_randvalue_cps typ =
   {desc=Const(RandValue(typ,true)); typ=Ty.(funs [unit; fun_ typ typ_result] typ_result); attr=[]}
@@ -628,10 +594,7 @@ let make_match t1 pats =
         make_let [x',t1] @@ subst_var x x' t2
       else
         make_let [x,t1] t2
-  | _ ->
-      let attr = make_attr (t1 :: List.flatten_map (fun (_,cond,t) -> [cond;t]) pats) in
-      let typ = Syntax.typ @@ Triple.trd @@ List.hd pats in
-      {desc=Match(t1,pats); typ; attr}
+  | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
 let make_single_match ?(total=false) t1 p t2 =
   let rec is_total p =
     match p.pat_desc with
@@ -1337,7 +1300,7 @@ module Term = struct
   let string = make_string
   let (@) = make_app
   let (@@) = make_app
-  let let_ = make_let ~simplify_seq:false
+  let let_ = make_let
   let lets = make_lets
   let fun_ = make_fun
   let not = make_not

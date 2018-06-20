@@ -141,7 +141,7 @@ let abst_list_typ post typ =
   | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Encode_list.abst_list_typ)")
   | TApp(TList, [typ]) ->
       let l = Id.new_var ~name:"l" Ty.int in
-      TTuple[l; Id.new_var @@ pureTFun (Id.new_var ~name:"i" Ty.int) (abst_list.tr2_typ post typ)]
+      TTuple[l; Id.new_var @@ pureTFun(Id.new_var ~name:"i" Ty.int, abst_list.tr2_typ post typ)]
   | _ -> abst_list.tr2_typ_rec post typ
 
 let print_bind fm bind =
@@ -292,7 +292,7 @@ let trans t =
 
 
 let make_list_eq typ =
-  let f = Id.new_var ~name:"Primitive.list_eq" @@ pureTFun (Id.new_var ~name:"xs" @@ make_tlist typ) (pureTFun (Id.new_var ~name:"xs" @@ make_tlist typ) Ty.bool) in
+  let f = Id.new_var ~name:"Primitive.list_eq" @@ pureTFun(Id.new_var ~name:"xs" @@ make_tlist typ, pureTFun(Id.new_var ~name:"xs" @@ make_tlist typ, Ty.bool)) in
   let xs = Id.new_var ~name:"xs'" @@ make_tlist typ in
   let ys = Id.new_var ~name:"ys'" @@ make_tlist typ in
   let t_eq =

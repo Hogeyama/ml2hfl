@@ -399,18 +399,18 @@ and from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
 let conv_primitive_app t ts typ =
   match t.desc,ts with
   | Var {Id.name="List.length"}, [t1] -> make_length t1
-  | Var {Id.name="Pervasives.@@"}, [t1;t2] -> Term.(t1 @ [t2])
-  | Var {Id.name="Pervasives.="}, [t1;t2] -> Term.(t1 = t2)
-  | Var {Id.name="Pervasives.<>"}, [t1;t2] -> Term.(t1 <> t2)
-  | Var {Id.name="Pervasives.<"}, [t1;t2] -> Term.(t1 < t2)
-  | Var {Id.name="Pervasives.>"}, [t1;t2] -> Term.(t1 > t2)
-  | Var {Id.name="Pervasives.<="}, [t1;t2] -> Term.(t1 <= t2)
-  | Var {Id.name="Pervasives.>="}, [t1;t2] -> Term.(t1 >= t2)
-  | Var {Id.name="Pervasives.&&"}, [t1;t2] -> Term.(t1 && t2)
-  | Var {Id.name="Pervasives.||"}, [t1;t2] -> Term.(t1 || t2)
-  | Var {Id.name="Pervasives.+"}, [t1;t2] -> Term.(t1 + t2)
-  | Var {Id.name="Pervasives.-"}, [t1;t2] -> Term.(t1 - t2)
-  | Var {Id.name="Pervasives.*"}, [t1;t2] -> Term.(t1 * t2)
+  | Var {Id.name="Pervasives.@@"}, [t1;t2] -> make_app t1 [t2]
+  | Var {Id.name="Pervasives.="}, [t1;t2] -> make_eq t1 t2
+  | Var {Id.name="Pervasives.<>"}, [t1;t2] -> make_neq t1 t2
+  | Var {Id.name="Pervasives.<"}, [t1;t2] -> make_lt t1 t2
+  | Var {Id.name="Pervasives.>"}, [t1;t2] -> make_gt t1 t2
+  | Var {Id.name="Pervasives.<="}, [t1;t2] -> make_leq t1 t2
+  | Var {Id.name="Pervasives.>="}, [t1;t2] -> make_geq t1 t2
+  | Var {Id.name="Pervasives.&&"}, [t1;t2] -> make_and t1 t2
+  | Var {Id.name="Pervasives.||"}, [t1;t2] -> make_or t1 t2
+  | Var {Id.name="Pervasives.+"}, [t1;t2] -> make_add t1 t2
+  | Var {Id.name="Pervasives.-"}, [t1;t2] -> make_sub t1 t2
+  | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
   | Var {Id.name="Pervasives./"}, [t1;t2] ->
       let t2' =
         if !Flag.Method.check_div_operand then
@@ -423,15 +423,11 @@ let conv_primitive_app t ts typ =
         else
           t2
       in
-      if !Flag.Method.abst_div then
-        (Flag.add_use_abst "abst_div";
-         Term.(seq t1 (seq t2' randi)))
-      else
-        Term.(t1 / t2')
-  | Var {Id.name="Pervasives.~-"}, [t] -> Term.(~- t)
-  | Var {Id.name="Pervasives.not"}, [t] -> Term.(not t)
-  | Var {Id.name="Pervasives.fst"}, [t] -> Term.(fst t)
-  | Var {Id.name="Pervasives.snd"}, [t] -> Term.(snd t)
+      make_div t1 t2'
+  | Var {Id.name="Pervasives.~-"}, [t] -> make_neg t
+  | Var {Id.name="Pervasives.not"}, [t] -> make_not t
+  | Var {Id.name="Pervasives.fst"}, [t] -> make_fst t
+  | Var {Id.name="Pervasives.snd"}, [t] -> make_snd t
   | Var {Id.name="Pervasives.raise"}, [t] -> make_raise t typ
   | Var {Id.name="Pervasives.ref"}, [t] -> make_ref t
   | Var {Id.name="Pervasives.read_int"}, [{desc=Const Unit}] ->
@@ -447,7 +443,10 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
   | Var {Id.name="Random.int"}, [t] ->
       let x = Id.new_var ~name:"n" Ty.int in
-      Term.(let_ [x, randi] (assume (int 0 <= var x && var x < t) (var x)))
+      make_let [x, randint_unit_term] @@
+        make_assume
+          (make_and (make_leq (make_int 0) (make_var x)) (make_lt (make_var x) t))
+          (make_var x)
   | Var {Id.name="Pervasives.open_in"}, [{desc=Const(Int _)}] -> make_event_unit "newr"
   | Var {Id.name="Pervasives.close_in"}, [{typ=TBase TUnit}] -> make_event_unit "close"
   | Var {Id.name="Pervasives.invalid_arg"}, [{desc=Const(String s)}] ->
@@ -503,7 +502,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         in
         decls', make_var @@ from_ident_path id_env path typ'
     | Texp_constant c ->
-        [], {desc = Const (from_constant c); typ = typ'; attr=const_attr}
+        [], {desc = Const (from_constant c); typ = typ'; attr=[]}
     | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
          when (function Tpat_var _ -> false | _ -> true) vb_pat.pat_desc ->
         let decls0,p' = from_pattern vb_pat in
@@ -628,7 +627,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let pats'' = pats' @ [make_pany typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
         let decls2,t = from_expression id_env e in
         decls2 @ List.flatten declss,
-        {desc=TryWith(t, Term.(fun_ x (match_ (var x) pats''))); typ=typ'; attr=[]}
+        {desc=TryWith(t, make_fun x (make_match (make_var x) pats'')); typ=typ'; attr=[]}
     | Texp_tuple es ->
         let declss,ts = List.split_map (from_expression id_env) es in
         decls1 @ List.flatten declss,
@@ -746,31 +745,23 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let f = Id.new_var ~name:"for" Ty.(TFun(Id.new_var ~name:"i" int, unit)) in
         let init = Id.new_var ~name:"init" Ty.int in
         let last = Id.new_var ~name:"last" Ty.int in
-        let t =
-          if !Flag.Method.abst_for_loop then
-            let op =
-              match dir with
-              | Upto -> Term.(<=)
-              | Downto -> Term.(>=)
-            in
-            Term.(if_ (op (var init) (var last)) (let_ [x', randi] (assume (var init <= var x' && var x' <= var last) t3)) unit)
-          else
-            let t31 =
-              match dir with
-              | Upto -> Term.(var x' <= var last)
-              | Downto -> Term.(var x' >= var last)
-            in
-            let t32 =
-              let x'' =
-                match dir with
-                | Upto -> Term.(var x' + int 1)
-                | Downto -> Term.(var x' - int 1)
-              in
-              Term.(seq t3 (var f @ [x'']))
-            in
-            Term.(let_ [f, fun_ x' (if_ t31 t32 unit)] (var f @ [var init]))
+        let t31 =
+          match dir with
+          | Upto -> make_leq (make_var x') (make_var last)
+          | Downto -> make_geq (make_var x') (make_var last)
         in
-        decls2 @ decls3 @ decls4, Term.(lets [init,t1; last,t2] t)
+        let t32 =
+          let x'' =
+            match dir with
+            | Upto -> make_add (make_var x') (make_int 1)
+            | Downto -> make_sub (make_var x') (make_int 1)
+          in
+          make_seq t3 @@ make_app (make_var f) [x'']
+        in
+        assert (Flag.Debug.check_typ => Type.can_unify t31.typ Ty.bool);
+        let t3' = make_if t31 t32 unit_term in
+        decls2 @ decls3 @ decls4,
+        make_lets [init,t1; last,t2] @@ make_let [f, make_fun x' t3'] @@ make_app (make_var f) [make_var init]
     | Texp_send _
     | Texp_new _ -> unsupported "expression (class)"
     | Texp_instvar _ -> unsupported "expression (instvar)"

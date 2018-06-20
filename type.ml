@@ -27,10 +27,9 @@ and constr =
   | TArray
   | TLazy
 and 'a attr =
-  | TAPred of 'a t Id.t * 'a list (** TAPred occur at most ones *)
-  | TARefPred of 'a t Id.t * 'a (** TARefPred occur at most ones *)
-  | TAPureFun (** pure means non-fail, terminating, and deterministic *)
-  | TASafeFun (** safe means non-fail and terminating (may be non-deterministic) *)
+  | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
+  | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
+  | TAPureFun
   | TAEffect of effect
 and effect = EVar of int | ENone | ECont | EExcep
 
@@ -38,7 +37,6 @@ exception CannotUnify
 
 let print_as_ocaml = ref false
 let set_print_as_ocaml () = print_as_ocaml := true
-let tmp_set_print_as_ocaml f = Ref.tmp_set print_as_ocaml true f
 
 let _TFun x typ = TFun(x, typ)
 let _TAttr attr typ =
@@ -49,8 +47,7 @@ let _TAttr attr typ =
     | TAttr(attr', typ') -> TAttr(attr@attr', typ')
     | _ -> TAttr(attr, typ)
 
-let pureTFun x typ = TAttr([TAPureFun], TFun(x,typ))
-let safeTFun x typ = TAttr([TASafeFun], TFun(x,typ))
+let pureTFun(x,typ) = TAttr([TAPureFun], TFun(x,typ))
 
 let typ_unknown = TData "???"
 
@@ -164,7 +161,6 @@ let print_attr fm a =
   | TAPred _ -> Format.fprintf fm "TAPred"
   | TARefPred _ -> Format.fprintf fm "TARefPred"
   | TAPureFun -> Format.fprintf fm "TAPureFun"
-  | TASafeFun -> Format.fprintf fm "TASafeFun"
   | TAEffect e -> Format.fprintf fm "TAEffect %a" print_effect e
 
 let print_tvar fm n =

@@ -91,7 +91,6 @@ let map_attr f x = {x with attr = f x.attr}
 
 let print_as_ocaml = ref false
 let set_print_as_ocaml () = print_as_ocaml := true
-let tmp_set_print_as_ocaml f = Ref.tmp_set print_as_ocaml true f
 
 let print fm x =
   let s = to_string ~plain:false x in

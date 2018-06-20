@@ -23,10 +23,9 @@ and constr =
   | TArray
   | TLazy
 and 'a attr =
-  | TAPred of 'a t Id.t * 'a list (** TAPred occur at most ones *)
-  | TARefPred of 'a t Id.t * 'a (** TARefPred occur at most ones *)
-  | TAPureFun (** pure means non-fail, terminating, and deterministic *)
-  | TASafeFun (** safe means non-fail and terminating (may be non-deterministic) *)
+  | TAPred of 'a t Id.t * 'a list
+  | TARefPred of 'a t Id.t * 'a
+  | TAPureFun
   | TAEffect of effect
 and effect = EVar of int | ENone | ECont | EExcep
 
@@ -44,7 +43,6 @@ val is_mutable_record : 'a t -> bool
 val is_tvar : 'a t -> bool
 val occurs : 'a t option ref -> 'a t -> bool
 val set_print_as_ocaml : unit -> unit
-val tmp_set_print_as_ocaml : (unit -> unit) -> unit
 
 val typ_unknown : 'a t
 val elim_tattr : 'a t -> 'a t
@@ -85,8 +83,7 @@ val decomp_tattr : 'a t -> 'a attr list * 'a t
 
 val _TFun : 'a t Id.t -> 'a t -> 'a t
 val _TAttr : 'a attr list -> 'a t -> 'a t
-val pureTFun : 'a t Id.t -> 'a t -> 'a t
-val safeTFun : 'a t Id.t -> 'a t -> 'a t
+val pureTFun : ('a t Id.t * 'a t) -> 'a t
 val make_ttuple : 'a t list -> 'a t
 val make_tpair : 'a t -> 'a t -> 'a t
 val make_tfun : 'a t -> 'a t -> 'a t

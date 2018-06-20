@@ -173,7 +173,6 @@ let trans_typ trans = function
         | TAPred(x,ps) -> TAPred(trans.tr_var x, List.map trans.tr_term ps)
         | TARefPred(x,p) -> TARefPred(trans.tr_var x, trans.tr_term p)
         | TAPureFun -> TAPureFun
-        | TASafeFun -> TASafeFun
         | TAEffect e -> TAEffect e
       in
       TAttr(List.map tr attr, trans.tr_typ typ)
@@ -344,7 +343,6 @@ let trans2_gen_typ tr env = function
         | TAPred(x,ps) -> TAPred(tr.tr2_var env x, List.map (tr.tr2_term env) ps)
         | TARefPred(x,p) -> TARefPred(tr.tr2_var env x, tr.tr2_term env p)
         | TAPureFun -> TAPureFun
-        | TASafeFun -> TASafeFun
         | TAEffect e -> TAEffect e
       in
       TAttr(List.map aux attr, tr.tr2_typ env typ)
@@ -525,7 +523,6 @@ let col_typ col typ =
             let acc' = col.col_var x -@- acc in
             List.fold_left (fun acc p -> acc -@- col.col_term p) acc' ps
         | TARefPred(x,p) -> col.col_var x -@- col.col_term p -@- acc
-        | TASafeFun -> acc
         | TAPureFun -> acc
         | TAEffect e -> acc
       in
@@ -708,7 +705,6 @@ let col2_typ col env typ =
             col2_list col (col.col2_term env) ~init ps
         | TARefPred(x,p) ->
             col.col2_var env x -@- col.col2_term env p -@- acc
-        | TASafeFun -> acc
         | TAPureFun -> acc
         | TAEffect _ -> acc
       in
@@ -905,7 +901,6 @@ let tr_col2_typ tc env = function
             let acc,x' = tc.tr_col2_var env x in
             let acc',p' = tc.tr_col2_term env p in
             acc', TARefPred(x',p')
-        | TASafeFun -> tc.tr_col2_empty, TASafeFun
         | TAPureFun -> tc.tr_col2_empty, TAPureFun
         | TAEffect e -> tc.tr_col2_empty, TAEffect e
       in
@@ -1238,7 +1233,6 @@ let fold_tr_typ fld env ty =
             let env'',p' = fld.fld_term env' p in
             env'', TARefPred(x',p')
         | TAPureFun -> env, TAPureFun
-        | TASafeFun -> env, TASafeFun
         | TAEffect e -> env, TAEffect e
       in
       let env',attr' = fold_tr_list aux env attr in

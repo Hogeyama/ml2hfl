@@ -354,7 +354,7 @@ let rec exists_dest ty =
   | _ -> false
 
 
-let fix_arg_pred =
+let mark =
   let rec mark ty =
     let mark_id x =
       let ty = mark @@ Id.typ x in
@@ -398,34 +398,11 @@ let fix_arg_pred =
   tr.tr_typ <- mark;
   tr.tr_term
 
-let set_fun_attr =
-  let rec mark ty =
-    match elim_tattr ty with
-    | _ when is_base_typ ty -> ty
-    | TTuple xs -> TTuple (List.map (Id.map_typ mark) xs)
-    | TFun(x,ty2) ->
-        let tfun = if effect_of_typ ty2 = ENone then safeTFun else _TFun in
-        tfun (Id.map_typ mark x) (mark ty2)
-    | _ -> assert false
-  in
-  let tr = make_trans () in
-  tr.tr_typ <- mark;
-  tr.tr_term
-
-let fix_safe_fun_arg_pred t =
+let mark_safe_fun_arg t =
   t
   |> infer
   |@> Debug.printf "INFERRED: %a@." Print.term'
-  |> fix_arg_pred
+  |> mark
   |> Trans.remove_effect_attribute
   |> Trans.reconstruct
-  |@> Debug.printf "FIX_PRED: %a@." Print.term'
-
-let set_fun_attr t =
-  t
-  |> infer
-  |@> Debug.printf "INFERRED: %a@." Print.term'
-  |> set_fun_attr
-  |> Trans.remove_effect_attribute
-  |> Trans.reconstruct
-  |@> Debug.printf "SET_ATTR: %a@." Print.term'
+  |@> Debug.printf "MARKED: %a@." Print.term'

@@ -36,7 +36,7 @@ let abst_recdata_leaves env typs =
     else Ty.(tuple [int; tuple' typs'])
   in
   Ty.(tuple [unit; (* extra-param *)
-             pureTFun (Id.new_var ~name:"path" @@ list int) r_typ])
+             pureTFun(Id.new_var ~name:"path" @@ list int, r_typ)])
 
 let encode_recdata_typ env s ty =
   match ty with
@@ -57,7 +57,7 @@ let encode_recdata_typ env s ty =
         in
         List.map (make_tpair Ty.bool) @@ List.map (make_ttuple' -| List.filter_map aux -| snd) labels
       in
-      Ty.(pair unit (pureTFun (Id.new_var ~name:"path" @@ list Ty.int) (tuple' tys)))
+      Ty.(pair unit (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, tuple' tys)))
   | _ -> abst_recdata.tr2_typ env ty
 
 let abst_recdata_typ env typ =
