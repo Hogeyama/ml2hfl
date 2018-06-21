@@ -243,7 +243,7 @@ let main_trans spec t =
   in
   Type.set_print_as_ocaml();
   t
-  |> Preprocess.(run_on_term pps)
+  |> Preprocess.run_on_term pps
   |> Trans.remove_unambiguous_id
   |> Trans.replace_typ_result_with_unit
   |> Trans.rename_for_ocaml

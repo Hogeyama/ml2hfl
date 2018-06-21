@@ -55,9 +55,9 @@ and print_id fm x = Id.print fm x
 and print_id_typ fm x = fprintf fm "(@[%a:%a@])" print_id x (Color.cyan print_typ) (Id.typ x)
 
 (* priority (low -> high)
-   10 : Local, Letrec, If, Match, TryWith
+   9 : Seq
+   10 : Local, If, Match, TryWith
    15 : Fun
-   18 : Seq
    20 : Pair
    30 : Or
    40 : And
@@ -163,7 +163,7 @@ and print_let_decls cfg bang fm bindings =
     let xs,t1' = if !!Debug.check then [], t1 else decomp_funs t1 in
     let fv = get_fv t1' in
     let pr_ty fm = if cfg.ty then Format.fprintf fm " : %a" print_typ t1'.typ in
-    fprintf fm "@[<hov 2>%s @[<hov 2>%a%a@]%t =@ %a@]" pre print_id f (print_ids ~fv cfg) xs pr_ty (print_term cfg 0) t1';
+    fprintf fm "@[<hov 2>%s @[<hov 2>%a%a%t@] =@ %a@]" pre print_id f (print_ids ~fv cfg) xs pr_ty (print_term cfg 0) t1';
     first := false
   in
   print_list print_binding "@ " fm bindings
@@ -190,6 +190,12 @@ and print_decl cfg bang fm decl =
 and print_decls cfg fm decls =
   Format.fprintf fm "@[%a@]" (print_list (print_decl cfg false) "@\n") decls
 
+and print_if_label fm attr =
+  if !Flag.Print.only_if_id then
+    match List.find_option (function AId _ -> true | _ -> false) attr with
+    | Some (AId n) -> Format.fprintf fm "^%d" n
+    | _ -> ()
+
 and print_desc cfg pri attr fm desc =
   let pr_t = print_term {cfg with top=false} in
   match desc with
@@ -214,30 +220,18 @@ and print_desc cfg pri attr fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[<hov 2>%s%a@ %a%s@]" s1 (pr_t p) t (print_termlist {cfg with top=false} p) ts s2
+  | If(t1, t2, {desc=Bottom}) when not cfg.as_ocaml || cfg.for_dmochi ->
+      let p = 9 in
+      let s1,s2 = paren pri p in
+      fprintf fm "%s@[assume%a %a;@ %a@]%s" s1 print_if_label attr (pr_t p) t1 (pr_t p) t2 s2
   | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
-      let label =
-        if !Flag.Print.only_if_id then
-          match List.find_option (function AId _ -> true | _ -> false) attr with
-          | Some (AId n) -> Format.sprintf "^%d" n
-          | _ -> ""
-        else
-          ""
-      in
-      fprintf fm "@[<hov 2>%sassert%s %a%s@]" s1 label (pr_t p) t1 s2
+      fprintf fm "@[<hov 2>%sassert%a %a%s@]" s1 print_if_label attr (pr_t p) t1 s2
   | If(t1, t2, t3) ->
       let p = 10 in
       let s1,s2 = paren pri (if t3.desc = Const Unit then p else p+1) in
-      let label =
-        if !Flag.Print.only_if_id then
-          match List.find_option (function AId _ -> true | _ -> false) attr with
-          | Some (AId n) -> Format.sprintf "^%d" n
-          | _ -> ""
-        else
-          ""
-      in
-      fprintf fm "%s@[<hv>if%s@[@ %a@]@ then@ " s1 label (pr_t p) t1;
+      fprintf fm "%s@[<hv>if%a@[@ %a@]@ then@ " s1 print_if_label attr (pr_t p) t1;
       pp_print_if_newline fm ();
       pp_print_string fm "  ";
       fprintf fm "@[%a@]" (pr_t p) t2;
