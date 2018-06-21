@@ -51,13 +51,12 @@ let rec check env t typ =
             aux (ts,typ)
         | [_], typ when typ = typ_event -> ()
         | _ ->
-            Format.eprintf "ts: %a@." (List.print Print.term) ts;
+            Format.eprintf "ts: %a@." Print.(list term) ts;
             Format.eprintf "typ: %a@." Print.typ typ;
             assert false
       in
-      let typ'' = List.fold_right (fun t typ -> TFun(Id.new_var t.typ, typ)) ts typ' in
       aux (ts, t.typ);
-      check env t typ''
+      check env t @@ List.fold_right (fun t typ -> Ty.fun_ t.typ typ) ts typ'
   | If(t1,t2,t3), typ' ->
       check env t1 Ty.bool;
       check env t2 typ';

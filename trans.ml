@@ -1250,7 +1250,7 @@ let assoc_typ =
     match col.col2_term f t with
     | [] -> raise Not_found
     | [typ] -> typ
-    | _ -> Format.eprintf "VAR:%a@.PROG:%a@." Id.print f Print.term t; assert false
+    | _ -> Debug.printf "VAR:%a@.PROG:%a@." Id.print f Print.term t; assert false
 
 let inline_no_effect =
   let tr = make_trans () in
@@ -2604,23 +2604,29 @@ let elim_redundant_arg =
                 let map = List.map (fun (i,x) -> x, List.nth args i) redundant in
                 let f' = Id.map_typ (List.fold_right Type.remove_arg_at pos) f in
                 let xs' = List.fold_right List.remove_at pos xs in
-                let remove_arg t =
-                  match t.desc with
-                  | App({desc=Var g}, ts) when Id.eq f g ->
-                      let desc = App(make_var f', List.fold_right List.remove_at pos ts) in
-                      Some {t with desc}
-                  | _ -> None
+                let remove_arg =
+                  let tr = make_trans () in
+                  let tr_desc desc =
+                    match desc with
+                    | App({desc=Var g}, ts) when Id.(f = g) ->
+                        App(make_var f', List.fold_right List.remove_at pos ts)
+                    | Fun(g,_) when Id.(f = g) -> desc
+                    | Local(Decl_let bindings, _) when List.exists (fst |- Id.(=) f) bindings -> desc
+                    | _ -> tr.tr_desc_rec desc
+                  in
+                  tr.tr_desc <- tr_desc;
+                  tr.tr_term
                 in
                 let t1' =
                   t1
                   |> tr.tr2_term (xs@vars)
                   |> subst_map map
-                  |> trans_if remove_arg
+                  |> remove_arg
                 in
                 let t' =
                   t
                   |> tr.tr2_term vars
-                  |> trans_if remove_arg
+                  |> remove_arg
                 in
                 Local(Decl_let [f',make_funs xs' t1'], t')
           end

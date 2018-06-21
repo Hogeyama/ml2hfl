@@ -199,7 +199,8 @@ let all spec : t list =
     Replace_base_with_int,
       cond_trans (!Flag.Method.base_to_int || !Flag.Method.data_to_int) @@
       map_trans replace_base_with_int;
-    Inline_simple_types, map_trans inline_simple_types;
+    Inline_simple_types,
+      map_trans inline_simple_types;
     Replace_data_with_int,
       cond_trans !Flag.Method.data_to_int @@
       map_trans replace_data_with_int;
@@ -275,7 +276,7 @@ let rec trans_and_print
         let prog' = fst r in
         if desc = "Init" || l > 1 || prog <> prog' then
           print desc prog';
-        if !!Debug.check then
+        if !!Debug.check || !!Debug_ty.check then
           let t = Problem.term prog' in
           try
             Type_check.check t ~ty:t.Syntax.typ
