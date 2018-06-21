@@ -41,31 +41,31 @@ let rec is_filled_pattern p =
   with Option.No_value -> None
 
 
-let subst_matched_var = make_trans ()
-
-let subst_matched_var_desc desc =
-  match desc with
-  | Match({desc=Var x}, pats) ->
-      let aux (p,t1,t2) =
-        let t1' = subst_matched_var.tr_term t1 in
-        let t2' = subst_matched_var.tr_term t2 in
-        let sbst =
-          match is_filled_pattern p with
-          | None -> Std.identity
-          | Some t' ->
-              fun t0 ->
-                match t0 with
-                | {desc=Const True} -> t0
-                | _ when !Flag.Method.tupling -> make_label (InfoIdTerm(x, t')) t0
-                | _ -> subst x t' t0
+let subst_matched_var =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Match({desc=Var x}, pats) ->
+        let aux (p,t1,t2) =
+          let t1' = tr.tr_term t1 in
+          let t2' = tr.tr_term t2 in
+          let sbst =
+            match is_filled_pattern p with
+            | None -> Std.identity
+            | Some t' ->
+                fun t0 ->
+                  match t0 with
+                  | {desc=Const True} -> t0
+                  | _ when !Flag.Method.tupling -> make_label (InfoIdTerm(x, t')) t0
+                  | _ -> subst x t' t0
+          in
+          p, sbst t1', sbst t2'
         in
-        p, sbst t1', sbst t2'
-      in
-      Match(make_var x, List.map aux pats)
-  | _ -> subst_matched_var.tr_desc_rec desc
-
-let () = subst_matched_var.tr_desc <- subst_matched_var_desc
-let subst_matched_var = subst_matched_var.tr_term
+        Match(make_var x, List.map aux pats)
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
 
 
 
@@ -150,7 +150,16 @@ let print_bind fm bind =
   Format.fprintf fm "]@]"
 
 let add_bind bind t =
-  List.fold_right (fun (x,t) t' -> make_let_s [x,t] t') bind t
+  let aux (x,t) t' =
+    let x' =
+      if Id.mem x @@ get_fv t then
+        Id.new_var_id x
+      else
+        x
+    in
+    make_let_s [x',t] @@ subst_var x x' t'
+  in
+  List.fold_right aux bind t
 
 (* "t" must have no side-effects *)
 let rec get_match_bind_cond t p =
@@ -250,8 +259,8 @@ let abst_list_term post t =
       let xs = Id.new_var ~name:"xs" t2'.typ in
       let t_f = Term.(fun_ i (if_ (var i = int 0) (var x) (snd (var xs) @ [var i - int 1]))) in
       let t_len = Term.(fst (var xs) + int 1) in
-      let cons = Id.new_var ~name:("cons"^post) (TFun(x,TFun(xs,t2'.typ))) in
-      make_let [cons, make_funs [x;xs] @@ make_pair t_len t_f] (make_app (make_var cons) [t1'; t2'])
+      let cns = Id.new_var ~name:("cons"^post) (TFun(x,TFun(xs,t2'.typ))) in
+      Term.(let_ [cns, funs [x;xs] (pair t_len t_f)] (var cns @ [t1'; t2']))
   | Constr("Abst",[]) -> t
   | Constr(s,ts) -> assert false
   | Match(t1,pats) ->
@@ -277,11 +286,11 @@ let () = abst_list.tr2_typ <- abst_list_typ
 let trans t =
   let t' =
     t
-    |@> Debug.printf "abst_list::@. @[%a@.@." Print.term'
+    |@> Debug.printf "[abst_list] input:@. @[%a@.@." Print.term'
     |> abst_list.tr2_term ""
-    |@> Debug.printf "abst_list::@. @[%a@.@." Print.term_typ
+    |@> Debug.printf "[abst_list] abst_list:@. @[%a@.@." Print.term_typ
     |> Trans.inline_var_const
-    |@> Debug.printf "abst_list::@. @[%a@.@." Print.term_typ
+    |@> Debug.printf "[abst_list] inline_var_const:@. @[%a@.@." Print.term_typ
   in
   let ty = abst_list.tr2_typ "" t.typ in
   Type_check.check t' ~ty;
@@ -434,10 +443,10 @@ let abst_list_opt_term t =
       let t13 = make_app (make_var xs) [make_sub (make_var i) (make_int 1)] in
       if true
       then
-        make_lets [x,t1'; xs,t2'] @@ make_fun i (make_if t11 t12 t13)
+        Term.(lets [x,t1'; xs,t2'] (fun_ i (if_ t11 t12 t13)))
       else
-        let cons = Id.new_var ~name:"cons" (TFun(x,TFun(xs,t2'.typ))) in
-        make_let [cons, make_funs [x;xs;i] @@ make_if t11 t12 t13] (make_app (make_var cons) [t1'; t2'])
+        let cns = Id.new_var ~name:"cons" (TFun(x,TFun(xs,t2'.typ))) in
+        Term.(let_ [cns, funs [x;xs;i] (if_ t11 t12 t13)] (var cns @ [t1'; t2']))
   | Match(t1,pats) ->
       let x = Id.new_var ~name:"xs" (abst_list_opt.tr_typ t1.typ) in
       let aux (p,cond,t) t' =

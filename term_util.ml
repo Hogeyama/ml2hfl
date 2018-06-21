@@ -484,27 +484,37 @@ let is_poly_typ = is_poly_typ.col_typ
 let subst = make_trans2 ()
 
 (* [x |-> t], [t/x] *)
-let subst_term (x,t) t' =
-  match t'.desc with
-  | Var y when Id.(x = y) -> t
-  | Fun(y, t1) when Id.(x = y) -> t'
-  | Local(Decl_let bindings, t2) when List.exists (fst |- Id.same x) bindings -> t'
-  | Local(Decl_let bindings, t2) ->
-      let aux (f,t1) = subst.tr2_var (x,t) f, subst.tr2_term (x,t) t1 in
-      let bindings' = List.map aux bindings in
-      let t2' = subst.tr2_term (x,t) t2 in
-      let desc = Local(Decl_let bindings', t2') in
+let subst_term (x,t,fv as arg) t' =
+  let rename map t = List.fold_left (fun t (y,y') -> subst.tr2_term_rec (y, make_var y', None) t) t map in
+  match t'.desc, fv with
+  | Var y, _ when Id.(x = y) -> t
+  | Fun(y, t1), _ when Id.(x = y) -> t'
+  | Fun(y, t1), Some fv when Id.mem y fv ->
+      let y' = Id.new_var_id y in
+      let desc = subst.tr2_desc_rec arg @@ Fun(y', rename [y,y'] t1) in
       {t' with desc}
-  | Match(t1,pats) ->
+  | Local(Decl_let bindings, t2), _ when List.exists (fst |- Id.same x) bindings -> t'
+  | Local(Decl_let bindings, t2), Some fv when List.exists (fun (y,_) -> Id.mem y fv) bindings ->
+      let map =
+        bindings
+        |> List.filter_map (fun (y,_) -> if Id.mem y fv then Some y else None)
+        |> List.map (Pair.add_right Id.new_var_id)
+      in
+      let bindings' = List.map (fun (f,t) -> List.assoc_default ~eq:Id.eq f f map, rename map t) bindings in
+      let t2' = rename map t2 in
+      let desc = subst.tr2_desc_rec arg @@ Local(Decl_let bindings', t2') in
+      {t' with desc}
+  | Match(t1,pats), _ ->
       let aux (pat,cond,t1) =
         let xs = get_bv_pat pat in
+        if Option.exists (fun fv -> not @@ List.Set.disjoint ~eq:Id.eq xs fv) fv then unsupported "subst";
         if List.exists (Id.same x) xs
         then pat, cond, t1
-        else pat, subst.tr2_term (x,t) cond, subst.tr2_term (x,t) t1
+        else pat, subst.tr2_term arg cond, subst.tr2_term arg t1
       in
-      let desc = Match(subst.tr2_term (x,t) t1, List.map aux pats) in
+      let desc = Match(subst.tr2_term arg t1, List.map aux pats) in
       {t' with desc}
-  | _ -> subst.tr2_term_rec (x,t) t'
+  | _ -> subst.tr2_term_rec arg t'
 
 
 let subst_int = make_trans2 ()
@@ -547,9 +557,11 @@ let subst_map map t =
 
 
 let () = subst.tr2_term <- subst_term
-let subst_type x t typ = subst.tr2_typ (x,t) typ
+let subst_type x t typ = subst.tr2_typ (x,t,None) typ
 let subst_type_var x y typ = subst_type x (make_var y) typ
-let subst x t1 t2 = subst.tr2_term (x,t1) t2
+let subst ?(rename_if_captured=false) x t1 t2 =
+  let fv = if rename_if_captured then Some (get_fv t1) else None in
+  subst.tr2_term (x,t1,fv) t2
 let subst_var x y t = subst x (make_var y) t
 let subst_var_map map t =
   if map = [] then
@@ -1303,6 +1315,7 @@ module Term = struct
   let let_ = make_let
   let lets = make_lets
   let fun_ = make_fun
+  let funs = make_funs
   let not = make_not
   let (&&) = make_and
   let ands = make_ands
@@ -1339,7 +1352,7 @@ module Term = struct
   let some = make_some
   let match_ = make_match
   let length = make_length
-  let (|->) = subst
+  let (|->) = subst ~rename_if_captured:false
 end
 
 module Pat = struct

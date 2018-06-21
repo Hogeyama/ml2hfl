@@ -1454,7 +1454,7 @@ let inline_var_const =
   let tr_term t =
     match t.desc with
     | Local(Decl_let [x,t1], t2) when is_const t1 && not @@ List.mem ADoNotInline t.attr ->
-        subst x t1 @@ tr.tr_term t2
+        subst ~rename_if_captured:true x t1 @@ tr.tr_term t2
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;

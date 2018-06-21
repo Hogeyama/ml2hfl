@@ -182,7 +182,7 @@ val col_app_args : id -> term -> term list list
 val has_pnondet : pattern -> bool
 
 (** {6 Substitution} *)
-val subst : id -> term -> term -> term
+val subst : ?rename_if_captured:bool -> id -> term -> term -> term
 val subst_int : int -> term -> term -> term
 val subst_map : (id * term) list -> term -> term
 val subst_type : id -> term -> typ -> typ
@@ -248,6 +248,7 @@ module Term : sig
   val let_ : (id * term) list -> term -> term
   val lets : (id * term) list -> term -> term
   val fun_ : id -> term -> term
+  val funs : id list -> term -> term
   val not : term -> term
   val (&&) : term -> term -> term
   val ands : term list -> term
