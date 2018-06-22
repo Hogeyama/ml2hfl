@@ -31,7 +31,7 @@ let main verify parsed =
     let aux f =
       Format.printf "TARGET: %a@." Id.print f;
       let xs,_ = decomp_tfun @@ Id.typ f in
-      let aux x = make_randvalue_unit @@ Id.typ x in
+      let aux x = make_rand_unit @@ Id.typ x in
       Term.(var f @@ List.map aux xs)
     in
     List.map aux fs

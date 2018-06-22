@@ -115,9 +115,9 @@ let const_ty c =
   match c with
   | Unit -> !!RT.Ty.unit
   | CPS_result -> RT.Ty.result
-  | RandValue(TBase TInt, false) ->
+  | Rand(TBase TInt, false) ->
       RT.Ty.(fun_ !!unit !!int)
-  | RandValue(TBase TInt, true) ->
+  | Rand(TBase TInt, true) ->
       RT.Ty.(fun_ !!unit (fun_ (fun_ !!int result) result))
   | _ ->
       Format.printf "c: %a@." Print.const c;

@@ -181,41 +181,41 @@ let unify_pattern_var =
   col.col_term <- col_term;
   col.col_term
 
-let rec define_randvalue ?(name="") (env, defs as ed) typ =
+let rec define_rand ?(name="") (env, defs as ed) typ =
   if List.mem_assoc typ env then
     (env, defs), make_app (make_var @@ List.assoc typ env) [unit_term]
   else
     match elim_tattr typ with
-    | TBase _ -> (env, defs), make_randvalue_unit typ
-    | TVar({contents=None} as r,_) -> r := Some Ty.int; define_randvalue ed Ty.int
-    | TVar({contents=Some typ},_) -> define_randvalue ed typ
+    | TBase _ -> (env, defs), make_rand_unit typ
+    | TVar({contents=None} as r,_) -> r := Some Ty.int; define_rand ed Ty.int
+    | TVar({contents=Some typ},_) -> define_rand ed typ
     | TFun(x,typ) ->
-        let ed',t = define_randvalue ed typ in
+        let ed',t = define_rand ed typ in
         ed', make_fun x t
     | TApp(TList, [TVar({contents=None} as r,_)]) ->
         r := Some Ty.unit;
-        define_randvalue ed typ
+        define_rand ed typ
     | TApp(TList, [typ']) ->
         let u = Id.new_var Ty.unit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
-        let (env'',defs'),t_typ' = define_randvalue (env', defs) typ' in
+        let (env'',defs'),t_typ' = define_rand (env', defs) typ' in
         let t_typ = make_br (make_nil typ') (make_cons t_typ' (make_app (make_var f) [unit_term])) in
         (env'', (f,make_fun u t_typ)::defs'), make_app (make_var f) [unit_term]
     | TTuple xs ->
         let aux x (ed,ts) =
-          let ed',t = define_randvalue ed @@ Id.typ x in
+          let ed',t = define_rand ed @@ Id.typ x in
           ed', t::ts
         in
         let (env', defs'), ts = List.fold_right aux xs ((env,defs),[]) in
         (env', defs'), make_tuple ts
     | TApp(TRef, [typ]) ->
-        let ed',t = define_randvalue ed typ in
+        let ed',t = define_rand ed typ in
         ed', make_ref t
     | TApp(TArray, [typ]) ->
-        let ed',t = define_randvalue ed @@ make_tlist typ in
+        let ed',t = define_rand ed @@ make_tlist typ in
         ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" ~attr:[Id.External] @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
-    | TData s -> (env, defs), make_randvalue_unit typ
+    | TData s -> (env, defs), make_rand_unit typ
     | TVariant(_,labels) ->
         let u = Id.new_var Ty.unit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
@@ -223,7 +223,7 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
         let n = List.length labels in
         let aux1 (s,typs) (ed,itss,i) =
           let aux2 typ (ed,ts) =
-            let ed',t = define_randvalue ed typ in
+            let ed',t = define_rand ed typ in
             ed', t::ts
           in
           let ed',ts' = List.fold_right aux2 typs (ed,[]) in
@@ -242,7 +242,7 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
         let env' = (TData name,f)::(typ,f)::env in
         let (env'',defs'),t =
           let aux (field,(flag,typ)) (ed,sfts) =
-            let ed', t = define_randvalue ed typ in
+            let ed', t = define_rand ed typ in
             ed', (field,t)::sfts
           in
           let ed',sfts = List.fold_right aux fields ((env',defs),[]) in
@@ -250,23 +250,23 @@ let rec define_randvalue ?(name="") (env, defs as ed) typ =
         in
         (env'', (f,make_fun u t)::defs'), make_app (make_var f) [unit_term]
     | TApp(TOption, [typ']) ->
-        let (env',defs'),t_typ' = define_randvalue (env,defs) typ' in
+        let (env',defs'),t_typ' = define_rand (env,defs) typ' in
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
         (env',defs'), t
     | _ ->
-        Format.eprintf "define_randvalue: %a@." Print.typ typ;
+        Format.eprintf "define_rand: %a@." Print.typ typ;
         assert false
-let define_randvalue ed typ = define_randvalue ~name:"" ed typ
+let define_rand ed typ = define_rand ~name:"" ed typ
 
 let inst_randval =
   let fld = make_fold_tr () in
   let fld_term ed t =
     match t.desc with
-    | App({desc=Const(RandValue(TBase TInt,false));attr}, [t']) when t'.desc = Const Unit && List.mem AAbst_under attr -> (* for disproving termination  *)
+    | App({desc=Const(Rand(TBase TInt,false));attr}, [t']) when t'.desc = Const Unit && List.mem AAbst_under attr -> (* for disproving termination  *)
         ed, t
-    | App({desc=Const(RandValue(typ,false))}, [t']) when t'.desc = Const Unit ->
-        define_randvalue ed typ
-    | Const(RandValue _) ->
+    | App({desc=Const(Rand(typ,false))}, [t']) when t'.desc = Const Unit ->
+        define_rand ed typ
+    | Const(Rand _) ->
         assert false
     | _ -> fld.fld_term_rec ed t
   in
@@ -738,7 +738,7 @@ let init_base_rand =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | App({desc=Const(RandValue(typ,false))},[{desc=Const Unit}]) when is_base_typ typ ->
+    | App({desc=Const(Rand(typ,false))},[{desc=Const Unit}]) when is_base_typ typ ->
         let name =
           match typ with
           | TBase TInt -> "_ri"
@@ -746,7 +746,7 @@ let init_base_rand =
           | _ -> "_r"
         in
         make_var @@ Id.new_var ~name typ
-    | Const(RandValue(TBase TInt,_)) -> assert false
+    | Const(Rand(TBase TInt,_)) -> assert false
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
@@ -1147,7 +1147,7 @@ let make_ext_fun_def f =
   let make_fun_arg_call f (env,defs,t) =
     let xs,typ = decomp_tfun @@ Id.typ f in
     let aux typ ((env,defs),args) =
-      let (env',defs'),arg = define_randvalue (env, defs) typ in
+      let (env',defs'),arg = define_rand (env, defs) typ in
       (env', defs'), arg::args
     in
     let (env',defs'),args = List.fold_right aux (List.map Id.typ xs) ((env,defs),[]) in
@@ -1158,7 +1158,7 @@ let make_ext_fun_def f =
     in
     env', defs', t''
   in
-  let (env,defs),t = define_randvalue ([],[]) typ' in
+  let (env,defs),t = define_rand ([],[]) typ' in
   let _,defs',t' = List.fold_right make_fun_arg_call xs' (env,defs,t) in
   f, make_funs xs' @@ make_let defs' t'
 
@@ -1286,7 +1286,7 @@ let beta_no_effect =
 
 let rec diff_terms t1 t2 =
   match t1.desc, t2.desc with
-  | Const(RandValue(typ1,b1)), Const(RandValue(typ2,b2)) ->
+  | Const(Rand(typ1,b1)), Const(Rand(typ2,b2)) ->
       if Type.same_shape typ1 typ2 && b1 = b2
       then []
       else [t1,t2]
@@ -1601,9 +1601,9 @@ let replace_base_with_int =
     | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) ->
         Flag.add_use_abst "Base with int";
         randint_unit_term.desc
-    | Const(RandValue(TBase (TPrim _), b)) ->
+    | Const(Rand(TBase (TPrim _), b)) ->
         Flag.add_use_abst "Base with int";
-        Const (RandValue(Ty.int,b))
+        Const (Rand(Ty.int,b))
     | _ -> tr.tr_desc_rec desc
   in
   let tr_typ typ =
@@ -2039,7 +2039,7 @@ let set_main t =
             let bindings =
               let aux i x =
                 let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-                let t = make_randvalue_unit @@ Id.typ x in
+                let t = make_rand_unit @@ Id.typ x in
                 x', t
               in
               List.mapi aux xs
@@ -2180,7 +2180,7 @@ let beta_affine_fun =
               let used = List.Set.inter ~eq:Id.eq xs @@ get_fv ~eq:(fun _ _ -> false) t1' in
               let not_rand_int t = (* for non-termination *)
                 match t.desc with
-                | App({desc=Const(RandValue(TBase TInt,_))}, _) -> false
+                | App({desc=Const(Rand(TBase TInt,_))}, _) -> false
                 | _ -> true
               in
               if used = List.unique ~eq:Id.eq used &&
@@ -2458,10 +2458,10 @@ let direct_from_CPS =
         let t1' = tr.tr_term t1 in
         let t2' = tr.tr_term t2 in
         (make_seq (make_app (make_event s) [t1']) (make_app t2' [unit_term])).desc
-    | App({desc=Const(RandValue(typ, true))}, [t1; t2]) ->
+    | App({desc=Const(Rand(typ, true))}, [t1; t2]) ->
         let t1' = tr.tr_term t1 in
         let t2' = tr.tr_term t2 in
-        (make_app t2' [make_app (make_randvalue typ) [t1']]).desc
+        (make_app t2' [make_app (make_rand typ) [t1']]).desc
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_typ <- tr_typ;
@@ -2539,9 +2539,9 @@ let name_read_int =
   let tr_term t =
     let desc' =
       match t.desc with
-      | Local(Decl_let ([x,{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings), t) ->
+      | Local(Decl_let ([x,{desc=App({desc=Const(Rand(typ,b))}, [{desc=Const Unit}])}] as bindings), t) ->
           Local(Decl_let bindings, tr.tr_term t)
-      | App({desc=Const(RandValue(TBase TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
+      | App({desc=Const(Rand(TBase TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
           let x = Id.new_var ~name:"r" Ty.int in
           (make_let [x,t] @@ make_var x).desc
       | _ -> tr.tr_desc_rec t.desc
@@ -2556,9 +2556,9 @@ let reduce_size_by_beta =
   let tr_term t =
     let desc =
       match t.desc with
-      | Local(Decl_let ([x,{desc=App({desc=Const(RandValue(typ,b))}, [{desc=Const Unit}])}] as bindings), t) ->
+      | Local(Decl_let ([x,{desc=App({desc=Const(Rand(typ,b))}, [{desc=Const Unit}])}] as bindings), t) ->
           Local(Decl_let bindings, tr.tr_term t)
-      | App({desc=Const(RandValue(TBase TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
+      | App({desc=Const(Rand(TBase TInt,false));attr}, [{desc=Const Unit}]) when List.mem AAbst_under attr ->
           let x = Id.new_var ~name:"r" Ty.int in
           (make_let [x,t] @@ make_var x).desc
       | _ -> tr.tr_desc_rec t.desc
@@ -2798,7 +2798,7 @@ let abst_recdata =
             let aux (p1,_,_) (p2,cond,t) =
               let make x =
                 let ty = tr.tr2_typ (check,tys) @@ Id.typ x in
-                Id.set_typ x ty, make_randvalue_unit ty
+                Id.set_typ x ty, make_rand_unit ty
               in
               let bindings =
                 get_bv_pat p1
@@ -3071,7 +3071,7 @@ let abst_literal =
     if is_big_literal t then
       begin
         Flag.add_use_abst "Literal";
-        make_randvalue_unit t.typ
+        make_rand_unit t.typ
       end
     else
       tr.tr_term_rec t
@@ -3188,7 +3188,7 @@ let reduce_rand =
   let rec is_rand_unit t =
     match t.desc with
     | Const Unit -> true
-    | App({desc=Const (RandValue(_,false))}, [{desc=Const Unit}]) -> true
+    | App({desc=Const (Rand(_,false))}, [{desc=Const Unit}]) -> true
     | Tuple ts -> List.for_all is_rand_unit ts
     | BinOp((Eq|Lt|Gt|Leq|Geq), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
     | BinOp((Add|Sub), t1, t2) -> is_rand_unit t1 || is_rand_unit t2

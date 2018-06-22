@@ -146,7 +146,7 @@ and generate typ_exn make_fail genv cenv typ =
         let typ' = to_simple ~with_pred:true typ in
         let x' = Id.new_var typ' in
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
-        genv', cenv', U.make_let [x',U.make_randvalue_unit typ'] @@ U.make_assume t_check @@ U.make_var x'
+        genv', cenv', U.Term.(let_ [x',rand typ'] (assume t_check (var x')))
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_abst_typ ~with_pred:true typ1 in
         let typ2' = subst_var x x' typ2 in

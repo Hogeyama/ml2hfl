@@ -16,7 +16,7 @@ and t_cps =
   | ConstCPS of const
   | BottomCPS
   | RandIntCPS of bool
-  | RandValueCPS of typ
+  | RandCPS of typ
   | VarCPS of typed_ident
   | FunCPS of typed_ident * term
   | AppCPS of term * term
@@ -94,7 +94,7 @@ and print_t_cps sol fm = function
   | ConstCPS c -> Format.fprintf fm "%a" Print.const c
   | BottomCPS -> Format.fprintf fm "_|_"
   | RandIntCPS b -> Format.fprintf fm "rand_int(%b)" b
-  | RandValueCPS typ -> Format.fprintf fm "rand_value(%a)" Print.typ typ
+  | RandCPS typ -> Format.fprintf fm "rand_value(%a)" Print.typ typ
   | VarCPS x -> Print.id fm x.id_cps
   | FunCPS(x, t) ->
       Format.fprintf fm "@[<hov 2>fun %a : %a ->@ %a@]" Print.id x.id_cps (print_typ_cps sol) x.id_typ (print_term sol) t
@@ -199,18 +199,18 @@ let _TFunCPS env (e, typ1, typ2) =
 
 let rec infer_effect env tenv t =
   match t.desc with
-  | Const(RandValue(TBase TInt,true)) -> assert false
-  | Const(RandValue(TBase TInt,false)) ->
+  | Const(Rand(TBase TInt,true)) -> assert false
+  | Const(Rand(TBase TInt,false)) ->
       let e = new_evar () in
       let typ = _TFunCPS env (e, TBaseCPS Ty.unit, TBaseCPS Ty.int) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
       {t_orig=t; t_cps=RandIntCPS(List.mem AAbst_under t.attr); typ_cps=typ; effect=new_evar()}
-  | Const(RandValue(typ, true)) -> assert false
-  | Const(RandValue(typ, false)) ->
+  | Const(Rand(typ, true)) -> assert false
+  | Const(Rand(typ, false)) ->
       let e = new_evar () in
       let typ' = _TFunCPS env (e, TBaseCPS Ty.unit, etyp_of_typ typ) in
       env.constraints <- CGeq(e, ECont) :: env.constraints;
-      {t_orig=t; t_cps=RandValueCPS typ; typ_cps=typ'; effect=new_evar()}
+      {t_orig=t; t_cps=RandCPS typ; typ_cps=typ'; effect=new_evar()}
   | Const c -> {t_orig=t; t_cps=ConstCPS c; typ_cps=TBaseCPS t.typ; effect=new_evar()}
   | Bottom ->
       let e = new_evar () in
@@ -548,15 +548,15 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
               make_fun h @@ make_randint_cps b
           | _ -> assert false
         end
-    | RandValueCPS typ', ENone ->
+    | RandCPS typ', ENone ->
         let e = get_tfun_effect typ in
         begin
           match sol e with
-          | ECont -> make_randvalue_cps typ'
+          | ECont -> make_rand_cps typ'
           | EExcep ->
               let e = Id.new_var ~name:"e" typ_excep in
               let h = Id.new_var ~name:"h" (TFun(e,typ_result)) in
-              make_fun h (make_randvalue_cps typ_orig)
+              make_fun h (make_rand_cps typ_orig)
           | _ -> assert false
         end
     | VarCPS x, ENone -> make_var @@ trans_var sol typ_excep x
@@ -865,7 +865,7 @@ let rec col_exn_typ {t_cps=t} =
   | ConstCPS _ -> []
   | BottomCPS -> []
   | RandIntCPS _ -> []
-  | RandValueCPS _ -> []
+  | RandCPS _ -> []
   | VarCPS _ -> []
   | FunCPS(_, t1) -> col_exn_typ t1
   | AppCPS(t1, t2) -> col_exn_typ t1 @ col_exn_typ t2
@@ -888,7 +888,7 @@ let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; effect=e} =
   | ConstCPS _ -> []
   | BottomCPS -> []
   | RandIntCPS _ -> []
-  | RandValueCPS typ -> []
+  | RandCPS typ -> []
   | VarCPS x -> []
   | FunCPS(x, t1) ->
       assoc_typ_cps f t1
@@ -1083,7 +1083,7 @@ let inline_affine_term (vars,env) t =
     | Let(bindings, t1) ->
         let not_rand_int t =
           match t.desc with
-          | App({desc=Const(RandValue(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
+          | App({desc=Const(Rand(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
           | _ -> true
         in
         let affine f xs t =

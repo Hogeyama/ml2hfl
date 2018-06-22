@@ -63,7 +63,7 @@ let get_label = get_id_option
 
 let rec eval_app val_env ce ans1 paths1 ans2 paths2 =
   match ans1 with
-  | Closure(_, {desc=Const (RandValue _)}) ->
+  | Closure(_, {desc=Const (Rand _)}) ->
       Closure(val_env, make_int 0), ce, merge_paths paths1 paths2
   | Closure(_, {desc=Event("fail",_)}) -> Fail, ce, paths1
   | Fail -> Fail, ce, paths1

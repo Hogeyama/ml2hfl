@@ -117,12 +117,12 @@ let get_tfun_effect ty =
 
 let rec gen_constr env tenv t =
   match t.desc with
-  | Const (RandValue(_, false)) ->
+  | Const (Rand(_, false)) ->
       let t' = add_evar env t in
       let e = get_tfun_effect t'.typ in
       env.constraints <- (ECont, e) :: env.constraints;
       t'
-  | Const (RandValue(_, true)) -> unsupported __MODULE__
+  | Const (Rand(_, true)) -> unsupported __MODULE__
   | Const _ -> add_evar env t
   | Bottom ->
       let t' = add_evar env t in

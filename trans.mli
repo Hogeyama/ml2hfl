@@ -7,7 +7,7 @@ val inst_tvar_typ : typ -> typ -> typ
 val get_tvars : typ -> typ option ref list
 val rename_poly_funs : id -> term -> (id * id) list * term
 val copy_poly_funs : term -> term * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-val define_randvalue : ((typ * id) list * (id * term) list) -> typ -> ((typ * id) list * (id * term) list) * term
+val define_rand : ((typ * id) list * (id * term) list) -> typ -> ((typ * id) list * (id * term) list) * term
 val inst_randval : term -> term
 val ref_to_assert : ?make_fail:(typ -> term) -> ?typ_exn:typ -> Ref_type.env -> term -> term
 val replace_main : ?force:bool -> main:term -> term -> term

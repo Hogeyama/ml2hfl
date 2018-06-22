@@ -105,12 +105,12 @@ and print_const cfg fm c =
   | Nativeint n -> fprintf fm "%ndn" n
   | CPS_result when cfg.as_ocaml -> fprintf fm "()"
   | CPS_result -> fprintf fm "{end}"
-  | RandValue(TBase TInt,false) when cfg.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
-  | RandValue(TBase TInt,false) -> fprintf fm "rand_int"
-  | RandValue(TBase TInt,true) when cfg.as_ocaml -> fprintf fm "(fun () k -> k (Random.int 0))"
-  | RandValue(TBase TInt,true) -> fprintf fm "rand_int_cps"
-  | RandValue(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
-  | RandValue(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
+  | Rand(TBase TInt,false) when cfg.as_ocaml -> fprintf fm "(fun () -> Random.int 0)"
+  | Rand(TBase TInt,false) -> fprintf fm "rand_int"
+  | Rand(TBase TInt,true) when cfg.as_ocaml -> fprintf fm "(fun () k -> k (Random.int 0))"
+  | Rand(TBase TInt,true) -> fprintf fm "rand_int_cps"
+  | Rand(typ',false) -> fprintf fm "rand_val[%a]" print_typ typ'
+  | Rand(typ',true) -> fprintf fm "rand_val_cps[%a]" print_typ typ'
 
 and print_attr fm = function
   | AAbst_under -> fprintf fm "AAbst_under"
@@ -215,7 +215,7 @@ and print_desc cfg pri attr fm desc =
       let p = 15 in
       let s1,s2 = paren pri (p+1) in
       fprintf fm "%s@[<hov 2>fun@[%a@] ->@ %a%s@]" s1 (print_ids ~fv {cfg with top=false}) xs (pr_t 0) t s2
-  | App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}]) when cfg.as_ocaml ->
+  | App({desc=Const(Rand(TBase TInt,false))}, [{desc=Const Unit}]) when cfg.as_ocaml ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[<hov 2>%sRandom.int 0%s@]" s1 s2
@@ -269,8 +269,8 @@ and print_desc cfg pri attr fm desc =
       let p = 50 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}) ->
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(Rand(TBase TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
+  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(Rand(TBase TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       if cfg.as_ocaml then

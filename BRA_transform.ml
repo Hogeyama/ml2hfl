@@ -66,7 +66,7 @@ and show_desc top = function
   | Const True -> "true"
   | Const False -> "false"
   | Const (Int n) -> parens (string_of_int n)
-  | App ({desc=Const(RandValue(TBase TInt,_))}, _) -> "Random.int 0"
+  | App ({desc=Const(Rand(TBase TInt,_))}, _) -> "Random.int 0"
   | App ({desc=Var {Id.name = div}}, [n; m]) when div = "Pervasives./" -> parens (show_term n ^ " / " ^ show_term m)
   | Var v -> modify_id_typ v
   | Fun (f, body) -> "fun " ^ modify_id f ^ " -> " ^ show_term body
@@ -253,7 +253,7 @@ let implement_recieving ({program = program; state = state; verified = verified}
 let implement_transform_initial_application ({program = program; state = state} as holed) =
   let sub = function
     | {desc = App ({desc=Event("fail", _)}, _)}
-    | {desc = App ({desc=Const(RandValue(TBase TInt,_))}, _)} as t -> t
+    | {desc = App ({desc=Const(Rand(TBase TInt,_))}, _)} as t -> t
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> state.BRA_types.initial_state@[arg]) args)}
     | t -> t
   in
@@ -263,7 +263,7 @@ let implement_propagation ({program = program; state = state; verified = verifie
   let propagated = propagated_statevars holed in
   let sub = function
     | {desc = App ({desc=Event("fail", _)}, _)}
-    | {desc = App ({desc=Const(RandValue(TBase TInt,_))}, _)} as t -> t
+    | {desc = App ({desc=Const(Rand(TBase TInt,_))}, _)} as t -> t
     | {desc = App (func, args)} as t -> {t with desc = App (func, concat_map (fun arg -> propagated@[arg]) args)}
     | t -> t
   in

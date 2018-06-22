@@ -52,11 +52,11 @@ let rec print_value fm t =
 let rec eval_print fm cnt limit gen t =
   (match limit with None -> () | Some n -> incr cnt; if !cnt > n then raise ReachLimit);
   match t.desc with
-  | Const(RandValue(Type.TBase Type.TInt,false)) ->
+  | Const(Rand(Type.TBase Type.TInt,false)) ->
       let x = Id.new_var Type.Ty.unit in
       Term.(fun_ x (int !!gen))
-  | Const(RandValue(Type.TBase Type.TInt,true)) -> assert false
-  | Const(RandValue(typ,_)) -> unsupported "eval: RandValue"
+  | Const(Rand(Type.TBase Type.TInt,true)) -> assert false
+  | Const(Rand(typ,_)) -> unsupported "eval: Rand"
   | Const c -> t
   | Var y when is_length_var y -> t
   | Var y -> unsupported "error trace with external funcitons"

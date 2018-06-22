@@ -220,17 +220,17 @@ and trans_const c typ =
   | S.Int64 n -> Int64 n
   | S.Nativeint n -> Nativeint n
   | S.CPS_result -> CPS_result
-  | S.RandValue _ -> assert false
+  | S.Rand _ -> assert false
   | S.End_of_definitions -> assert false
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =
   match t.S.desc with
-  | S.Const(S.RandValue _) -> assert false
+  | S.Const(S.Rand _) -> assert false
   | S.Const c -> [], Const (trans_const c t.S.typ)
-  | S.App({S.desc=S.Const(S.RandValue(Type.TBase Type.TInt,false)); S.attr}, [{S.desc=S.Const S.Unit}]) when List.mem S.AAbst_under attr ->
+  | S.App({S.desc=S.Const(S.Rand(Type.TBase Type.TInt,false)); S.attr}, [{S.desc=S.Const S.Unit}]) when List.mem S.AAbst_under attr ->
       unsupported "trans_term RandInt"
-  | S.App({S.desc=S.Const(S.RandValue(Type.TBase Type.TInt, true)); S.attr}, [t1;t2]) ->
+  | S.App({S.desc=S.Const(S.Rand(Type.TBase Type.TInt, true)); S.attr}, [t1;t2]) ->
       let under = List.mem S.AAbst_under attr in
       assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
@@ -239,13 +239,13 @@ and trans_term post xs env t =
       let head = Const (Rand(TInt, if under then Some 0 else None)) in
       let args =if under then List.map _Var xs' @ [t2'] else [t2'] in
       defs1@defs2, make_app head args
-  | S.App({S.desc=S.Const(S.RandValue(Type.TData s, true))}, [t1]) ->
+  | S.App({S.desc=S.Const(S.Rand(Type.TData s, true))}, [t1]) ->
       assert false
   (*
       let defs1,t1' = trans_term post xs env t1 in
       defs1, App(t1', Const (RandVal s))
    *)
-  | S.App({S.desc=S.Const(S.RandValue(typ,true))}, [t1;t2]) ->
+  | S.App({S.desc=S.Const(S.Rand(typ,true))}, [t1;t2]) ->
       assert (t1.S.desc = S.Const S.Unit);
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in
@@ -327,8 +327,8 @@ and trans_term post xs env t =
 
 let rec formula_of t =
   match t.S.desc with
-  | S.Const(S.RandValue(Type.TBase Type.TInt,false)) -> raise Not_found
-  | S.Const(S.RandValue(Type.TBase Type.TInt,true)) -> assert false
+  | S.Const(S.Rand(Type.TBase Type.TInt,false)) -> raise Not_found
+  | S.Const(S.Rand(Type.TBase Type.TInt,true)) -> assert false
   | S.Const c -> Const (trans_const c t.S.typ)
   | S.Var x -> Var (trans_var x)
   | S.App(t, ts) -> raise Not_found

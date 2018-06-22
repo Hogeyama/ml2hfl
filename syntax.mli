@@ -29,7 +29,7 @@ and const = (* only base type constants *)
   | Int64 of int64
   | Nativeint of nativeint
   | CPS_result
-  | RandValue of typ * bool (** true denotes CPS-term *)
+  | Rand of typ * bool (** true denotes CPS-term *)
 and desc =
   | Const of const
   | Var of id

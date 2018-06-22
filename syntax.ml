@@ -21,7 +21,7 @@ and const = (* only base type constants *)
   | Int64 of int64
   | Nativeint of nativeint
   | CPS_result
-  | RandValue of typ * bool (** true denotes CPS-term *)
+  | Rand of typ * bool (** true denotes CPS-term *)
 
 and attr =
   | AAbst_under
@@ -225,7 +225,7 @@ let trans_const trans c =
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
   | CPS_result -> CPS_result
-  | RandValue(typ,b) -> RandValue(trans.tr_typ typ,b)
+  | Rand(typ,b) -> Rand(trans.tr_typ typ,b)
 
 let trans_decl tr decl =
   match decl with
@@ -396,7 +396,7 @@ let trans2_gen_const tr env c =
   | Int64 n -> Int64 n
   | Nativeint n -> Nativeint n
   | CPS_result -> CPS_result
-  | RandValue(typ,b) -> RandValue(tr.tr2_typ env typ, b)
+  | Rand(typ,b) -> Rand(tr.tr2_typ env typ, b)
 
 let trans2_gen_decl tr env decl =
   match decl with
@@ -565,7 +565,7 @@ let col_info col info =
 
 let col_const col c =
   match c with
-  | RandValue(typ,b) -> col.col_typ typ
+  | Rand(typ,b) -> col.col_typ typ
   | _ -> col.col_empty
 
 let col_decl col decl =
@@ -746,7 +746,7 @@ let col2_info col env = function
 
 let col2_const col env c =
   match c with
-  | RandValue(typ,b) -> col.col2_typ env typ
+  | Rand(typ,b) -> col.col2_typ env typ
   | _ -> col.col2_empty
 
 let col2_decl col env decl =
@@ -1002,9 +1002,9 @@ let tr_col2_info tc env = function
 
 let tr_col2_const tc env c =
   match c with
-  | RandValue(typ,b) ->
+  | Rand(typ,b) ->
       let acc,typ' = tc.tr_col2_typ env typ in
-      acc, RandValue(typ',b)
+      acc, Rand(typ',b)
   | _ -> tc.tr_col2_empty, c
 
 let tr_col2_decl tc env decl =
@@ -1334,9 +1334,9 @@ let fold_tr_info fld env = function
 
 let fold_tr_const fld env c =
   match c with
-  | RandValue(typ,b) ->
+  | Rand(typ,b) ->
       let env',typ' = fld.fld_typ env typ in
-      env', RandValue(typ',b)
+      env', Rand(typ',b)
   | _ -> env, c
 
 let fold_tr_decl fld env decl =

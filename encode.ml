@@ -272,7 +272,7 @@ let abst_rec_record_term =
           let aux (p1,_,_) (p2,cond,t) =
             let make x =
               let ty = tr.tr2_typ recs @@ Id.typ x in
-              Id.set_typ x ty, make_randvalue_unit ty
+              Id.set_typ x ty, make_rand_unit ty
             in
             let t' =
               get_bv_pat p1

@@ -317,28 +317,28 @@ let make_module decls =
   in
   {desc=Module decls'; typ; attr=[]}
 
-let make_randvalue typ = {desc=Const(RandValue(typ,false)); typ=Ty.(fun_ unit typ); attr=[]}
+let make_rand typ = {desc=Const(Rand(typ,false)); typ=Ty.(fun_ unit typ); attr=[]}
 
-let rec make_randvalue_unit typ =
+let rec make_rand_unit typ =
   match typ with
   | TBase TUnit -> unit_term
-  | TBase TBool -> make_eq (make_randvalue_unit Ty.int) (make_int 0)
+  | TBase TBool -> make_eq (make_rand_unit Ty.int) (make_int 0)
   | TTuple [] -> make_tuple []
-  | TTuple tys -> make_tuple @@ List.map (Id.typ |- make_randvalue_unit) tys
-  | TFun(x,ty) -> make_fun x @@ make_randvalue_unit ty
-  | TAttr(_,ty) -> make_randvalue_unit ty
-  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=safe_attr}
+  | TTuple tys -> make_tuple @@ List.map (Id.typ |- make_rand_unit) tys
+  | TFun(x,ty) -> make_fun x @@ make_rand_unit ty
+  | TAttr(_,ty) -> make_rand_unit ty
+  | _ -> {desc=App(make_rand typ, [unit_term]); typ; attr=safe_attr}
 
-let make_randvalue_cps typ =
-  {desc=Const(RandValue(typ,true)); typ=Ty.(funs [unit; fun_ typ typ_result] typ_result); attr=[]}
+let make_rand_cps typ =
+  {desc=Const(Rand(typ,true)); typ=Ty.(funs [unit; fun_ typ typ_result] typ_result); attr=[]}
 
 let make_randint_cps b =
   let attr = if b then [AAbst_under] else [] in
-  {(make_randvalue_cps Ty.int) with attr}
+  {(make_rand_cps Ty.int) with attr}
 
-let randint_term = make_randvalue Ty.int
-let randint_unit_term = make_randvalue_unit Ty.int
-let randbool_unit_term = make_randvalue_unit Ty.bool
+let randint_term = make_rand Ty.int
+let randint_unit_term = make_rand_unit Ty.int
+let randbool_unit_term = make_rand_unit Ty.bool
 
 let rec make_term typ =
   match elim_tattr typ with
@@ -676,7 +676,7 @@ let same_list same xs ys = List.length xs = List.length ys && List.for_all2 same
 
 let rec same_const c1 c2 =
   match c1,c2 with
-  | RandValue(typ1, b1) , RandValue(typ2, b2) -> b1 = b2 && same_shape typ1 typ2
+  | Rand(typ1, b1), Rand(typ2, b2) -> b1 = b2 && same_shape typ1 typ2
   | _ -> c1 = c2
 and same_term t1 t2 = same_desc t1.desc t2.desc
 and same_desc t1 t2 =
@@ -1306,7 +1306,7 @@ module Term = struct
   let fail = fail_unit_term
   let randi = randint_unit_term
   let randb = randbool_unit_term
-  let rand = make_randvalue_unit
+  let rand = make_rand_unit
   let bot = make_bottom
   let eod = end_of_definitions
   let var = make_var

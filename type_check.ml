@@ -24,15 +24,15 @@ let rec check env t typ =
   | Const(True|False), TBase TBool -> ()
   | Const(Int _), TBase TInt -> ()
   | Const _, TBase (TPrim _) -> ()
-  | Const(RandValue(TBase TInt,false)), TFun(x,TBase TInt)->
+  | Const(Rand(TBase TInt,false)), TFun(x,TBase TInt)->
       check_var x Ty.unit
-  | Const(RandValue(TBase TInt,true)), TFun(x,TFun(k,rtyp)) ->
+  | Const(Rand(TBase TInt,true)), TFun(x,TFun(k,rtyp)) ->
       assert (rtyp = typ_result);
       check_var x @@ TBase TUnit;
       check_var k Ty.(fun_ int typ_result)
-  | Const(RandValue(typ1,false)), TFun({Id.typ=TBase TUnit},typ2) ->
+  | Const(Rand(typ1,false)), TFun({Id.typ=TBase TUnit},typ2) ->
       assert (Type.can_unify typ1 typ2)
-  | Const(RandValue(typ1,true)), TFun({Id.typ=TBase TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2)) -> ()
+  | Const(Rand(typ1,true)), TFun({Id.typ=TBase TUnit}, TFun({Id.typ=TFun(x,rtyp1)},rtyp2)) -> ()
   (*
       assert (rtyp1 = typ_result);
       assert (rtyp2 = typ_result);

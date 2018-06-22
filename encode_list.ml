@@ -211,18 +211,16 @@ let rec make_rand typ =
         make_assume
           (make_leq (make_int 0) (make_var l))
           (make_pair (make_var l) @@ make_fun (Id.new_var Ty.int) @@ make_rand typ')
-  | _ -> make_randvalue_unit typ
+  | _ -> make_rand_unit typ
 
 let abst_list_term post t =
   match t.desc with
-  | App({desc=Const(RandValue(TBase TInt,false)); attr}, t2) when List.mem AAbst_under attr -> (* for disproving termination  *)
+  | App({desc=Const(Rand(TBase TInt,false)); attr}, t2) when List.mem AAbst_under attr -> (* for disproving termination  *)
       assert (t2 = [unit_term]);
       t
-  | App({desc=Const(RandValue(typ,false))}, t2) ->
+  | App({desc=Const(Rand(typ,false))}, t2) ->
       assert (t2 = [unit_term]);
-      make_randvalue_unit @@ abst_list.tr2_typ post t.typ(*
-      make_rand t.typ
- *)
+      make_rand_unit @@ abst_list.tr2_typ post t.typ
   | App({desc=Var x}, [t1; t2]) when Id.name x = "List.nth" ->
       let t1' = abst_list.tr2_term post t1 in
       let t2' = abst_list.tr2_term post t2 in

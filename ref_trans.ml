@@ -400,7 +400,7 @@ let has_rand = make_col false (||)
 
 let has_rand_const c =
   match c with
-  | RandValue _ -> true
+  | Rand _ -> true
   | _ -> false
 
 let () = has_rand.col_const <- has_rand_const

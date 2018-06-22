@@ -58,7 +58,7 @@ let same_top_fun x y =
 
 let rec is_atom t =
   match t.desc with
-  | App({desc=Const(RandValue _)}, [_]) -> true
+  | App({desc=Const(Rand _)}, [_]) -> true
   | App({desc=Event(_, _)}, [_]) -> true
   | BinOp(_, t1, t2) -> is_atom t1 && is_atom t2
   | _ -> false

@@ -32,9 +32,9 @@ val make_event_cps : string -> term
 val make_var : id -> term
 val make_int : int -> term
 val make_string : string -> term
-val make_randvalue : typ -> term
-val make_randvalue_unit : typ -> term
-val make_randvalue_cps : typ -> term
+val make_rand : typ -> term
+val make_rand_unit : typ -> term
+val make_rand_cps : typ -> term
 val make_randint_cps : bool -> term
 val make_app : term -> term list -> term
 val make_app_raw : term -> term list -> term (** Does not merge arguments *)
