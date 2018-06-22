@@ -21,7 +21,7 @@ and const = (* only base type constants *)
   | Int64 of int64
   | Nativeint of nativeint
   | CPS_result
-  | RandValue of typ * bool
+  | RandValue of typ * bool (** true denotes CPS-term *)
 
 and attr =
   | AAbst_under
@@ -134,7 +134,9 @@ module PredVar = struct
 end
 
 
-let const_attr = [ANotFail; ATerminate; ADeterministic]
+let safe_attr = [ANotFail;ATerminate]
+let pure_attr = [ANotFail; ATerminate; ADeterministic]
+let const_attr = pure_attr
 
 let is_prim_var x =
   List.mem (Id.name x) ["List.length"]

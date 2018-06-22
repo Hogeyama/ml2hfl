@@ -220,11 +220,7 @@ module Option = struct
     then Some x
     else None
 
-  let some_if b x =
-    if b then
-      Some x
-    else
-      None
+  let some_if f x = if f x then Some x else None
 
   let to_list x =
     match x with

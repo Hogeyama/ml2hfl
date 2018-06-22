@@ -1500,11 +1500,7 @@ let decomp_pair_eq =
 let elim_unused_let =
   let tr = make_trans2 () in
   let tr_term (leave,cbv) t =
-    let has_no_effect t =
-      if true
-      then has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr
-      else has_no_effect t
-    in
+    let has_no_effect' t = has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr in
     let t' = tr.tr2_term_rec (leave,cbv) t in
     let flag = List.mem ADoNotInline t.attr in
     if flag then
@@ -1517,7 +1513,7 @@ let elim_unused_let =
             let used (f,t) =
               Id.mem f leave' ||
               List.exists (fun (g,t2) -> Id.(f <> g) && Id.mem f @@ get_fv t2) bindings || (* TODO: fix *)
-              cbv && not @@ has_no_effect t
+              cbv && not @@ has_no_effect' t
             in
             let bindings' = List.filter used bindings in
             (make_let bindings' t1).desc
@@ -3162,12 +3158,11 @@ let replace_typ_result_with_unit =
 
 let rename_for_ocaml =
   let reserved =
-    ["and";"as";"assert";"asr";"begin";"class";"constraint";"do";"done";"downto";
-     "else";"end";"exception";"external";"false";"for";"fun";"function";"functor";
-     "if";"in";"include";"inherit";"initializer";"land";"lazy";"let";"lor";"lsl";
-     "lsr";"lxor";"match";"method";"mod";"module";"mutable";"new";"nonrec";"object";
-     "of";"open";"or";"private";"rec";"sig";"struct";"then";"to";"true";"try";"type";
-     "val";"virtual";"when";"while";"with"]
+    ["and";"as";"assert";"asr";"begin";"class";"constraint";"do";"done";"downto";"else";"end";
+     "exception";"external";"false";"for";"fun";"function";"functor";"if";"in";"include";"inherit";
+     "initializer";"land";"lazy";"let";"lor";"lsl";"lsr";"lxor";"match";"method";"mod";"module";
+     "mutable";"new";"nonrec";"object";"of";"open";"or";"private";"rec";"sig";"struct";"then";"to";
+     "true";"try";"type";"val";"virtual";"when";"while";"with"]
   in
   let tr = make_trans () in
   let tr_var x =
@@ -3186,6 +3181,35 @@ let rename_for_ocaml =
   tr.tr_term
 
 let remove_tattr =
-  let tr = make_trans () in
-  tr.tr_typ <- Type.elim_tattr_all;
-  tr.tr_term
+  {!!make_trans with tr_typ = Type.elim_tattr_all}.tr_term
+
+let reduce_rand =
+  let tr = make_trans2 () in
+  let rec is_rand_unit t =
+    match t.desc with
+    | Const Unit -> true
+    | App({desc=Const (RandValue(_,false))}, [{desc=Const Unit}]) -> true
+    | Tuple ts -> List.for_all is_rand_unit ts
+    | BinOp((Eq|Lt|Gt|Leq|Geq), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
+    | BinOp((Add|Sub), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
+    | BinOp(Div, t1, {desc=Const _}) -> is_rand_unit t1
+    | If(t1,t2,t3) -> has_safe_attr t1 && is_rand_unit t2 && is_rand_unit t3
+    | _ -> false
+  in
+  let tr_term rand_funs t =
+    match t.desc with
+    | Local(Decl_let bindings, t) ->
+        let bindings' = List.map (Pair.map_snd @@ tr.tr2_term rand_funs) bindings in
+        let rand_funs' = List.filter_map Option.(some_if (snd |- decomp_funs |- snd |- is_rand_unit) |- map fst) bindings' in
+        let t' = tr.tr2_term (rand_funs'@rand_funs) t in
+        make_let bindings' t'
+    | _ ->
+        let t' = tr.tr2_term_rec rand_funs t in
+        match t'.desc with
+        | _ when is_rand_unit t' -> Term.rand t.typ
+        | App({desc=Var f}, ts) when Id.mem f rand_funs && List.for_all has_safe_attr ts -> Term.rand t.typ
+        | Local(Decl_let bindings, t) -> assert false
+        | _ -> t'
+  in
+  tr.tr2_term <- tr_term;
+  tr.tr2_term [] |- elim_unused_let

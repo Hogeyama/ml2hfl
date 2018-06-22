@@ -180,6 +180,7 @@ val col_typ_var : term -> typ option ref list
 val col_app_args : id -> term -> term list list
 
 val has_pnondet : pattern -> bool
+val has_safe_attr : term -> bool
 
 (** {6 Substitution} *)
 val subst : ?rename_if_captured:bool -> id -> term -> term -> term

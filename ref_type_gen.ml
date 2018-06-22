@@ -274,7 +274,7 @@ and generate typ_exn make_fail genv cenv typ =
           let aux bs =
             xs
             |> List.map U.make_var
-            |> List.filter_map2 Option.some_if bs
+            |> List.filter_map2 (Option.some_if -| Fun.const) bs
             |> U.make_ands
           in
           List.map aux bss
@@ -285,7 +285,7 @@ and generate typ_exn make_fail genv cenv typ =
           let aux bs (genv,cenv,trs) =
             let typ =
               typs2
-              |> List.filter_map2 Option.some_if bs
+              |> List.filter_map2 (Option.some_if -| Fun.const) bs
               |> inter rstyp
             in
             Debug.printf "GEN typ: %a@." print typ;

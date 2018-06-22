@@ -3,6 +3,7 @@ open Util
 open Type
 open Syntax
 
+module Debug_attr = Debug.Make(struct let check = Flag.Debug.make_check (__MODULE__ ^ ".attr") end)
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type config =
@@ -122,33 +123,35 @@ and print_attr fm = function
   | ADoNotInline -> fprintf fm "ADoNotInline"
   | AEffect e -> print_effect fm e
 
+and print_attr_list fm attrs =
+  List.print print_attr fm attrs
+
 and ignore_attr_list = ADoNotInline::const_attr
 
-and print_attr_list fm attrs =
-  List.print print_attr fm @@ List.Set.diff attrs ignore_attr_list
+and decomp_comment a =
+  match a with
+  | AComment s -> Some s
+  | _ -> None
+
+and filter_attr_list attr =
+  if !!Debug_attr.check then
+    attr
+  else
+    List.Set.diff attr ignore_attr_list
+    |> List.filter (Option.is_none -| decomp_comment)
+    |&!Flag.Print.only_if_id&> List.filter (function AId _ -> true | _ -> false)
 
 and print_term cfg pri fm t =
-  let decomp_comment a =
-    match a with
-    | AComment s -> Some s
-    | _ -> None
-  in
   let pr attr fm desc =
     let comments = List.filter_map decomp_comment t.attr in
-    if comments = []
+    if comments = [] || !!Debug_attr.check
     then fprintf fm "@[%a@]" (print_desc cfg pri attr) desc
     else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc cfg pri attr) desc
   in
-  let attr = List.filter (Option.is_none -| decomp_comment) t.attr in
-  let ignore_attr_list' =
-    if !Flag.Print.only_if_id then
-      List.filter (function AId _ -> true | _ -> false) t.attr @ ignore_attr_list
-    else
-      ignore_attr_list
-  in
-  if List.Set.subset attr ignore_attr_list' || cfg.as_ocaml
+  let attr = filter_attr_list t.attr in
+  if attr = [] || cfg.as_ocaml
   then pr t.attr fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list (List.Set.diff t.attr ignore_attr_list')
+  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list attr
 
 and print_let_decls cfg bang fm bindings =
   let first = ref true in
@@ -268,7 +271,7 @@ and print_desc cfg pri attr fm desc =
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(RandValue(TBase TInt,false))}, [{desc=Const Unit}])}) ->
-      let p = 8 in
+      let p = 80 in
       let s1,s2 = paren pri p in
       if cfg.as_ocaml then
         fprintf fm "%sRandom.bool@ ()%s" s1 s2

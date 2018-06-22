@@ -53,6 +53,7 @@ type preprocess_label =
   | Abst_polymorphic_comparison
   | Abst_literal
   | Encode_bool_as_int
+  | Reduce_rand
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -108,6 +109,7 @@ let string_of_label = function
   | Abst_polymorphic_comparison -> "Abst polymorphic comparison"
   | Abst_literal -> "Abst literal"
   | Encode_bool_as_int -> "Encode bool as int"
+  | Reduce_rand -> "Reduce rand"
 
 let last (acc:result list) = snd @@ List.hd acc
 let last_t (acc:result list) = fst @@ last acc
@@ -229,6 +231,8 @@ let all spec : t list =
       (fun prog -> Some [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog, get_rtyp_id]);
     Make_ext_funs,
       map_trans make_ext_funs;
+    Reduce_rand,
+      map_trans reduce_rand;
     Mark_safe_fun_arg,
       cond_trans !Flag.PredAbst.shift_pred @@
       map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;

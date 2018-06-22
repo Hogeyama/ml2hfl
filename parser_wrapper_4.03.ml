@@ -499,7 +499,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         in
         decls', make_var @@ from_ident_path id_env path typ'
     | Texp_constant c ->
-        [], {desc = Const (from_constant c); typ = typ'; attr=[]}
+        [], {desc = Const (from_constant c); typ = typ'; attr=const_attr}
     | Texp_let(rec_flag, [{vb_pat;vb_expr}], e2)
          when (function Tpat_var _ -> false | _ -> true) vb_pat.pat_desc ->
         let decls0,p' = from_pattern vb_pat in

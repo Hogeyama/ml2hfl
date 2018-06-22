@@ -36,7 +36,8 @@ let rec is_value t =
   | Tuple ts -> List.for_all is_value ts
   | _ -> false
 
-let has_safe_attr t = List.Set.subset [ANotFail;ATerminate] t.attr
+let has_safe_attr t = List.Set.subset safe_attr t.attr
+let has_pure_attr t = List.Set.subset pure_attr t.attr
 
 let end_of_definitions = {desc=Const End_of_definitions; typ=Ty.unit; attr=[]}
 let unit_term = {desc=Const Unit; typ=Ty.unit; attr=const_attr}
@@ -49,9 +50,9 @@ let make_bool b = if b then true_term else false_term
 let make_bottom typ = {desc=Bottom; typ=typ; attr=[]}
 let make_event s = {desc=Event(s,false); typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true); typ=typ_event_cps; attr=[]}
-let make_var x = {desc=Var x; typ=Id.typ x; attr=const_attr}
-let make_int n = {desc=Const(Int n); typ=Ty.int; attr=const_attr}
-let make_string s = {desc=Const(String s); typ=TData "string"; attr=const_attr}
+let make_var x = {desc=Var x; typ=Id.typ x; attr=pure_attr}
+let make_int n = {desc=Const(Int n); typ=Ty.int; attr=pure_attr}
+let make_string s = {desc=Const(String s); typ=TData "string"; attr=pure_attr}
 let rec make_app t ts =
   let check typ1 typ2 =
     if not (Flag.Debug.check_typ => Type.can_unify typ1 typ2) then
@@ -221,15 +222,18 @@ let make_binop op t1 t2 =
   in
   f t1 t2
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
-let make_tuple ts = {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr=[]}
-let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=[]}
-let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=[]}
-let make_pair t1 t2 = {desc=Tuple[t1;t2]; typ=make_tpair t1.typ t2.typ; attr=[]}
-let make_nil typ = {desc=Nil; typ=TApp(TList, [typ]); attr=[]}
-let make_nil2 typ = {desc=Nil; typ=typ; attr=[]}
+let make_tuple ts =
+  let attr = make_attr ts in
+  {desc=Tuple ts; typ=make_ttuple@@List.map Syntax.typ ts; attr}
+let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=t.attr}
+let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=t.attr}
+let make_pair t1 t2 = make_tuple [t1;t2]
+let make_nil typ = {desc=Nil; typ=TApp(TList, [typ]); attr=const_attr}
+let make_nil2 typ = {desc=Nil; typ=typ; attr=const_attr}
 let make_cons t1 t2 =
   assert (Flag.Debug.check_typ => Type.can_unify (TApp(TList, [t1.typ])) t2.typ);
-  {desc=Cons(t1,t2); typ=t2.typ; attr=[]}
+  let attr = make_attr [t1;t2] in
+  {desc=Cons(t1,t2); typ=t2.typ; attr}
 let rec make_list ts =
   match ts with
   | [] -> make_nil typ_unknown
@@ -299,7 +303,7 @@ let make_length_var typ =
   let x = Id.make (-1) "l" [] typ in
   Id.make (-1) "List.length" [] (TFun(x, Ty.int))
 let make_length t =
-  {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=[ANotFail;ATerminate]}
+  {(make_app (make_var @@ make_length_var t.typ) [t]) with attr=safe_attr}
 
 let make_module decls =
   let decls' = List.filter_out (fun decl -> decl = Decl_type [] || decl = Decl_let []) decls in
@@ -323,7 +327,7 @@ let rec make_randvalue_unit typ =
   | TTuple tys -> make_tuple @@ List.map (Id.typ |- make_randvalue_unit) tys
   | TFun(x,ty) -> make_fun x @@ make_randvalue_unit ty
   | TAttr(_,ty) -> make_randvalue_unit ty
-  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=[ANotFail;ATerminate]}
+  | _ -> {desc=App(make_randvalue typ, [unit_term]); typ; attr=safe_attr}
 
 let make_randvalue_cps typ =
   {desc=Const(RandValue(typ,true)); typ=Ty.(funs [unit; fun_ typ typ_result] typ_result); attr=[]}

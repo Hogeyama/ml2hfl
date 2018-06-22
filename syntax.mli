@@ -108,6 +108,8 @@ module PredVar : sig
   val new_pvar : ?name:string -> typ list -> id
 end
 
+val safe_attr : attr list
+val pure_attr : attr list
 val const_attr : attr list
 
 type trans =
