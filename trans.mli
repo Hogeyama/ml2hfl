@@ -25,8 +25,6 @@ val inlined_f : id list -> term -> term
 val lift_fst_snd : term -> term
 val expand_let_val : term -> term
 val insert_param_funarg : term -> term
-val search_fail : term -> int list list
-val screen_fail : int list -> term -> term
 val rename_ext_funs : id list -> term -> id list * term
 val make_ext_funs : ?fvs:(id list) -> (id * Ref_type.t) list -> term -> term
 val assoc_typ : id -> term -> typ
@@ -45,7 +43,8 @@ val ignore_non_termination : term -> term
 val decomp_var_match_tuple : term -> term
 val map_attr : (attr list -> attr list) -> term -> term
 val filter_attr : (attr -> bool) -> term -> term
-val split_assert : term -> term
+val split_assert : term -> term list
+val split_assert_and : term -> term
 val add_id : term -> int * term
 val add_id_if : (term -> bool) -> term -> int * term
 val remove_id : term -> term

@@ -385,9 +385,8 @@ let main _ spec parsed =
     problem
     |@> pr "ORIG" Problem.print
     |> Preprocess.run pps
-    |@> (fun results -> if List.length results <> 1 then unsupported "preprocess")
-    |> List.hd
-    |> Preprocess.last_t
+    |> Preprocess.get
+    |> Preprocess.last_problem
     |> Problem.term
     |> Trans.split_mutual_rec
     |> top_to_local

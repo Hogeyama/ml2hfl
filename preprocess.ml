@@ -3,7 +3,6 @@ open Util
 module Debug_ty = Debug.Make(struct let check = Flag.Debug.make_check (__MODULE__^".ty") end)
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-
 type preprocess_label =
   | Init
   | Set_main
@@ -56,6 +55,7 @@ type preprocess_label =
   | Reduce_rand
   | Reduce_ignore
   | Reduce_branch
+  | Split_assert
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -114,9 +114,15 @@ let string_of_label = function
   | Reduce_rand -> "Reduce rand"
   | Reduce_ignore -> "Reduce ignore"
   | Reduce_branch -> "Reduce branch"
+  | Split_assert -> "Split assert"
+
+let get xs =
+  match xs with
+  | [x] -> x
+  | _ -> unsupported "Multiple targets"
 
 let last (acc:result list) = snd @@ List.hd acc
-let last_t (acc:result list) = fst @@ last acc
+let last_problem (acc:result list) = fst @@ last acc
 let last_get_rtyp (acc:result list) = snd @@ last acc
 let take_result l (acc:result list) = fst @@ List.assoc l acc
 
@@ -124,6 +130,7 @@ let get_rtyp_id get_rtyp f = get_rtyp f
 
 let cond_trans b (tr:tr) x : tr_result list option = if b then tr x else None
 let map_trans (tr:Problem.t->Problem.t) r : tr_result list option = Some [tr r, get_rtyp_id]
+let map_trans_list (tr:Problem.t->Problem.t list) r : tr_result list option = Some (List.map (fun r' -> r', get_rtyp_id) @@ tr r)
 
 let assoc label pps =
   List.find ((=) label -| fst) pps
@@ -241,6 +248,9 @@ let all spec : t list =
       map_trans reduce_ignore;
     Reduce_branch,
       map_trans reduce_branch;
+    Split_assert,
+      cond_trans !Flag.Method.split_assert @@
+      map_trans_list split_assert;
     Mark_safe_fun_arg,
       cond_trans !Flag.PredAbst.shift_pred @@
       map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;
@@ -300,24 +310,23 @@ let rec trans_and_print
       List.iter aux rs;
       Some rs
 
-let run (pps:t list) t =
+let run (pps:t list) problem =
   let aux1 (acc:result list list) (label,tr) : result list list =
     let aux2 rs =
       match rs with
       | [] -> assert false
       | (_,(prog,_))::_ ->
           match trans_and_print tr (string_of_label label) prog with
-          | None -> rs
-          | Some rs' -> List.flatten_map (fun r -> (label, r)::rs) rs'
+          | None -> [rs]
+          | Some rs' -> List.map (fun r -> (label, r)::rs) rs'
     in
-    List.map aux2 acc
+    List.flatten_map aux2 acc
   in
-  List.fold_left aux1 [[Init, (t, get_rtyp_id)]] pps
+  List.fold_left aux1 [[Init, (problem, get_rtyp_id)]] pps
 
 let run_on_term pps t =
   t
   |> Problem.safety
   |> run pps
-  |> List.last
-  |> last_t
-  |> Problem.term
+  |> List.map last_problem
+  |> List.map Problem.term

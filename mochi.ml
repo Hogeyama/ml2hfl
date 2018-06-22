@@ -146,11 +146,6 @@ let main_input_cegar lb =
   let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
   Main_loop.run_cegar {prog with env}
 
-let main_split_assert orig spec parsed =
-  let paths = Trans.search_fail parsed in
-  let ts = List.map (Trans.screen_fail -$- parsed) paths in
-  List.for_all (Main_loop.run orig ~spec) (List.rev_map Problem.safety ts)
-
 let main_termination orig parsed =
   let open BRA_util in
   (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
@@ -220,12 +215,14 @@ let output_randint_refinement_log input_string =
 let main_quick_check spec t =
   t
   |> Preprocess.(run_on_term (before CPS @@ all spec))
+  |> Preprocess.get
   |> Quick_check.repeat_forever
 
 let print_ref_constr spec t =
   let t' =
     t
     |> Preprocess.(run_on_term (before_and CPS (all spec)))
+    |> Preprocess.get
     |> Trans.alpha_rename ~whole:true
   in
   let ty = Ref_type.of_simple t'.Syntax.typ in
@@ -244,6 +241,7 @@ let main_trans spec t =
   Type.set_print_as_ocaml();
   t
   |> Preprocess.run_on_term pps
+  |> Preprocess.get
   |> Trans.remove_unambiguous_id
   |> Trans.replace_typ_result_with_unit
   |> Trans.rename_for_ocaml
@@ -298,8 +296,6 @@ let main cin =
         main_trans spec parsed
     else if !Flag.Method.quick_check then
       main_quick_check spec parsed
-    else if !Flag.Method.split_assert then
-      main_split_assert orig spec parsed
     else if !Flag.Method.verify_ref_typ then
       Verify_ref_typ.main orig spec parsed
     else if Flag.Method.(!mode = Termination) then

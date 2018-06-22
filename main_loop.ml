@@ -6,25 +6,17 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 
 
-let preprocess ?make_pps ?fun_list prog spec =
-  let pps' =
-    match make_pps with
-    | None -> Preprocess.all spec
-    | Some make_pps' -> make_pps' spec
-  in
-  let results = Preprocess.run pps' prog in
-  if List.length results <> 1 then unsupported "preprocess";
-  let results = List.hd results in
+let cegar_of_preprocessed ?fun_list spec results =
   let set_main = Option.map fst @@ List.assoc_option Preprocess.Set_main results in
   let main = Option.(set_main >>= return-|Problem.term >>= Trans.get_set_main)  in
-  let prog = Preprocess.last_t results in
+  let problem = Preprocess.last_problem results in
   let fun_list' =
     match fun_list with
     | None -> Term_util.get_top_funs @@ Problem.term Preprocess.(take_result Decomp_pair_eq results)
     | Some fun_list' -> fun_list'
   in
 
-  let prog,map,_,make_get_rtyp_trans = CEGAR_trans.trans_prog prog in
+  let prog,map,_,make_get_rtyp_trans = CEGAR_trans.trans_prog problem in
   let abst_cegar_env =
     Spec.get_abst_cegar_env spec prog
     |@> Verbose.printf "%a@." Spec.print_abst_cegar_env
@@ -65,6 +57,14 @@ let preprocess ?make_pps ?fun_list prog spec =
   in
   CEGAR_syntax.{prog with info}, make_get_rtyp, set_main, main
 
+
+let run_preprocess ?make_pps spec problem =
+  let pps' =
+    match make_pps with
+    | None -> Preprocess.all spec
+    | Some make_pps' -> make_pps' spec
+  in
+  Preprocess.run pps' problem
 
 
 let write_annot env orig =
@@ -189,23 +189,27 @@ let improve_precision e =
 
 let rec loop ?make_pps ?fun_list exparam_sol spec prog =
   let ex_param_inserted = Fun.cond !Flag.Method.relative_complete (Problem.map insert_extra_param) prog in
-  let preprocessed, make_get_rtyp, set_main, main = preprocess ?make_pps ?fun_list ex_param_inserted spec in
-  let cegar_prog =
-    if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
-      begin
-        Debug.printf "exparam_sol: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol;
-        let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
-        let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') preprocessed in
-        Debug.printf "MAIN_LOOP: %a@." CEGAR_print.prog preprocessed;
-        let info = {preprocessed.CEGAR_syntax.info with CEGAR_syntax.exparam_orig=Some preprocessed} in
-        {prog'' with CEGAR_syntax.info}
-      end
-    else
-      preprocessed
-  in
-  try
+  let results = run_preprocess ?make_pps spec prog in
+  let cegar_problems = List.map (cegar_of_preprocessed ?fun_list spec) results in
+  let check (preprocessed, make_get_rtyp, set_main, main) =
+    let cegar_prog =
+      if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
+        begin
+          Debug.printf "exparam_sol: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol;
+          let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
+          let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') preprocessed in
+          Debug.printf "MAIN_LOOP: %a@." CEGAR_print.prog preprocessed;
+          let info = {preprocessed.CEGAR_syntax.info with CEGAR_syntax.exparam_orig=Some preprocessed} in
+          {prog'' with CEGAR_syntax.info}
+        end
+      else
+        preprocessed
+    in
     let result = CEGAR.run cegar_prog in
     result, make_get_rtyp, ex_param_inserted, set_main, main
+  in
+  try
+    List.map check cegar_problems
   with e ->
     if !!Debug.check then Printexc.print_backtrace stdout;
     improve_precision e;
@@ -221,26 +225,31 @@ let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   List.filter_map aux top_funs
 
 let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
-  let result, make_get_rtyp, ex_param_inserted, set_main, main = loop ?make_pps ?fun_list exparam_sol spec parsed in
-  print_result_delimiter ();
-  match result with
-  | CEGAR.Safe env ->
-      Flag.Log.result := "Safe";
-      let env' = trans_env (Term_util.get_top_funs @@ Problem.term parsed) make_get_rtyp env in
-      if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
+  let results = loop ?make_pps ?fun_list exparam_sol spec parsed in
+  let bool_of_result (result, make_get_rtyp, ex_param_inserted, set_main, main) =
+    print_result_delimiter ();
+    match result with
+    | CEGAR.Safe env ->
+        Flag.Log.result := "Safe";
+        let env' = trans_env (Term_util.get_top_funs @@ Problem.term parsed) make_get_rtyp env in
+        if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
+          if !Flag.Print.result then
+            report_safe env' orig ex_param_inserted;
+        true
+    | CEGAR.Unsafe(sol,_) ->
+        let s =
+          if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
+            "Unknown."
+          else if !Flag.use_abst <> [] then
+            Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
+          else
+            "Unsafe"
+        in
+        Flag.Log.result := s;
         if !Flag.Print.result then
-          report_safe env' orig ex_param_inserted;
-      true
-  | CEGAR.Unsafe(sol,_) ->
-      let s =
-        if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
-          "Unknown."
-        else if !Flag.use_abst <> [] then
-          Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
-        else
-          "Unsafe"
-      in
-      Flag.Log.result := s;
-      if !Flag.Print.result then
-        report_unsafe main sol set_main;
-      false
+          report_unsafe main sol set_main;
+        false
+  in
+  results
+  |> List.map bool_of_result
+  |> List.for_all Fun.id

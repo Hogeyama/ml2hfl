@@ -979,126 +979,6 @@ let insert_param_funarg =
     |> tr.tr_term
     |@> Type_check.check ~ty:Term_util.typ_result
 
-let rec search_fail path t =
-  match t.desc with
-  | Const c -> []
-  | Var x -> []
-  | Fun(x,t) -> search_fail path t
-  | App(t1, ts) ->
-      let rec aux acc i ts =
-        match ts with
-          [] -> acc
-        | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
-      in
-      aux [] 0 (t1::ts)
-  | If(t1, t2, t3) -> search_fail (1::path) t1 @ search_fail (2::path) t2 @ search_fail (3::path) t3
-  | Local(Decl_let defs, t) ->
-      let rec aux acc i ts =
-        match ts with
-          [] -> acc
-        | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
-      in
-      let ts = List.map (fun (_,t) -> t) defs in
-      aux [] 0 (ts@[t])
-  | Local(Decl_type _, t) -> search_fail path t
-  | BinOp(_, t1, t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
-  | Not t -> search_fail path t
-  | Event("fail",_) -> [path]
-  | Event(s,b) -> []
-  | Record fields -> assert false
-  | Field(s,t) -> assert false
-  | SetField(s,t1,t2) -> assert false
-  | Nil -> []
-  | Cons(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
-  | Constr(_,ts) ->
-      let rec aux acc i ts =
-        match ts with
-          [] -> acc
-        | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
-      in
-      aux [] 0 ts
-  | Match(t,pats) ->
-      let rec aux acc i ts =
-        match ts with
-          [] -> acc
-        | t::ts' -> aux (search_fail (i::path) t @ acc) (i+1) ts'
-      in
-      let ts = List.rev_flatten_map (fun (_,cond,t) -> [t;cond]) pats in
-      aux [] 0 (t::ts)
-  | Raise t -> search_fail path t
-  | TryWith(t1,t2) -> search_fail (1::path) t1 @ search_fail (2::path) t2
-  | Bottom -> []
-  | Tuple ts -> List.flatten @@ List.mapi (fun i t -> search_fail (i::path) t) ts
-  | Proj(i,t) -> search_fail path t
-  | Label(_,t) -> search_fail path t
-  | Ref _ -> assert false
-  | Deref _ -> assert false
-  | SetRef _ -> assert false
-  | TNone -> assert false
-  | TSome _ -> assert false
-  | Module _ -> assert false
-let search_fail t = search_fail [] t
-
-let rec screen_fail path target t =
-  let desc =
-    match t.desc with
-    | Const c -> t.desc
-    | Var x -> t.desc
-    | Fun(x,_) -> t.desc
-    | App(t1, ts) ->
-        let aux i t = screen_fail (i::path) target t in
-        let t1ts' = List.mapi aux (t1::ts) in
-        App(List.hd t1ts', List.tl t1ts')
-    | If(t1, t2, t3) ->
-        let aux i t = screen_fail (i::path) target t in
-        If(aux 1 t1, aux 2 t2, aux 3 t3)
-    | Local(Decl_let defs, t) ->
-        let aux i t = screen_fail (i::path) target t in
-        let aux_def i (f,t) = f, aux i t in
-        Local(Decl_let (List.mapi aux_def defs), aux (List.length defs) t)
-    | Local(Decl_type decls, t) ->
-        Local(Decl_type decls, screen_fail path target t)
-    | BinOp(op, t1, t2) ->
-        let aux i t = screen_fail (i::path) target t in
-        BinOp(op, aux 1 t1, aux 2 t2)
-    | Not t -> Not (screen_fail path target t)
-    | Event("fail",_) ->
-        if path = target
-        then t.desc
-        else Bottom
-    | Event(s,b) -> t.desc
-    | Record fields -> assert false
-    | Field(s,t) -> assert false
-    | SetField(s,t1,t2) -> assert false
-    | Nil -> t.desc
-    | Cons(t1,t2) ->
-        let aux i t = screen_fail (i::path) target t in
-        Cons(aux 1 t1, aux 2 t2)
-    | Constr(s,ts) ->
-        let aux i t = screen_fail (i::path) target t in
-        Constr(s, List.mapi aux ts)
-    | Match(t,pats) ->
-        let aux i t = screen_fail (i::path) target t in
-        let aux_pat i (p,cond,t) = p, aux (2*i+1) cond, aux (2*i+2) t in
-        Match(aux 0 t, List.mapi aux_pat pats)
-    | Raise t -> Raise (screen_fail path target t)
-    | TryWith(t1,t2) ->
-        let aux i t = screen_fail (i::path) target t in
-        TryWith(aux 1 t1, aux 2 t2)
-    | Bottom -> t.desc
-    | Tuple ts ->
-        Tuple (List.mapi (fun i t -> screen_fail (i::path) target t) ts)
-    | Proj(i,t) -> Proj(i, screen_fail path target t)
-    | Label(info,t) -> Label(info, screen_fail path target t)
-    | Ref _ -> assert false
-    | Deref _ -> assert false
-    | SetRef _ -> assert false
-    | TNone -> assert false
-    | TSome _ -> assert false
-    | Module _ -> assert false
-  in
-  {t with desc}
-let screen_fail target t = screen_fail [] target t
 
 let remove_defs =
   let tr = make_trans2 () in
@@ -2359,12 +2239,15 @@ let tfun_to_tfuns =
   tr.tr_term
 
 
-let split_assert =
+let split_assert_and =
   let tr = make_trans () in
   let tr_term t =
-    match t.desc with
-    | If({desc=BinOp(And,t1,t2)}, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) ->
-        tr.tr_term @@ make_seq (make_assert t1) (make_assert t2)
+    match decomp_assert t with
+    | Some t1 ->
+        let ts = decomp_and t1 in
+        ts
+        |> List.map make_assert
+        |> List.reduce_right make_seq
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
@@ -3255,3 +3138,33 @@ let reduce_branch =
   in
   tr.tr_term <- tr_term;
   tr.tr_term
+
+
+let mark_fail =
+  let fld = make_fold_tr () in
+  let fld_term cnt t =
+    match t.desc with
+    | App({desc=Event("fail",false)}, [{desc=Const Unit}]) -> cnt+1, add_attr (AId cnt) t
+    | Event("fail",_) -> unsupported "mark_fail"
+    | _ -> fld.fld_term_rec cnt t
+  in
+  fld.fld_term <- fld_term;
+  fld.fld_term 0
+
+let replace_fail_with_bot =
+  let tr = make_trans2 () in
+  let tr_term id t =
+    if List.exists (function AId id' -> id <> id' | _ -> false) t.attr then
+      make_bottom t.typ
+    else
+      tr.tr2_term_rec id t
+  in
+  tr.tr2_term <- tr_term;
+  tr.tr2_term
+
+let split_assert t =
+  if col_id t <> [] then unsupported "Trans.split_assert";
+  let t' = split_assert_and t in
+  let cnt,t'' = mark_fail t' in
+  let ids = List.init cnt Fun.id in
+  List.map (replace_fail_with_bot -$- t'') ids

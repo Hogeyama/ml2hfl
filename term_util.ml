@@ -440,6 +440,11 @@ let rec decomp_and t =
   | BinOp(And, t1, t2) -> decomp_and t1 @@@ decomp_and t2
   | _ -> [t]
 
+let decomp_assert t =
+  match t.desc with
+  | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) -> Some t1
+  | _ -> None
+
 
 let get_int = make_col [] (@@@)
 let get_int_term t =

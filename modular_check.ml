@@ -318,6 +318,7 @@ let check prog f typ depth =
       |> Problem.safety
       |@> Debug.printf "Problem: %a@.@." Problem.print
       |> Main_loop.loop ~make_pps:Preprocess.(all |- and_after CPS) ~fun_list:[] [] Spec.init
+      |> List.get
     in
     match result with
     | CEGAR.Safe env ->
