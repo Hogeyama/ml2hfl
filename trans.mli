@@ -69,6 +69,7 @@ val rename_for_ocaml : term -> term
 val remove_tattr : term -> term
 val reduce_rand : term -> term
 val reduce_ignore : term -> term
+val reduce_branch : term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc

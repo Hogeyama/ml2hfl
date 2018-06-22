@@ -3234,3 +3234,24 @@ let reduce_ignore =
   in
   tr.tr2_term <- tr_term;
   tr.tr2_term [] |- elim_unused_let
+
+let reduce_branch =
+  let tr = make_trans () in
+  let rec decomp_branch t =
+    match t.desc with
+    | If(t1,t2,t3) when is_randbool_unit t1 -> decomp_branch t2 @ decomp_branch t3
+    | _ -> [t]
+  in
+  let tr_term t =
+    let t' = tr.tr_term_rec t in
+    let ts = decomp_branch t' in
+    match ts with
+    | [_] -> t'
+    | _ ->
+        ts
+        |> List.classify ~eq:same_term
+        |> List.map List.hd
+        |> List.reduce_right make_br
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_term

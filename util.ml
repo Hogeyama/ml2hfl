@@ -481,10 +481,6 @@ module List = struct
     aux [] xs
 
   let assoc_all ?(eq=(=)) k tbl = filter_map (fun (k',x) -> if eq k k' then Some x else None) tbl
-(*
-  let fold_righti f xs acc = snd @@ fold_right (fun x (i,acc) -> i+1, f i x acc) xs (0,acc)
-  let fold_lefti f xs acc = snd @@ fold_left (fun (i,acc) x -> i+1, f i acc x) (0,acc) xs
- *)
 
   let fold_trans_right tr dec cons env xs =
     let aux x (env,rs) =
@@ -509,6 +505,14 @@ module List = struct
     match xs with
     | [] | [_] -> true
     | x::xs' -> List.for_all (not -| eq x) xs' && is_unique xs'
+
+  let reduce_left = reduce
+  let reduce_right f ts =
+    match ts with
+    | [] -> invalid_arg "Empty List"
+    | _ ->
+        let ts',t = decomp_snoc ts in
+        List.fold_right f ts' t
 
   module Set = struct
     let diff ?(eq=(=)) l1 l2 = filter_out (mem ~eq -$- l2) l1
