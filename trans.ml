@@ -3213,3 +3213,24 @@ let reduce_rand =
   in
   tr.tr2_term <- tr_term;
   tr.tr2_term [] |- elim_unused_let
+
+let reduce_ignore =
+  let tr = make_trans2 () in
+  let tr_term ignore_funs t =
+    match t.desc with
+    | Local(Decl_let bindings, t) ->
+        let bindings' = List.map (Pair.map_snd @@ tr.tr2_term ignore_funs) bindings in
+        let ignore_funs' = List.filter_map Option.(some_if (snd |- decomp_funs |- snd |- Syntax.desc |- (=) (Const Unit)) |- map fst) bindings' in
+        let t' = tr.tr2_term (ignore_funs'@ignore_funs) t in
+        make_let bindings' t'
+    | _ ->
+        let t' = tr.tr2_term_rec ignore_funs t in
+        match t'.desc with
+        | App({desc=Var f}, ts) when Id.mem f ignore_funs ->
+            let ts',t = List.decomp_snoc ts in
+            List.fold_right make_seq ts' t
+        | Local(Decl_let bindings, t) -> assert false
+        | _ -> t'
+  in
+  tr.tr2_term <- tr_term;
+  tr.tr2_term [] |- elim_unused_let

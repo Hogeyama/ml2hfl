@@ -54,6 +54,7 @@ type preprocess_label =
   | Abst_literal
   | Encode_bool_as_int
   | Reduce_rand
+  | Reduce_ignore
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -110,6 +111,7 @@ let string_of_label = function
   | Abst_literal -> "Abst literal"
   | Encode_bool_as_int -> "Encode bool as int"
   | Reduce_rand -> "Reduce rand"
+  | Reduce_ignore -> "Reduce ignore"
 
 let last (acc:result list) = snd @@ List.hd acc
 let last_t (acc:result list) = fst @@ last acc
@@ -233,6 +235,8 @@ let all spec : t list =
       map_trans make_ext_funs;
     Reduce_rand,
       map_trans reduce_rand;
+    Reduce_ignore,
+      map_trans reduce_ignore;
     Mark_safe_fun_arg,
       cond_trans !Flag.PredAbst.shift_pred @@
       map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;

@@ -31,6 +31,7 @@ let split_type_decls = map Trans.split_type_decls
 let abst_literal = map Trans.abst_literal
 let encode_bool_as_int = map Trans.encode_bool_as_int
 let reduce_rand = map Trans.reduce_rand
+let reduce_ignore = map Trans.reduce_ignore
 
 let expand_let_val {term; env; attr; kind} =
   assert (List.mem ACPS attr);
