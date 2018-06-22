@@ -29,6 +29,41 @@ let rec conv_formula' t =
   | Fun _ -> assert false
   | Let _ -> assert false
 
+let rec used_as_bool x t =
+  match decomp_app t with
+  | Const (Or|And), [Var y; _]
+  | Const (Or|And), [_; Var y] when x = y -> true
+  | Const Not, [Var y] -> x = y
+  | _, ts -> List.exists (used_as_bool x) ts
+  | _ -> false
+
+let rec eliminate_bool t =
+  match t with
+  | App(App(Var ("exists"|"forall" as q), args), t1) ->
+      let xs =
+        try
+          match decomp_app args with
+          | Var "args", ts -> List.map (Option.get -| decomp_var) ts
+          | _ -> assert false
+        with _ ->
+          Format.eprintf "%a@." CEGAR_print.term t;
+          invalid_arg "QE.conv_formula'"
+      in
+      let t1' = eliminate_bool t1 in
+      let xs1,xs2 = List.partition (used_as_bool -$- t1') xs in
+      let (|&) = if q = "exists" then Term.(||) else Term.(&&) in
+      let aux x t = Term.((x |-> true_) t |& (x |-> false_) t) in
+      let t1'' = List.fold_right aux xs1 t1' in
+      if xs2 = [] then
+        t1''
+      else
+        Term.(var q @ [var "args" @ vars xs; t1'])
+  | Const c -> Const c
+  | Var x -> Var x
+  | App(t1, t2) -> App(eliminate_bool t1, eliminate_bool t2)
+  | Fun _ -> assert false
+  | Let _ -> assert false
+
 let eliminate t =
   let of_formula phi =
     let open Fpat in
@@ -55,6 +90,8 @@ let eliminate t =
   t
   |@> Debug.printf "  BEFORE: @[%a@." CEGAR_print.term
   |> subst_map @@ List.map (fun (x,y) -> x, Var y) map
+  |> eliminate_bool
+  |@> Debug.printf "  eliminate_bool: @[%a@." CEGAR_print.term
   |> conv_formula'
   |@> Debug.printf "  conv_foromula': @[%a@." F.Formula.pr
   |> of_formula

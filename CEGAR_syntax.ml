@@ -359,29 +359,3 @@ let gather_events defs =
       | _ -> assert false in
     List.map aux' es in
   List.flatten_map aux defs
-
-module Term = struct
-  let (@) = make_app
-  let (@@) = make_app
-  let unit = Const Unit
-  let true_ = Const True
-  let tt = Const True
-  let false_ = Const False
-  let ff = Const False
-  let int = make_int
-  let var = _Var
-  let let_ = _Let
-  let fun_ = _Fun
-  let br = make_br
-  let if_ = make_if
-  let (<) = make_lt
-  let (>) = make_gt
-  let (<=) = make_leq
-  let (>=) = make_geq
-  let (&&) = make_and
-  let (||) = make_or
-  let (+) = make_add
-  let (-) = make_sub
-  let ( * ) = make_mul
-  let (/) = make_div
-end

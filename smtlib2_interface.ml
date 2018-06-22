@@ -30,7 +30,7 @@ let parse_atom s len i =
 let parse_sexp s = Sexp.parse ~parse_atom s
 
 let term_of_atom a =
-  let open S.Term in
+  let open U.Term in
   match a with
   | "true" -> true_
   | "false" -> false_
@@ -40,7 +40,7 @@ let term_of_atom a =
       with _ -> var a
 
 let binop_of_atom a =
-  let open S.Term in
+  let open U.Term in
   match a with
   | "=" -> S.make_eq_int
   | "<" -> (<)
@@ -64,7 +64,7 @@ let rec term_of_sexp s =
   | S (A "and" :: ss) -> S.make_ands @@ List.map term_of_sexp ss
   | S (A "or" :: ss) -> S.make_ors @@ List.map term_of_sexp ss
   | S (A "+" :: s' :: ss) -> List.fold_left S.make_add (term_of_sexp s') @@ List.map term_of_sexp ss
-  | S [A "-"; s] -> S.Term.(int 0 - term_of_sexp s)
+  | S [A "-"; s] -> U.Term.(int 0 - term_of_sexp s)
   | S [A "let"; S defs; s'] ->
       let defs' = List.map (function S [A x; s] -> x, term_of_sexp s | _ -> invalid_arg "term_of_sexp") defs in
       U.subst_map defs' @@ term_of_sexp s'

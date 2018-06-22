@@ -47,3 +47,31 @@ val group_by_same_branching : ('a * 'b * 'c * 'd) list -> ('a * 'b * 'c * 'd) li
 val inlined_functions : prog -> var list
 val elim_same_arg : prog -> prog
 val rename_fun_arg : prog -> prog
+
+module Term : sig
+  val (@) : t -> t list -> t
+  val (@@) : t -> t list -> t
+  val unit : t
+  val true_ : t
+  val tt : t
+  val false_ : t
+  val ff : t
+  val int : int -> t
+  val var : var -> t
+  val vars : var list -> t list
+  val let_ : var -> t -> t -> t
+  val fun_ : var -> ?typ:typ -> t -> t
+  val br : t -> t -> t
+  val if_ : t -> t -> t -> t
+  val (<) : t -> t -> t
+  val (>) : t -> t -> t
+  val (<=) : t -> t -> t
+  val (>=) : t -> t -> t
+  val (&&) : t -> t -> t
+  val (||) : t -> t -> t
+  val (+) : t -> t -> t
+  val (-) : t -> t -> t
+  val ( * ) : t -> t -> t
+  val (/) : t -> t -> t
+  val (|->) : var -> t -> t -> t
+end
