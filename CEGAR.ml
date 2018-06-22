@@ -175,10 +175,10 @@ let rec loop prog0 is_cp ces =
                 | MC.CESafety ce' -> CEGAR_trans.trans_ce labeled prog ce' None
                 | _ -> assert false
               in
-              let prog' =
+              let _,prog' =
                 let ces'' = List.map aux ces' in
                 let ext_ces = List.map (Fun.const []) ces'' in
-                snd @@ Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
+                Refine.refine inlined_functions is_cp prefix ces'' ext_ces prog0
               in
               Verbose.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
               post ();
