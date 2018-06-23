@@ -107,7 +107,7 @@ let check prog f typ depth =
 let infer prog f typ ce_set2 depth =
   Time.measure_and_add
     time_synthesize
-    (fun () -> Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
+    (fun () -> Modular_infer.infer prog f typ ce_set2 depth !Flag.Modular.infer_merge)
 
 let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
   let space = String.make (8*List.length history) ' ' in

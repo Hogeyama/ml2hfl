@@ -135,9 +135,11 @@ let rename_poly_funs =
           in
           (f,map'), make_var x'
     | Var x -> (f,map), make_var x
+    | Fun(x, _) when Id.(x = f) -> (f,map), t
     | Fun(x, t) ->
         let (_,map'),t' = fld.fld_term (f,map) t in
         (f,map'), make_fun x t'
+    | Local(Decl_let bindings, _) when List.exists (fst |- Id.(=) f) bindings -> (f,map), t
     | App({desc=Var x; typ=typ}, ts) when Id.(x = f) ->
         let x' = Id.new_var ~name:(Id.name x) typ in
         let (_,map'),ts' =
@@ -3110,8 +3112,7 @@ let reduce_ignore =
         let t' = tr.tr2_term_rec ignore_funs t in
         match t'.desc with
         | App({desc=Var f}, ts) when Id.mem f ignore_funs ->
-            let ts',t = List.decomp_snoc ts in
-            List.fold_right make_seq ts' t
+            List.fold_right make_seq ts unit_term
         | Local(Decl_let bindings, t) -> assert false
         | _ -> t'
   in

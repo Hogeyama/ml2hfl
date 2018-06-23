@@ -830,7 +830,7 @@ let trans_CPS env funs t =
   let t',make_get_rtyp_cps =
     t
     |> List.fold_right (fun (f,t1) t -> add_attr ADoNotInline @@ make_let [f, t1] t) env
-    |@> Debug.printf "trans_CPS: %a@." Print.term
+    |@> Debug.printf "trans_CPS: %a@." Print.term_typ
     |> CPS.trans_as_direct
   in
   Debug.printf "trans_CPS t': %a@." Print.term t';
@@ -884,9 +884,6 @@ let add_context for_infer prog f typ =
     Trans.ref_to_assert ~make_fail ~typ_exn (Ref_type.Env.of_list [f,typ]) end_of_definitions
   in
   if dbg then Debug.printf "ADD_CONTEXT t': %a@." Print.term_typ t';
-(*
-  let env' = List.filter (fst |- Id.same f) prog.fun_def_env in
- *)
   let env = prog.fun_def_env in
   let funs =
     env
