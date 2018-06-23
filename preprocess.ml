@@ -129,8 +129,8 @@ let take_result l (acc:result list) = fst @@ List.assoc l acc
 let get_rtyp_id get_rtyp f = get_rtyp f
 
 let cond_trans b (tr:tr) x : tr_result list option = if b then tr x else None
-let map_trans (tr:Problem.t->Problem.t) r : tr_result list option = Some [tr r, get_rtyp_id]
-let map_trans_list (tr:Problem.t->Problem.t list) r : tr_result list option = Some (List.map (fun r' -> r', get_rtyp_id) @@ tr r)
+let map_trans_list (tr:Problem.t->Problem.t list) r : tr_result list option = Some (List.map (Pair.pair -$- get_rtyp_id) @@ tr r)
+let map_trans tr = map_trans_list (tr |- List.singleton)
 
 let assoc label pps =
   List.find ((=) label -| fst) pps
@@ -153,7 +153,7 @@ let all spec : t list =
     Init,
       map_trans Fun.id;
     Set_main,
-      set_main |- List.map (Pair.pair -$- get_rtyp_id) |- Option.some;
+      map_trans_list set_main;
     Extract_module,
       map_trans extract_module;
     Unify_app,
@@ -164,7 +164,7 @@ let all spec : t list =
       map_trans @@ elim_unused_let ~leave_last:true;
     Encode_bool_as_int,
       cond_trans !Flag.Method.bool_to_int @@
-      map_trans @@ encode_bool_as_int;
+      map_trans encode_bool_as_int;
     Replace_const,
       cond_trans !Flag.Method.replace_const @@
       map_trans CFA.replace_const;
@@ -203,7 +203,7 @@ let all spec : t list =
       map_trans decomp_pair_eq;
     Add_preds,
       cond_trans (spec.Spec.abst_env <> [])
-      (fun prog -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_env spec @@ Problem.term prog)) prog, get_rtyp_id]);
+      (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
     Ignore_excep_arg,
       cond_trans !Flag.Method.ignore_exn_arg @@
       map_trans ignore_exn_arg;
@@ -266,7 +266,7 @@ let all spec : t list =
        map_trans replace_bottom_def;
     Add_preds,
       cond_trans (spec.Spec.abst_cps_env <> [])
-      (fun prog -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Problem.term prog)) prog, get_rtyp_id]);
+      (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
     Eliminate_same_arguments,
       cond_trans !Flag.Method.elim_same_arg @@
       map_trans @@ Problem.map Elim_same_arg.trans;
@@ -279,14 +279,14 @@ let all spec : t list =
   ]
 
 let pr () = if !!Debug_ty.check then Problem.print_debug else Problem.print
-let print desc prog = Verbose.printf "### %a:@. @[%a@.@." Color.s_red desc !!pr prog
+let print desc problem = Verbose.printf "### %a:@. @[%a@.@." Color.s_red desc !!pr problem
 
 let rec trans_and_print
           (tr : tr)
           (desc : string)
-          (prog : Problem.t) =
+          (problem : Problem.t) =
   Debug.printf "START: %s@." desc;
-  let r = tr prog in
+  let r = tr problem in
   match r with
   | None ->
       Debug.printf "END (skipped): %s@.@." desc;
@@ -295,11 +295,11 @@ let rec trans_and_print
       let l = List.length rs in
       Debug.printf "END: %s@.@." desc;
       let aux r =
-        let prog' = fst r in
-        if desc = "Init" || l > 1 || prog <> prog' then
-          print desc prog';
+        let problem' = fst r in
+        if desc = "Init" || l > 1 || problem <> problem' then
+          print desc problem';
         if !!Debug.check || !!Debug_ty.check then
-          let t = Problem.term prog' in
+          let t = Problem.term problem' in
           try
             Type_check.check t ~ty:t.Syntax.typ
           with e ->
@@ -315,8 +315,8 @@ let run (pps:t list) problem =
     let aux2 rs =
       match rs with
       | [] -> assert false
-      | (_,(prog,_))::_ ->
-          match trans_and_print tr (string_of_label label) prog with
+      | (_,(problem,_))::_ ->
+          match trans_and_print tr (string_of_label label) problem with
           | None -> [rs]
           | Some rs' -> List.map (fun r -> (label, r)::rs) rs'
     in
