@@ -1909,23 +1909,28 @@ let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
   merge_bound_var_typ map @@ replace_main_wrap main t
 
 let set_main t =
+  let catch_all main =
+    match find_exn_typ t with
+    | None -> main
+    | Some ty -> make_trywith_simple main (make_fun (Id.new_var ty) fail_unit_term)
+  in
   match List.decomp_snoc_option @@ get_last_definition t with
   | None ->
       let u = Id.new_var ~name:"main" t.typ in
-      make_let [u, t] unit_term
+      make_let [u, catch_all t] unit_term
   | Some(_, (f,_)) ->
       let main =
         let xs = get_args (Id.typ f) in
         let bindings =
           let aux i x =
             let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-            let t = make_rand_unit @@ Id.typ x in
+            let t = inst_randval @@ make_rand_unit @@ Id.typ x in
             x', t
           in
           List.mapi aux xs
         in
         let ys = List.map fst bindings in
-        inst_randval Term.(lets bindings (var f @ vars ys))
+        Term.(lets bindings (catch_all (var f @ vars ys)))
       in
       replace_main_wrap main t
 

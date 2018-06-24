@@ -224,9 +224,7 @@ let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   let aux f = Option.try_any (fun () -> f, Ref_type.rename @@ make_get_rtyp get_rtyp f) in
   List.filter_map aux top_funs
 
-let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
-  let results = loop ?make_pps ?fun_list exparam_sol spec parsed in
-  let bool_of_result (result, make_get_rtyp, ex_param_inserted, set_main, main) =
+let report orig parsed (result, make_get_rtyp, ex_param_inserted, set_main, main) =
     print_result_delimiter ();
     match result with
     | CEGAR.Safe env ->
@@ -234,8 +232,7 @@ let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
         let env' = trans_env (Term_util.get_top_funs @@ Problem.term parsed) make_get_rtyp env in
         if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
           if !Flag.Print.result then
-            report_safe env' orig ex_param_inserted;
-        true
+            report_safe env' orig ex_param_inserted
     | CEGAR.Unsafe(sol,_) ->
         let s =
           if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
@@ -247,9 +244,21 @@ let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
         in
         Flag.Log.result := s;
         if !Flag.Print.result then
-          report_unsafe main sol set_main;
-        false
+          report_unsafe main sol set_main
+
+let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
+  let results = loop ?make_pps ?fun_list exparam_sol spec parsed in
+  let bool_of_result (result, make_get_rtyp, ex_param_inserted, set_main, main) =
+    match result with
+    | CEGAR.Safe _ -> true
+    | CEGAR.Unsafe _ -> false
   in
-  results
-  |> List.map bool_of_result
-  |> List.for_all Fun.id
+  if results = [] then
+    begin
+      Flag.Log.result := "Safe";
+      if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
+        if !Flag.Print.result then
+          report_safe [] orig parsed
+    end;
+  List.iter (report orig parsed) results;
+  List.for_all bool_of_result results
