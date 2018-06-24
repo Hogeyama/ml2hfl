@@ -1915,19 +1915,17 @@ let set_main t =
       make_let [u, t] unit_term
   | Some(_, (f,_)) ->
       let main =
-        match get_args (Id.typ f) with
-        | [] -> make_var f
-        | xs ->
-            let bindings =
-              let aux i x =
-                let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-                let t = make_rand_unit @@ Id.typ x in
-                x', t
-              in
-              List.mapi aux xs
-            in
-            let ys = List.map fst bindings in
-            inst_randval Term.(lets bindings (var f @ vars ys))
+        let xs = get_args (Id.typ f) in
+        let bindings =
+          let aux i x =
+            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+            let t = make_rand_unit @@ Id.typ x in
+            x', t
+          in
+          List.mapi aux xs
+        in
+        let ys = List.map fst bindings in
+        inst_randval Term.(lets bindings (var f @ vars ys))
       in
       replace_main_wrap main t
 
@@ -3127,15 +3125,12 @@ let reduce_branch =
     | _ -> [t]
   in
   let tr_term t =
-    let t' = tr.tr_term_rec t in
-    let ts = decomp_branch t' in
-    match ts with
-    | [_] -> t'
-    | _ ->
-        ts
-        |> List.classify ~eq:same_term
-        |> List.map List.hd
-        |> List.reduce_right make_br
+    t
+    |> tr.tr_term_rec
+    |> decomp_branch
+    |> List.classify ~eq:same_term
+    |> List.map List.hd
+    |> List.reduce_right make_br
   in
   tr.tr_term <- tr_term;
   tr.tr_term
