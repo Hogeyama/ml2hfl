@@ -2949,7 +2949,7 @@ let is_big_literal t =
       begin
         match decomp_list t with
         | None -> false
-        | Some ts -> List.length ts >= !Flag.Method.abst_literal && List.for_all has_no_effect ts
+        | Some ts -> List.length ts >= !Flag.Method.abst_literal && List.for_all has_safe_attr ts
       end
   | _ -> false
 
@@ -2958,14 +2958,14 @@ let abst_literal =
   let tr_term t =
     if is_big_literal t then
       begin
-        Flag.add_use_abst "Literal";
+        Flag.add_use_abst "abst_literal";
         make_rand_unit t.typ
       end
     else
       tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
-  fun t -> if !Flag.Method.abst_literal < 0 then t else tr.tr_term t
+  fun t -> if !Flag.Method.abst_literal < 0 then t else tr.tr_term @@ reconstruct t
 
 let encode_bool_as_int =
   let tr = make_trans () in

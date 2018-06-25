@@ -183,7 +183,7 @@ and trans_typ ty =
           |> List.filter S.(function {desc=Const True} -> false | _ -> true)
           |> List.map (snd -| trans_term "" [] [])
         in
-        match trans_typ @@ Id.typ x with
+        match trans_typ @@ Type.elim_tattr @@ Id.typ x with
         | TBase(b, preds) ->
             let preds' y = List.map (subst x' y) ps' @ preds y in
             TBase(b, preds')

@@ -139,7 +139,7 @@ and filter_attr_list attr =
   else
     List.Set.diff attr ignore_attr_list
     |> List.filter (Option.is_none -| decomp_comment)
-    |&!Flag.Print.only_if_id&> List.filter (function AId _ -> true | _ -> false)
+    |&!Flag.Print.only_if_id&> List.filter (function AId _ -> false | _ -> true)
 
 and print_term cfg pri fm t =
   let pr attr fm desc =
