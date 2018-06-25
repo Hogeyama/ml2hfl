@@ -1912,7 +1912,7 @@ let set_main t =
   let catch_all main =
     match find_exn_typ t with
     | None -> main
-    | Some ty -> make_trywith_simple main (make_fun (Id.new_var ty) fail_unit_term)
+    | Some ty -> make_trywith_simple main (make_fun (Id.new_var ty) @@ make_fail main.typ)
   in
   match List.decomp_snoc_option @@ get_last_definition t with
   | None ->

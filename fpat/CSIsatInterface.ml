@@ -170,11 +170,14 @@ let of_term =
         | CsisatAst.Constant(f), r | r, CsisatAst.Constant(f) ->
           CsisatAst.Coeff(f, r) |> simplify_expr
         | _, _ ->
-          Format.printf
-            "@[<v>nonlinear expression not supported: %a * %a@,@]"
+          Format.eprintf
+            "@[<v>[CSIsat] nonlinear expression not supported: %a * %a@,@]"
             String.pr (CsisatAstUtil.print_expr r1)
             String.pr (CsisatAstUtil.print_expr r2);
-          assert false
+          if false then
+            assert false
+          else
+            CsisatAst.Variable(Idnt.(serialize @@ new_var ()))
       method fdiv _ r1 r2 =
         match r2 with
         | CsisatAst.Constant(f) ->
