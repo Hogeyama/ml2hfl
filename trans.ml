@@ -2958,7 +2958,7 @@ let abst_literal =
   let tr_term t =
     if is_big_literal t then
       begin
-        Flag.add_use_abst "abst_literal";
+        Flag.add_use_abst "literal";
         make_rand_unit t.typ
       end
     else

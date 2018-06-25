@@ -583,7 +583,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let pats'' =
           match totality with
           | Total -> pats'
-          | Partial -> (make_pvar (Id.new_var_id x), true_term, make_fail typ2)::pats'
+          | Partial -> pats' @ [make_pvar (Id.new_var_id x), true_term, make_fail typ2]
         in
         let t =
           match pats'' with
@@ -961,6 +961,7 @@ let make_local' (flag,decl) t =
 
 
 let from_use_file ast =
+  Warnings.parse_options false "-3-10";
   let env = Compmisc.initial_env () in
   init_exc_env ();
   ast
