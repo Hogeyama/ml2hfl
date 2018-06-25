@@ -749,7 +749,12 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
               | Upto -> Term.(<=)
               | Downto -> Term.(>=)
             in
-            Term.(if_ (op (var init) (var last)) (let_ [x', randi] (assume (var init <= var x' && var x' <= var last) t3)) unit)
+            let asm =
+              match dir with
+              | Upto -> Term.(assume (var init <= var x' && var x' <= var last))
+              | Downto -> Term.(assume (var last <= var x' && var x' <= var init))
+            in
+            Term.(if_ (op (var init) (var last)) (let_ [x', randi] (asm t3)) unit)
           else
             let t31 =
               match dir with
