@@ -1477,12 +1477,17 @@ let inline_simple_exp =
   tr.tr_term
 
 let replace_base_with_int =
+  let hash_of_const c =
+    match c with
+    | Char c -> int_of_char c
+    | _ -> Hashtbl.hash c
+  in
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _) ->
+    | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _ as c) ->
         Flag.add_use_abst "Base with int";
-        randint_unit_term.desc
+        Const (Int (hash_of_const c))
     | Const(Rand(TBase (TPrim _), b)) ->
         Flag.add_use_abst "Base with int";
         Const (Rand(Ty.int,b))
