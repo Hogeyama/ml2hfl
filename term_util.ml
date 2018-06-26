@@ -1266,8 +1266,12 @@ let get_max_var_id =
 
 let rec effect_of_typ ty =
   match ty with
-  | TAttr(TAEffect e::_, _) -> e
-  | TAttr(_, ty) -> effect_of_typ ty
+  | TAttr(attr, ty') ->
+      let attr' = List.filter_map (function TAEffect e -> Some e | _ -> None) attr in
+      if attr' = [] then
+        effect_of_typ ty'
+      else
+        List.hd attr'
   | _ ->
       Format.eprintf "%a@." Print.typ ty;
       invalid_arg "effect_of_typ"

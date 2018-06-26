@@ -138,7 +138,7 @@ let abst_list = make_trans2 ()
 
 let abst_list_typ post typ =
   match typ with
-  | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Encode_list.abst_list_typ)")
+  | TVar({contents=None},_) -> fatal "Polymorphic types occur! (Encode_list.abst_list_typ)"
   | TApp(TList, [typ]) ->
       let l = Id.new_var ~name:"l" Ty.int in
       TTuple[l; Id.new_var @@ pureTFun(Id.new_var ~name:"i" Ty.int, abst_list.tr2_typ post typ)]

@@ -1,5 +1,6 @@
 open Util
 
+module Debug_attr = Debug.Make(struct let check = Flag.Debug.make_check (__MODULE__ ^ ".attr") end)
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type base =
@@ -219,11 +220,12 @@ let rec print occur print_pred fm typ =
   | TData s -> Format.pp_print_string fm s
   | TAttr(attrs, ty) when !print_as_ocaml -> print' fm ty
   | TAttr([], typ) -> print' fm typ
-  | TAttr(TAPred(x,ps)::preds, typ) -> Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (TAttr(preds,typ)) Id.print x print_preds ps
-  | TAttr([TAPureFun], (TFun(x,typ))) ->
+  | TAttr(TAPred(x,ps)::preds, typ) when not !!Debug_attr.check ->
+      Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (TAttr(preds,typ)) Id.print x print_preds ps
+  | TAttr([TAPureFun], (TFun(x,typ))) when not !!Debug_attr.check ->
       let pr_arg fm x = if occur x typ then Format.printf "%a:" Id.print x in
       Format.fprintf fm "(@[<hov 2>%a%a -*>@ %a@])" pr_arg x print' (Id.typ x) print' typ
-  | TAttr([TAEffect e], typ) ->
+  | TAttr([TAEffect e], typ) when not !!Debug_attr.check ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
   | TAttr(TARefPred(x,p)::attrs, ty) ->
       let ty' = TAttr(attrs,ty) in
@@ -493,9 +495,10 @@ let result_typ typ =
   | TFun(_,typ') -> typ'
   | _ -> invalid_arg "result_typ"
 
-let decomp_ttuple typ =
+let rec decomp_ttuple typ =
   match typ with
   | TTuple xs -> List.map Id.typ xs
+  | TAttr(_, ty) -> decomp_ttuple ty
   | _ -> invalid_arg "decomp_ttuple"
 
 let decomp_trecord typ =

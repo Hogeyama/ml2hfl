@@ -104,7 +104,17 @@ let rec lift_aux post xs t =
         let fv = IdSet.elements fv in
         let fs =
           let aux (f,_) =
-            let f' = Id.map_typ (List.fold_right _TFun fv) f in
+            let tfun x ty =
+              let x' =
+                let has_no_true_pred = List.for_all (function TARefPred(_, t) -> t.desc <> Const True | _ -> true) -| fst -| Type.decomp_tattr in
+                if !Flag.PredAbst.shift_pred && is_base_var x && has_no_true_pred (Id.typ x) then
+                  Id.map_typ (_TAttr [TARefPred(Id.new_var_id x, Term.true_)]) x
+                else
+                  x
+              in
+              TFun(x', ty)
+            in
+            let f' = Id.map_typ (List.fold_right tfun fv) f in
             f, (f', make_app (make_var f') @@ List.map make_var fv)
           in
           List.map aux bindings
@@ -172,6 +182,7 @@ let lift ?(args=[]) t =
   get_rtyp_lift t
 
 (* for preprocess of termination mode *)
+(* TODO: merge with lift *)
 let rec lift_aux' post xs t =
   let defs,desc =
     match t.desc with

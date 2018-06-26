@@ -38,7 +38,7 @@ let rec make_template env ty =
           ();
         TFun(x', ty2'), false
     | TTuple xs -> TTuple (List.map (Id.map_typ (make_template env)) xs), false
-    | TAttr(attrs, ty1) -> TAttr(attrs, make_template env ty1), true
+    | TAttr(attr, ty1) -> _TAttr attr (make_template env ty1), true
     | TFuns _ -> unsupported __MODULE__
     | TData _ -> unsupported __MODULE__
     | TVariant _ -> unsupported __MODULE__
@@ -347,26 +347,28 @@ let rec exists_dest ty =
   effect_of_typ ty = ENone &&
   match elim_tattr ty with
   | _ when is_base_typ ty -> true
-  | TFun(x,ty2) when is_base_var x -> true
-  | TFun({Id.typ=TTuple xs},ty2) when List.exists is_base_var xs -> true
-  | TFun(_,ty2) -> exists_dest ty2
+  | TFun(x,ty2) ->
+      is_base_var x ||
+      (match elim_tattr @@ Id.typ x with TTuple xs -> List.exists is_base_var xs | _ -> false) ||
+      exists_dest ty2
   | TTuple xs -> List.exists (Id.typ |- exists_dest) xs
   | _ -> false
 
 
 let mark =
-  let rec mark ty =
-    let mark_id x =
-      let ty = mark @@ Id.typ x in
-      let ty' =
-        if is_base_typ ty then
-          _TAttr [TARefPred(Id.new_var_id x, Term.true_)] ty
-        else
-          ty
-      in
-      Id.set_typ x ty'
+  let tr = make_trans () in
+  let mark_id x =
+    let ty = tr.tr_typ @@ Id.typ x in
+    let ty' =
+      if is_base_typ ty then
+        _TAttr [TARefPred(Id.new_var_id x, Term.true_)] ty
+      else
+        ty
     in
-    match elim_tattr ty with
+    Id.set_typ x ty'
+  in
+  let tr_typ ty =
+    match ty with
     | _ when is_base_typ ty -> ty
     | TTuple xs ->
         let _,last =
@@ -377,11 +379,11 @@ let mark =
         begin
           let n = List.length xs in
           match last with
-          | None -> TTuple (List.mapi (fun i x -> if i+1<n then Id.map_typ mark x else x) xs)
+          | None -> TTuple (List.mapi (fun i x -> if i+1<n then mark_id x else tr.tr_var x) xs)
           | Some i ->
               let aux (acc,b,j) x =
                 let j' = j + 1 in
-                let x' = if b && is_base_var x && j'<n then mark_id x else Id.map_typ mark x in
+                let x' = if b && is_base_var x && j'<n then mark_id x else tr.tr_var x in
                 let b' = b || j <= i in
                 acc@[x'], b', j+1
               in
@@ -390,12 +392,16 @@ let mark =
         end
     | TFun(x,ty2) when exists_dest ty2 ->
         let x' = mark_id x in
-        TFun(x', mark ty2)
-    | TFun(x,ty2) -> TFun(Id.map_typ mark x, mark ty2)
-    | _ -> assert false
+        TFun(x', tr.tr_typ ty2)
+    | TAttr(attr, TFun(x,ty2)) when List.mem TAPureFun attr ->
+        let x' = mark_id x in
+        TAttr(attr, TFun(x', tr.tr_typ ty2))
+    | TFun(x,ty2) ->
+        let x' = tr.tr_var x in
+        TFun(x', tr.tr_typ ty2)
+    | _ -> tr.tr_typ_rec ty
   in
-  let tr = make_trans () in
-  tr.tr_typ <- mark;
+  tr.tr_typ <- tr_typ;
   tr.tr_term
 
 let mark_safe_fun_arg t =
