@@ -29,7 +29,12 @@ let rec subst x t = function
   | Let(y,t1,t2) when x = y -> Let(y, subst x t t1, t2)
   | Let(y,t1,t2) -> Let(y, subst x t t1, subst x t t2)
   | Fun(y,typ,t1) when x = y -> Fun(y, typ, t1)
-  | Fun(y,typ,t1) -> Fun(y, typ, subst x t t1)
+  | Fun(y,typ,t1) ->
+      if List.exists ((=) y) @@ get_fv t then
+        let y' = rename_id y in
+        Fun(y', typ, subst x t @@ subst_var y y' t1)
+      else
+        Fun(y, typ, subst x t t1)
 
 and subst_var x y t = subst x (Var y) t
 
