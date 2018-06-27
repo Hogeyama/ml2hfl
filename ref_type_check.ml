@@ -170,9 +170,10 @@ let rec gen_sub env t ty : sub_constr list =
       gen_sub env Term.(let_ [x,t1] (if_ (var x) t2 t3)) ty
   | Local(Decl_let bindings, t1) ->
       let tys = List.map (fun (x,t) -> lift env ~name:(Id.to_string ~plain:false x) t) bindings in
-      let env' = List.fold_right2 (fst |- RT.Env.add) bindings tys env in
-      let sub = gen_sub env' t1 ty in
-      let aux (x,t) ty = gen_sub env' t ty in
+      let env0 = List.fold_right2 (fun (x,_) ty env -> if is_fun_var x then RT.Env.add x ty env else env) bindings tys env in
+      let env1 = List.fold_right2 (fst |- RT.Env.add) bindings tys env in
+      let sub = gen_sub env1 t1 ty in
+      let aux (x,t) ty = gen_sub env0 t ty in
       sub @ List.flatten @@ List.map2 aux bindings tys
   | BinOp(op,t1,t2) when is_simple_expr t1 ->
       let x2 = new_var_of_term t2 in
@@ -197,11 +198,10 @@ let rec gen_sub env t ty : sub_constr list =
       in
       [env, (aty, ty)]
   | Tuple ts ->
-      let xs = List.map (fun t -> match decomp_var t with None -> new_var_of_term t | Some x -> x) ts in
-      let x = new_var_of_term t in
-      let t0 = Term.(let_ [x, tuple (vars xs)] (var x)) in
       let t' =
-        let aux x t acc = if is_var t then acc else Term.(let_ [x,t] acc) in
+        let xs = List.map (fun t -> match decomp_var t with None -> new_var_of_term t | Some x -> x) ts in
+        let t0 = Term.(tuple (vars xs)) in
+        let aux x t acc = if is_var t then subst x t acc else Term.(let_ [x,t] acc) in
         List.fold_right2 aux xs ts t0
       in
       Debug.printf "NORMALIZE: @[%a =>@ @[%a@." Print.term t Print.term t';
