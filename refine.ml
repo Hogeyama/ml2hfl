@@ -149,7 +149,9 @@ let refine labeled is_cp prefix ces ext_ces prog =
           if !Flag.Refine.use_rec_hccs_solver then
             try
               Rec_HCCS_solver.solve c'
-            with Rec_HCCS_solver.TimeOut -> orig c'
+            with
+            | Rec_HCCS_solver.TimeOut
+            | Rec_HCCS_solver.SolverAborted -> orig c'
           else
             orig c'
         in

@@ -5,6 +5,7 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 module F = Fpat
 
 exception TimeOut
+exception SolverAborted
 
 let solve_file filename =
   let cmd =
@@ -19,7 +20,7 @@ let solve_file filename =
   let r = Sys.command cmd' in
   if r = 128+9 then raise TimeOut;
   let s = IO.input_file sol in
-  if r <> 0 || s = "" then fatal "solver aborted";
+  if r <> 0 || s = "" then raise SolverAborted;
   Smtlib2_interface.parse_sexp s
   |@> Debug.printf "PARSED: %a@." (List.print Sexp.print)
 
