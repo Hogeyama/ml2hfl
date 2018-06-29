@@ -79,7 +79,7 @@ CMO = revision.cmo mconfig.cmo flag.cmo debug.cmo util.cmo menv.cmo	\
 	syntax.cmo print.cmo term_util.cmo CEGAR_type.cmo		\
 	CEGAR_syntax.cmo CEGAR_print.cmo CEGAR_util.cmo typing.cmo	\
 	type_check.cmo CEGAR_ref_type.cmo smtlib2_interface.cmo		\
-	fpatInterface.cmo QE.cmo rec_HCCS_solver.cmo ref_type.cmo	\
+	fpatInterface.cmo QE.cmo rec_CHC_solver.cmo ref_type.cmo	\
 	spec.cmo problem.cmo ref_type_gen.cmo trans.cmo			\
 	trans_problem.cmo CHC.cmo ref_type_check.cmo CFA.cmo		\
 	uncurry.cmo lift.cmo fair_termination_util.cmo CEGAR_lift.cmo	\

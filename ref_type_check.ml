@@ -323,7 +323,7 @@ let check env t ty =
   let hcs = gen_hcs env t ty in
   Fpat.HCCS.save_smtlib2 "test.smt2" hcs;
   try
-    Rec_HCCS_solver.check_sat hcs
+    Rec_CHC_solver.check_sat hcs
   with _ -> false
 
 let print cout env t ty =

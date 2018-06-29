@@ -146,12 +146,12 @@ let refine labeled is_cp prefix ces ext_ces prog =
         let c' = instansiate_pred_by_env prog.env c in
         Verbose.printf "@[<v>";
         let r =
-          if !Flag.Refine.use_rec_hccs_solver then
+          if !Flag.Refine.use_rec_chc_solver then
             try
-              Rec_HCCS_solver.solve c'
+              Rec_CHC_solver.solve c'
             with
-            | Rec_HCCS_solver.TimeOut
-            | Rec_HCCS_solver.SolverAborted -> orig c'
+            | Rec_CHC_solver.TimeOut
+            | Rec_CHC_solver.SolverAborted -> orig c'
           else
             orig c'
         in

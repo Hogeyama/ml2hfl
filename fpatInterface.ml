@@ -401,7 +401,7 @@ let infer_with_ext
   Verbose.printf "@[<v>BEGIN refinement:@,  %a@," F.Prog.pr prog;
   let old_split_eq = !F.AbsType.split_equalities in
   let old_eap = !F.AbsType.extract_atomic_predicates in
-  let old_hccs_solver = F.HCCSSolver.get_dyn () in
+  let old_chc_solver = F.HCCSSolver.get_dyn () in
   F.AbsType.split_equalities := true;
   F.AbsType.extract_atomic_predicates := true;
   F.HCCSSolver.link_dyn
@@ -410,7 +410,7 @@ let infer_with_ext
   let env = F.AbsTypInfer.refine prog labeled is_cp cexs true ext_cexs in
   F.AbsType.split_equalities := old_split_eq;
   F.AbsType.extract_atomic_predicates := old_eap;
-  F.HCCSSolver.link_dyn old_hccs_solver;
+  F.HCCSSolver.link_dyn old_chc_solver;
   Verbose.printf "END refinement@,@]";
 
   Flag.Log.time_parameter_inference :=
