@@ -19,7 +19,7 @@ module TRecS = struct
 end
 
 module Method = struct
-  type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | PrintRefConstr | Trans
+  type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | Trans
   let mode = ref Reachability
   let input_cegar = ref false
   let nondet = ref false (* eager evaluation for branch *)

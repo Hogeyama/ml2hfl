@@ -218,34 +218,37 @@ let main_quick_check spec t =
   |> Preprocess.get
   |> Quick_check.repeat_forever
 
-let print_ref_constr spec t =
-  let t' =
-    t
-    |> Preprocess.(run_on_term (before_and CPS (all spec)))
-    |> Preprocess.get
-    |> Trans.alpha_rename ~whole:true
-  in
-  let ty = Ref_type.of_simple t'.Syntax.typ in
-  let env = Ref_type.Env.empty in
-  Ref_type_check.print stdout env t' ty
-
 let main_trans spec t =
-  let pps =
-    let open Flag.Trans in
-    let pps_all = Preprocess.all spec in
-    match !destination with
-    | Before_CPS -> Preprocess.(before CPS pps_all)
-    | CPS -> Preprocess.(before_and CPS pps_all)
-    | CHC -> unsupported "-trans CHC. Use -print-ref-constr insted"
+  let pps_all = Preprocess.all spec in
+  let print_as_ml pps =
+       Preprocess.run_on_term pps
+    |- Preprocess.get
+    |- Trans.remove_unambiguous_id
+    |- Trans.replace_typ_result_with_unit
+    |- Trans.rename_for_ocaml
+    |- Format.printf "%a@." Print.as_ocaml_typ
   in
-  Type.set_print_as_ocaml();
-  t
-  |> Preprocess.run_on_term pps
-  |> Preprocess.get
-  |> Trans.remove_unambiguous_id
-  |> Trans.replace_typ_result_with_unit
-  |> Trans.rename_for_ocaml
-  |> Format.printf "%a@." Print.as_ocaml_typ;
+  begin
+    match !Flag.Trans.destination with
+    | Flag.Trans.Before_CPS -> print_as_ml Preprocess.(before CPS pps_all) t
+    | Flag.Trans.CPS -> print_as_ml Preprocess.(before_and CPS pps_all) t
+    | Flag.Trans.CHC ->
+        Flag.PredAbst.shift_pred := true;
+        let t' =
+          t
+          |> Preprocess.(run_on_term (before_and CPS pps_all))
+          |> Preprocess.get
+          |> Trans.alpha_rename ~whole:true
+        in
+        let ty = Ref_type.of_simple t'.Syntax.typ in
+        let env = Ref_type.Env.empty in
+        try
+          Ref_type_check.print stdout env t' ty
+        with e when !Flag.Debug.debug_module = [] ->
+          Format.eprintf "%s@." (Printexc.to_string e);
+          Format.printf ")@.(get-proof)@."; (* for hoice *)
+          exit 1
+  end;
   exit 0
 
 let main cin =
@@ -284,15 +287,7 @@ let main cin =
         in
         Main_loop.run orig ~spec problem
     in
-    if Flag.Method.(!mode = PrintRefConstr) then
-      try
-        print_ref_constr spec parsed;
-        exit 0
-      with e when !Flag.Debug.debug_module = [] ->
-        Format.eprintf "%s@." (Printexc.to_string e);
-        Format.printf ")@.(get-proof)@."; (* for hoice *)
-        exit 1
-    else if Flag.Method.(!mode = Trans) then
+    if Flag.Method.(!mode = Trans) then
         main_trans spec parsed
     else if !Flag.Method.quick_check then
       main_quick_check spec parsed
@@ -355,18 +350,6 @@ let rec arg_spec () =
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";
      "-just-run", Arg.String just_run_other_command, " (just for experiments, %i is replaced with the filename)";
-     "-print-ref-constr",
-       Arg.Unit (fun () -> Flag.Method.(mode := PrintRefConstr);
-                           Flag.PredAbst.shift_pred := true;
-                           Ref_type_check.use_simplification := false;
-                           set_only_result ()),
-       " Just print constraints for refinement types without simplification";
-     "-print-ref-constr-simpl",
-       Arg.Unit (fun () -> Flag.Method.(mode := PrintRefConstr);
-                           Flag.PredAbst.shift_pred := true;
-                           Ref_type_check.use_simplification := true;
-                           set_only_result ()),
-       " Just print constraints for refinement types with simplification";
      "-use-temp", Arg.Set Flag.use_temp, " Use temporary files for intermediate/log files";
      "-trans",
        Arg.String (fun s -> Flag.Method.(mode := Trans);
