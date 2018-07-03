@@ -365,7 +365,8 @@ let rec arg_spec () =
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options";
-     "-module-list", Arg.Unit (fun () -> List.iter (Format.printf "%s@.") !Flag.Debug.debuggable_modules; exit 0), " Print list of debuggable modules";
+     "-debug-list", Arg.Unit (fun () -> List.iter (Format.printf "%s@.") !Flag.Debug.debuggable_modules; exit 0), " Print list of debug options";
+     "-trans-list", Arg.Unit (fun () -> List.iter (Format.printf "%s@.") @@ List.map fst Flag.Trans.destinations; exit 0), " Print list of -trans destinations";
      (* printing *)
      "", Arg.Unit ignore, "Options_for_printing";
      "-print-abst-types", Arg.Set Flag.Print.abst_typ, " Print abstraction types when the program is safe";

@@ -106,8 +106,8 @@ module Trans = struct
 
   let destinations =
     ["Before_CPS", (Before_CPS, "ML program before CPS transformation (ADT is encoded)");
-     "CPS", (CPS, "ML program after CPS transformation");
-     "CHC", (CHC, "CHC for refinement types")]
+     "CPS",        (CPS,        "ML program after CPS transformation");
+     "CHC",        (CHC,        "CHC for refinement types")]
 
   let string_of_destinations () =
     List.fold_left (fun acc (s,(_,desc)) -> acc ^ Format.sprintf "%s: %s\n" s desc) "" destinations
