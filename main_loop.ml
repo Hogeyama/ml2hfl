@@ -220,31 +220,38 @@ let print_result_delimiter () =
     Format.printf "@.%s@.@." @@ String.make !!Format.get_margin '='
 
 let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
-  let get_rtyp f = List.assoc f env in
+  let get_rtyp f =
+    List.assoc f env
+    |@> Debug.printf "trans_env %a: %a@." CEGAR_print.var f CEGAR_ref_type.print
+  in
   let aux f = Option.try_any (fun () -> f, Ref_type.rename @@ make_get_rtyp get_rtyp f) in
   List.filter_map aux top_funs
 
 let report orig parsed (result, make_get_rtyp, ex_param_inserted, set_main, main) =
-    print_result_delimiter ();
-    match result with
-    | CEGAR.Safe env ->
-        Flag.Log.result := "Safe";
-        let env' = trans_env (Term_util.get_top_funs @@ Problem.term parsed) make_get_rtyp env in
-        if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
-          if !Flag.Print.result then
-            report_safe env' orig ex_param_inserted
-    | CEGAR.Unsafe(sol,_) ->
-        let s =
-          if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
-            "Unknown."
-          else if !Flag.use_abst <> [] then
-            Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
-          else
-            "Unsafe"
-        in
-        Flag.Log.result := s;
+  print_result_delimiter ();
+  match result with
+  | CEGAR.Safe env ->
+      Flag.Log.result := "Safe";
+      Debug.printf "report env: %a@." (List.print @@ Pair.print CEGAR_print.var CEGAR_ref_type.print) env;
+      let top_funs = Term_util.get_top_funs @@ Problem.term parsed in
+      Debug.printf "report top_funs: %a@." (List.print Print.id) top_funs;
+      let env' = trans_env top_funs make_get_rtyp env in
+      Debug.printf "report env': %a@." (List.print @@ Pair.print Print.id Ref_type.print) env';
+      if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
         if !Flag.Print.result then
-          report_unsafe main sol set_main
+          report_safe env' orig ex_param_inserted
+  | CEGAR.Unsafe(sol,_) ->
+      let s =
+        if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
+          "Unknown."
+        else if !Flag.use_abst <> [] then
+          Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
+        else
+          "Unsafe"
+      in
+      Flag.Log.result := s;
+      if !Flag.Print.result then
+        report_unsafe main sol set_main
 
 let run ?make_pps ?fun_list orig ?(exparam_sol=[]) ?(spec=Spec.init) parsed =
   let results = loop ?make_pps ?fun_list exparam_sol spec parsed in

@@ -197,9 +197,6 @@ let main_fair_termination orig spec parsed =
   else Format.printf "Unknown...@.@.";
   result
 
-let main_module_verification orig spec parsed =
-  assert false
-
 let output_randint_refinement_log input_string =
   let cout =
     let input =
