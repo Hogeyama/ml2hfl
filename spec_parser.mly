@@ -251,15 +251,16 @@ typ:
   { make_self_id @@ make_tlist @@ Id.typ $1 }
 
 ref_base:
-| TUNIT { TUnit }
-| TBOOL { TBool }
-| TINT { TInt }
+| TUNIT { RT.Prim TUnit }
+| TBOOL { RT.Prim TBool }
+| TINT  { RT.Prim TInt }
+| IDENT { RT.Data $1 }
 
 ref_simple:
 | ref_base { ref_base $1 }
 | LBRACE id COLON ref_base BAR exp RBRACE
   {
-    let x = Id.set_typ $2 (TBase $4) in
+    let x = Id.set_typ $2 (RT.type_of_rt_base $4) in
     RT.Base($4, x, subst_var $2 x $6)
   }
 | LPAREN ref_typ RPAREN { $2 }

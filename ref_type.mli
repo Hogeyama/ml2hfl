@@ -1,6 +1,11 @@
 
+type rt_base = Prim of Type.base | Data of string
+
+val type_of_rt_base : rt_base -> 'a Type.t
+
 type t =
-  | Base of Type.base * Syntax.id * Syntax.term
+  (*| Base of Type.base * Syntax.id * Syntax.term*)
+  | Base of rt_base * Syntax.id * Syntax.term
   | Fun of Syntax.id * t * t
   | Tuple of (Syntax.id * t) list
   | Inter of Syntax.typ * t list
@@ -28,7 +33,8 @@ val make_base : ?pred:Syntax.term -> Type.base -> t
 
 
 (** {6 Destructor} *)
-val decomp_base : t -> (Type.base * Syntax.id * Syntax.term) option
+(*val decomp_base : t -> (Type.base * Syntax.id * Syntax.term) option*)
+val decomp_base : t -> (rt_base * Syntax.id * Syntax.term) option
 val decomp_fun : t -> (Syntax.id * t * t) option
 val decomp_list : t -> (Syntax.id * Syntax.term * Syntax.id * Syntax.term * t) option
 val decomp_inter : t -> t list

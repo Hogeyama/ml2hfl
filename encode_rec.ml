@@ -9,8 +9,8 @@ let make_tuple' ts =
   match ts with
   | [t] -> t
   | _ -> make_tuple ts
-let make_ttuple' tys =
-  match tys with
+let make_ttuple' : Syntax.typ list -> Syntax.typ =
+  fun tys -> match tys with
   | [ty] -> ty
   | _ -> make_ttuple tys
 let make_ptuple' ps =
@@ -26,8 +26,19 @@ module Ty = struct
   let tuple' = make_ttuple'
 end
 
-let abst_recdata = make_trans2 ()
+(******************************************************************************)
+(* abst_recdata ここから *)
 
+type env = (string * (Syntax.typ * bool * Syntax.typ)) list
+  (* string      -- 's' of 'TData s'
+   * Syntax.type -- type before encoding
+   * bool        -- whether recursive or not
+   * Syntax.type -- type after encoding
+   * *)
+type 'a transducer = env -> 'a -> 'a
+let abst_recdata : env Syntax.trans2 = make_trans2 ()
+
+(*
 let abst_recdata_leaves env typs =
   let typs' = List.map (abst_recdata.tr2_typ env) typs in
   let r_typ =
@@ -37,11 +48,27 @@ let abst_recdata_leaves env typs =
   in
   Ty.(tuple [unit; (* extra-param *)
              pureTFun(Id.new_var ~name:"path" @@ list int, r_typ)])
+*)
 
+(* Example:
+ *    type tree = Leaf of int | Node of tree * int * tree
+ * i.e.,
+ *    s = "tree",
+ *    ty = TVariant(false, [ ("Leaf",int)
+ *                         ; ("Node", TData "tree" * int * TData "tree")])
+ * is encoded into
+ *    unit * (path:int list -> TTuple [ TTuple [bool; int]
+ *                                    ; TTuple [bool; TTuple [] ])
+ * Note that
+ *    make_tuple' []  = TTuple [] and
+ *    make_tuple' int = int
+ * *)
+(* 今考えているのはrecを含まないのでアレでした．まあいずれやるので *)
 let encode_recdata_typ env s ty =
   match ty with
   | TVariant(false,labels) when List.mem s @@ get_tdata ty ->
       let tys =
+        (* これなにやってんだ -> 完全に理解した *)
         let aux ty =
           match ty with
           | TData s' ->
@@ -60,7 +87,8 @@ let encode_recdata_typ env s ty =
       Ty.(pair unit (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, tuple' tys)))
   | _ -> abst_recdata.tr2_typ env ty
 
-let abst_recdata_typ env typ =
+(* recを含まない場合（上のwildcardのケースからも呼ばれる） *)
+let abst_recdata_typ : Syntax.typ transducer = fun env typ ->
   match typ with
   | TRecord fields -> unsupported "abst_recdata_typ TRecord"
   | TVariant(false,labels) ->
@@ -69,22 +97,23 @@ let abst_recdata_typ env typ =
   | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
   | _ -> abst_recdata.tr2_typ_rec env typ
 
-let is_rec_type env ty =
+let is_rec_type (env: env) ty =
   match ty with
   | TData s when not @@ List.mem s prim_base_types -> Triple.snd @@ List.assoc s env
   | _ -> false
 
-let expand_typ env ty =
+let expand_typ (env: env) ty =
   match ty with
   | TData s when not @@ List.mem s prim_base_types -> Triple.fst @@ List.assoc s env
   | _ -> ty
 
-let expand_enc_typ env ty =
+let expand_enc_typ (env: env) ty =
   match ty with
   | TData s when not @@ List.mem s prim_base_types -> Triple.trd @@ List.assoc s env
   | _ -> ty
 
-let rec abst_recdata_pat env p =
+(* ノータッチで良い．はず *)
+let rec abst_recdata_pat (env: env) p =
   let typ =
     match abst_recdata.tr2_typ env p.pat_typ with
     | TData s when not @@ List.mem s prim_base_types -> Triple.trd @@ List.assoc s env
@@ -208,7 +237,7 @@ let rec abst_recdata_pat env p =
   {pat_desc=desc; pat_typ=typ}, cond, bind
 
 
-let abst_recdata_term env t =
+let abst_recdata_term (env: env) t =
   match t.desc with
   | Constr("Abst",[]) -> {desc=Constr("Abst",[]); typ=abst_recdata.tr2_typ env t.typ; attr=[]}
   | Constr(c,ts) when not (is_rec_type env t.typ) ->
@@ -288,14 +317,38 @@ let abst_recdata_term env t =
   | Local(Decl_type [s,ty], t) ->
       let ty' = encode_recdata_typ env s ty in
       let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
-      subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t
+
+      let t' = subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t in
+      if false then begin
+        Format.printf "~~~@.";
+        Format.printf "%a@." Print.term' t;
+        Format.printf "~~~@.";
+        Format.printf "%a@." Print.term' t';
+        Format.printf "~~~@.";
+      end;
+      t'
   | Local(Decl_type decls, t) ->
+      (* iwayama TODO *)
       unsupported "encode_rec: Decl_type"
+  (*| Var x ->*)
+      (*Format.printf "VV_: %a@." Print.id_typ x;*)
+      (*let x' = Id.map_typ (abst_recdata.tr2_typ env) x in*)
+      (*Format.printf "WW_: %a@." Print.id_typ x';*)
+      (*{ t with desc = Var x' }*)
   | _ -> abst_recdata.tr2_term_rec env t
+
+(*let abst_recdata_var : env -> Syntax.id -> Syntax.id = fun env x ->*)
+  (*Format.printf "VVV: %a@." Print.id_typ x;*)
+  (*let x' = Id.map_typ (abst_recdata.tr2_typ env) x in*)
+  (*Format.printf "WWW: %a@." Print.id_typ x';*)
+  (*x'*)
 
 let () = abst_recdata.tr2_term <- abst_recdata_term
 let () = abst_recdata.tr2_typ <- abst_recdata_typ
+(*let () = abst_recdata.tr2_var <- abst_recdata_var*)
 
+(* abst_recdata ここまで *)
+(******************************************************************************)
 
 let typ_in_env ty tys =
   match ty with
@@ -310,6 +363,9 @@ let trans_term t =
   t
   |@> pr "input"
   |> Trans.abst_ext_recdata
+  (* TODO これ何やってるかわからん
+   * trans.ml:l2717辺りを見た感じ不明な型をintにしている？
+   *)
   |@> pr "abst_ext_rec"
   |@> Type_check.check ~ty
   |> abst_recdata.tr2_term []
@@ -319,5 +375,23 @@ let trans_term t =
   |@> pr "simpify_match"
   |@> Type_check.check ~ty
 
+let trans_rty : Ref_type.t -> Ref_type.t = Fun.id
+
+let trans_env : (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t) list = fun env ->
+  List.map (Pair.map_snd trans_rty) env
+
 (* TODO: support records in refinement types *)
-let trans = Problem.map trans_term
+let trans p =
+  (*print_endline "~~~~~~~~~~";*)
+  (*Format.printf "%a@." Problem.print p;*)
+  (*print_endline "~~~~~~~~~~";*)
+  let p' = Problem.map ~tr_env:trans_env trans_term p in
+  (*Format.printf "%a@." Problem.print p';*)
+  (*print_endline "~~~~~~~~~~";*)
+  p'
+
+(* iwayama TODO:
+ *   Problem.mapに~tr_envを渡してRef_typeのencodingもする．
+ *)
+
+

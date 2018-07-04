@@ -6,8 +6,15 @@ module T = Type
 
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
+type rt_base = Prim of T.base | Data of string
+
+let type_of_rt_base = function
+  | Prim p -> T.TBase p
+  | Data s -> T.TData s
+
 type t =
-  | Base of T.base * S.id * S.term
+  (*| Base of T.base * S.id * S.term*)
+  | Base of rt_base * S.id * S.term
   | Fun of S.id * t * t
   | Tuple of (S.id * t) list
   | Inter of S.typ * t list
@@ -16,7 +23,7 @@ type t =
   | List of S.id * S.term * S.id * S.term * t
   | Exn of t * t
 
-let typ_result = Base(T.TPrim "X", Id.new_var T.Ty.unit, U.true_term)
+let typ_result = Base(Prim (T.TPrim "X"), Id.new_var T.Ty.unit, U.true_term)
 
 let _Inter styp typs = Inter(styp, typs)
 let _Union styp typs = Union(styp, typs)
@@ -72,7 +79,9 @@ and is_top' typ =
   | Fun(_, typ1, typ2) -> is_bottom typ1
   | _ -> false
 
-let print_base = Type.print_base
+let print_base fm = function
+  | Prim(prim) -> Type.print_base fm prim
+  | Data(s) -> Format.pp_print_string fm s
 
 let rec occur x = function
   | Base(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
@@ -96,11 +105,12 @@ let rec decomp_funs typ =
 let rec print fm = function
   | Base(base,x,p) when p = U.true_term ->
       Format.fprintf fm "%a" print_base base
-  | Base(T.TBool,x,p) when U.make_var x = p ->
+  | Base(Prim (T.TBool),x,p) when U.make_var x = p ->
       Format.fprintf fm "{true}"
-  | Base(T.TBool,x,p) when U.make_not (U.make_var x) = p ->
+  | Base(Prim (T.TBool),x,p) when U.make_not (U.make_var x) = p ->
       Format.fprintf fm "{false}"
-  | Base(_,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, t)})
+  | Base(_,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, t)}) when x = y ->
+      Format.fprintf fm "{%a}" Print.term t
   | Base(_,x,{S.desc=S.BinOp(S.Eq, t, {S.desc=S.Var y})}) when x = y ->
       Format.fprintf fm "{%a}" Print.term t
   | Base(base,x,p) when p.S.desc = S.Const S.False ->
@@ -285,10 +295,10 @@ let rename ?(full=false) typ = rename full None typ
 
 let rec of_simple typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
-  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
-  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
-  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
+  | T.TBase T.TUnit -> Base(Prim(T.TUnit), Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(Prim(T.TBool), Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(Prim(T.TInt), Id.new_var typ, U.true_term)
+  | T.TData s -> Base(Prim(T.TPrim s), Id.new_var typ, U.true_term)
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
   | _ ->
@@ -299,8 +309,8 @@ let rec of_simple typ =
 let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
   let r =
   match typ with
-  | Base(b, x, ({S.desc=S.Const _} as p)) ->
-      let sty = T.TBase b in
+  | Base(base, x, ({S.desc=S.Const _} as p)) ->
+      let sty = type_of_rt_base base in
       if with_pred then
         T.add_tattr (T.TARefPred(x,p)) sty
       else
@@ -311,9 +321,9 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
             [p]
         in
         T.add_tattr (T.TAPred(x,ps)) sty
-  | Base(b, x, t) ->
+  | Base(base, x, t) ->
       let x' = Id.new_var_id x in
-      let typ' = T.TBase b in
+      let typ' = type_of_rt_base base in
       let ps =
         if !Flag.PredAbst.decomp_pred then
           Term_util.decomp_bexp @@ U.subst_var x x' t
@@ -321,6 +331,28 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
           [U.subst_var x x' t]
       in
       U.add_tapred x' ps typ'
+  (*| Base(Prim(b), x, ({S.desc=S.Const _} as p)) ->*)
+      (*let sty = T.TBase b in*)
+      (*if with_pred then*)
+        (*T.add_tattr (T.TARefPred(x,p)) sty*)
+      (*else*)
+        (*let ps =*)
+          (*if decomp_pred then*)
+            (*U.decomp_and p*)
+          (*else*)
+            (*[p]*)
+        (*in*)
+        (*T.add_tattr (T.TAPred(x,ps)) sty*)
+  (*| Base(Prim(b), x, t) ->*)
+      (*let x' = Id.new_var_id x in*)
+      (*let typ' = T.TBase b in*)
+      (*let ps =*)
+        (*if !Flag.PredAbst.decomp_pred then*)
+          (*Term_util.decomp_bexp @@ U.subst_var x x' t*)
+        (*else*)
+          (*[U.subst_var x x' t]*)
+      (*in*)
+      (*U.add_tapred x' ps typ'*)
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ ~decomp_pred ~with_pred typ1 in
       let typ2' = to_abst_typ ~decomp_pred ~with_pred @@ subst_var x x' typ2 in
@@ -353,8 +385,12 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
 
 let rec to_simple ?(with_pred=false) typ =
   match typ with
-  | Base(b, x, p) ->
-      T.TBase b
+  (*| Base(Prim(b), x, p) ->*)
+      (*T.TBase b*)
+      (*|&with_pred&> T.add_tattr (T.TARefPred(x,p))*)
+  (* TODO これでいいか *)
+  | Base(base, x, p) ->
+      type_of_rt_base base
       |&with_pred&> T.add_tattr (T.TARefPred(x,p))
   | Fun(x,typ1,typ2) -> T.make_tfun (to_simple ~with_pred typ1) (to_simple ~with_pred typ2)
   | Tuple xtyps -> T.make_ttuple (List.map (to_simple ~with_pred -| snd) xtyps)
@@ -368,7 +404,7 @@ let rec to_simple ?(with_pred=false) typ =
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
   | Exn(typ1, _) -> to_simple ~with_pred typ1
 
-let make_base ?(pred=U.true_term) base = Base(base, Id.new_var (Type.TBase base), pred)
+let make_base ?(pred=U.true_term) base = Base(Prim(base), Id.new_var (Type.TBase base), pred)
 let make_fun ty1 ty2 = Fun(Id.new_var @@ to_simple ty1, ty1, ty2)
 
 let rec set_base_var x = function
@@ -497,8 +533,10 @@ let rec subtype env typ1 typ2 =
   | _, Exn(typ21,typ22) -> subtype env typ1 typ21
   | Exn _, _ -> false
   | List(x1,p_len1,y1,p_i1,typ1'), List(x2,p_len2,y2,p_i2,typ2') ->
-      let typ1'' = Tuple [x1,Base(T.TInt,x1,p_len1); Id.new_var Type.Ty.int,Fun(y1,Base(T.TInt,y1,p_i1),typ1')] in
-      let typ2'' = Tuple [x2,Base(T.TInt,x2,p_len2); Id.new_var Type.Ty.int,Fun(y2,Base(T.TInt,y2,p_i2),typ2')] in
+      let typ1'' = Tuple [x1,Base(Prim(T.TInt),x1,p_len1);
+                          Id.new_var Type.Ty.int,Fun(y1,Base(Prim(T.TInt),y1,p_i1),typ1')] in
+      let typ2'' = Tuple [x2,Base(Prim(T.TInt),x2,p_len2);
+                          Id.new_var Type.Ty.int,Fun(y2,Base(Prim(T.TInt),y2,p_i2),typ2')] in
       subtype env typ1'' typ2''
   | _ ->
       Format.eprintf "typ1: %a@." print typ1;
@@ -648,29 +686,31 @@ and simplify typ =
 
 let rec make_strongest typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.false_term)
-  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.false_term)
-  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.false_term)
-  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.false_term)
+  | T.TBase T.TUnit -> Base(Prim(T.TUnit), Id.new_var typ, U.false_term)
+  | T.TBase T.TBool -> Base(Prim(T.TBool), Id.new_var typ, U.false_term)
+  | T.TBase T.TInt  -> Base(Prim(T.TInt), Id.new_var typ, U.false_term)
+  | T.TData s -> Base(Prim(T.TPrim s), Id.new_var typ, U.false_term)
   | T.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_strongest TList"
-  | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.false_term)
+  | _ when typ = U.typ_result -> Base(Prim(T.TUnit), Id.new_var typ, U.false_term)
   | _ ->
       Format.eprintf "make_strongest: %a@." Print.typ typ;
       unsupported "Ref_type.make_strongest"
 
 and make_weakest typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
-  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
-  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
-  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
+  | T.TBase T.TUnit -> Base(Prim(T.TUnit), Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(Prim(T.TBool), Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(Prim(T.TInt), Id.new_var typ, U.true_term)
+  | T.TData s -> Base(Data s, Id.new_var typ, U.true_term)
+  (*| T.TData s -> Base(Prim(T.TPrim s), Id.new_var typ, U.true_term)*)
+    (* TODO Dataでよい？*)
   | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
-  | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.true_term)
+  | _ when typ = U.typ_result -> Base(Prim(T.TUnit), Id.new_var typ, U.true_term)
   | _ ->
       Format.eprintf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"

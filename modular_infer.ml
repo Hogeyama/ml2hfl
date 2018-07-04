@@ -121,7 +121,7 @@ let rec from_ref_type typ =
   match typ with
   | Ref_type.Base(_, x, t) -> Const(x, t)
   | Ref_type.Fun(x, typ1, Ref_type.Base(base,_,t)) ->
-      assert (base = TUnit && t.desc = Const True);
+      assert (base = Ref_type.Prim TUnit && t.desc = Const True);
       Fun(x, from_ref_type typ1, Base None)
   | Ref_type.Fun(x, typ1, typ2) -> Fun(x, from_ref_type typ1, from_ref_type typ2)
   | Ref_type.Tuple _ -> assert false
@@ -748,7 +748,7 @@ let rec apply_sol mode sol x vars tmp =
   | Base(Some _)
   | PApp(Base (Some _), _) ->
       if x = None then
-        Ref_type.Base(TUnit, Id.new_var Ty.unit, true_term)
+        Ref_type.Base(Ref_type.Prim TUnit, Id.new_var Ty.unit, true_term)
       else
         let base,p,ts =
           match tmp with
@@ -772,8 +772,8 @@ let rec apply_sol mode sol x vars tmp =
             List.fold_right2 subst xs ts' t
           with Not_found -> make_var any_var
         in
-        Ref_type.Base(base, x', p)
-  | Base None -> Ref_type.Base(TUnit, Id.new_var Ty.unit, true_term)
+        Ref_type.Base(Ref_type.Prim base, x', p)
+  | Base None -> Ref_type.Base(Ref_type.Prim TUnit, Id.new_var Ty.unit, true_term)
   | Fun(y,typ1,typ2) ->
       Ref_type.Fun(y, apply_sol mode sol (Some y) vars typ1, apply_sol mode sol None (y::vars) typ2)
   | Inter(styp, []) ->

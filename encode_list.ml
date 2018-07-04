@@ -75,19 +75,21 @@ let rec get_rtyp_list rtyp typ =
      RT.Inter(typ, List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Union(_, rtyps), _ ->
       RT.Union(typ, List.map (get_rtyp_list -$- typ) rtyps)
-  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Fun(y, RT.Base(TInt, y', p_i), typ2)], TApp(TList, [typ]) ->
+  (* TODO *)
+  | RT.Tuple[x, RT.Base(RT.Prim(TInt), x', p_len); _, RT.Fun(y, RT.Base(RT.Prim(TInt), y', p_i), typ2)], TApp(TList, [typ]) ->
       let p_len' = subst_var x' x p_len in
       let p_i' = subst_var y' y p_i in
       RT.List(x, p_len', y, p_i', get_rtyp_list typ2 typ)
-  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Inter(_, [])], TApp(TList, [typ]) ->
+  | RT.Tuple[x, RT.Base(RT.Prim(TInt), x', p_len); _, RT.Inter(_, [])], TApp(TList, [typ]) ->
       let p_len' = subst_var x' x p_len in
       RT.List(x, p_len', Id.new_var typ_unknown, true_term, RT.Inter(typ, []))
-  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Inter(_, typs)], TApp(TList, [typ]) ->
-      let typs' = List.map (fun typ -> RT.Tuple [x, RT.Base(TInt, x', p_len); Id.new_var typ_unknown, typ]) typs in
+  | RT.Tuple[x, RT.Base(RT.Prim(TInt), x', p_len); _, RT.Inter(_, typs)], TApp(TList, [typ]) ->
+      let typs' = List.map (fun typ -> RT.Tuple [x, RT.Base(RT.Prim(TInt), x', p_len); Id.new_var typ_unknown, typ]) typs in
       get_rtyp_list (RT.Inter(typ_unknown, typs')) (make_tlist typ)
   | _, TApp(TList, [typ]) ->
       Format.eprintf "%a@." RT.print rtyp;
       raise (Fatal "not implemented get_rtyp_list")
+  | RT.Base(RT.Data _,_,_), _ -> assert false
   | RT.Base(b,x,ps), _ -> RT.Base(b,x,ps)
   | RT.Fun(x,rtyp1,rtyp2), TFun(y,typ2) ->
       let rtyp1' = get_rtyp_list rtyp1 (Id.typ y) in
@@ -537,9 +539,9 @@ let rec trans_rty ty =
         let p_len',_ = trans_term p_len in
         let p_i',_ = trans_term p_i in
         let ty2' = trans_rty ty2 in
-        let ty_f = Fun(y, Base(TInt,y,p_i'), ty2') in
+        let ty_f = Fun(y, Base(Prim(TInt),y,p_i'), ty2') in
         let f = Id.new_var @@ to_simple ty_f in
-        Tuple [x,Base(TInt,x,p_len'); f, ty_f]
+        Tuple [x,Base(Prim(TInt),x,p_len'); f, ty_f]
   | Exn(ty1,ty2) -> Exn(trans_rty ty1, trans_rty ty2)
 
 let trans_env env =

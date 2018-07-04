@@ -40,7 +40,7 @@ let is_simple_expr t =
 let simple_expr_ty t =
   let x = new_var_of_term t in
   let base = Option.get @@ decomp_base t.typ in
-  RT.Base(base, x, Term.(var x = t))
+  RT.Base(RT.Prim(base), x, Term.(var x = t))
 
 let rec lift_ty env ?np sty =
   match sty with
@@ -54,7 +54,7 @@ let rec lift_ty env ?np sty =
         let pvar = PredVar.new_pvar ?name @@ List.map Id.typ args in
         Term.(var pvar @ vars args)
       in
-      RT.Base(base, x, pred)
+      RT.Base(RT.Prim(base), x, pred)
   | TFun(x,sty2) ->
       let rty1 =
         let np = Option.map (Pair.map_snd @@ List.cons 0) np in
@@ -80,7 +80,7 @@ let rec lift_ty env ?np sty =
   | TAttr([],sty') -> lift_ty env ?np sty'
   | TAttr(TARefPred(x,p)::_,sty') when is_base_typ sty' ->
       let base = Option.get @@ decomp_base sty' in
-      RT.Base(base, x, p)
+      RT.Base(RT.Prim base, x, p)
   | TAttr(_::attrs,sty') -> lift_ty env ?np (TAttr(attrs,sty'))
   | _ ->
       Format.eprintf "LIFT: %a@." Print.typ sty;
