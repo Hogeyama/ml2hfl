@@ -17,9 +17,9 @@ and default_val' =
     | TTuple _ -> invalid_arg "default_val: not yet implemented syntax(TTuple)"
     | TVar(t,_) ->
       begin
-	match !t with
-	  | None -> raise (Invalid_argument "default_val: not yet implemented syntax(TVar None)")
-	  | Some t' -> default_val' t'
+        match !t with
+        | None -> raise (Invalid_argument "default_val: not yet implemented syntax(TVar None)")
+        | Some t' -> default_val' t'
       end
     | TFuns _ -> invalid_arg "default_val: not yet implemented syntax(TFuns)"
     | TRecord _ -> invalid_arg "default_val: not yet implemented syntax(TRecord)"
