@@ -54,14 +54,14 @@ let output_json filename =
   let pr fmt = Printf.fprintf oc fmt in
   let pr_ter fmt = if Flag.Method.(!mode = Termination) then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
-  pr "{filename: %S" !Flag.mainfile;
-  pr ", result: %S" !Flag.Log.result;
-  pr ", cycles: %d" !Flag.Log.cegar_loop;
-  pr_ter ", ranking: {";
+  pr "{\"filename\": %S" !Flag.mainfile;
+  pr ", \"result\": %S" !Flag.Log.result;
+  pr ", \"cycles\": %d" !Flag.Log.cegar_loop;
+  pr_ter ", \"ranking\": {";
   let rec pr_rfs rfs =
     let pr_rf (f_name, (cycles, pred)) =
       let rank_fun = Format.asprintf "%a" BRA_types.pr_ranking_function pred in
-      pr_ter "%S: {function: %S, inferCycles: %d}" f_name rank_fun cycles
+      pr_ter "%S: {\"function\": %S, \"inferCycles\": %d}" f_name rank_fun cycles
     in
     match rfs with
     | [] -> ()
@@ -70,15 +70,20 @@ let output_json filename =
   in
   pr_rfs !Termination_loop.lrf;
   pr_ter "}";
-  pr ", total: %f" !!Time.get;
-  pr ", abst: %f" !Flag.Log.Time.abstraction;
-  pr ", mc: %f" !Flag.Log.Time.mc;
-  pr ", refine: %f" !Flag.Log.Time.cegar;
+  pr ", \"total\": %f" !!Time.get;
+  pr ", \"abst\": %f" !Flag.Log.Time.abstraction;
+  pr ", \"mc\": %f" !Flag.Log.Time.mc;
+  if Flag.Experiment.HORS_quickcheck.(!use <> Do_not_use) then
+    begin
+      pr ", \"hors_quickcheck\": %f" !Flag.Log.Time.hors_quickcheck;
+      pr ", \"cex_length\": %s" @@ List.to_string ~delimiter:"," string_of_int !Flag.Experiment.HORS_quickcheck.cex_length_history
+    end;
+  pr ", \"refine\": %f" !Flag.Log.Time.cegar;
   if !Flag.Method.relative_complete then
-    pr ", exparam: %f" !Flag.Log.Time.parameter_inference;
+    pr ", \"exparam\": %f" !Flag.Log.Time.parameter_inference;
   pr_mod ", \"#typeChecker\": %d" !Modular.num_tycheck;
-  pr_mod ", typeChecker: %f" !Modular.time_check;
-  pr_mod ", typeSynthesizer: %f" !Modular.time_synthesize;
+  pr_mod ", \"typeChecker\": %f" !Modular.time_check;
+  pr_mod ", \"typeSynthesizer\": %f" !Modular.time_synthesize;
   pr "}\n"
 
 let print_info_modular () =

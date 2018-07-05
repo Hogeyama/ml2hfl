@@ -227,6 +227,7 @@ module Experiment = struct
     let command = ref Mconfig.hors_quickcheck
     let use = ref Do_not_use
     let num = ref 5
+    let cex_length_history : int list ref = ref []
   end
 end
 
