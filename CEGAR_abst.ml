@@ -133,7 +133,7 @@ let abstract orig_fun_list prog =
 let abstract orig_fun_list force ?(top_funs=[]) prog =
   let labeled,abst =
     Time.measure_and_add
-      Flag.Log.time_abstraction
+      Flag.Log.Time.abstraction
       (fun () ->
          if !Flag.Print.progress
          then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.Log.cegar_loop;

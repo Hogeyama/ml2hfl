@@ -85,11 +85,15 @@ module Print = struct
 end
 
 module Log = struct
-  let time_abstraction = ref 0.
-  let time_mc = ref 0.
-  let time_cegar = ref 0.
-  let time_interpolant = ref 0.
-  let time_parameter_inference = ref 0.
+  module Time = struct
+    let abstraction = ref 0.
+    let mc = ref 0.
+    let cegar = ref 0.
+    let interpolant = ref 0.
+    let parameter_inference = ref 0.
+    let hors_quickcheck = ref 0.
+  end
+
   let result = ref ""
 
   let cegar_loop = ref 1
@@ -215,6 +219,15 @@ module Modular = struct
   let use_neg_env = ref true
   let infer_merge = ref false
   let check_simple = ref false
+end
+
+module Experiment = struct
+  module HORS_quickcheck = struct
+    type use = Do_not_use | Shortest | Longest
+    let command = ref Mconfig.hors_quickcheck
+    let use = ref Do_not_use
+    let num = ref 5
+  end
 end
 
 module Debug = struct

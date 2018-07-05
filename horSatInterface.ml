@@ -186,7 +186,28 @@ let rec verifyFile cmd parser token filename =
       *)
       UnsafeAPT ce
   | HS.Unsatisfied ce ->
-      Unsafe (trans_ce ce)
+      let ce' =
+        let module QC = Flag.Experiment.HORS_quickcheck in
+        match !QC.use with
+        | QC.Do_not_use -> ce
+        | use ->
+            let cmd = Format.sprintf "%s %s %d" !QC.command filename !Flag.Experiment.HORS_quickcheck.num in
+            let r = Time.measure_and_add Flag.Log.Time.hors_quickcheck (fun () -> Unix.CPS.open_process_in cmd IO.input_all) in
+            let ces =
+              r
+              |> String.trim
+              |> String.split_on_char '\n'
+              |> List.map (String.split_on_char ';'
+                           |- List.map (String.split_on_char ',')
+                           |- List.map (function [s;n] -> s, int_of_string n | _ -> assert false))
+              |> List.sort (Compare.on List.length)
+            in
+            match use with
+            | QC.Do_not_use -> assert false
+            | QC.Shortest -> List.hd ces
+            | QC.Longest -> List.last ces
+      in
+      Unsafe (trans_ce ce')
 
 
 let write_log string_of filename target =
