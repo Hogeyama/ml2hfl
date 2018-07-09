@@ -1363,7 +1363,7 @@ let decomp_pair_eq =
         | TTuple xs ->
             let aux t =
               match t with
-              | {desc=Var y} -> y, Std.identity
+              | {desc=Var y} -> y, Fun.id
               | _ ->
                   let y = new_var_of_term t in
                   y, make_let [y,t]

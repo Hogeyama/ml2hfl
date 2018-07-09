@@ -70,8 +70,8 @@ let parse_comment parser lexer filename =
     let s = try Some (input_line cin) with End_of_file -> None in
     match s with
       None -> str
-    | Some s when ExtString.String.starts_with s "(*{SPEC}" -> loop true str
-    | Some s when ExtString.String.ends_with s "{SPEC}*)" -> loop false str
+    | Some s when String.starts_with s "(*{SPEC}" -> loop true str
+    | Some s when String.ends_with s "{SPEC}*)" -> loop false str
     | Some s when flag -> loop true (str ^ "\n" ^ s)
     | _ -> loop false str
   in

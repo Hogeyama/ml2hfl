@@ -269,23 +269,23 @@ let trans_term trans t =
 
 let make_trans () =
   let trans =
-    {tr_term = Std.identity;
-     tr_term_rec = Std.identity;
-     tr_desc = Std.identity;
-     tr_desc_rec = Std.identity;
-     tr_typ = Std.identity;
-     tr_typ_rec = Std.identity;
-     tr_var = Std.identity;
-     tr_var_rec = Std.identity;
-     tr_pat = Std.identity;
-     tr_pat_rec = Std.identity;
-     tr_info = Std.identity;
-     tr_info_rec = Std.identity;
-     tr_const = Std.identity;
-     tr_const_rec = Std.identity;
-     tr_decl = Std.identity;
-     tr_decl_rec = Std.identity;
-     tr_attr = Std.identity}
+    {tr_term = Fun.id;
+     tr_term_rec = Fun.id;
+     tr_desc = Fun.id;
+     tr_desc_rec = Fun.id;
+     tr_typ = Fun.id;
+     tr_typ_rec = Fun.id;
+     tr_var = Fun.id;
+     tr_var_rec = Fun.id;
+     tr_pat = Fun.id;
+     tr_pat_rec = Fun.id;
+     tr_info = Fun.id;
+     tr_info_rec = Fun.id;
+     tr_const = Fun.id;
+     tr_const_rec = Fun.id;
+     tr_decl = Fun.id;
+     tr_decl_rec = Fun.id;
+     tr_attr = Fun.id}
   in
   trans.tr_term <- trans_term trans;
   trans.tr_term_rec <- trans_term trans;
@@ -440,7 +440,7 @@ let trans2_gen_term tr env t = {desc = tr.tr2_desc env t.desc; typ = tr.tr2_typ 
 
 
 let make_trans2 () =
-  let id' env = Std.identity in
+  let id' env = Fun.id in
   let tr =
     {tr2_term = id';
      tr2_term_rec = id';
