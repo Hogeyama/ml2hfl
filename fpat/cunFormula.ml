@@ -56,7 +56,7 @@ let sexp_of ?(smt2=false) =
 
 
 let is_pvar p = String.starts_with p "|$" && String.ends_with p "|"
-                   
+
 let pvar_of p = String.sub p 2 (String.length p - 3) |> Idnt.make
 
 (* @assume: let bindings are used only for formulas *)
@@ -258,14 +258,6 @@ let lift_int simplify f =
   (* @todo elim boolean variables *)
   >> f
 
-let get_adts =
-  elim_unit
-  >> Formula.map_atom CunAtom.elim_beq_bneq
-  >> Formula.fold_set CunAtom.get_adts
-  >> List.unique
-
-let kons = Formula.fold_set CunAtom.kons >> List.unique
-
 (* val is_linear : Formula.t -> bool *)
 let is_linear = Formula.fold_band CunAtom.is_linear
 
@@ -296,64 +288,3 @@ let rec ufuns_of phi =
       method fnu x r1 = assert false
     end)
     phi
-
-(** eliminate recognizers to obtain an equi-valid formula
-    @require NNF
-    e.g. replace "_is_Cons l" in a negative position with "l =
-    Cons(x1, x2)" for fresh x1,x2 and if "type t = A | B | C" is
-    declared, replace "is_A x" in a positive position with "not (is_B
-    x) && not (is_C x)" *)
-let elim_recognizers tenv =
-  Formula.fold_pos
-    (object
-      method fatom pos = CunAtom.elim_recognizers pos tenv >> Formula.of_atom
-      method ftrue () = Formula.mk_true
-      method ffalse () = Formula.mk_false
-      method fnot = Formula.bnot
-      method fand = Formula.mk_and
-      method for_ = Formula.mk_or
-      method fimply = Formula.imply
-      method fiff = Formula.mk_iff
-      method fforall xty = Formula.forall [xty]
-      method fexists xty = Formula.exists [xty]
-      method fbox idx _ = assert false
-      method fdiamond idx _ = assert false
-      method fmu x _ = assert false
-      method fnu x _ = assert false
-    end)
-let elim_recognizers =
-  Logger.log_block2 "CunFormula.elim_recognizers"
-    ~before:(fun tenv phi ->
-        Logger.printf2 "input:@, tenv: %a@, phi: %a@,"
-          TypEnv.pr tenv Formula.pr phi)
-    ~after:(Logger.printf "output: %a" Formula.pr)
-    elim_recognizers
-
-(** @require NNF
-    eliminate accessors obtain an equi-valid formula
-    assume that accessors do not occur in a negative potisition
-    e.g., replace "x = (_get_Cons_0 y)" with
-                  "y = Cons(x1, x2) => x = x1" for fresh x1,x2 *)
-let elim_accessors tenv =
-  Formula.fold
-    (object
-      method fatom atm =
-        CunAtom.elim_accessors tenv atm |> Formula.of_atom
-      method ftrue () = Formula.mk_true
-      method ffalse () = Formula.mk_false
-      method fnot = Formula.bnot
-      method fand = Formula.mk_and
-      method for_ = Formula.mk_or
-      method fimply = Formula.imply
-      method fiff = Formula.mk_iff
-      method fforall xty = Formula.forall [xty]
-      method fexists xty = Formula.exists [xty]
-      method fbox idx _ = assert false
-      method fdiamond idx _ = assert false
-      method fmu x _ = assert false
-      method fnu x _ = assert false
-    end)
-
-let elim_accessors_recognizers tenv =
-  NNF.of_formula >> NNF.map_literal CunLiteral.simplify >> NNF.formula_of
-  >> elim_recognizers tenv >> elim_accessors tenv

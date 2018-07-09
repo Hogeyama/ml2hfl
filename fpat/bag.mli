@@ -7,8 +7,8 @@ type 'a t = 'a list
 val subset : 'a t -> 'a t -> bool
 val equiv : 'a t -> 'a t -> bool
 
-val non_duplicated : ?cmp:('a -> 'a -> bool) -> 'a t -> bool
-val duplicated : ?cmp:('a -> 'a -> bool) -> 'a t -> bool
+val non_duplicated : ?eq:('a -> 'a -> bool) -> 'a t -> bool
+val duplicated : ?eq:('a -> 'a -> bool) -> 'a t -> bool
 val num_occurrences : 'a -> 'a t -> int
 
 (** {6 Operators} *)

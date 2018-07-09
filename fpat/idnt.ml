@@ -148,7 +148,7 @@ let rec serialize x =
   let chk_string_of x =
     let str = string_of x in
     try String.find str separator; assert false
-    with ExtString.Invalid_string -> str
+    with Not_found -> str
   in
   match x with
   | V(_) -> vheader ^ separator ^ chk_string_of x

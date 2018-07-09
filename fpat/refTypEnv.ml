@@ -3,7 +3,7 @@ open Util
 
 (** Refinement Type environments *)
 
-type elem = 
+type elem =
   | Env of Idnt.t * RefTyp.t
   | EFormula of Formula.t
 type t = elem list (** head is the newest *)
@@ -166,7 +166,7 @@ let subst_pvars psub =
     (function
       | Env(x, rty) -> Env(x, RefTyp.subst_pvars psub rty)
       | EFormula(phi) -> EFormula(CunFormula.subst_pvars psub phi))
-    
+
 let subst tsub =
   List.map
     (function
@@ -178,14 +178,12 @@ let alpha xts =
     (function
       | Env(x,ty) -> Env(x,RefTyp.alpha [] ty)
       | EFormula p -> EFormula p)
-    
+
 let domain =
   List.fold_left
     (fun acc -> function
        | Env(x, RefTyp.Base(_, ty, _)) ->
          (x, ty) :: acc
-       | Env(x, (RefTyp.Tuple(_, _) as rty)) ->
-         (x, RefTyp.to_simple_type rty) :: acc
        | _ -> acc)
     []
 
@@ -266,16 +264,6 @@ let rec formula_of rtenv acc =
     if Idnt.equiv x1 x2
     then formula_of rest (phi :: acc)
     else formula_of rest (Formula.subst [x2, Term.mk_var x1] phi :: acc)
-  | Env(x1, RefTyp.Tuple(xrtys, rty)) :: rest ->
-    let tys = List.map RefTyp.to_simple_type (List.map snd xrtys @ [rty]) in
-    let x2 = Idnt.new_var () in
-    let tup_ty = Type.mk_tuple tys in
-    let tup_term =
-      TupTerm.make tys (List.map Term.mk_var (List.map fst xrtys @ [x2]))
-    in
-    formula_of
-      (rest @ of_rty_env (xrtys @ [x2, rty]))
-      (Formula.eq tup_ty (Term.mk_var x1) tup_term :: acc)
   | EFormula phi :: rest -> formula_of rest (phi :: acc)
 let formula_of rtenv = formula_of rtenv [] |> Formula.band
 
@@ -285,20 +273,9 @@ let formula_of rtenv = formula_of rtenv [] |> Formula.band
 let update_base_types_of_templates ((tmpls, constr), (progs, dtyps)) =
   let rec rty_map rty ty =
     match rty with
-    | RefTyp.Base(x, ty', p) when Type.is_unknown ty' && Type.is_adt ty ->
-      ignore (Type.base_or_adt_of ty);
-      RefTyp.Base(x, ty, p)
     | RefTyp.Fun(x, rty1, rty2, phi) when Type.is_fun ty ->
       let _, [t1; t2] = Type.fun_args ty in
       RefTyp.Fun(x, rty_map rty1 t1, rty_map rty2 t2, phi)
-    | RefTyp.Tuple(tenv, rty) when Type.is_tuple ty ->
-      let _, tys = Type.fun_args ty in
-      let tenv =
-        List.map2
-          (fun (id, rty) ty -> (id, rty_map rty ty))
-          tenv (List.initial tys)
-      in
-      RefTyp.Tuple (tenv, rty_map rty (List.last tys))
     | _ -> rty
   in
   let aux tenv rtenv =

@@ -51,12 +51,12 @@ let mk_linexp ?(etenv=[]) tenv =
     end;
   templ
 
-let rec of_tenv tenv degree = 
+let rec of_tenv tenv degree =
   if degree >= 1 then
     (List.map (Pair.map_fst Term.mk_var) tenv
     |> flip List.duplicate degree
     |> Vector.product id
-    |> List.map List.sort
+    |> List.map (List.sort compare)
     |> List.unique
     |> List.map (fun ttys ->
         if List.exists (snd >> Type.is_real) ttys then
