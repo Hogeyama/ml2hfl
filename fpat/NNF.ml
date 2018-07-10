@@ -33,14 +33,6 @@ let of_formula =
         if b then forall [xty] (r1 b) else exists [xty] (r1 b)
       method fexists xty r1 = fun b ->
         if b then exists [xty] (r1 b) else forall [xty] (r1 b)
-      method fbox idx r1 = fun b ->
-        if b then box idx (r1 b) else diamond idx (r1 b)
-      method fdiamond idx r1 = fun b ->
-        if b then diamond idx (r1 b) else box idx (r1 b)
-      method fmu x r1 = fun b ->
-        if b then mu x (r1 b) else nu x (r1 b)
-      method fnu x r1 = fun b ->
-        if b then nu x (r1 b) else mu x (r1 b)
     end)
 let of_formula phi = of_formula phi true
 let of_formula =
@@ -70,8 +62,4 @@ let map_literal f =
       method fiff _ _ _ _ = assert false
       method fforall xty _ phi' = forall [xty] phi'
       method fexists xty _ phi' = exists [xty] phi'
-      method fbox idx _ phi' = box idx phi'
-      method fdiamond idx _ phi' = diamond idx phi'
-      method fmu x _ phi' = mu x phi'
-      method fnu x _ phi' = nu x phi'
     end)

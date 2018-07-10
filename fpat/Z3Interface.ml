@@ -260,14 +260,6 @@ let of_formula =
           (s1 var_tenv ((x, ty') :: bind_tenv))
           None [] [] None None
         |> Quantifier.expr_of_quantifier
-      method fbox idx s1 = fun var_tenv bind_tenv ->
-        raise (Global.NotImplemented "fox in Z3Interface.of_formula")
-      method fdiamond idx s1 = fun var_tenv bind_tenv ->
-        raise (Global.NotImplemented "fdiamond in Z3Interface.of_formula")
-      method fmu x s1 = fun var_tenv bind_tenv ->
-        raise (Global.NotImplemented "fmu in Z3Interface.of_formula")
-      method fnu x s1 = fun var_tenv bind_tenv ->
-        raise (Global.NotImplemented "fnu in Z3Interface.of_formula")
     end)
 let of_formula =
   Logger.log_block3 "Z3Interface.of_formula"

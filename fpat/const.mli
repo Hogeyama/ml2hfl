@@ -45,13 +45,6 @@ type t =
   | UFun of Type.t * Idnt.t
   (* path constructors *)
   | Call | Ret of Type.t | Error
-  (* ML expressions *)
-  | ML_If of Type.t
-  | ML_Let of Type.t
-  | ML_Closure of int
-  | ML_LetAnd
-  | ML_LetRec of int
-  | ML_Match
   (* functions *)
   | App | Flip | Comp | Tlu
   | FShift

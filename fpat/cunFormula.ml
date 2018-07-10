@@ -28,10 +28,6 @@ let size =
       method fiff s1 s2 = s1 + s2 + 1
       method fforall _ s1 = s1 + 1
       method fexists _ s1 = s1 + 1
-      method fbox _ s1 = s1 + 1
-      method fdiamond _ s1 = s1 + 1
-      method fmu _ s1 = s1 + 1
-      method fnu _ s1 = s1 + 1
     end)
 
 let sexp_of ?(smt2=false) =
@@ -48,10 +44,6 @@ let sexp_of ?(smt2=false) =
       method fiff s1 s2 = "(iff " ^ s1 ^ " " ^ s2 ^ ")"
       method fforall (x, ty) s = assert false
       method fexists (x, ty) s = assert false
-      method fbox idx s1 = assert false
-      method fdiamond idx s1 = assert false
-      method fmu x s1 = assert false
-      method fnu x s1 = assert false
     end)
 
 
@@ -144,17 +136,7 @@ let is_wo_bool_var phi = Formula.fvs_bool phi = []
 
 (** @return a formula [s] s.t. [equiv s t && is_wo_unit s] *)
 let elim_unit phi =
-  if true then
-    Formula.map_atom (CunAtom.simplify_ub >> Formula.of_atom) phi
-  else
-    let unit_vars = Formula.fvs_unit phi in
-    phi
-    |> if_ (fun _ -> unit_vars = [])
-      (Formula.map_atom (CunAtom.simplify_ub >> Formula.of_atom))
-      (Formula.subst
-         (unit_vars
-          |> List.map (flip Pair.make UnitTerm.make))
-       >> (Formula.map_atom (CunAtom.simplify_ub >> Formula.of_atom)))
+  Formula.map_atom (CunAtom.simplify_ub >> Formula.of_atom) phi
 let elim_unit = Logger.log_block1 "CunFormula.elim_unit" elim_unit
 
 (** case analysis on possible valuations for boolean variables *)
@@ -282,9 +264,5 @@ let rec ufuns_of phi =
       method fiff r1 r2 = r1 @ r2
       method fforall (x, _) r1 = Set_.diff r1 [x]
       method fexists (x, _) r1 = Set_.diff r1 [x]
-      method fbox idx r1 = assert false
-      method fdiamond idx r1 = assert false
-      method fmu x r1 = assert false
-      method fnu x r1 = assert false
     end)
     phi

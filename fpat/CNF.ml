@@ -65,10 +65,6 @@ let of_formula =
           [[Formula.exists [tenv] (r b |> to_formula) |> Literal.of_formula]]
         else
           raise (Global.NotImplemented "CNF.of_formula")
-      method fbox idx _ = fun b -> assert false
-      method fdiamond idx _ = fun b -> assert false
-      method fmu x _ = fun b -> assert false
-      method fnu x _ = fun b -> assert false
     end)
 let of_formula phi = of_formula phi true
 let of_formula =
@@ -277,10 +273,6 @@ let of_formula_loose =
             else
               r b
           end
-      method fbox idx _ _ = fun b -> assert false
-      method fdiamond idx _ _ = fun b -> assert false
-      method fmu x _ _ = fun b -> assert false
-      method fnu x _ _ = fun b -> assert false
     end)
 let of_formula_loose phi = of_formula_loose phi true
 

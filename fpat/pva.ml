@@ -53,7 +53,6 @@ let fvs_bool =
 let fvs_ty =
   args_of >> List.concat_map (uncurry2 SimTypJudge.env_of) >> TypEnv.merge
 let coeffs = args_of >> List.concat_map (TypTerm.term_of >> Term.coeffs)
-let kons = args_of >> List.concat_map (TypTerm.term_of >> CunTerm.kons)
 let ufuns_of f_formula =
   args_of >> List.concat_map (TypTerm.term_of >> CunTerm.ufuns_of f_formula)
 

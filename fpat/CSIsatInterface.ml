@@ -242,10 +242,6 @@ let of_formula =
       method fiff s1 s2 = assert false
       method fforall _ _ = assert false
       method fexists _ _ = assert false
-      method fbox idx s1 = assert false
-      method fdiamond idx s1 = assert false
-      method fmu x s1 = assert false
-      method fnu x s1 = assert false
     end)
 let of_formula =
   Formula.elim_imply_iff

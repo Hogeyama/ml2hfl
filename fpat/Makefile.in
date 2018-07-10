@@ -149,7 +149,7 @@ SRC := $(SRC) \
 
 # ML AST
 SRC := $(SRC) \
-       MLExp fdef prog \
+       fdef prog \
        traceSemantics \
        callId callTree trace traceExp \
        compTree compTreeExpander

@@ -40,13 +40,6 @@ type t =
   | UFun of Type.t * Idnt.t
   (* path constructors *)
   | Call | Ret of Type.t | Error
-  (* ML expressions *)
-  | ML_If of Type.t
-  | ML_Let of Type.t
-  | ML_Closure of int
-  | ML_LetAnd
-  | ML_LetRec of int
-  | ML_Match
   (* functions *)
   | App | Flip | Comp | Tlu
   | FShift
@@ -154,13 +147,6 @@ let string_of = function
   | Call -> "Call"
   | Ret(_) -> "Ret"
   | Error -> "Error"
-  (* ML expressions *)
-  | ML_If(ty) -> "if[" ^ Type.string_of ty ^ "]"
-  | ML_Let(ty) -> "let[" ^ Type.string_of ty ^ "]"
-  | ML_LetRec _ -> "letrec"
-  | ML_LetAnd -> "letand"
-  (* @todo not supported by OCaml *)
-  | ML_Closure(_) -> "closure"
   (* functions *)
   | App -> "(@@)"
   (* @todo not supported by OCaml *)
@@ -280,13 +266,6 @@ let tex_string_of = function
   | Call -> "Call"
   | Ret(_) -> "Ret"
   | Error -> "Error"
-  (* ML expressions *)
-  | ML_If(ty) -> "if[" ^ Type.string_of ty ^ "]"
-  | ML_Let(ty) -> "let[" ^ Type.string_of ty ^ "]"
-  | ML_LetRec _ -> "letrec"
-  | ML_LetAnd -> "letand"
-  (* @todo not supported by OCaml *)
-  | ML_Closure(_) -> "closure"
   (* functions *)
   | App -> "(@@)"
   (* @todo not supported by OCaml *)
@@ -456,19 +435,6 @@ let type_of = function
   | UFun(ty, _) -> ty
   (* path constructors *)
   | Call | Ret _ | Error -> raise (Global.NotImplemented "Const.type_of")
-  (* ML expressions *)
-  | ML_If(ty) ->
-    Type.mk_fun
-      [Type.mk_bool;
-       Type.mk_fun [Type.mk_unit; ty];
-       Type.mk_fun [Type.mk_unit; ty];
-       ty]
-  | ML_Let(_) | ML_LetRec _ | ML_LetAnd ->
-    Type.mk_fun
-      [Type.mk_top(*@todo*);
-       Type.mk_fun [Type.mk_top(*@todo*); Type.mk_top(*@todo*)];
-       Type.mk_top(*@todo*)]
-  | ML_Closure(_) -> Type.mk_top(*@todo*)
   (* functions *)
   | App | Flip | Comp | Tlu | FShift ->
     raise (Global.NotImplemented "Const.type_of")
@@ -490,7 +456,6 @@ let type_of = function
   | Top -> Type.mk_top
   (* *)
   | Coerce(ty) -> ty
-  | _ -> assert false
 
 let arity_of c = Type.arity_of (type_of c)
 
@@ -1100,10 +1065,6 @@ let subst_tvars tsub = function
   | Call -> Call
   | Ret(ty) -> Ret(Type.subst tsub ty)
   | Error -> Error
-  (* ML expressions *)
-  | ML_If(ty) -> ML_If(Type.subst tsub ty)
-  | ML_Let(ty) -> ML_Let(Type.subst tsub ty)
-  | ML_Closure(n) -> ML_Closure(n)
   (* functions *)
   | App -> App
   | Flip -> Flip
@@ -1128,7 +1089,6 @@ let subst_tvars tsub = function
   | Top -> Top
   (* *)
   | Coerce(ty) -> Coerce(Type.subst tsub ty)
-  | _ -> assert false
 
 
 let int_to_real = function

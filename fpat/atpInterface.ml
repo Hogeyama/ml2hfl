@@ -78,10 +78,6 @@ let of_formula =
       method fiff s1 s2 = Atp_batch.Iff(s1, s2)
       method fforall (x, _) s = Atp_batch.Forall(Idnt.serialize x , s)
       method fexists (x, _) s = Atp_batch.Exists(Idnt.serialize x , s)
-      method fbox idx s = assert false
-      method fdiamond idx s = assert false
-      method fmu x s = assert false
-      method fnu x s = assert false
     end)
 
 let rec term_of = function

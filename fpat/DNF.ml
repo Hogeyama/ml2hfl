@@ -62,10 +62,6 @@ let of_formula =
         raise (Global.NotImplemented "DNF.of_formula")
       method fexists _ _ = fun b ->
         raise (Global.NotImplemented "DNF.of_formula")
-      method fbox idx _ = fun b -> assert false
-      method fdiamond idx _ = fun b -> assert false
-      method fmu x _ = fun b -> assert false
-      method fnu x _ = fun b -> assert false
     end)
 let of_formula phi = of_formula phi true
 

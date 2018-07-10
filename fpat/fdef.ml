@@ -27,7 +27,7 @@ let pr ppf fdef =
       "@[<hov2>%a =@ %a@]"
       (List.pr_app Pattern.pr "@ ")
       (Pattern.V (Idnt.make fdef.name) :: fdef.args)
-      MLExp.pr fdef.body
+      Term.pr fdef.body
   else
     Format.fprintf
       ppf
@@ -35,7 +35,7 @@ let pr ppf fdef =
       (List.pr_app Pattern.pr "@ ")
       (Pattern.V (Idnt.make fdef.name) :: fdef.args)
       Formula.pr fdef.guard
-      MLExp.pr fdef.body
+      Term.pr fdef.body
 
 let coeffs fdef = Formula.coeffs fdef.guard @ Term.coeffs fdef.body
 let arity_of fdef = fdef.args |> List.length
