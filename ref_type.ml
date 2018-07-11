@@ -7,13 +7,13 @@ module T = Type
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type rt_base = Prim of T.base | Data of string
+  [@@deriving show]
 
 let type_of_rt_base = function
   | Prim p -> T.TBase p
   | Data s -> T.TData s
 
 type t =
-  (*| Base of T.base * S.id * S.term*)
   | Base of rt_base * S.id * S.term
   | Fun of S.id * t * t
   | Tuple of (S.id * t) list
@@ -22,6 +22,11 @@ type t =
   | ExtArg of S.id * t * t
   | List of S.id * S.term * S.id * S.term * t
   | Exn of t * t
+  [@@deriving show]
+
+let type_of_rt_base = function
+  | Prim p -> T.TBase p
+  | Data s -> T.TData s
 
 let typ_result = Base(Prim (T.TPrim "X"), Id.new_var T.Ty.unit, U.true_term)
 

@@ -99,3 +99,9 @@ module Ty : sig
   val base : ?pred:Syntax.term -> Type.base -> t
   val fun_ : t -> t -> t
 end
+
+(* ppx_deriving show *)
+val pp : Format.formatter -> t -> unit
+
+
+

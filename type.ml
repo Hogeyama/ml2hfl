@@ -8,6 +8,7 @@ type base =
   | TBool
   | TInt
   | TPrim of string
+  [@@deriving show]
 and 'a t =
   | TBase of base
   | TVar of 'a t option ref * int option
@@ -20,19 +21,24 @@ and 'a t =
   | TApp of constr * 'a t list
   | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
+  [@@deriving show]
 and mutable_flag = Immutable | Mutable
+  [@@deriving show]
 and constr =
   | TList
   | TRef
   | TOption
   | TArray
   | TLazy
+  [@@deriving show]
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
+  [@@deriving show]
 and effect = EVar of int | ENone | ECont | EExcep
+  [@@deriving show]
 
 exception CannotUnify
 

@@ -253,3 +253,10 @@ val is_non_rec : (id * term) list -> bool
 val is_prim_var : id -> bool
 val decomp_funs : term -> id list * term
 val decomp_locals : term -> declaration list * term
+
+(* ppx_deriving show *)
+val pp_term : Format.formatter -> term -> unit
+val pp_id : Format.formatter -> id -> unit
+val pp_typ : Format.formatter -> typ -> unit
+
+

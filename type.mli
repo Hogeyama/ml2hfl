@@ -104,6 +104,14 @@ val print_init : Format.formatter -> 'a t -> unit
 val print_base : Format.formatter -> base -> unit
 val print_effect : Format.formatter -> effect -> unit
 
+(** ppx_deriving *)
+val pp_base : Format.formatter -> base -> unit
+val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+val pp_effect : Format.formatter -> effect -> unit
+val pp_mutable_flag : Format.formatter -> mutable_flag -> unit
+val pp_constr : Format.formatter -> constr -> unit
+
+
 module Ty : sig
   val unit : 'a t
   val bool : 'a t
