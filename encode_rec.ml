@@ -99,24 +99,39 @@ let abst_recdata_typ : Syntax.typ transducer = fun env typ ->
 
 let is_rec_type (env: env) ty =
   match ty with
-  | TData s when not @@ List.mem s prim_base_types -> Triple.snd @@ List.assoc s env
+  | TData s when not @@ List.mem s prim_base_types ->
+      begin
+        try Triple.snd @@ List.assoc s env
+        with Not_found -> assert false
+      end
   | _ -> false
 
 let expand_typ (env: env) ty =
   match ty with
-  | TData s when not @@ List.mem s prim_base_types -> Triple.fst @@ List.assoc s env
+  | TData s when not @@ List.mem s prim_base_types ->
+      begin
+        try Triple.fst @@ List.assoc s env
+        with Not_found -> assert false
+      end
   | _ -> ty
 
 let expand_enc_typ (env: env) ty =
   match ty with
-  | TData s when not @@ List.mem s prim_base_types -> Triple.trd @@ List.assoc s env
+  | TData s when not @@ List.mem s prim_base_types ->
+      begin
+        try Triple.trd @@ List.assoc s env
+        with Not_found -> assert false
+      end
   | _ -> ty
 
-(* ノータッチで良い．はず *)
 let rec abst_recdata_pat (env: env) p =
   let typ =
     match abst_recdata.tr2_typ env p.pat_typ with
-    | TData s when not @@ List.mem s prim_base_types -> Triple.trd @@ List.assoc s env
+    | TData s when not @@ List.mem s prim_base_types ->
+        begin
+          try Triple.trd @@ List.assoc s env
+          with Not_found -> assert false
+        end
     | typ -> typ
   in
   let desc,cond,bind =
@@ -309,7 +324,9 @@ let abst_recdata_term (env: env) t =
       else make_tuple @@ List.map (abst_recdata.tr2_term env -| snd) fields
   | Field(t,s) ->
       let fields = decomp_trecord t.typ in
-      if Mutable = fst @@ List.assoc s fields then
+      if Mutable =
+          try fst @@ List.assoc s fields
+          with Not_found -> assert false then
         unsupported "Mutable records"
       else
         make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ abst_recdata.tr2_term env t
@@ -317,16 +334,7 @@ let abst_recdata_term (env: env) t =
   | Local(Decl_type [s,ty], t) ->
       let ty' = encode_recdata_typ env s ty in
       let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
-
-      let t' = subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t in
-      if false then begin
-        Format.printf "~~~@.";
-        Format.printf "%a@." Print.term' t;
-        Format.printf "~~~@.";
-        Format.printf "%a@." Print.term' t';
-        Format.printf "~~~@.";
-      end;
-      t'
+      subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t
   | Local(Decl_type decls, t) ->
       (* iwayama TODO *)
       unsupported "encode_rec: Decl_type"
@@ -375,23 +383,191 @@ let trans_term t =
   |@> pr "simpify_match"
   |@> Type_check.check ~ty
 
-let trans_rty : Ref_type.t -> Ref_type.t = Fun.id
+(******************************************************************************)
 
-let trans_env : (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t) list = fun env ->
-  List.map (Pair.map_snd trans_rty) env
+(* toplevelにしかtypeの定義は出てこないのでこれで大丈夫なはず
+ * TODO: merge with trans_term
+ *)
+let gather_env : Syntax.term -> env =
+  let rec go env t = match t.desc with
+    | Local(Decl_type [s,ty], t) ->
+        let ty' = encode_recdata_typ env s ty in
+        let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
+        env'
+    | Local(_, t) -> go env t
+    | _ -> env
+  in
+    go []
+
+let rec is_DNF =
+  let rec is_prim t =
+    match t.desc with
+    | BinOp ((Or|And), _, _) | Not(_) -> false
+    | _ -> true
+  and is_literal t =
+    match t.desc with
+    | BinOp ((Or|And), _, _) -> false
+    | Not(t) -> is_prim t
+    | _ -> is_prim t
+  and is_conjunctive t =
+    match t.desc with
+    | BinOp (Or, t1, t2) -> false
+    | BinOp (And, t1, t2) -> is_conjunctive t1 && is_conjunctive t2
+    | _ -> is_literal t
+  and is_disjunctive t =
+    match t.desc with
+    | BinOp (Or, t1, t2) -> is_disjunctive t1 && is_disjunctive t2
+    | _ -> is_conjunctive t
+  in
+  is_disjunctive
+
+let rec decompose_DNF : Syntax.term -> Syntax.term list list =
+  let rec de_literal t =
+    match t.desc with
+    | BinOp ((Or|And), _, _) -> assert false
+    | _ -> t
+  and de_conjunctive t =
+    match t.desc with
+    | BinOp (Or, t1, t2) -> assert false
+    | BinOp (And, t1, t2) -> de_conjunctive t1 @ de_conjunctive t2
+    | _ -> [de_literal t]
+  and de_disjunctive t =
+    match t.desc with
+    | BinOp (Or, t1, t2) -> de_disjunctive t1 @ de_disjunctive t2
+    | _ -> [de_conjunctive t]
+  in
+  de_disjunctive
+
+exception UnMatch
+(** Assumption:
+      [x] is a variable of type [s] where [type s = ... | l of sty' | ...] and [s] is not recursive,
+      [sty] is an encoding of sty', and
+      [t_in_DNF] is a predicate for [x] in DNF.
+    [trans_rty_one_case all_labels x t_in_DNF l sty] returns refinement type
+    for the case of [l].
+*)
+let trans_rty_nonrec_data_one_case all_labels x t_in_DNF l sty =
+  let ty_bool = Type.Ty.bool in
+  let x_is_l = Id.new_var ~name:(Id.name x ^ "_is_" ^ l) ty_bool in
+  let x_un_l = Id.new_var ~name:(Id.name x ^ "_un_" ^ l) sty in
+
+  let check_is_label l' =
+    if List.mem l' all_labels then ()
+    else failwith @@ "unknown label: " ^ l' ^ " in SPEC"
+  in
+
+  let tr = make_trans() in
+  begin
+    let tr_term t : Syntax.term = match t.desc with
+      | App({desc=Var(f)},[{desc=Var(y)}]) when x=y ->
+          let f = Id.name f in
+          let l'= BatString.lchop ~n:3 f in
+          begin match () with
+          | () when BatString.starts_with f "is_" && l = l' -> true_term
+          | () when BatString.starts_with f "un_" && l = l' -> make_var x_un_l
+          | () when BatString.starts_with f "is_" ||
+                    BatString.starts_with f "un_" -> check_is_label l'; raise UnMatch
+          | _ -> tr.tr_term_rec t
+          end
+      | _ -> tr.tr_term_rec t
+    in
+    tr.tr_term <- tr_term
+  end;
+  let trans_literal_pred pred =
+    try tr.tr_term pred with UnMatch -> false_term
+  in
+
+  let rty = match sty with
+    | Type.TBase base ->
+        let pred = make_ors @@
+            Term.(not (var x_is_l)) ::
+            List.map
+              (make_ands -| List.map trans_literal_pred)
+              t_in_DNF
+        in
+        Ref_type.Base(Ref_type.Prim base, x_un_l, pred)
+    | ty ->
+        Format.eprintf
+          "non-base type in Ref_type: @.%a@."
+          Syntax.pp_typ ty;
+        unsupported "TODO: tuple in Data (e.g. Foo of int * bool)"
+  in
+    Ref_type.Tuple([(x_is_l, Ref_type.of_simple ty_bool);(x_un_l, rty)])
+
+
+(** Assumption:
+      [x] is a variable of non-recursive variant type [s].
+      [t] is a predicate for [x].
+      [ty_before] and [ty_after] is the body of [s] before/after encoding.
+    for example,
+      if [type s = Foo of int | Bar of bool], then
+      [ty_before = TVariant(false, [("Foo",[int]);("Bar",[bool])])] and
+      [ty_after  = (bool * int) * (bool * bool)]
+*)
+let trans_rty_nonrec_data (s, x, t) ty_before ty_after: Ref_type.t =
+  let rts : (Syntax.id * Ref_type.t) list =
+    match ty_before, ty_after with
+    | TVariant(false,ts), Type.TTuple(xts) ->
+        if not (is_DNF t) then
+          unsupported @@ Format.asprintf "non DNF predicate for variant@.%a@." Syntax.pp_term t;
+        let labels = List.map fst ts in
+        let stypes = List.map (Type.snd_typ -| Id.typ) xts in
+        let t_in_DNF = decompose_DNF t in
+        begin try
+          List.map2
+            begin fun l sty ->
+              let x_l = Id.new_var (make_ttuple [Type.Ty.bool; sty]) in
+              let rty = trans_rty_nonrec_data_one_case labels x t_in_DNF l sty in
+              x_l, rty
+            end
+            labels stypes
+        with e ->
+          print_endline (Printexc.to_string e);
+          assert false
+        end
+    | _ -> assert false
+  in
+  Ref_type.Tuple(rts)
+
+
+let rec trans_rty env =
+  let tr = make_trans() in
+  tr.tr_typ <-
+    begin fun ty ->
+      if ty = Type.typ_unknown then ty (* TODO typ_unknownはどうして残ってるんだろう *)
+      else expand_enc_typ env ty
+    end;
+  let open Ref_type in
+  function
+  | Base(Data s,x,t) when is_rec_type env (TData s) ->
+      unsupported "encode of recursive data in refinement type"
+  | Base(Data s,x,t) when not @@ List.mem s prim_base_types ->
+      let ty_before = expand_typ env (TData s) in
+      let ty_after = expand_enc_typ env (TData s) in
+      trans_rty_nonrec_data (s,x,t) ty_before ty_after
+  | Base(base,x,t) -> Base(base, tr.tr_var x, tr.tr_term t)
+  | Fun(x,ty1,ty2) -> Fun(tr.tr_var x, trans_rty env ty1, trans_rty env ty2)
+  | Tuple xtys -> Tuple(List.map (Pair.map tr.tr_var (trans_rty env)) xtys)
+  | Inter(sty,tys) -> Inter(tr.tr_typ sty, List.map (trans_rty env) tys)
+  | Union(sty,tys) -> Union(tr.tr_typ sty, List.map (trans_rty env) tys)
+  | ExtArg(x,ty1,ty2) -> ExtArg(tr.tr_var x, trans_rty env ty1, trans_rty env ty2)
+  | List(x,p_len,y,p_i,ty2) -> List(tr.tr_var x,
+                                    tr.tr_term p_len,
+                                    tr.tr_var y,
+                                    tr.tr_term p_i,
+                                    trans_rty env ty2)
+  | Exn(ty1,ty2) -> Exn(trans_rty env ty1, trans_rty env ty2)
+
+let trans_rid : env -> Syntax.id -> Syntax.id = fun env ->
+  abst_recdata.tr2_var env
+  (*Fun.id*)
+  (* TODO これで良いことを確認 *)
+
+let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t) list = fun env renv ->
+  List.map (Pair.map (trans_rid env) (trans_rty env)) renv
 
 (* TODO: support records in refinement types *)
 let trans p =
-  (*print_endline "~~~~~~~~~~";*)
-  (*Format.printf "%a@." Problem.print p;*)
-  (*print_endline "~~~~~~~~~~";*)
-  let p' = Problem.map ~tr_env:trans_env trans_term p in
-  (*Format.printf "%a@." Problem.print p';*)
-  (*print_endline "~~~~~~~~~~";*)
-  p'
-
-(* iwayama TODO:
- *   Problem.mapに~tr_envを渡してRef_typeのencodingもする．
- *)
-
+  let env = gather_env @@ Problem.term p in
+  Problem.map ~tr_env:(trans_env env) trans_term p
 

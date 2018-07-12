@@ -77,6 +77,8 @@ let normalize_ref ty =
 %token FALSE
 %token INTER
 %token UNION
+%token MATCH
+%token WITH
 %token EOF
 
 /* priority : low -> high */
@@ -139,8 +141,16 @@ exp:
   { make_not $2 }
 | id id /* for length */
   {
-    if (Id.name $1 <> "List.length") then raise Parse_error;
-    make_length @@ make_var $2
+    let f = Id.name $1 in
+    if f = "List.length" then begin
+      assert false;
+      make_length @@ make_var $2
+    end else if BatString.starts_with f "is_"
+             || BatString.starts_with f "un_" then begin
+      make_app (make_var $1) [make_var $2]
+    end else begin
+      raise Parse_error;
+    end
   }
 
 
