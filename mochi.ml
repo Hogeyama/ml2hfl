@@ -13,15 +13,17 @@ let print_info_default () =
            if str_exparam <> "" then Format.printf "exparam(%s):\n%s\n" f_name str_exparam)
         !Termination_loop.lrf
     end;
-  if Flag.Method.(!mode = FairTermination)
-  then Format.printf "cycles: %d@." !Flag.FairTermination.loop_count;
+  if Flag.Method.(!mode = FairTermination) then
+    Format.printf "cycles: %d@." !Flag.FairTermination.loop_count;
   Format.printf "CEGAR-cycles: %d@." !Flag.Log.cegar_loop;
   Format.printf "total: %.3f sec@." !!Time.get;
-  Format.printf "  abst: %.3f sec@." !Flag.Log.time_abstraction;
-  Format.printf "  mc: %.3f sec@." !Flag.Log.time_mc;
-  Format.printf "  refine: %.3f sec@." !Flag.Log.time_cegar;
+  Format.printf "  abst: %.3f sec@." !Flag.Log.Time.abstraction;
+  Format.printf "  mc: %.3f sec@." !Flag.Log.Time.mc;
+  if Flag.Experiment.HORS_quickcheck.(!use <> Do_not_use) then
+    Format.printf "    hors_quickcheck: %.3f sec@." !Flag.Log.Time.hors_quickcheck;
+  Format.printf "  refine: %.3f sec@." !Flag.Log.Time.cegar;
   if !Flag.Method.relative_complete then
-    Format.printf "    exparam: %.3f sec@." !Flag.Log.time_parameter_inference;
+    Format.printf "    exparam: %.3f sec@." !Flag.Log.Time.parameter_inference;
   Format.pp_print_flush Format.std_formatter ()
 
 let output_csv filename =
@@ -32,10 +34,10 @@ let output_csv filename =
   pr "%S," !Flag.Log.result;
   pr "%d," !Flag.Log.cegar_loop;
   pr "%f," !!Time.get;
-  pr "%f," !Flag.Log.time_abstraction;
-  pr "%f," !Flag.Log.time_mc;
-  pr "%f," !Flag.Log.time_cegar;
-  pr "%f," !Flag.Log.time_parameter_inference;
+  pr "%f," !Flag.Log.Time.abstraction;
+  pr "%f," !Flag.Log.Time.mc;
+  pr "%f," !Flag.Log.Time.cegar;
+  pr "%f," !Flag.Log.Time.parameter_inference;
   pr_mod "%n," !Modular.num_tycheck;
   pr_mod "%f," !Modular.time_check;
   pr_mod "%f," !Modular.time_synthesize;
@@ -52,14 +54,14 @@ let output_json filename =
   let pr fmt = Printf.fprintf oc fmt in
   let pr_ter fmt = if Flag.Method.(!mode = Termination) then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
-  pr "{filename: %S" !Flag.mainfile;
-  pr ", result: %S" !Flag.Log.result;
-  pr ", cycles: %d" !Flag.Log.cegar_loop;
-  pr_ter ", ranking: {";
+  pr "{\"filename\": %S" !Flag.mainfile;
+  pr ", \"result\": %S" !Flag.Log.result;
+  pr ", \"cycles\": %d" !Flag.Log.cegar_loop;
+  pr_ter ", \"ranking\": {";
   let rec pr_rfs rfs =
     let pr_rf (f_name, (cycles, pred)) =
       let rank_fun = Format.asprintf "%a" BRA_types.pr_ranking_function pred in
-      pr_ter "%S: {function: %S, inferCycles: %d}" f_name rank_fun cycles
+      pr_ter "%S: {\"function\": %S, \"inferCycles\": %d}" f_name rank_fun cycles
     in
     match rfs with
     | [] -> ()
@@ -68,15 +70,20 @@ let output_json filename =
   in
   pr_rfs !Termination_loop.lrf;
   pr_ter "}";
-  pr ", total: %f" !!Time.get;
-  pr ", abst: %f" !Flag.Log.time_abstraction;
-  pr ", mc: %f" !Flag.Log.time_mc;
-  pr ", refine: %f" !Flag.Log.time_cegar;
+  pr ", \"total\": %f" !!Time.get;
+  pr ", \"abst\": %f" !Flag.Log.Time.abstraction;
+  pr ", \"mc\": %f" !Flag.Log.Time.mc;
+  if Flag.Experiment.HORS_quickcheck.(!use <> Do_not_use) then
+    begin
+      pr ", \"hors_quickcheck\": %f" !Flag.Log.Time.hors_quickcheck;
+      pr ", \"cex_length\": %s" @@ List.to_string ~delimiter:"," string_of_int !Flag.Experiment.HORS_quickcheck.cex_length_history
+    end;
+  pr ", \"refine\": %f" !Flag.Log.Time.cegar;
   if !Flag.Method.relative_complete then
-    pr ", exparam: %f" !Flag.Log.time_parameter_inference;
+    pr ", \"exparam\": %f" !Flag.Log.Time.parameter_inference;
   pr_mod ", \"#typeChecker\": %d" !Modular.num_tycheck;
-  pr_mod ", typeChecker: %f" !Modular.time_check;
-  pr_mod ", typeSynthesizer: %f" !Modular.time_synthesize;
+  pr_mod ", \"typeChecker\": %f" !Modular.time_check;
+  pr_mod ", \"typeSynthesizer\": %f" !Modular.time_synthesize;
   pr "}\n"
 
 let print_info_modular () =
@@ -196,9 +203,6 @@ let main_fair_termination orig spec parsed =
   then Format.printf "Fair terminating!@.@."
   else Format.printf "Unknown...@.@.";
   result
-
-let main_module_verification orig spec parsed =
-  assert false
 
 let output_randint_refinement_log input_string =
   let cout =
@@ -340,8 +344,6 @@ let rec arg_spec () =
      "-color", Arg.Set Flag.PrettyPrinter.color, " Turn on syntax highlighting";
      "-color-always", Arg.Set Flag.PrettyPrinter.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
      "-ignore-conf", Arg.Set Flag.Mode.ignore_conf, " Ignore option.conf";
-     "-exp", Arg.String set_exp_filename, "<filename>  Output experimental results to <filename> (Support file types: *.csv, *.json)";
-     "-exp-json", Arg.Unit (fun () -> set_exp_filename "-"), " Output experimental results to starndard output as JSON";
      "-v", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version shortly";
      "-env", Arg.Unit (fun () -> print_env false true; exit 0), " Print the version and the environment as JSON";
      "-version", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version";
@@ -349,7 +351,6 @@ let rec arg_spec () =
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";
-     "-just-run", Arg.String just_run_other_command, " (just for experiments, %i is replaced with the filename)";
      "-use-temp", Arg.Set Flag.use_temp, " Use temporary files for intermediate/log files";
      "-trans",
        Arg.String (fun s -> Flag.Method.(mode := Trans);
@@ -357,6 +358,13 @@ let rec arg_spec () =
                             set_only_result ()),
        Format.asprintf "<desc>  Translate the input to <dest> which must be one of the following:\n%s"
                        !!Flag.Trans.string_of_destinations;
+     (* experiment *)
+     "", Arg.Unit ignore, "Options_for_experiments";
+     "-exp", Arg.String set_exp_filename, "<filename>  Output experimental results to <filename> (Support file types: *.csv, *.json)";
+     "-exp-json", Arg.Unit (fun () -> set_exp_filename "-"), " Output experimental results to starndard output as JSON";
+     "-just-run", Arg.String just_run_other_command, " (just for experiments, %i is replaced with the filename)";
+     "-hors-quickcheck-short", Arg.Unit (fun () -> Flag.Experiment.HORS_quickcheck.(use := Shortest)), " Use shortest counterexample generated by hors_quickcheck";
+     "-hors-quickcheck-long", Arg.Unit (fun () -> Flag.Experiment.HORS_quickcheck.(use := Longest)), " Use longest counterexample generated by hors_quickcheck";
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
@@ -365,7 +373,8 @@ let rec arg_spec () =
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";
      "-option-list", Arg.Unit print_option_and_exit, " Print list of options";
-     "-module-list", Arg.Unit (fun () -> List.iter (Format.printf "%s@.") !Flag.Debug.debuggable_modules; exit 0), " Print list of debuggable modules";
+     "-debug-list", Arg.Unit (fun () -> List.iter (Format.printf "%s@.") !Flag.Debug.debuggable_modules; exit 0), " Print list of debug options";
+     "-trans-list", Arg.Unit (fun () -> List.iter (Format.printf "%s@.") @@ List.map fst Flag.Trans.destinations; exit 0), " Print list of -trans destinations";
      (* printing *)
      "", Arg.Unit ignore, "Options_for_printing";
      "-print-abst-types", Arg.Set Flag.Print.abst_typ, " Print abstraction types when the program is safe";
@@ -664,6 +673,10 @@ let check_env () =
       | Flag.Refine.Hoice -> if not Mconfig.hoice_available then fatal "HoICE not found"
       | Flag.Refine.Z3
       | Flag.Refine.Z3_spacer -> if not Mconfig.z3_available then fatal "Z3 binary not found"
+  end;
+  begin
+    if Flag.Experiment.HORS_quickcheck.(!use <> Do_not_use) then
+      if not Mconfig.hors_quickcheck_available then fatal "hors_quickcheck not found"
   end
 
 let string_of_exception = function

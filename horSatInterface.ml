@@ -182,11 +182,36 @@ let rec verifyFile cmd parser token filename =
       let cexs, ext_cexs = error_trace ce in
       let ppppp fm (n, l) = Format.fprintf fm "[%d: %a]" n (print_list Format.pp_print_bool ",") l in
       if debug then List.iter2 (fun c1 c2 -> Format.printf "FOUND:  %a | %a@." (print_list (fun fm n -> Format.fprintf fm (if n=0 then "then" else "else")) ",") c1 (print_list ppppp ",") c2) cexs ext_cexs;
-      (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
-      *)
+       (*let ext_cexs = List.map (fun _ -> [Fpat.Idnt.V("tmp"), []]) cexs (* TODO: Implement *) in*)
+       *)
       UnsafeAPT ce
   | HS.Unsatisfied ce ->
-      Unsafe (trans_ce ce)
+      let ce' =
+        let module QC = Flag.Experiment.HORS_quickcheck in
+        match !QC.use with
+        | QC.Do_not_use -> ce
+        | use ->
+            let cmd = Format.sprintf "%s %s %d" !QC.command filename !Flag.Experiment.HORS_quickcheck.num in
+            let r = Time.measure_and_add Flag.Log.Time.hors_quickcheck (fun () -> Unix.CPS.open_process_in cmd IO.input_all) in
+            let ces =
+              r
+              |> String.trim
+              |> String.split_on_char '\n'
+              |> List.map (String.split_on_char ';'
+                           |- List.map (String.split_on_char ',')
+                           |- List.map (function [s;n] -> s, int_of_string n | _ -> assert false))
+              |> List.sort (Compare.on List.length)
+            in
+            let ce =
+              match use with
+              | QC.Do_not_use -> assert false
+              | QC.Shortest -> List.hd ces
+              | QC.Longest -> List.last ces
+            in
+            Flag.Experiment.HORS_quickcheck.(cex_length_history := List.length ce :: !cex_length_history);
+            ce
+      in
+      Unsafe (trans_ce ce')
 
 
 let write_log string_of filename target =

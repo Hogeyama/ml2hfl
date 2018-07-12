@@ -275,7 +275,7 @@ let all spec : t list =
       map_trans insert_param_funarg;
     Alpha_rename,
       cond_trans Flag.Method.(!mode <> Termination) @@
-      map_trans @@ alpha_rename ~set_counter:true;
+      Option.some -| List.singleton -| alpha_rename;
   ]
 
 let pr () = if !!Debug_ty.check then Problem.print_debug else Problem.print

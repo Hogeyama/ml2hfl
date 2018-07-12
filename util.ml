@@ -514,6 +514,9 @@ module List = struct
         let ts',t = decomp_snoc ts in
         List.fold_right f ts' t
 
+  let to_string ?(delimiter=";") f xs =
+    "[" ^ BatString.join delimiter (List.map f xs) ^ "]"
+
   module Set = struct
     let diff ?(eq=(=)) l1 l2 = filter_out (mem ~eq -$- l2) l1
     let inter ?(eq=(=)) l1 l2 = filter (mem ~eq -$- l2) l1

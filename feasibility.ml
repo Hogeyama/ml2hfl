@@ -143,7 +143,7 @@ let check ce {defs; main} =
     else Infeasible prefix
   in
   if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
-  Time.add time_tmp Flag.Log.time_cegar;
+  Time.add time_tmp Flag.Log.Time.cegar;
   result
 
 let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
@@ -173,7 +173,7 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   if !Flag.Print.progress then Color.printf Color.Green "Feasibility constraint: %a@." CEGAR_print.term constr;
   if !Flag.Print.progress then Color.printf Color.Green "Randint constraint: %a@." CEGAR_print.term !rand_precond_ref;
   if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
-  Time.add time_tmp Flag.Log.time_cegar;
+  Time.add time_tmp Flag.Log.Time.cegar;
   result
 
 

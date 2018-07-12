@@ -397,4 +397,4 @@ let check abst prog spec =
   if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
   result
 let check abst prog spec =
-  Time.measure_and_add Flag.Log.time_mc (fun () -> check abst prog spec)
+  Time.measure_and_add Flag.Log.Time.mc (fun () -> check abst prog spec)

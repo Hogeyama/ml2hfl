@@ -354,8 +354,8 @@ let infer solver labeled is_cp cexs ext_cexs prog =
     else
       cexs in
   let env = F.AbsTypInfer.refine ~solver prog labeled is_cp cexs false ext_cexs in
-  Flag.Log.time_parameter_inference :=
-    !Flag.Log.time_parameter_inference +. !F.EAHCCSSolver.elapsed_time;
+  Flag.Log.Time.parameter_inference :=
+    !Flag.Log.Time.parameter_inference +. !F.EAHCCSSolver.elapsed_time;
   List.map (Pair.map F.Idnt.base inv_abst_type) env
 
 let infer_with_ext
@@ -413,8 +413,8 @@ let infer_with_ext
   F.HCCSSolver.link_dyn old_chc_solver;
   Verbose.printf "END refinement@,@]";
 
-  Flag.Log.time_parameter_inference :=
-    !Flag.Log.time_parameter_inference +. !F.EAHCCSSolver.elapsed_time;
+  Flag.Log.Time.parameter_inference :=
+    !Flag.Log.Time.parameter_inference +. !F.EAHCCSSolver.elapsed_time;
   List.map (Pair.map F.Idnt.base inv_abst_type) env
 
 
@@ -621,7 +621,7 @@ let insert_extra_param t =
     {t with S.desc}
   in
   let res = aux [] [] [] t in
-  let _ = Time.add tmp Flag.Log.time_parameter_inference in
+  let _ = Time.add tmp Flag.Log.Time.parameter_inference in
   res
 
 let instantiate_param prog =
@@ -649,7 +649,7 @@ let instantiate_param prog =
       fdefs,
     main
   in
-  Time.add tmp Flag.Log.time_parameter_inference;
+  Time.add tmp Flag.Log.Time.parameter_inference;
   res
 
 

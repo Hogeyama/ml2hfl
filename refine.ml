@@ -125,7 +125,7 @@ let instansiate_pred_by_env env c =
 let refine_post tmp =
   Fpat.SMTProver.finalize ();
   Fpat.SMTProver.initialize ();
-  Time.add tmp Flag.Log.time_cegar
+  Time.add tmp Flag.Log.Time.cegar
 
 let refine labeled is_cp prefix ces ext_ces prog =
   let tmp = Time.get () in

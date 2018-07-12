@@ -1,6 +1,8 @@
 open Util
 open Problem
 
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
+
 let extract_module = map Trans.extract_module
 let unify_app = map Trans.unify_app
 let mark_fv_as_external = map Trans.mark_fv_as_external
@@ -22,7 +24,6 @@ let inline_simple_types = map Trans.inline_simple_types
 let inline_type_decl = map Trans.inline_type_decl
 let replace_bottom_def = map Trans.replace_bottom_def
 let insert_param_funarg = map Trans.insert_param_funarg
-let alpha_rename ~set_counter = map @@ Trans.alpha_rename ~whole:true ~set_counter
 let copy_poly_funs = map_on Focus.fst Trans.copy_poly_funs
 let insert_param_funarg = map Trans.insert_param_funarg
 let ignore_exn_arg = map Trans.ignore_exn_arg
@@ -80,3 +81,9 @@ let set_main {term; env; attr; kind} =
 let make_ext_funs {term; env; attr; kind} =
   let term = Trans.make_ext_funs env term in
   {term; env=[]; attr; kind}
+
+let alpha_rename {term; env; attr; kind} =
+  let map_rtyp map get_rtyp f = get_rtyp f in
+  let term = Trans.alpha_rename ~whole:true ~set_counter:true term in
+  let map = [] in (* TODO *)
+  {term; env; attr; kind}, map_rtyp map

@@ -85,11 +85,15 @@ module Print = struct
 end
 
 module Log = struct
-  let time_abstraction = ref 0.
-  let time_mc = ref 0.
-  let time_cegar = ref 0.
-  let time_interpolant = ref 0.
-  let time_parameter_inference = ref 0.
+  module Time = struct
+    let abstraction = ref 0.
+    let mc = ref 0.
+    let cegar = ref 0.
+    let interpolant = ref 0.
+    let parameter_inference = ref 0.
+    let hors_quickcheck = ref 0.
+  end
+
   let result = ref ""
 
   let cegar_loop = ref 1
@@ -106,8 +110,8 @@ module Trans = struct
 
   let destinations =
     ["Before_CPS", (Before_CPS, "ML program before CPS transformation (ADT is encoded)");
-     "CPS", (CPS, "ML program after CPS transformation");
-     "CHC", (CHC, "CHC for refinement types")]
+     "CPS",        (CPS,        "ML program after CPS transformation");
+     "CHC",        (CHC,        "CHC for refinement types")]
 
   let string_of_destinations () =
     List.fold_left (fun acc (s,(_,desc)) -> acc ^ Format.sprintf "%s: %s\n" s desc) "" destinations
@@ -215,6 +219,16 @@ module Modular = struct
   let use_neg_env = ref true
   let infer_merge = ref false
   let check_simple = ref false
+end
+
+module Experiment = struct
+  module HORS_quickcheck = struct
+    type use = Do_not_use | Shortest | Longest
+    let command = ref Mconfig.hors_quickcheck
+    let use = ref Do_not_use
+    let num = ref 5
+    let cex_length_history : int list ref = ref []
+  end
 end
 
 module Debug = struct

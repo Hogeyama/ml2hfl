@@ -636,8 +636,16 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
     |> id_prog
   in
   let rrmap = List.map Pair.swap rmap in
-  let make_get_rtyp get_rtyp f = trans_ref_type @@ get_rtyp @@ Id.assoc f rrmap in
-  prog,map,rmap,make_get_rtyp
+  let make_get_rtyp get_rtyp f =
+    Debug.printf "make_get_rtyp f: %a@." Print.id f;
+    Id.assoc f rrmap
+    |@> Debug.printf "rrmap(f): %a@." CEGAR_print.var
+    |> get_rtyp
+    |@> Debug.printf "get_rtyp rrmap(f): %a@." CEGAR_ref_type.print
+    |> trans_ref_type
+    |@> Debug.printf "trans_ref_type get_rtyp rrmap(f): %a@." Ref_type.print
+  in
+  prog, map, rmap, make_get_rtyp
 
 let add_env spec prog =
   let spec' = List.map (Pair.map trans_var trans_typ) spec in

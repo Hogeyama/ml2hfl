@@ -84,14 +84,6 @@ let trans_ce ce =
 
 
 
-let get_pair s =
-  let n1 = String.index s ',' in
-  let n2 = String.index s ')' in
-  let q = String.sub s 1 (n1-1) in
-  let n = int_of_string (String.sub s (n1+1) (n2-n1-1)) in
-  let s' = String.sub s (n2+1) (String.length s-n2-1) in
-  (q, n), s'
-
 let rec verifyFile filename =
   let p1,p2 = !Flag.TRecS.param1, !Flag.TRecS.param2 in
   let result_file = Filename.change_extension !Flag.mainfile "trecs_out" in

@@ -58,7 +58,7 @@ let to_string ?(plain=true) x =
     s
 
 let from_string name typ =
-  if name = "" then invalid_arg "Id.from_string";
+  let name = if name = "" then "x" else name in
   let attr = [] in
   let name,attr = if name.[0] = '#' then String.lchop name, Coefficient::attr else name, attr in
   let name,attr = if name.[0] = '$' then String.lchop name, External::attr else name, attr in
