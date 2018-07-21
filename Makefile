@@ -2,7 +2,7 @@ include Makefile.config
 
 .PHONY: main all byte opt top clean doc test
 
-PACKAGES = fpat,str,unix,batteries,compiler-libs.common,Z3,ppx_deriving.std
+PACKAGES = fpat,str,unix,batteries,compiler-libs.common,Z3,ppx_deriving.show
 
 MOCHI_BIN_DIR = mochi_bin
 

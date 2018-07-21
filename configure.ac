@@ -30,9 +30,14 @@ else
   AC_SUBST(FPAT)
 fi
 
-AC_CHECK_OCAML_PKG([extlib])
-if test "$OCAML_PKG_extlib" = "no"; then
-  AC_MSG_ERROR([extlib not found])
+AC_CHECK_OCAML_PKG([batteries])
+if test "$OCAML_PKG_batteries" = "no"; then
+  AC_MSG_ERROR([batteries not found])
+fi
+
+AC_CHECK_OCAML_PKG([ppx_deriving])
+if test "$OCAML_PKG_ppx_deriving" = "no"; then
+  AC_MSG_ERROR([ppx_deriving not found])
 fi
 
 AC_CHECK_OCAML_PKG([Z3])
