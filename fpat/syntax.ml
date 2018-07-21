@@ -64,7 +64,7 @@ type fnct =
 | Constant of string
 | Product of fnct list
 | Sum of fnct list
-  
+
 type expr =
   App of expr * expr
 | Circle of expr * expr
@@ -82,12 +82,10 @@ type expr =
 | Envelope of hylo
 | Wildcard
 
-and hylo = Hylo of expr * expr * expr * fnct * fnct
-               (* [| φ,     η,     ψ,     G,     F |] *)
 
 
 (* 仕様用 *)
-type eq = 
+type eq =
   | Gt
   | Lt
   | Eq
@@ -100,13 +98,6 @@ type fs =
   | Circ of (variable * fs)
 
 type spec = fs * eq * variable
-
-(* 融合変換用 *)
-module VESet = Set.Make
-  (struct
-    type t = variable * expr
-    let compare = compare
-   end)
 
 let rec expr_of_p = function
   | Pc (c, p) -> App (Const c, expr_of_p p)

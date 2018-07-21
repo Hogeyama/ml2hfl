@@ -25,7 +25,7 @@ let disjoint ?(cmp = (=)) l1 l2 =
 let diff ?(cmp = (=)) l1 l2 =
   List.filter (fun x -> not (List.mem ~cmp:cmp x l2)) l1
 let inter ?(cmp = (=)) l1 l2 = List.filter (fun x -> List.mem ~cmp:cmp x l2) l1
-let union ?(cmp = (=)) l1 l2 = List.unique ~cmp:cmp (l1 @ l2)
+let union ?(eq = (=)) l1 l2 = List.unique ~eq (l1 @ l2)
 
 
 let rec power = function

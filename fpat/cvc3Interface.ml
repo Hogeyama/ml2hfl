@@ -240,7 +240,7 @@ let is_sat_cvc3 t =
       ~on_failure:
         (fun () -> Format.printf "unknown error of CVC3: %s@." ret)
       ()
-let is_sat = is_sat_cvc3 |> is_sat_quick 
+let is_sat = is_sat_cvc3 |> is_sat_quick
 let is_sat tenv =
   Logger.log_block1
     "Cvc3Interface.is_sat"

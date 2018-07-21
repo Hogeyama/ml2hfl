@@ -34,14 +34,6 @@ let of_tenvs tenv1 tenv2 =
        x, Term.mk_var x')
     tenv1 tenv2
 
-let of_tuple_tenv tenv =
-  List.map
-    (fun (x, ty) -> 
-       let tys = Type.tuple_of ty in
-       let xs = List.map (fun _ -> Term.new_var ()) tys in
-       (x, Term.mk_app (Term.mk_const (Const.Tuple tys)) xs))
-    tenv
-    
 (** {6 Operators} *)
 
 let subst tsub = map_term (Term.subst tsub)

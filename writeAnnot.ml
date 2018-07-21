@@ -45,7 +45,7 @@ and process_pattern env p =
   | Ppat_interval _ -> []
   | Ppat_exception _ -> []
   | Ppat_extension _ -> []
-and process_expopt env eopt = Option.map_default (process_expression env) [] eopt
+and process_expopt env eopt = Util.Option.map_default (process_expression env) [] eopt
 and process_expression env e =
   match e.pexp_desc with
   | Pexp_ident(x) ->

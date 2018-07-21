@@ -16,7 +16,7 @@ val disjoint : ?cmp:('a -> 'a -> bool) -> 'a t -> 'a t -> bool
 
 val diff : ?cmp:('a -> 'a -> bool) -> 'a t -> 'a t -> 'a t
 val inter : ?cmp:('a -> 'a -> bool) -> 'a t -> 'a t -> 'a t
-val union : ?cmp:('a -> 'a -> bool) -> 'a t -> 'a t -> 'a t
+val union : ?eq:('a -> 'a -> bool) -> 'a t -> 'a t -> 'a t
 
 val power : 'a t -> 'a t t
 (** [subsets_of_size n s] returns all the subsets of [s] with the size [n] *)

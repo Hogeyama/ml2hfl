@@ -23,9 +23,6 @@ let fold f atm =
   | Term.Const(Const.Leq(ty)), [t1; t2] -> f#fleq ty t1 t2
   | Term.Const(Const.Geq(ty)), [t1; t2] -> f#fgeq ty t1 t2
   | Term.Const(Const.Divides(n)), [t] -> f#fdivides n t
-  | Term.Const(Const.Recognizer(ty, x)), [t1] -> f#frecognizer ty x t1
-  | Term.Const(Const.SMem(ty)), [t1; t2] -> f#fsmem ty  t1 t2
-  | Term.Const(Const.SSubset(ty)), [t1; t2] -> f#fssubset ty t1 t2
   | Term.Const(c), ts -> f#fterm c ts
   | _ ->
     Logger.debug_assert_false ~on_failure:(fun () ->
@@ -44,9 +41,6 @@ let fold_brel f =
       method fleq ty t1 t2 = f#fbrel (Const.Leq(ty)) t1 t2
       method fgeq ty t1 t2 = f#fbrel (Const.Geq(ty)) t1 t2
       method fdivides n t = f#fdivides n t
-      method frecognizer ty x t = f#frecognizer ty x t
-      method fsmem ty t1 t2 = f#fsmem ty t1 t2
-      method fssubset ty t1 t2 = f#fssubset ty t1 t2
       method fterm c ts = f#fterm c ts
     end)
 
@@ -67,9 +61,6 @@ let fold_brel_ty f =
                 Atom.pr (Atom.mk_brel c t1 t2))
             ()
       method fdivides n t = f#fdivides n t
-      method frecognizer ty x t = f#frecognizer ty x t
-      method fsmem ty t1 t2 = f#fsmem ty t1 t2
-      method fssubset ty t1 t2 = f#fssubset ty t1 t2
       method fterm c ts = f#fterm c ts
     end)
 
@@ -85,12 +76,6 @@ let pr ppf =
           "%a %s %a"
           Term.pr t1 (Const.string_of_infix c) Term.pr t2
       method fdivides n t = Format.fprintf ppf "%d | %a" n Term.pr t
-      method frecognizer ty x t =
-        Format.fprintf ppf "_is_%a(%a)" Idnt.pr x Term.pr t
-      method fsmem ty t1 t2 =
-        Format.fprintf ppf "%a in %a" Term.pr t1 Term.pr t2
-      method fssubset ty t1 t2 =
-        Format.fprintf ppf "%a sub %a" Term.pr t1 Term.pr t2
       method fterm c ts =
         Format.fprintf ppf "%s %a" (Const.string_of c) (List.pr Term.pr " ") ts
     end)
@@ -105,10 +90,6 @@ let bnot =
       (* Atom.eq Type.Bool t Formula.mk_false *)
       method fbrel c t1 t2 = Literal.mk_brel (Const.not c) t1 t2
       method fdivides n t = IntLiteral.divides n t |> Literal.bnot
-      method frecognizer ty x t =
-        ADTLiteral.mk_recognizer ty x t |> Literal.bnot
-      method fsmem ty t1 t2 = SetLiteral.mk_mem ty t1 t2 |> Literal.bnot
-      method fssubset ty t1 t2 = SetLiteral.mk_subset ty t1 t2 |> Literal.bnot
       method fterm c ts = assert false
     end)
 
@@ -133,9 +114,6 @@ let elim_lt_gt =
       method fleq =  NumAtom.leq
       method fgeq = NumAtom.geq
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)
 let elim_lt_gt =
@@ -175,9 +153,6 @@ let rec elim_beq_bneq no_iff atm =
       method fleq = NumFormula.leq
       method fgeq = NumFormula.geq
       method fdivides = IntFormula.divides
-      method frecognizer = ADTFormula.mk_recognizer
-      method fsmem = SetFormula.mk_mem
-      method fssubset = SetFormula.mk_subset
       method fterm = Formula.mk_atom
     end)
     atm
@@ -200,9 +175,6 @@ let elim_neq_by_not_eq =
       method fleq = NumLiteral.leq
       method fgeq = NumLiteral.geq
       method fdivides = IntLiteral.divides
-      method frecognizer = ADTLiteral.mk_recognizer
-      method fsmem = SetLiteral.mk_mem
-      method fssubset = SetLiteral.mk_subset
       method fterm = Literal.mk_atom
     end)
 
@@ -218,9 +190,6 @@ let elim_gt =
       method fleq = NumAtom.leq
       method fgeq = NumAtom.geq
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)
 
@@ -236,9 +205,6 @@ let elim_geq =
       method fleq = NumAtom.leq
       method fgeq ty t1 t2 = NumAtom.leq ty t2 t1
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)
 
@@ -257,9 +223,6 @@ let elim_neq =
       method fleq = NumFormula.leq
       method fgeq = NumFormula.geq
       method fdivides = IntFormula.divides
-      method frecognizer = ADTFormula.mk_recognizer
-      method fsmem = SetFormula.mk_mem
-      method fssubset = SetFormula.mk_subset
       method fterm = Formula.mk_atom
     end)
 
@@ -282,9 +245,6 @@ let elim_eq_neq =
       method fleq = NumFormula.leq
       method fgeq = NumFormula.geq
       method fdivides = IntFormula.divides
-      method frecognizer = ADTFormula.mk_recognizer
-      method fsmem = SetFormula.mk_mem
-      method fssubset = SetFormula.mk_subset
       method fterm = Formula.mk_atom
     end)
 
@@ -308,9 +268,6 @@ let elim_neg =
           assert false;
           Formula.mk_brel c t1 t2
       method fdivides = IntFormula.divides
-      method frecognizer = ADTFormula.mk_recognizer
-      method fsmem = SetFormula.mk_mem
-      method fssubset = SetFormula.mk_subset
       method fterm = Formula.mk_atom
     end)
 
@@ -332,9 +289,6 @@ let elim_ifte =
         bs1 bs2
         |> Formula.bor*)
       method fdivides = IntFormula.divides
-      method frecognizer = ADTFormula.mk_recognizer
-      method fsmem = SetFormula.mk_mem
-      method fssubset = SetFormula.mk_subset
       method fterm = Formula.mk_atom
     end)
 
@@ -348,29 +302,7 @@ let linearize =
       method frbrel = Formula.mk_brel(*@todo*)
       method fbrel = Formula.mk_brel
       method fdivides = IntFormula.divides
-      method frecognizer = ADTFormula.mk_recognizer
-      method fsmem = SetFormula.mk_mem
-      method fssubset = SetFormula.mk_subset
       method fterm = Formula.mk_atom
-    end)
-
-let rat_to_int =
-  fold_brel
-    (object
-      method fvar = Atom.mk_var
-      method fbrel c t1 t2 =
-        try
-          Formula.mk_brel c t1 t2
-          |> LinRationalRel.of_formula
-          |> LinRationalRel.lin_int_rel_of
-          |> LinIntRel.formula_of
-          |> Formula.atom_of
-        with Invalid_argument(_) -> Atom.mk_brel c t1 t2
-      method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
-      method fterm = Atom.make
     end)
 
 let real_to_int =
@@ -393,9 +325,6 @@ let real_to_int =
             (CunTerm.real_to_int t2)
         with Invalid_argument(_) -> Atom.mk_brel c t1 t2
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)
 
@@ -409,9 +338,6 @@ let int_to_real =
           (CunTerm.int_to_real t1)
           (CunTerm.int_to_real t2)
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)
 
@@ -432,9 +358,6 @@ let subst_pvars psub =
         with Not_found -> Formula.mk_var p ts
       method fbrel = Formula.mk_brel
       method fdivides = IntFormula.divides
-      method frecognizer = ADTFormula.mk_recognizer
-      method fsmem = SetFormula.mk_mem
-      method fssubset = SetFormula.mk_subset
       method fterm = Formula.mk_atom
     end)
 
@@ -450,9 +373,6 @@ let simplify_ub =
       method frbrel = Atom.mk_brel
       method fbrel = Atom.mk_brel
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)
 
@@ -463,26 +383,6 @@ let simplify =
       method fubrel = UnitAtom.simplify
       method fbbrel = BoolAtom.simplify
       method fibrel c t1 t2 =
-        (*
-        let (f1, ts1) = Term.fun_args t1 in
-        let (f2, ts2) = Term.fun_args t2 in
-        let t1', t2' =
-          if Term.is_const f1 &&
-             Term.let_const f1 (function Const.Div(_) -> true | _ -> false)
-          then
-            let [t11; t12] = ts1 in
-            t11, (IntTerm.mul t2 t12)
-          else t1, t2
-        in
-        let t1'', t2'' =
-          if Term.is_const f2 &&
-             Term.let_const f2 (function Const.Div(_) -> true | _ -> false)
-          then
-            let [t21; t22] = ts2 in
-            (IntTerm.mul t1' t22), (IntTerm.mul t2' t22)
-          else t1', t2'
-        in
-        *)
         Atom.mk_brel c (CunTerm.simplify t1) (CunTerm.simplify t2)
         |> elim_lt_gt |> IntAtom.simplify
       method frbrel c t1 t2 =
@@ -494,45 +394,16 @@ let simplify =
         match c with
         | Const.Eq ty ->
           if t1 = t2 then Atom.mk_true
-          else begin
-            try
-              let kon1, args1 = ADTTerm.let_kon t1 (fun _ -> Pair.make) in
-              let kon2, args2 = ADTTerm.let_kon t2 (fun _ -> Pair.make) in
-              if kon1 = kon2 then
-                if args1 = args2 then Atom.mk_true
-                else
-                  List.combine args1 args2
-                  |> List.map (Pair.fold (Formula.eq Type.mk_unknown(*@todo*)))
-                  |> Formula.band
-                  |> Formula.atom_of
-              else Atom.mk_false
-            with _ -> Atom.eq ty t1 t2
-          end
+          else Atom.eq ty t1 t2
         |  Const.Neq ty ->
           if t1 = t2 then Atom.mk_false
-          else begin
-            try
-              let kon1, args1 = ADTTerm.let_kon t1 (fun  _ -> Pair.make) in
-              let kon2, args2 = ADTTerm.let_kon t2 (fun  _ -> Pair.make) in
-              if kon1 = kon2 then
-                if args1 = args2 then Atom.mk_false
-                else
-                  Atom.neq ty t1 t2
-                  (*List.combine args1 args2
-                    |> List.map (Pair.fold (Formula.neq Type.mk_unknown(*@todo*)))
-                    |> Formula.bor*)
-              else Atom.mk_true
-            with _ -> Atom.neq ty t1 t2
-          end
+          else Atom.neq ty t1 t2
         | Const.Lt ty -> if t1 = t2 then Atom.mk_false else NumAtom.lt ty t1 t2
         | Const.Gt ty -> if t1 = t2 then Atom.mk_false else NumAtom.gt ty t1 t2
         | Const.Leq ty -> if t1 = t2 then Atom.mk_true else NumAtom.leq ty t1 t2
         | Const.Geq ty -> if t1 = t2 then Atom.mk_true else NumAtom.geq ty t1 t2
         | _ -> Atom.mk_brel c t1 t2
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)
 let simplify =
@@ -548,10 +419,6 @@ let negate =
       method fbrel c t1 t2 =
         Atom.mk_brel (Const.not c) t1 t2 |> simplify |> Literal.of_atom
       method fdivides n t = IntLiteral.divides n t |> Literal.bnot
-      method frecognizer ty x t =
-        ADTLiteral.mk_recognizer ty x t |> Literal.bnot
-      method fsmem ty t1 t2 = SetLiteral.mk_mem ty t1 t2 |> Literal.bnot
-      method fssubset ty t1 t2 = SetLiteral.mk_subset ty t1 t2 |> Literal.bnot
       method fterm c ts = Literal.mk_atom c ts |> Literal.bnot
     end)
 
@@ -563,9 +430,6 @@ let size =
       method fvar x ts = Integer.sum_list (List.map CunTerm.size ts) + 1
       method fbrel c t1 t2 = CunTerm.size t1 + CunTerm.size t2 + 1
       method fdivides n t = CunTerm.size t + 1
-      method frecognizer ty x t = assert false
-      method fsmem ty t1 t2 = assert false
-      method fssubset ty t1 t2 = assert false
       method fterm c ts = assert false
     end)
 
@@ -602,9 +466,6 @@ let sexp_of =
               "(= " ^ CunTerm.sexp_of t1 ^ " " ^ CunTerm.sexp_of t2 ^ "))"
  *)
       method fdivides n t = assert false
-      method frecognizer ty x t = assert false
-      method fsmem ty t1 t2 = assert false
-      method fssubset ty t1 t2 = assert false
       method fterm c ts = assert false
     end)
 
@@ -619,37 +480,7 @@ let is_linear =
       (*@todo*)
       method fbrel _ t1 t2 = CunTerm.is_linear t1 && CunTerm.is_linear t2
       method fdivides _ t = CunTerm.is_linear t (* @todo*)
-      method frecognizer ty x t = false
-      method fsmem ty t1 t2 = assert false
-      method fssubset ty t1 t2 = assert false
       method fterm c ts = false
-    end)
-
-let get_adts =
-  fold_brel
-    (object
-      method fvar x xs = [](* @todo is this ok? *)
-      method fbrel _ t1 t2 = CunTerm.get_adts t1 @ CunTerm.get_adts t2
-      method fdivides n t = CunTerm.get_adts t
-      method frecognizer ty _ t1 =
-        let arg = Type.args_ret ty |> fst |> List.hd |> Type.base_or_adt_of in
-        assert (TypConst.is_adt arg);
-        arg :: CunTerm.get_adts t1
-      method fsmem ty t1 t2 = CunTerm.get_adts t1 @ CunTerm.get_adts t2
-      method fssubset ty t1 t2 = CunTerm.get_adts t1 @ CunTerm.get_adts t2
-      method fterm c ts = List.concat_map CunTerm.get_adts ts
-    end)
-
-let kons =
-  fold_brel
-    (object
-      method fvar x [] = []
-      method fbrel _ t1 t2 = CunTerm.kons t1 @ CunTerm.kons t2
-      method fdivides n t = CunTerm.kons t
-      method frecognizer ty x t1 = CunTerm.kons t1
-      method fsmem ty t1 t2 = CunTerm.kons t1 @ CunTerm.kons t2
-      method fssubset ty t1 t2 = CunTerm.kons t1 @ CunTerm.kons t2
-      method fterm c ts = List.concat_map CunTerm.kons ts
     end)
 
 let ufuns_of f_formula =
@@ -659,134 +490,7 @@ let ufuns_of f_formula =
       method fbrel _ t1 t2 =
         CunTerm.ufuns_of f_formula t1 @ CunTerm.ufuns_of f_formula t2
       method fdivides _ t1 = CunTerm.ufuns_of f_formula t1
-      method frecognizer _ _ t1 = CunTerm.ufuns_of f_formula t1
-      method fsmem ty e t = CunTerm.ufuns_of f_formula t
-      method fssubset ty t1 t2 =
-        CunTerm.ufuns_of f_formula t1 @ CunTerm.ufuns_of f_formula t2
       method fterm c ts = List.concat_map (CunTerm.ufuns_of f_formula) ts
-    end)
-
-let recognizers_of ty tenv =
-  tenv
-  |> (List.filter
-        (Pair.map
-           (Idnt.string_of >> flip (Str.string_match (Str.regexp "_is_")) 0)
-           ((=) ty)
-         >> Pair.fold (&&)))
-
-let make_decl_ty tenv kon =
-  let kon_ty = TypEnv.lookup tenv kon in
-  kon_ty
-  |> Type.args_ret
-  |> Pair.map_fst (List.map (fun _ -> Term.new_var ())
-                   >> ADTTerm.mk_kon (kon, kon_ty))
-
-let rec elim_recognizers pos tenv =
-  fold_brel
-    (object
-      method fvar = Atom.mk_var
-      method fbrel = Atom.mk_brel
-      method fdivides = IntAtom.divides
-      method frecognizer ty kon t =
-        if ADTTerm.is_kon t then
-          ADTTerm.let_kon t (fun _ kon' _ ->
-              BoolTerm.make (kon = kon') |> Atom.of_term)
-        else if pos then
-          (* simplify the following code *)
-          recognizers_of ty tenv
-          |> List.filter
-            (fst >> (<>) (Const.Recognizer(ty, kon)
-                          |> Const.string_of
-                          |> Idnt.make))
-          |> List.map
-            (fun (id, typ) ->
-               let id =
-                 id
-                 |> Idnt.string_of
-                 |> Str.replace_first (Str.regexp "_is_") ""
-                 |> Idnt.make
-               in
-               ADTAtom.mk_recognizer typ id t
-               |> elim_recognizers (not pos) tenv
-               |> Formula.of_atom
-               |> Formula.bnot)
-          |> Formula.band
-          |> Formula.atom_of(*@todo*)
-        else
-          let decl, ty = make_decl_ty tenv kon in
-          Atom.eq ty t decl
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
-      method fterm = Atom.make
-    end)
-
-let elim_accessors tenv =
-  fold_brel
-    (object
-      method fvar = Atom.mk_var
-      method fbrel c t1 t2 =
-        (* ex: replace
-            "(_get_Cons_0 t1) = (1 + (_get_Cons_1 t2))" with "t1 = Cons(x1, x2) /\ t2 = Cons(x3,x4) => x1 = 1 + x4"
-            "(_get_Cons_0 t) = tts"       with  "t = Cons(x1, x2) => x1 = tts"
-            "(_get_Cons_0 t) + 1 <= tts"  with  "t = Cons(x1, x2) => x1 + 1 <= tts"
-            "tts  = (_get_Cons_0 t)"      with  "t = Cons(x1, x2) => tts = x1"
-            "tts <= (_get_Cons_0 t) + 1"  with  "t = Cons(x1, x2) => tts <= x1 + 1"
-            for fresh x1 and x2 *)
-        (match Term.fun_args t1, Term.fun_args t2 with
-         | (Term.Const Const.Accessor(typ1, x1, idx1), [t1']),
-           (Term.Const Const.Accessor(typ2, x2, idx2), [t2'])
-         | (Term.Const Const.Accessor(typ1, x1, idx1), [t1']),
-           (Term.Const Const.Add _, (Term.App(Term.Const Const.Accessor(typ2, x2, idx2),t2'))::_)
-         | (Term.Const Const.Add _, (Term.App(Term.Const Const.Accessor(typ1, x1, idx1),t1'))::_),
-           (Term.Const(Const.Accessor(typ2, x2, idx2)), [t2'])
-         (* "(_get_Cons_0 t1) + 1 = (_get_Cons_1 t2)) + 1"
-            "(_get_Cons_0 t1) + 1 = 1 + (_get_Cons_1 t2))"
-            "1 + (_get_Cons_0 t1) = (_get_Cons_1 t2)) + 1"
-            "1 + (_get_Cons_0 t1) = 1 + (_get_Cons_1 t2))" *)
-         | (Term.Const Const.Add _,    (Term.App(Term.Const Const.Accessor(typ1, x1, idx1),t1'))::_),
-           (Term.Const Const.Add _,    (Term.App(Term.Const Const.Accessor(typ2, x2, idx2),t2'))::_)
-         | (Term.Const Const.Add _,    (Term.App(Term.Const Const.Accessor(typ1, x1, idx1),t1'))::_),
-           (Term.Const Const.Add _, _::(Term.App(Term.Const Const.Accessor(typ2, x2, idx2),t2'))::_)
-         | (Term.Const Const.Add _, _::(Term.App(Term.Const Const.Accessor(typ1, x1, idx1),t1'))::_),
-           (Term.Const Const.Add _,    (Term.App(Term.Const Const.Accessor(typ2, x2, idx2),t2'))::_)
-         | (Term.Const Const.Add _, _::(Term.App(Term.Const Const.Accessor(typ1, x1, idx1),t1'))::_),
-           (Term.Const Const.Add _, _::(Term.App(Term.Const Const.Accessor(typ2, x2, idx2),t2'))::_) ->
-           let decl1 = make_decl_ty tenv x1 |> fst in
-           let decl2 = make_decl_ty tenv x2 |> fst in
-           Formula.imply
-             (Formula.mk_and
-                (Formula.eq (TypEnv.lookup tenv x1 |> Type.ret_of) t1' decl1)
-                (Formula.eq (TypEnv.lookup tenv x2 |> Type.ret_of) t2' decl2))
-             (Formula.mk_brel c
-                (decl1 |> Term.fun_args |> snd |> flip List.nth idx1)
-                (decl2 |> Term.fun_args |> snd |> flip List.nth idx2))
-           |> Formula.atom_of
-         | (Term.Const(Const.Accessor(typ, x, idx)), [t]), tts
-         | (Term.Const(Const.Add _),    (Term.App(Term.Const(Const.Accessor(typ, x, idx)),t))::_), tts
-         | (Term.Const(Const.Add _), _::(Term.App(Term.Const(Const.Accessor(typ, x, idx)),t))::_), tts ->
-           let decl = make_decl_ty tenv x |> fst in
-           Formula.imply
-             (Formula.eq (TypEnv.lookup tenv x |> Type.ret_of) t decl)
-             (Formula.mk_brel c
-                (decl |> Term.fun_args |> snd |> flip List.nth idx)
-                (uncurry2 Term.mk_app tts))
-           |> Formula.atom_of
-         | tts, (Term.Const(Const.Accessor(typ, x, idx)), [t])
-         | tts, (Term.Const(Const.Add _),    (Term.App(Term.Const(Const.Accessor(typ, x, idx)),t))::_)
-         | tts, (Term.Const(Const.Add _), _::(Term.App(Term.Const(Const.Accessor(typ, x, idx)),t))::_) ->
-           let decl = make_decl_ty tenv x |> fst in
-           Formula.imply
-             (Formula.eq (TypEnv.lookup tenv x |> Type.ret_of) t decl)
-             (Formula.mk_brel c
-                (uncurry2 Term.mk_app tts)
-                (decl |> Term.fun_args |> snd |> flip List.nth idx))
-           |> Formula.atom_of
-         | _ -> Atom.mk_brel c t1 t2)
-      method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
-      method fterm = Atom.make
     end)
 
 (* assume NNF *)
@@ -807,8 +511,5 @@ let elim_ufuns =
       method fleq = NumAtom.leq
       method fgeq = NumAtom.geq
       method fdivides = IntAtom.divides
-      method frecognizer = ADTAtom.mk_recognizer
-      method fsmem = SetAtom.mk_mem
-      method fssubset = SetAtom.mk_subset
       method fterm = Atom.make
     end)

@@ -78,7 +78,7 @@ let canonize_tsp env (ts1, ts2) = Set_.diff ts1 (env @ ts2), ts2
 
 let canonize_pxs =
   List.sort
-    ~cmp:(fun (_, _, _, ttyss1) (_, _, _, ttyss2) ->
+    (fun (_, _, _, ttyss1) (_, _, _, ttyss2) ->
         List.length ttyss1 - List.length ttyss2)
   >> List.filter (fun (_, ttys, _, ttyss) -> List.for_all ((<>) ttys) ttyss)
 
@@ -290,7 +290,7 @@ let h simplify tenv vs0 cvs vs (bds, phis0, zs) =
       in
       aux bds1 (if b then bds2 else ec :: bds2)
   in
-  let bds = aux (List.sort bds) [] in
+  let bds = aux (List.sort compare bds) [] in
   let pvas, phis = List.partition_map id (List.flatten bds) in
   pvas, Formula.band (phis @ phis0), zs
 let h = Logger.log_block5 "PvaCube.h" h
