@@ -960,22 +960,22 @@ let rec uncps_ref_type sol typ_exn rtyp e etyp =
       let x' = Id.set_typ x @@ RT.to_simple rtyp1' in
       let rtyp2' = RT.subst_var x x' @@ uncps_ref_type sol typ_exn rtyp2 EExcep etyp2 in
       RT.Fun(x', rtyp1', rtyp2')
-  | RT.Fun(_, RT.Fun(_,rtyp,RT.Base(RT.Prim TUnit,_,_)), RT.Base(RT.Prim TUnit,_,_)),
+  | RT.Fun(_, RT.Fun(_,rtyp,RT.Base(TUnit,_,_)), RT.Base(TUnit,_,_)),
     ECont, _ ->
       if dbg then Debug.printf "%s@.@." __LOC__;
       uncps_ref_type sol typ_exn rtyp ENone etyp
-  | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(RT.Prim TUnit,_,_)), RT.Fun(_,RT.Fun(_,rtyp2,RT.Base(RT.Prim TUnit,_,_)), RT.Base(RT.Prim TUnit,_,_))),
+  | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(TUnit,_,_)), RT.Fun(_,RT.Fun(_,rtyp2,RT.Base(TUnit,_,_)), RT.Base(TUnit,_,_))),
     EExcep, _ ->
       if dbg then Debug.printf "%s@.@." __LOC__;
       let rtyp1' = uncps_ref_type sol typ_exn rtyp1 ENone etyp in
       let rtyp2' = uncps_ref_type sol typ_exn rtyp2 ENone typ_exn in
       RT.Exn(rtyp1', rtyp2')
-  | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(RT.Prim TUnit,_,_)), RT.Fun(_,RT.Inter(_,rtyps), RT.Base(RT.Prim TUnit,_,_))),
+  | RT.Fun(_, RT.Fun(_,rtyp1, RT.Base(TUnit,_,_)), RT.Fun(_,RT.Inter(_,rtyps), RT.Base(TUnit,_,_))),
     EExcep, _ ->
       if dbg then Debug.printf "%s@.@." __LOC__;
       let rtyp1' = uncps_ref_type sol typ_exn rtyp1 ENone etyp in
       let aux = function
-        | RT.Fun(_,rtyp2,RT.Base(RT.Prim TUnit,_,_)) -> uncps_ref_type sol typ_exn rtyp2 ENone typ_exn
+        | RT.Fun(_,rtyp2,RT.Base(TUnit,_,_)) -> uncps_ref_type sol typ_exn rtyp2 ENone typ_exn
         | _ -> assert false
       in
       let styp' =
@@ -984,10 +984,10 @@ let rec uncps_ref_type sol typ_exn rtyp e etyp =
         | rtyp'::_ -> RT.to_simple rtyp'
       in
       RT.Exn(rtyp1', RT.union styp' @@ List.map aux rtyps)
-  | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(RT.Prim TUnit,_,_)), ECont, _ ->
+  | RT.Fun(_, RT.Inter(typ,rtyps), RT.Base(TUnit,_,_)), ECont, _ ->
       if dbg then Debug.printf "%s@.@." __LOC__;
       let aux = function
-        | RT.Fun(_,rtyp1,RT.Base(RT.Prim TUnit,_,_)) -> uncps_ref_type sol typ_exn rtyp1 ENone etyp
+        | RT.Fun(_,rtyp1,RT.Base(TUnit,_,_)) -> uncps_ref_type sol typ_exn rtyp1 ENone etyp
         | _ -> assert false
       in
       let styp' =

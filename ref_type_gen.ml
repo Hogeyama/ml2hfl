@@ -18,6 +18,7 @@ let rec generate_check typ_exn make_fail genv cenv x typ =
   match typ with
   | Base(base, y, p) ->
       genv, cenv, U.subst_var y x p
+  | ADT(_,_,_) -> assert false (* "TODO" *)
   | Fun(y, typ1, Exn(typ2, typ3)) ->
       begin
         match typ_exn with
@@ -131,29 +132,24 @@ and generate typ_exn make_fail genv cenv typ =
   Debug.printf "Ref_type_gen.generate: %a@." print typ;
   let genv',cenv',t =
     match typ with
-    | Base(Prim(T.TInt), x, p) ->
+    | Base(T.TInt, x, p) ->
         let x' = Id.new_var T.Ty.int in
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
         genv', cenv', U.make_let [x',U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
-    | Base(Prim(T.TBool), x, p) ->
+    | Base(T.TBool, x, p) ->
         let x' = Id.new_var T.Ty.bool in
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
         genv', cenv', U.make_let [x',U.randbool_unit_term] @@ U.make_assume t_check @@ U.make_var x'
-    | Base(Prim(T.TUnit), x, p) ->
+    | Base(T.TUnit, x, p) ->
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x typ in
         genv', cenv', U.make_assume t_check U.unit_term
-    | Base(Prim(T.TPrim s), x, p) ->
-        Format.eprintf "Warning: tekitou: %s@." __LOC__;
+    | Base(T.TPrim s, x, p) ->
         let typ' = to_simple ~with_pred:true typ in
         let x' = Id.new_var typ' in
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
         genv', cenv', U.Term.(let_ [x',rand typ'] (assume t_check (var x')))
-    | Base(Data s, x, p) ->
-        Format.eprintf "Warning: tekitou: %s" __LOC__;
-        let typ' = to_simple ~with_pred:true typ in
-        let x' = Id.new_var typ' in
-        let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
-        genv', cenv', U.Term.(let_ [x',rand typ'] (assume t_check (var x')))
+    | ADT(s, x, p) ->
+        assert false; (* TODO *)
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_abst_typ ~with_pred:true typ1 in
         let typ2' = subst_var x x' typ2 in

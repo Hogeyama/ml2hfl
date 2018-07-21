@@ -1,4 +1,5 @@
 %{
+open Util
 open Type
 open Syntax
 open Term_util
@@ -24,6 +25,7 @@ let make_self_id typ = Id.new_var ~name:"_" typ
 let orig_id x = {x with Id.id = 0}
 
 let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
+let ref_ADT s = Ref_type.ADT(s, Id.new_var typ_unknown, true_term)
 let ref_list typ = RT.List(Id.new_var Ty.int, true_term, Id.new_var Ty.int, true_term, typ)
 let ref_fun x ty1 ty2 =
   let ty2' = RT.subst_var (orig_id x) (Id.set_typ x @@ elim_tattr @@ RT.to_simple ty1) ty2 in
@@ -142,15 +144,14 @@ exp:
 | id id /* for length */
   {
     let f = Id.name $1 in
-    if f = "List.length" then begin
-      assert false;
+    match () with
+    | _ when f = "List.length" ->
       make_length @@ make_var $2
-    end else if BatString.starts_with f "is_"
-             || BatString.starts_with f "un_" then begin
+    | _ when String.starts_with f "is_" ||
+             String.starts_with f "un_" ->
       make_app (make_var $1) [make_var $2]
-    end else begin
-      raise Parse_error;
-    end
+    | _ ->
+      raise Parse_error
   }
 
 
@@ -261,17 +262,25 @@ typ:
   { make_self_id @@ make_tlist @@ Id.typ $1 }
 
 ref_base:
-| TUNIT { RT.Prim TUnit }
-| TBOOL { RT.Prim TBool }
-| TINT  { RT.Prim TInt }
-| IDENT { RT.Data $1 }
+| TUNIT { TUnit }
+| TBOOL { TBool }
+| TINT  { TInt }
+
+ref_ADT:
+| IDENT { $1 }
 
 ref_simple:
 | ref_base { ref_base $1 }
 | LBRACE id COLON ref_base BAR exp RBRACE
   {
-    let x = Id.set_typ $2 (RT.type_of_rt_base $4) in
+    let x = Id.set_typ $2 (TBase $4) in
     RT.Base($4, x, subst_var $2 x $6)
+  }
+| ref_ADT { ref_ADT $1 }
+| LBRACE id COLON ref_ADT BAR exp RBRACE
+  {
+    let x = Id.set_typ $2 (TData $4) in
+    RT.ADT($4, x, subst_var $2 x $6)
   }
 | LPAREN ref_typ RPAREN { $2 }
 | ref_simple LIST { RT.List(Id.new_var Ty.int,true_term,Id.new_var Ty.int,true_term,$1) }

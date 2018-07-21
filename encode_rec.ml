@@ -485,7 +485,7 @@ let trans_rty_nonrec_data_one_case all_labels x t_in_DNF l sty =
               (make_ands -| List.map trans_literal_pred)
               t_in_DNF
         in
-        Ref_type.Base(Ref_type.Prim base, x_un_l, pred)
+        Ref_type.Base(base, x_un_l, pred)
     | ty ->
         Format.eprintf
           "non-base type in Ref_type: @.%a@."
@@ -539,12 +539,13 @@ let rec trans_rty env =
     end;
   let open Ref_type in
   function
-  | Base(Data s,x,t) when is_rec_type env (TData s) ->
+  | ADT(s,x,t) when is_rec_type env (TData s) ->
       unsupported "encode of recursive data in refinement type"
-  | Base(Data s,x,t) when not @@ List.mem s prim_base_types ->
+  | ADT(s,x,t) when not @@ List.mem s prim_base_types ->
       let ty_before = expand_typ env (TData s) in
       let ty_after = expand_enc_typ env (TData s) in
       trans_rty_nonrec_data (s,x,t) ty_before ty_after
+  | ADT(s,x,t) -> assert false
   | Base(base,x,t) -> Base(base, tr.tr_var x, tr.tr_term t)
   | Fun(x,ty1,ty2) -> Fun(tr.tr_var x, trans_rty env ty1, trans_rty env ty2)
   | Tuple xtys -> Tuple(List.map (Pair.map tr.tr_var (trans_rty env)) xtys)
@@ -560,8 +561,6 @@ let rec trans_rty env =
 
 let trans_rid : env -> Syntax.id -> Syntax.id = fun env ->
   abst_recdata.tr2_var env
-  (*Fun.id*)
-  (* TODO これで良いことを確認 *)
 
 let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t) list = fun env renv ->
   List.map (Pair.map (trans_rid env) (trans_rty env)) renv
@@ -569,5 +568,8 @@ let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t)
 (* TODO: support records in refinement types *)
 let trans p =
   let env = gather_env @@ Problem.term p in
-  Problem.map ~tr_env:(trans_env env) trans_term p
+  let p' = Problem.map ~tr_env:(trans_env env) trans_term p in
+  p'
+
+(* TODO: recdata, type check *)
 

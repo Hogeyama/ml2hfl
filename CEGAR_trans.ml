@@ -583,7 +583,7 @@ let rec trans_ref_type = function
         | CRT.Int -> Type.TInt
         | CRT.Abst s -> Type.TPrim s
       in
-      RT.Base(RT.Prim b', trans_inv_var x, trans_inv_term p)
+      RT.Base(b', trans_inv_var x, trans_inv_term p)
   | CRT.Fun(x,typ1,typ2) ->
       RT.Fun(trans_inv_var x, trans_ref_type typ1, trans_ref_type typ2)
   | CRT.Inter(typ, typs) ->

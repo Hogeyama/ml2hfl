@@ -6,15 +6,9 @@ module T = Type
 
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-type rt_base = Prim of T.base | Data of string
-  [@@deriving show]
-
-let type_of_rt_base = function
-  | Prim p -> T.TBase p
-  | Data s -> T.TData s
-
 type t =
-  | Base of rt_base * S.id * S.term
+  | Base of T.base * S.id * S.term
+  | ADT of string * S.id * S.term
   | Fun of S.id * t * t
   | Tuple of (S.id * t) list
   | Inter of S.typ * t list
@@ -24,11 +18,7 @@ type t =
   | Exn of t * t
   [@@deriving show]
 
-let type_of_rt_base = function
-  | Prim p -> T.TBase p
-  | Data s -> T.TData s
-
-let typ_result = Base(Prim (T.TPrim "X"), Id.new_var T.Ty.unit, U.true_term)
+let typ_result = Base(T.TPrim "X", Id.new_var T.Ty.unit, U.true_term)
 
 let _Inter styp typs = Inter(styp, typs)
 let _Union styp typs = Union(styp, typs)
@@ -84,12 +74,9 @@ and is_top' typ =
   | Fun(_, typ1, typ2) -> is_bottom typ1
   | _ -> false
 
-let print_base fm = function
-  | Prim(prim) -> Type.print_base fm prim
-  | Data(s) -> Format.pp_print_string fm s
-
 let rec occur x = function
   | Base(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
+  | ADT(_,_,p) -> List.exists (Id.same x) @@ U.get_fv p
   | Fun(y,typ1,typ2) -> Id.(x <> y) && occur x typ1 || occur x typ2
   | Tuple xtyps -> List.exists (fun (y,ty) -> Id.(x <> y) && occur x ty) xtyps
   | Inter(_, typs)
@@ -109,10 +96,10 @@ let rec decomp_funs typ =
 
 let rec print fm = function
   | Base(base,x,p) when p = U.true_term ->
-      Format.fprintf fm "%a" print_base base
-  | Base(Prim (T.TBool),x,p) when U.make_var x = p ->
+      Format.fprintf fm "%a" Type.print_base base
+  | Base(T.TBool,x,p) when U.make_var x = p ->
       Format.fprintf fm "{true}"
-  | Base(Prim (T.TBool),x,p) when U.make_not (U.make_var x) = p ->
+  | Base(T.TBool,x,p) when U.make_not (U.make_var x) = p ->
       Format.fprintf fm "{false}"
   | Base(_,x,{S.desc=S.BinOp(S.Eq, {S.desc=S.Var y}, t)}) when x = y ->
       Format.fprintf fm "{%a}" Print.term t
@@ -121,7 +108,9 @@ let rec print fm = function
   | Base(base,x,p) when p.S.desc = S.Const S.False ->
       Format.fprintf fm "Bot"
   | Base(base,x,p) ->
-      Format.fprintf fm "@[{%a:%a |@ %a}@]" Id.print x print_base base Print.term p
+      Format.fprintf fm "@[{%a:%a |@ %a}@]" Id.print x Type.print_base base Print.term p
+  | ADT(s,x,p) ->
+      Format.fprintf fm "@[{%a:%s |@ %a}@]" Id.print x s Print.term p
   | Fun(x, typ1, Exn(typ2, typ3)) when is_bottom typ3 ->
       print fm (Fun(x, typ1, typ2))
   | Fun(x, typ1, Exn(typ2, typ3)) ->
@@ -203,6 +192,7 @@ let rec decomp_funs_n n typ =
 
 let rec arg_num = function
   | Base _ -> 0
+  | ADT _ -> 0
   | Tuple _ -> 0
   | Inter(typ, []) -> List.length @@ fst @@ T.decomp_tfun typ
   | Inter(_, typ::_) -> arg_num typ
@@ -216,6 +206,7 @@ let rec arg_num = function
 let rec map_pred f typ =
   match typ with
   | Base(base,y,p) -> Base(base, y, f p)
+  | ADT(s,y,p) -> ADT(s, y, f p)
   | Fun(y,typ1,typ2) -> Fun(y, map_pred f typ1, map_pred f typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ map_pred f) xtyps)
   | Inter(typ, typs) -> Inter(typ, List.map (map_pred f) typs)
@@ -229,6 +220,9 @@ let rec subst_map map typ =
   | Base(base,y,p) ->
       let map' = List.filter_out (fst |- Id.eq y) map in
       Base(base, y, U.subst_map map' p)
+  | ADT(s,y,p) ->
+      let map' = List.filter_out (fst |- Id.eq y) map in
+      ADT(s, y, U.subst_map map' p)
   | Fun(y,typ1,typ2) ->
       let map' = List.filter_out (fst |- Id.eq y) map in
       let y',typ2' =
@@ -268,6 +262,9 @@ let rec rename full var ty =
   | Base(base, x, p) ->
       let x' = Option.default (new_var x) var in
       Base(base, x', U.subst_var x x' p)
+  | ADT(s, x, p) ->
+      let x' = Option.default (new_var x) var in
+      ADT(s, x', U.subst_var x x' p)
   | Fun(x,typ1,typ2) ->
       let x' = new_var x in
       let typ2' = subst_var x x' typ2 in
@@ -300,10 +297,10 @@ let rename ?(full=false) typ = rename full None typ
 
 let rec of_simple typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(Prim(T.TUnit), Id.new_var typ, U.true_term)
-  | T.TBase T.TBool -> Base(Prim(T.TBool), Id.new_var typ, U.true_term)
-  | T.TBase T.TInt -> Base(Prim(T.TInt), Id.new_var typ, U.true_term)
-  | T.TData s -> Base(Prim(T.TPrim s), Id.new_var typ, U.true_term)
+  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
+  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
   | _ ->
@@ -315,7 +312,7 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
   let r =
   match typ with
   | Base(base, x, ({S.desc=S.Const _} as p)) ->
-      let sty = type_of_rt_base base in
+      let sty = T.TBase base in
       if with_pred then
         T.add_tattr (T.TARefPred(x,p)) sty
       else
@@ -328,7 +325,7 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
         T.add_tattr (T.TAPred(x,ps)) sty
   | Base(base, x, t) ->
       let x' = Id.new_var_id x in
-      let typ' = type_of_rt_base base in
+      let typ' = T.TBase base in
       let ps =
         if !Flag.PredAbst.decomp_pred then
           Term_util.decomp_bexp @@ U.subst_var x x' t
@@ -336,6 +333,8 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
           [U.subst_var x x' t]
       in
       U.add_tapred x' ps typ'
+  | ADT(s, x, t) ->
+      assert false
   (*| Base(Prim(b), x, ({S.desc=S.Const _} as p)) ->*)
       (*let sty = T.TBase b in*)
       (*if with_pred then*)
@@ -390,12 +389,11 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
 
 let rec to_simple ?(with_pred=false) typ =
   match typ with
-  (*| Base(Prim(b), x, p) ->*)
-      (*T.TBase b*)
-      (*|&with_pred&> T.add_tattr (T.TARefPred(x,p))*)
-  (* TODO これでいいか *)
-  | Base(base, x, p) ->
-      type_of_rt_base base
+  | Base(b, x, p) ->
+      T.TBase b
+      |&with_pred&> T.add_tattr (T.TARefPred(x,p))
+  | ADT(s, x, p) ->
+      T.TData s
       |&with_pred&> T.add_tattr (T.TARefPred(x,p))
   | Fun(x,typ1,typ2) -> T.make_tfun (to_simple ~with_pred typ1) (to_simple ~with_pred typ2)
   | Tuple xtyps -> T.make_ttuple (List.map (to_simple ~with_pred -| snd) xtyps)
@@ -409,7 +407,7 @@ let rec to_simple ?(with_pred=false) typ =
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
   | Exn(typ1, _) -> to_simple ~with_pred typ1
 
-let make_base ?(pred=U.true_term) base = Base(Prim(base), Id.new_var (Type.TBase base), pred)
+let make_base ?(pred=U.true_term) base = Base(base, Id.new_var (Type.TBase base), pred)
 let make_fun ty1 ty2 = Fun(Id.new_var @@ to_simple ty1, ty1, ty2)
 
 let rec set_base_var x = function
@@ -419,6 +417,7 @@ let rec set_base_var x = function
   | typ -> typ
 let rec copy_fun_arg_to_base = function
   | Base(base, x, p) -> Base(base, x, p)
+  | ADT(s, x, p) -> ADT(s, x, p)
   | Fun(x,typ1,typ2) -> Fun(x, set_base_var x @@ copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd copy_fun_arg_to_base) xtyps)
   | Inter(typ, typs) -> Inter(typ, List.map copy_fun_arg_to_base typs)
@@ -448,6 +447,7 @@ let rec same typ1 typ2 =
 let rec has_no_predicate typ =
   match typ with
   | Base(b, x, t) -> t = U.true_term
+  | ADT(s, x, t) -> t = U.true_term
   | Fun(x,typ1,typ2) -> has_no_predicate typ1 && has_no_predicate typ2
   | Tuple xtyps -> List.for_all (has_no_predicate -| snd) xtyps
   | Inter(_, typs)
@@ -538,10 +538,10 @@ let rec subtype env typ1 typ2 =
   | _, Exn(typ21,typ22) -> subtype env typ1 typ21
   | Exn _, _ -> false
   | List(x1,p_len1,y1,p_i1,typ1'), List(x2,p_len2,y2,p_i2,typ2') ->
-      let typ1'' = Tuple [x1,Base(Prim(T.TInt),x1,p_len1);
-                          Id.new_var Type.Ty.int,Fun(y1,Base(Prim(T.TInt),y1,p_i1),typ1')] in
-      let typ2'' = Tuple [x2,Base(Prim(T.TInt),x2,p_len2);
-                          Id.new_var Type.Ty.int,Fun(y2,Base(Prim(T.TInt),y2,p_i2),typ2')] in
+      let typ1'' = Tuple [x1,Base(T.TInt,x1,p_len1);
+                          Id.new_var Type.Ty.int,Fun(y1,Base(T.TInt,y1,p_i1),typ1')] in
+      let typ2'' = Tuple [x2,Base(T.TInt,x2,p_len2);
+                          Id.new_var Type.Ty.int,Fun(y2,Base(T.TInt,y2,p_i2),typ2')] in
       subtype env typ1'' typ2''
   | _ ->
       Format.eprintf "typ1: %a@." print typ1;
@@ -644,6 +644,11 @@ and simplify typ =
       if p' = U.false_term
       then Union(to_simple typ, [])
       else Base(base, x, p')
+  | ADT(s, x, p) ->
+      let p' = simplify_pred p in
+      if p' = U.false_term
+      then Union(to_simple typ, [])
+      else ADT(s, x, p')
   | Fun(x,typ1,typ2) -> Fun(x, simplify typ1, simplify typ2)
   | Tuple xtyps ->
       let xtyps' = List.map (Pair.map_snd simplify) xtyps in
@@ -691,31 +696,30 @@ and simplify typ =
 
 let rec make_strongest typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(Prim(T.TUnit), Id.new_var typ, U.false_term)
-  | T.TBase T.TBool -> Base(Prim(T.TBool), Id.new_var typ, U.false_term)
-  | T.TBase T.TInt  -> Base(Prim(T.TInt), Id.new_var typ, U.false_term)
-  | T.TData s -> Base(Prim(T.TPrim s), Id.new_var typ, U.false_term)
+  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.false_term)
+  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.false_term)
+  | T.TBase T.TInt  -> Base(T.TInt, Id.new_var typ, U.false_term)
+  | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.false_term)
   | T.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_strongest TList"
-  | _ when typ = U.typ_result -> Base(Prim(T.TUnit), Id.new_var typ, U.false_term)
+  | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.false_term)
   | _ ->
       Format.eprintf "make_strongest: %a@." Print.typ typ;
       unsupported "Ref_type.make_strongest"
 
 and make_weakest typ =
   match T.elim_tattr typ with
-  | T.TBase T.TUnit -> Base(Prim(T.TUnit), Id.new_var typ, U.true_term)
-  | T.TBase T.TBool -> Base(Prim(T.TBool), Id.new_var typ, U.true_term)
-  | T.TBase T.TInt -> Base(Prim(T.TInt), Id.new_var typ, U.true_term)
-  | T.TData s -> Base(Data s, Id.new_var typ, U.true_term)
-  (*| T.TData s -> Base(Prim(T.TPrim s), Id.new_var typ, U.true_term)*)
-    (* TODO Dataでよい？*)
+  | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
+  | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
+  | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
+  | T.TData s -> assert false; 
+      (*Base(Data s, Id.new_var typ, U.true_term)*)
   | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
   | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
-  | _ when typ = U.typ_result -> Base(Prim(T.TUnit), Id.new_var typ, U.true_term)
+  | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.true_term)
   | _ ->
       Format.eprintf "make_weakest: %a@." Print.typ typ;
       unsupported "Ref_type.make_weakest"
@@ -768,6 +772,7 @@ type neg_env = NegEnv.t
 let rec contract typ =
   match flatten typ with
   | Base _ -> typ
+  | ADT _ -> typ
   | Fun(x, typ1, typ2) -> Fun(x, contract typ1, contract typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd contract) xtyps)
   | Inter(typ, typs) ->
@@ -816,6 +821,7 @@ let rec split_inter typ =
 let rec has_inter_union ty =
   match ty with
   | Base _ -> false
+  | ADT _ -> false
   | Fun(_,ty1,ty2) -> has_inter_union ty1 || has_inter_union ty2
   | Tuple xts -> List.exists (snd |- has_inter_union) xts
   | Inter(_,tys) -> tys <> []

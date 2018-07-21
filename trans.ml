@@ -2834,10 +2834,11 @@ let unify_app =
               unify ty' ts'
           | TVar ({contents=None} as r,_), [] -> set r t.typ
           | _, [] -> ()
-          (* tmporary measure *)
+          (* temporary measure *)
           | ty, ts when ty = Type.typ_unknown ->
               Format.eprintf "%a@." Syntax.pp_term t;
               Format.eprintf "%a@.%a@." Syntax.pp_typ ty (print_list Syntax.pp_term ";") ts;
+              (*assert false;*)
               ()
           | _ -> assert false
         in
