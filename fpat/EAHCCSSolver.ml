@@ -29,6 +29,8 @@ let solve_main cand_sol prev_constrs masked_coeffs solver hcs =
   let sub, constr =
     let vc =
       hcs
+      |> TupHCCSSolver.flatten
+      |> TupHCCSSolver.encode
       |> EncBoolHCCSSolver.encode false
       |> HCCS.map_phi CunFormula.elim_unit
       |> HCCS.subst_varsB(*@todo*) cand_sol
@@ -52,6 +54,8 @@ let solve_main cand_sol prev_constrs masked_coeffs solver hcs =
     else
       let constr =
         hcs
+        |> TupHCCSSolver.flatten
+        |> TupHCCSSolver.encode
         |> EncBoolHCCSSolver.encode false
         |> HCCS.map_phi CunFormula.elim_unit
         |> FwHCCSSolver.formula_of

@@ -93,7 +93,7 @@ let compute_strongest_post prog ce ext_cex =
     let args =
       List.filter_map2
         (fun x ty ->
-           if Type.is_base ty then Some(x) else None)
+           if Type.is_base ty || Type.is_adt ty then Some(x) else None)
         fdef.Fdef.args
         targs
     in

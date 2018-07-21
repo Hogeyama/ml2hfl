@@ -19,6 +19,16 @@ val csisat_use_theory : bool ref
 val csisat_int_mode : bool ref
 val degree : int ref
 
+(** {6 aiSat options} *)
+
+val degree : int ref
+val truncate : float option ref
+val round_bits : int ref
+val use_mosek : bool ref
+val grad : string option ref
+val aisat_debug : bool ref
+val nocomb : bool ref
+
 (** {6 Interpolating prover combinators} *)
 
 (** @todo check whether this is useful *)

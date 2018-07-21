@@ -15,15 +15,25 @@ GIT = @GIT@
 
 # Libraries
 ENABLE_COMPLIBS = @ENABLE_COMPLIBS@
+ENABLE_GRAPHICS = @ENABLE_GRAPHICS@
 ENABLE_CVC3 = @ENABLE_CVC3@
 ENABLE_Z3 = @ENABLE_Z3@
 ENABLE_CSISAT = @ENABLE_CSISAT@
+ENABLE_RSREFINE = @ENABLE_RSREFINE@
+ENABLE_AISAT = @ENABLE_AISAT@
+ENABLE_GLPK = @ENABLE_GLPK@
+ENABLE_CSDP = @ENABLE_CSDP@
+ENABLE_GSL = @ENABLE_GSL@
+ENABLE_SPPOC = @ENABLE_SPPOC@
 ENABLE_ATP = @ENABLE_ATP@
 ENABLE_APRON = @ENABLE_APRON@
+ENABLE_CIL = @ENABLE_CIL@
+ENABLE_LLVM = @ENABLE_LLVM@
+ENABLE_MINISAT = @ENABLE_MINISAT@
 
 # Normal compilation options
-BFLAGS = -g -w -8 -bin-annot -annot #-noassert #-thread
-OFLAGS = -w -8 -bin-annot -annot #-noassert #-thread
+BFLAGS = -g -w -8 -bin-annot -annot -syntax camlp4o #-noassert #-thread
+OFLAGS = -w -8 -bin-annot -annot -syntax camlp4o #-noassert #-thread
 
 # Archiving options
 CCOPT =
@@ -34,10 +44,10 @@ SRC = global combinator printer timer logger dummy \
 # Basic data structures
 SRC := $(SRC) \
        util zipper \
-       sexp \
-       bool integer float ordinal \
-       option pair triple quadruple set_ bag map_ \
-       vector matrix bitVector graph_ combination
+       sexp sexpParser sexpLexer \
+       bool integer nat_ float ordinal \
+       option pair triple quadruple quintuple set_ bag map_ \
+       vector matrix bitVector graph_ partOrd permutation combination
 
 # Identifiers
 SRC := $(SRC) \
@@ -46,7 +56,7 @@ SRC := $(SRC) \
 # Mathematical expressions
 SRC := $(SRC) \
        coeff linExp monoExp polyExp \
-       linIntExp linRealExp \
+       linIntExp linRationalExp linRealExp \
        monoIntExp monoRealExp \
        polyIntExp polyRealExp \
        linPolyIntExp
@@ -54,11 +64,13 @@ SRC := $(SRC) \
 # Abstract syntax trees
 SRC := $(SRC) \
        pattern absTerm \
+       treeAutomaton \
        typConst typBinder type typEnv \
        const binder term typTerm \
        termSubst envFun \
-       unitTerm boolTerm numTerm intTerm realTerm stringTerm \
+       unitTerm boolTerm numTerm intTerm rationalTerm realTerm stringTerm \
        typTermSubst \
+       vecTerm tupTerm ADTTerm setTerm arrayTerm \
        simTypJudge
 
 # Formulas
@@ -96,8 +108,11 @@ SRC := $(SRC) \
        realAtom realFormula \
        pvaAtom pvaFormula \
        pvaCube \
+       ADTAtom ADTLiteral ADTFormula \
+       setAtom setLiteral setFormula \
        extConjunction extDisjunction \
-       cunAtom cunLiteral cunFormula
+       cunAtom cunLiteral cunFormula \
+       tupAtom tupLiteral tupFormula
 
 # Functions for manipulating formulas
 SRC := $(SRC) \
@@ -106,14 +121,21 @@ SRC := $(SRC) \
        polyhedron \
        predAbst qelim qelimBody
 
+# Rewriting systems
+SRC := $(SRC) \
+       equationTheory rewriteSystem knuthBendix
+
 # Mathematical optimization
 SRC := $(SRC) \
+       MIP CQP \
        farkas \
-       polyConstrSolver
+       polyConstrSolver \
+       bvPolyConstrSolver \
+       cadPolyConstrSolver
 
 # Horn clauses
 SRC := $(SRC) \
-       hornClause HCCS
+       hornClause HCCS HCCSParser HCCSLexer
 
 # Simple type inference
 SRC := $(SRC) \
@@ -121,27 +143,49 @@ SRC := $(SRC) \
 
 # Template expressions and size functions
 SRC := $(SRC) \
-       template rankFun
+       template sizeFun rankFun
 
 # Interpolating theorem provers
 SRC := $(SRC) \
        interpProver \
        checkInterpProver unitBoolInterpProver generalizingInterpProver \
+       templateBasedInterpProver pointSampleInterpProver \
        \
        genInterpProver \
-       CHGenInterpProver
+       CHGenInterpProver templateBasedGenInterpProver
+
+# @todo move this to basic data structures
+SRC := $(SRC) \
+       partition
 
 # Horn constraint solvers
 SRC := $(SRC) \
        undefHCCSSolver unusedHCCSSolver complementHCCSSolver \
        fwHCCSSolver checkHCCSSolver \
        inlineHCCSSolver reduceHCCSSolver \
-       HCCSSolver \
-       unitHCCSSolver boolHCCSSolver encBoolHCCSSolver \
+       HCCSSolver RHCCSSolver \
+       unitHCCSSolver boolHCCSSolver encBoolHCCSSolver tupHCCSSolver ADTHCCSSolver \
        \
        bwIPHCCSSolver \
-       genHCCSSolver
+       bwQEHCCSSolver \
+       genHCCSSolver \
+       splitBoolHCCSSolver \
+       templateBasedHCCSSolver \
+       fwWidenHCCSSolver negaHcSolver \
+       expandDagHCCSSolver \
+       \
+       atomHCCSSolver \
+       decoHCCSSolver \
+       partHCCSSolver \
+       sampHCCSSolver \
+       \
+       beautifulHCCSSolver \
+       \
+       pointSampleHCCSSolver
 
+# Interpolating prover
+SRC := $(SRC) \
+       HCCSInterpProver
 
 # Exists-forall and Forall-exists Horn constraint solvers
 SRC := $(SRC) \
@@ -150,24 +194,118 @@ SRC := $(SRC) \
 # ML AST
 SRC := $(SRC) \
        MLExp fdef prog \
+       CBVEvaluator CBVInterpreter CAM ZAM \
        traceSemantics \
        callId callTree trace traceExp \
        compTree compTreeExpander
+
+# Java AST
+SRC := $(SRC) \
+       javaExp javaClass javaMain javaProg javaParser javaLexer fj2ml
+
+# Recursion schemes
+SRC := $(SRC) \
+       HORS
 
 # Refinement types and abstraction types
 SRC := $(SRC) \
        refType refTypJudge refTypInfer \
        absType absTypInfer \
-       refTyp refTypEnv
+       refTyp refTypEnv refTypCheck
 
 # Ranking function synthesizers
 SRC := $(SRC) \
-       rankFunInfer
+       rankFunInfer \
+
+# Misc
+SRC := $(SRC) \
+       regExp lazyList \
+       \
+       NNBackPropagate NNHopfieldModel \
+       \
+       matrix44 vector3 point3 frame3 \
+       ray RTPoint3 sphere plane csg mesh \
+       \
+       ocamlInterface
+
+## Transformation-based program verification
+#SRC := $(SRC) \
+#       syntax hyloParser hyloLexer hyloParser2 hyloLexer2 \
+#       derive derive_tau is_out \
+#       restructure reduction \
+#       hyloPrinter
+
+## Transformation-based Horn constraint solving
+#SRC := $(SRC) \
+#       rewriteHCCS PJoin
+
+# Automata
+SRC := $(SRC) \
+       regTreeExp regTreeExpParser regTreeExpLexer \
+	   treeAutomatonAtom treeAutomatonFormula treeAutomatonTerm
+
+# Satisfiability modulo inductive predicates
+SRC := $(SRC) \
+       unwinding
+
+# Horn constraint optimization
+SRC := $(SRC) \
+       predVarPoles predVarPriority \
+       multiObjectiveHCCSSolver
+
+# Induction-based Horn constraint solving
+SRC := $(SRC) \
+       proofTree inductHCCS
+
+# ML AST
+SRC := $(SRC) \
+       MLRefparser MLReflexer
+# MLLexer MLParser TLMLExp
+
+# SAT solvers
+SRC := $(SRC) \
+       tseitinEncoding \
+       SATSolver
+
+# recursive Horn and well-foundedness constraint solvers
+SRC := $(SRC) \
+       CFPPAHCCSSolver LFPPAHCCSSolver recHCCSSolver WFHCCSSolver
+
+# Program verifiers
+SRC := $(SRC) \
+       bench MLVerifier RCamlConst
+
+# Symbolic game solvers
+SRC := $(SRC) \
+       modalMu \
+       symAltParityAutomaton symAltAutomaton weakSymAltAutomaton \
+       infGameArena parityGame weakParityGame recGame weakRecGame safetyGame	 livenessGame \
+       game gameSolver
+
+# Disney's HOT contracts
+SRC := $(SRC) \
+       ttype \
+       tcontParser \
+       tcontLexer \
+       nfa \
+       disneyTemporal
 
 C_SRC = dummy
 C_INCLUDES =
 C_OPT = -fPIC
-REQUIRES = str unix bigarray num batteries zarith
+REQUIRES = str unix bigarray num extlib zarith camlp4
+
+ifeq ($(ENABLE_COMPLIBS), 1)
+  SRC := $(SRC) ppx OCamlParser repl
+  REQUIRES := $(REQUIRES) compiler-libs.bytecomp compiler-libs.optcomp compiler-libs.common
+endif
+
+ifeq ($(ENABLE_GRAPHICS), 1)
+  SRC := $(SRC) \
+         color image shader light camera \
+         raytracer
+  REQUIRES := $(REQUIRES) graphics
+endif
 
 ifeq ($(ENABLE_ATP), 1)
   SRC := $(SRC) atpInterface
@@ -177,6 +315,39 @@ endif
 ifeq ($(ENABLE_CSISAT), 1)
   SRC := $(SRC) CSIsatInterface
   REQUIRES := $(REQUIRES) csisat
+endif
+
+ifeq ($(ENABLE_MINISAT), 1)
+  SRC := $(SRC) minisatTest
+  REQUIRES := $(REQUIRES) minisat
+endif
+
+ifeq ($(ENABLE_RSREFINE), 1)
+  SRC := $(SRC) \
+         $(DEPCEG)/timer2 \
+         $(RSREFINE)/rsutils \
+         $(RSREFINE)/rsvmanager \
+         $(RSREFINE)/rsdefs \
+         $(RSREFINE)/rsmsat5int \
+         $(RSREFINE)/rsz3int \
+         $(RSREFINE)/rssat \
+         $(RSREFINE)/rssmtlib \
+         $(RSREFINE)/rssmt \
+         $(RSREFINE)/rsexactsolver \
+         $(RSREFINE)/rsunrestrictedsolver \
+         $(RSREFINE)/rsm1solver \
+         $(RSREFINE)/rstreesolver \
+         $(RSREFINE)/rsdagsolver \
+         $(RSREFINE)/rslangmanager \
+         $(RSREFINE)/rsrefine \
+         rsCompHCCSSolver
+  INCLUDES := $(INCLUDES) -I $(DEPCEG) -I $(RSREFINE)
+  REQUIRES := $(REQUIRES) rsrefine
+endif
+
+ifeq ($(ENABLE_AISAT), 1)
+  SRC := $(SRC) aiSatInterface
+  REQUIRES := $(REQUIRES) osdp aiSat
 endif
 
 ifeq ($(ENABLE_CVC3), 1)
@@ -193,11 +364,49 @@ ifeq ($(ENABLE_APRON), 1)
   REQUIRES := $(REQUIRES) apron.apron apron.polkaMPQ # apron.ppl
 endif
 
+ifeq ($(ENABLE_GLPK), 1)
+  SRC := $(SRC) GLPKInterface
+  CCOPT := $(CCOPT) -cclib -lglpk
+  REQUIRES := $(REQUIRES) glpk
+endif
+
+ifeq ($(ENABLE_CSDP), 1)
+  SRC := $(SRC) CSDPInterface
+  CCOPT := $(CCOPT) -cclib -lsdp
+  REQUIRES := $(REQUIRES) osdp
+endif
+
+ifeq ($(ENABLE_GSL), 1)
+  SRC := $(SRC) extGSL GSLInterface
+  CCOPT := $(CCOPT) -cclib -lcqp
+  C_SRC := $(C_SRC) GslExtStub
+  GSL=`ocamlfind query gsl`
+  C_INCLUDES := $(C_INCLUDES) -I $(GSL)
+  REQUIRES := $(REQUIRES) gsl
+endif
+
+ifeq ($(ENABLE_SPPOC), 1)
+  SRC := $(SRC)
+  REQUIRES := $(REQUIRES) sppoc
+endif
+
+ifeq ($(ENABLE_CIL), 1)
+  SRC := $(SRC) heap2Array SSATrans \
+         C2ML
+  REQUIRES := $(REQUIRES) cil
+endif
+
+ifeq ($(ENABLE_LLVM), 1)
+  SRC := $(SRC) extLLVM LLVMInterface
+  C_SRC := $(C_SRC) LlvmExtStubC LlvmExtStubCpp
+  C_OPT := `llvm-config --cxxflags`
+  REQUIRES := $(REQUIRES) llvm llvm.bitreader llvm.analysis llvm.ipo llvm.scalar_opts
+endif
+
 SRC := $(SRC) \
        FPATConfig
 
-COMMA=,
-PP = -package $(subst $() ,$(COMMA),$(strip $(REQUIRES)))
+PP = $(patsubst %,-package %, $(REQUIRES))
 
 # main target
 #############
@@ -224,6 +433,18 @@ byte: $(CMA)
 opt: $(CMXA)
 lib: $(A)
 
+funC.byte: funC.ml $(CMA)
+	$(OCAMLFIND) ocamlc -g -annot -package fpat -linkpkg -o $@ funC.ml
+
+funC.opt: funC.ml $(CMXA)
+	$(OCAMLFIND) ocamlopt -annot -package fpat -linkpkg -o $@ funC.ml
+
+rcaml.byte: rcaml.ml $(CMA)
+	$(OCAMLFIND) ocamlc -g -annot -package fpat -linkpkg -o $@ rcaml.ml
+
+rcaml.opt: rcaml.ml $(CMXA)
+	$(OCAMLFIND) ocamlopt -annot -package fpat -linkpkg -o $@ rcaml.ml
+
 $(NAME).cmo: $(CMO)
 	$(OCAMLFIND) ocamlc -pack -g -o $@ $(LIBCMA) $^
 
@@ -243,6 +464,12 @@ $(A) : $(C_OBJ)
 	$(OCAMLFIND) ocamlmklib -o $(NAME) $^
 
 
+fj2hors.byte: fj2hors.ml $(CMA)
+	$(OCAMLFIND) ocamlc -g -annot -package fpat -linkpkg -o $@ fj2hors.ml
+
+fj2hors.opt: fj2hors.ml $(CMXA)
+	$(OCAMLFIND) ocamlopt -package fpat -linkpkg -o $@ fj2hors.ml
+
 # documentation
 ###############
 
@@ -254,13 +481,13 @@ DOC_SRC	 = $(CMO:.cmo=.ml) $(wildcard $(CMO:.cmo=.mli))
 $(DOCDIR)/index.html: $(DOC_SRC)
 	mkdir -p $(DOCDIR)
 	rm -f $(DOCDIR)/*.html
-	$(OCAMLFIND) ocamldoc $(INCLUDES) $(PP) -d $(DOCDIR) -html $(DOC_SRC)
+	$(OCAMLFIND) ocamldoc $(INCLUDES) $(PP) -syntax camlp4o -d $(DOCDIR) -html $(DOC_SRC)
 doc: $(DOCDIR)/index.html
 
 $(DOCDIR)/$(NAME).dot: $(DOC_SRC)
 	mkdir -p $(DOCDIR)
 	rm -f $(DOCDIR)/$(NAME).dot
-	$(OCAMLFIND) ocamldoc $(INCLUDES) $(PP) -o $@ -dot $(DOC_SRC)
+	$(OCAMLFIND) ocamldoc $(INCLUDES) $(PP) -syntax camlp4o -o $@ -dot $(DOC_SRC)
 dot: $(DOCDIR)/$(NAME).dot
 
 $(DOCDIR)/$(NAME).ps: $(DOCDIR)/$(NAME).dot
@@ -342,7 +569,7 @@ PARSER=$(wildcard *.mly)
 
 .PHONY: depend
 .depend depend: $(PARSER:.mly=.ml)
-	$(OCAMLFIND) ocamldep $(INCLUDES) $(PP) $(addsuffix .ml,$(SRC)) *.mli *.mly > .depend
+	$(OCAMLFIND) ocamldep $(INCLUDES) $(PP) -syntax camlp4o $(addsuffix .ml,$(SRC)) *.mli *.mly > .depend
 
 -include .depend
 
@@ -378,8 +605,72 @@ install-lib: $(ATP)/atp_batch.cma $(ATP)/atp_batch.cmxa
 		$(CSISAT)/obj/* \
 		$(CSISAT)/lib/*; \
 	fi
+	@if [ "$(ENABLE_RSREFINE)" = "1" ]; then \
+	  $(OCAMLFIND) remove rsrefine; \
+	  $(OCAMLFIND) install rsrefine \
+		rsrefine/META \
+		$(OCAMLMATHSAT5)/libmsat5_stubs.a \
+		$(OCAMLMATHSAT5)/ocamlmsat5.a \
+		$(OCAMLMATHSAT5)/ocamlmsat5.cmi \
+		$(OCAMLMATHSAT5)/ocamlmsat5.cmxa \
+		$(MATHSAT5)/lib/libmathsat.a \
+		$(OCAMLMINISAT)/libminisat_stubs.a \
+		$(OCAMLMINISAT)/ocamlminisat.a \
+		$(OCAMLMINISAT)/ocamlminisat.cmi \
+		$(OCAMLMINISAT)/ocamlminisat.cmxa \
+		$(MINISAT)/libminisat_drup.a; \
+	fi
+	@if [ "$(ENABLE_AISAT)" = "1" ]; then \
+	  $(OCAMLFIND) ocamlc -pack -g -o aiSat.cmo $(AISAT)/util.cmo $(AISAT)/myPolynomial.cmo $(AISAT)/sdpConverter.cmo $(AISAT)/constraint.cmo $(AISAT)/problem.cmo; \
+	  $(OCAMLFIND) ocamlopt -pack -o aiSat.cmx $(AISAT)/util.cmx $(AISAT)/myPolynomial.cmx $(AISAT)/sdpConverter.cmx $(AISAT)/constraint.cmx $(AISAT)/problem.cmx; \
+#	  $(OCAMLFIND) ocamlc -pack -g -o aiSat.cmo $(AISAT)/util.cmo $(AISAT)/myPolynomial.cmo $(AISAT)/sdpConverter.cmo $(AISAT)/diminf.cmo $(AISAT)/constraint.cmo $(AISAT)/problem.cmo; \
+#	  $(OCAMLFIND) ocamlopt -pack -o aiSat.cmx $(AISAT)/util.cmx $(AISAT)/myPolynomial.cmx $(AISAT)/sdpConverter.cmx $(AISAT)/diminf.cmx $(AISAT)/constraint.cmx $(AISAT)/problem.cmx; \
+	  $(OCAMLFIND) ocamlc -a -custom -g -o aiSat.cma aiSat.cmo; \
+	  $(OCAMLFIND) ocamlopt -a -o aiSat.cmxa aiSat.cmx; \
+	  $(OCAMLFIND) remove aiSat; \
+	  $(OCAMLFIND) install aiSat \
+		aisat/META \
+		aiSat.a \
+		aiSat.cmi \
+		aiSat.cma \
+		aiSat.cmxa; \
+	fi
+	@if [ "$(ENABLE_SPPOC)" = "1" ]; then \
+	  $(OCAMLFIND) remove sppoc; \
+	  $(OCAMLFIND) install sppoc \
+		sppoc/META \
+		$(SPPOC)/MlTools/MlTools.a \
+		$(SPPOC)/MlTools/MlTools.cma \
+		$(SPPOC)/MlTools/MlTools.cmxa \
+		$(SPPOC)/Formel/Formel.a \
+		$(SPPOC)/Formel/Formel.cma \
+		$(SPPOC)/Formel/Formel.cmxa \
+		$(SPPOC)/Formel/sPPoC.cmi \
+		$(SPPOC)/Formel/sPPoC.mli \
+		$(SPPOC)/libs/*; \
+	fi
 
 install: META
 	$(OCAMLFIND) remove fpat
 	$(OCAMLFIND) install fpat \
 		META fpat.a fpat.cmi $(CMA) $(CMXA) $(A)
+
+BIN_NAME = rcaml
+BIN_DIR = rcaml_bin
+
+bin: $(BIN_NAME).opt
+	@echo make $(BIN_DIR)
+	@mkdir -p $(BIN_DIR)/bin
+	@cp $(BIN_NAME).opt $(BIN_DIR)/bin
+	@mkdir -p $(BIN_DIR)/lib
+	@ldd $(BIN_NAME).opt | while read line; \
+	do \
+	   if [ $$(echo $$line | wc -w) -eq 2 ]; then \
+	     cp $$(echo $$line | cut -d' ' -f1) $(BIN_DIR)/lib ; \
+	   elif [ $$(echo $$line | wc -w) -eq 4 ]; then \
+	     cp $$(echo $$line | cut -d' ' -f3) $(BIN_DIR)/lib ; \
+	   fi; \
+	done
+	@mkdir -p $(BIN_DIR)/stdlib
+	@cp $$($(OCAMLFIND) ocamlc -where)/*.cmi $(BIN_DIR)/stdlib
+	@tar czvf $(BIN_DIR).tar.gz $(BIN_DIR)

@@ -125,6 +125,7 @@ val fvs_ty : t -> TypEnv.t
 
 val coeffs : t -> Idnt.t list
 val ufuns : t -> Idnt.t list
+val kons : t -> (Idnt.t * int) list
 
 (** @ensure not (Set.duplicate res) *)
 val tenvB : t -> TypEnv.t
@@ -166,6 +167,10 @@ val simplify_light : Idnt.t list -> t -> t
 (** @ensure variables in [vs] are not eliminated
     try to eliminate predicate variables *)
 val simplify_full : ?tenv:TypEnv.t -> Idnt.t list -> t -> t
+(** extract equality between ADT constructor args
+    ex. replace P :- Q, x = (C t1 t2) /\ y = (C t3 t4) /\ x = y
+        with    P :- Q, x = (C t1 t2) /\ y = (C t3 t4) /\ x = y /\ t1 = t3 /\ t2 = t4 *)
+val extract_constr_arg_equality : t -> t
 
 val elim_disj : t -> t list
 

@@ -6,6 +6,8 @@ open Combinator
 type t =
   | Base of Idnt.t * Type.t * Formula.t
   | Fun of Idnt.t * t * t * (Idnt.t * Formula.t)
+  (* pair of binding and refinement *)
+  | Tuple of (Idnt.t * t) list * t
 
 (** {6 Printers} *)
 
@@ -28,6 +30,8 @@ and pr ppf rty =
          pr_bind (x, rty1)
          pr rty2
          Formula.pr (snd t))
+  | Tuple(tenv, rty1) ->
+    Format.fprintf ppf "@[<hv>%a * %a@]" (List.pr pr_bind " *@ ") tenv pr rty1
 
 (** {6 Auxiliary constructors} *)
 
@@ -76,6 +80,10 @@ let mk_singleton ty v =
   let nv = Idnt.new_var () in
   Base(nv, ty, Formula.eq ty (Term.mk_var nv) v)
 
+let mk_tuple rtys =
+  Tuple(List.map (fun rty -> (Idnt.new_var (), rty)) (List.initial rtys),
+        List.last rtys)
+
 let of_simple_type =
   Type.fold
     (object
@@ -84,9 +92,22 @@ let of_simple_type =
       method fbase tyc =
         mk_base (Idnt.new_var()) (Type.mk_const tyc) Formula.mk_true
       method farrow r1 r2 = mk_fun_args_ret [r1] r2
+      method fadt d cs =
+        mk_base (Idnt.new_var()) (Type.mk_adt d cs) Formula.mk_true
+      method ftuple rs = mk_tuple rs
+      method fset r1 = assert false
+      method fvector r1 size = assert false
       method fforall p r1 = assert false
       method fexists p r1 = assert false
     end)
+
+let mk_tuple_ xrtys rty = if xrtys = [] then rty else Tuple(xrtys, rty)
+let mk_tuple2 xtys phi =
+  let x, ty = List.last xtys in
+  (* @todo ty must be base *)
+  mk_tuple_
+    (xtys |> List.initial |> List.map (Pair.map_snd of_simple_type))
+    (mk_base x ty phi)
 
 (** {6 Inspectors} *)
 
@@ -108,12 +129,17 @@ let rec para f rty =
     let args' = List.map (Quadruple.map_snd (para f)) args in
     let ret' = para f ret in
     f#ffun args args' ret ret'
+  | Tuple(xrtys, rty) ->
+    let xrs = List.map (Pair.map_snd (para f)) xrtys in
+    let r1 = para f rty in
+    f#ftuple xrtys xrs rty r1
 
 let visit f rty =
   para
     (object
       method fref x ty phi = fun () -> f#fref x ty phi
       method ffun args args' ret ret' = fun () -> f#ffun args ret
+      method ftuple xrtys xrs rty r1 = fun () -> f#ftuple xrtys rty
     end)
     rty
     ()
@@ -123,6 +149,7 @@ let fold f =
     (object
       method fref x ty phi = f#fref x ty phi
       method ffun _ args' _ ret' = f#ffun args' ret'
+      method ftuple _ xrs _ r1 = f#ftuple xrs r1
     end)
 
 (** {6 Inspectors} *)
@@ -131,6 +158,14 @@ let rec is_closed env rty =
   match rty with
   | Base(x, _, p) -> Set_.diff (Formula.fvs p) (Formula.fpvs p @ env) = []
   | Fun(x, t1, t2, p) when is_closed env t1 -> is_closed (x :: env) t2
+  | Tuple(tl, t) ->
+    let rec aux env ts =
+      match ts with
+      | [] -> true
+      | (x, t) :: tl when is_closed env t -> aux (x :: env) tl
+      | _ -> false
+    in
+    aux env tl && is_closed (List.map fst tl @ env) t
   | _ -> false
 
 let fpvs =
@@ -140,6 +175,7 @@ let fpvs =
       method ffun args ret =
         List.concat_map Quadruple.snd args @ ret
         @ List.concat_map (Quadruple.fth >> Formula.fpvs) args
+      method ftuple xrs r1 = List.concat_map snd xrs @ r1
     end)
 
 (** {6 Operators} *)
@@ -161,6 +197,7 @@ let to_simple_type =
     (object
       method fref x ty phi = (*assert (Formula.is_true phi);*)ty
       method ffun args ret = List.map Quadruple.snd args @ [ret] |> Type.mk_fun
+      method ftuple xrs r1 = List.map snd xrs @ [r1] |> Type.mk_tuple
     end)
 
 let rec subst xts rty =
@@ -179,6 +216,16 @@ let rec subst xts rty =
             args
         in
         mk_fun_ args' (ret xts')
+      method ftuple xrs r1 = fun xts ->
+        let xts', xrtys =
+          List.fold_left
+            (fun (xts', xrtys) (x, r) ->
+               Map_.diff xts' [x],
+               xrtys @ [x, r xts'])
+            (xts, [])
+            xrs
+        in
+        mk_tuple_ xrtys (r1 xts')
     end)
     rty xts
 
@@ -190,11 +237,13 @@ let subst_pvars psub =
         mk_fun_
           (List.map (Quadruple.map_fth (CunFormula.subst_pvars psub)) args)
           ret
+      method ftuple xrs r1 = mk_tuple_ xrs r1
     end)
 
 let set_phi phi rty =
   match rty with
   | Base(x, ty, _) -> Base(x, ty, phi)
+  | Tuple(xrtys, Base(x, ty, _)) -> Tuple(xrtys, Base(x, ty, phi))
   | _ ->
     Logger.printf "unsupported type in RefTyp.set_phi: %a@," pr rty;
     assert false
@@ -205,6 +254,10 @@ let set_phi_ret phi rty =
 
 let set_pred pred = function
   | Base(x, ty, _) -> Base(x, ty, pred [Term.mk_var x, ty])
+  | Tuple(xrtys, Base(x, ty, _)) ->
+    let tenv = List.map (Pair.map_snd to_simple_type) xrtys @ [x, ty] in
+    let phi = pred (List.map (Pair.map_fst Term.mk_var) tenv) in
+    Tuple(xrtys, Base(x, ty, phi))
   | rty ->
     Logger.printf "unsupported type in RefTyp.set_pred: %a@," pr rty;
     assert false
@@ -218,6 +271,15 @@ let add_pvar tenv rty =
     let pvar = PredVar.make (Idnt.new_var ()) tenv in
     let phi = pvar |> PredVar.to_formula in
     Base(x, ty, Formula.mk_and phi phi'), pvar
+  | Tuple(xrtys, Base(x, ty, phi')) ->
+    let tenv =
+      tenv @ List.map (Pair.map_snd to_simple_type) xrtys @ [x, ty]
+    in
+    (* @todo too ad hoc, only work for game solving mode? *)
+    let tenv = [x, ty] in
+    let pvar = PredVar.make (Idnt.new_var ()) tenv in
+    let phi = pvar |> PredVar.to_formula in
+    Tuple(xrtys, Base(x, ty, Formula.mk_and phi phi')), pvar
   | _ ->
     Logger.printf "unsupported type in RefTyp.set_pvar: %a@," pr rty;
     assert false
@@ -225,6 +287,9 @@ let add_pvar tenv rty =
 let get_term rty =
   match rty with
   | Base(x, _, _) -> Term.mk_var x
+  | Tuple(xrtys, Base(x, ty, _)) ->
+    let tys = List.map (snd >> to_simple_type) xrtys @ [ty] in
+    TupTerm.make tys (List.map Term.mk_var (List.map fst xrtys @ [x]))
   | rty ->
     Logger.printf "unsupported type in RefTyp.get_term: %a@," pr rty;
     assert false
@@ -232,6 +297,7 @@ let get_term rty =
 let get_phi rty =
   match rty with
   | Base(_, _, phi) -> phi
+  | Tuple(_, Base(_, _, phi)) -> phi
   | rty ->
     Logger.printf "unsupported type in RefTyp.get_phi: %a@," pr rty;
     assert false
@@ -258,6 +324,16 @@ let alpha xts rty =
             (xts, []) args
         in
         mk_fun_ args' (ret xts')
+      method ftuple xrs r1 = fun xts ->
+        let xts', xrtys =
+          List.fold_left
+            (fun (xts', xrtys) (x, r) ->
+               let y = new_var () in
+               (x, Term.mk_var y) :: xts',
+               xrtys @ [y, r xts'])
+            (xts, []) xrs
+        in
+        mk_tuple_ xrtys (r1 xts')
     end)
     rty
     xts
@@ -283,6 +359,18 @@ let mk_template name env rty =
             (env, []) (List.combine arg_ids args)
         in
         mk_fun_ args' (ret ret_id env')
+      method ftuple xrs r1 = fun name env ->
+        let ret_id, arg_ids = Idnt.ret_args name 0 (List.length xrs) in
+        let env', xrtys =
+          List.fold_left
+            (fun (env', xrtys) (id, (x, r)) ->
+               let rty = r id env' in
+               let ty = to_simple_type rty in
+               env' @ [x, ty],
+               xrtys @ [x, if Type.is_base(*int*) ty then of_simple_type ty else rty])
+            (env, []) (List.combine arg_ids xrs)
+        in
+        mk_tuple_ xrtys (r1 ret_id env')
     end)
     rty name env
 

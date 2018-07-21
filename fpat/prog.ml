@@ -49,3 +49,5 @@ let coeffs prog = List.concat_map Fdef.coeffs prog.fdefs
 
 (** @param x is a structured variable *)
 let is_base prog = TypEnv.lookup prog.types >> Type.is_fun >> not (* @todo *)
+
+let has_read_bool prog = List.exists Fdef.has_read_bool prog.fdefs

@@ -95,6 +95,18 @@ let formula_of c ts t =
   | Const.String(s), [] ->
      NumFormula.eq Type.mk_string t (StringTerm.make s)
 
+  | Const.Vector(ty, size), [] ->
+     assert false(*raise (Global.NotImplemented "RefTypJudge.formula_of")*)
+  | Const.VElem(ty, size, _), [t0]
+  | Const.VRnorm(ty, size), [t0]
+  | Const.VNormalize(ty, size), [t0]
+  | Const.VScale(ty, size), [t0]
+  | Const.VDot(ty, size), [t0] ->
+     assert false(*raise (Global.NotImplemented "RefTypJudge.formula_of")*)
+
+  | Const.Tuple(tys), [] ->
+     assert false(*raise (Global.NotImplemented "RefTypJudge.formula_of")*)
+
   | Const.Nil(ty), [] ->
      assert false(*raise (Global.NotImplemented "RefTypJudge.formula_of")*)
   | Const.Cons(ty), [t1; t2] ->

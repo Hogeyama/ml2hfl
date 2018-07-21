@@ -1,0 +1,5 @@
+name="aiSat"
+description="aiSat"
+requires = "sexplib dimtype"
+archive(byte)="aiSat.cma"
+archive(native)="aiSat.cmxa"

@@ -51,7 +51,7 @@ let subst_matched_var =
           let t2' = tr.tr_term t2 in
           let sbst =
             match is_filled_pattern p with
-            | None -> Fun.id
+            | None -> Std.identity
             | Some t' ->
                 fun t0 ->
                   match t0 with

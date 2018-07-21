@@ -47,7 +47,7 @@ module Make = functor (Coeff : Coeff.COEFF) -> struct
 
   (* val normalize : t -> t *)
   let normalize (n, xs) =
-    n, List.sort compare xs
+    n, List.sort xs
 
   (* val mul_coeff : Coeff.t -> t -> t *)
   let mul_coeff m (n, xs) =

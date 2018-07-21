@@ -127,7 +127,7 @@ let print_fpat_call_stack () =
 
 let print_ocaml_call_stack () =
   let ss =
-    BatString.nsplit
+    ExtLib.String.nsplit
       (Printexc.raw_backtrace_to_string (Printexc.get_callstack 10000))
       "\n"
     |> List.filter ((<>) "")

@@ -28,6 +28,9 @@ let rec conv_typ ty =
   | TFun(ty1,tmp) ->
      let ty2 = tmp (Const True) in
      F.Type.mk_fun [conv_typ ty1; conv_typ ty2]
+  | TApp _ when is_ttuple ty ->
+      let _,tys = decomp_tapp ty in
+      F.Type.mk_tuple @@ List.map conv_typ tys
   | TApp(TConstr (TFixPred _), ty) -> conv_typ ty
   | _ ->
      Format.eprintf "%a@." CEGAR_print.typ ty;
@@ -78,8 +81,8 @@ let conv_const c =
      F.Const.UFun
        (F.Type.mk_const (F.TypConst.Ext "X"),
         F.Idnt.make "end")
-  | Proj(n,i) -> assert false
-  | Tuple n -> assert false
+  | Proj(n,i) -> F.Const.Proj(List.make n (F.Type.mk_const (F.TypConst.Ext "?")), i)
+  | Tuple n -> F.Const.Tuple(List.make n (F.Type.mk_const (F.TypConst.Ext "?")))
   | CmpPoly (_, _) -> assert false
   | Temp s -> assert false
   | If  -> assert false
@@ -118,7 +121,7 @@ let rec of_typ typ =
   | Type.TBase Type.TBool -> F.Type.mk_bool
   | Type.TFun(x,typ) -> F.Type.mk_fun [of_typ @@ Id.typ x; of_typ typ]
   | Type.TData "string" -> F.Type.mk_string
-  | Type.TTuple xs -> assert false
+  | Type.TTuple xs -> F.Type.mk_tuple @@ List.map (Id.typ |- of_typ) xs
   | _ ->
       Format.eprintf "FpatInterface of_typ: %a@." Print.typ typ;
       assert false
@@ -167,6 +170,19 @@ let rec of_term t =
       F.Pva.make (F.Idnt.make @@ Id.to_string ~plain:false p) ts'
       |> F.Pva.to_formula
       |> F.Formula.term_of
+  | S.Proj(i, t) ->
+      let tys =
+        match t.S.typ with
+        | Type.TTuple xs ->
+            List.map (Id.typ |- of_typ) xs
+        | _ ->
+            Format.eprintf "%a@." Print.term' t;
+            assert false
+      in
+      F.Term.mk_app (F.Term.mk_const @@ F.Const.Proj(tys, i)) [of_term t]
+  | S.Tuple ts ->
+      let tys = List.map (S.typ |- of_typ) ts in
+      F.Term.mk_app (F.Term.mk_const @@ F.Const.Tuple tys) @@ List.map of_term ts
   | desc ->
       Format.eprintf "desc: %a@." Print.desc desc;
       unsupported "FpatInterface.of_term"
@@ -210,6 +226,7 @@ let inv_const c =
        when F.Idnt.string_of x = "end"
             && F.Type.is_ext ty && F.Type.let_ext ty ((=) "X") ->
      CPS_result
+  | F.Const.Proj(typs, i) -> Proj(List.length typs, i)
   | F.Const.Iff -> EqBool
   | _ -> Format.eprintf "%s@." (F.Const.string_of c); assert false
 

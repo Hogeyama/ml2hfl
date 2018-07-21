@@ -97,8 +97,8 @@ let pr_tex ppf hc =
   match hc.head.pv with
   | None -> Format.fprintf ppf "@[<hov2>?-\\\\@ %a.\\\\@]" pr_body_tex hc.body
   | Some(pv) ->
-     Format.fprintf ppf "@[<hov2>%a \\models\\\\@ %a.\\\\@]"
-                    pr_head_tex hc.head pr_body_tex hc.body
+     Format.fprintf ppf "@[<hov2>%a \\models\\\\@ %a.\\\\@]" 
+                    pr_head_tex hc.head pr_body_tex hc.body 
 
 (** {6 Auxiliary constructors} *)
 
@@ -338,6 +338,14 @@ let ufunsH hc =
   |> Option.fold [] (Pva.of_pvar >> Pva.ufuns_of CunFormula.ufuns_of)
 let ufuns hc = ufunsB hc @ ufunsH hc |> List.unique
 
+let konsB hc =
+  hc.body.pvas
+  |> List.concat_map Pva.kons 
+  |> (@) (CunFormula.kons hc.body.phi)
+  |> List.unique
+let konsH hc = hc.head.pv |> Option.fold [] (Pva.of_pvar >> Pva.kons)
+let kons hc = konsB hc @ konsH hc |> List.unique
+
 let tenvB hc = hc.body.pvas |> List.concat_map Pva.tenv_of |> List.unique
 let tenvH hc = hc.head.pv |> Option.fold [] (Pva.of_pvar >> Pva.tenv_of)
 let tenv hc = tenvB hc @ tenvH hc |> List.unique
@@ -470,6 +478,57 @@ let simplify_full ?(tenv=[]) =
     ~after:(Logger.printf "output:@,  %a" pr)
     (simplify_full tenv)
 
+let extract_constr_arg_equality hc =
+  let extract phi =
+    let term_rel t1 t2 =
+      match Term.fun_args t1, Term.fun_args t2 with
+      | (Term.Const c1, x::y::[]), (Term.Const c2, z::w::[])
+        -> Const.is_eq c1 && c1 = c2 && (x = x || x = w || y = z || y = w)
+      | _ -> false
+    in
+    let mk_constr_arg_equality term_list =
+      (* ex. [[a;b]; [c;d]; [e;f]] => [[a;c;e]; [b;d;f]] *)
+      let rec combine_list = function
+        | [] | []::_ -> []
+        | ll -> List.map List.hd ll :: combine_list (List.map List.tl ll)
+      in
+      (* ex. [(C t1 t2); (C t3 t4); (C t5 t6)] => [[t1;t3;t5]; [t2;t4;t6]] *)
+      let rec mk_equality_list = function
+        | t1::t2::tl ->
+          Term.mk_app (Term.mk_const (Const.Eq Type.mk_unknown)) [t1;t2]
+          :: mk_equality_list (t2::tl)
+        | _ -> []
+      in
+      term_list (* => [x = (C t1 t2); x = y; y = (C t3 t4)] *)
+      |> List.map (Term.fun_args >> snd) (* => [[x;(C t1 t2)]; [x;y]; [y;(C t3 t4)]] *)
+      |> List.flatten
+      |> List.filter_map (fun t ->
+          match Term.fun_args t with
+          | Term.Const Const.Con _, tl -> Some tl
+          | _ -> None) (* => [[t1;t2]; [t3;t4]] *)
+      |> combine_list (* => [[t1;t3]; [t2;t4]] *)
+      |> List.map mk_equality_list (* => [[t1 = t3]; [t2 = t4]] *)
+      |> List.flatten (* => [t1 = t3; t2 = t4] *)
+    in
+    phi
+    |> Formula.conjuncts_of (* => : Formula.t list *)
+    |> List.map Formula.term_of
+    |> Set_.equiv_classes term_rel (* => [[x = (C t1 t2); x = y; ...]; [l = ...]] *)
+    |> List.map mk_constr_arg_equality |> List.flatten (* => [t1=t3; t2=t4] *)
+    |> List.map Formula.of_term
+    |> Formula.band
+    |> Formula.mk_and phi (* => phi /\ (t1=t3 /\ t2=t4) *)
+  in
+  let phi' =
+    hc.body.phi
+    |> Formula.conjuncts_of (* => : Formula.t list *)
+    |> List.map Formula.disjuncts_of (* => : Formula.t list list *)
+    |> List.map (List.map extract)
+    |> List.map Formula.bor
+    |> Formula.band
+  in
+  make hc.head (mk_body hc.body.pvas phi')
+
 let elim_disj hc =
   hc.body.phi
   |> FormulaSimplifier.simplify
@@ -597,7 +656,7 @@ let lookup_eq hc pva =
       (Formula.subst sub hc'.body.phi)
   in
   let bvs = Pva.fvs pva in
-  b, List.filter (fst >> flip List.mem bvs >> not) (body_fvs_ty b)
+  b, List.filter (fst >> flip List.mem bvs >> not) (body_fvs_ty b) 
 
 (** {6 Inspectors} *)
 
@@ -645,14 +704,14 @@ let aux ?(real=false) phi m =
                |> (if real
                    then Formula.map_atom (CunAtom.int_to_real >> Formula.of_atom)
                    else id))
-          then Formula.mk_brel (Const.Lt ty) t1 t2
+          then Formula.mk_brel (Const.Lt ty) t1 t2 
                |> Formula.map_atom (CunAtom.elim_lt_gt >> Formula.of_atom)
           else if SMTProver.is_valid_dyn
               (Formula.subst m (Formula.mk_brel (Const.Gt ty) t1 t2)
                |> (if real
                    then Formula.map_atom (CunAtom.int_to_real >> Formula.of_atom)
                    else id))
-          then Formula.mk_brel (Const.Gt ty) t1 t2
+          then Formula.mk_brel (Const.Gt ty) t1 t2 
                |> Formula.map_atom (CunAtom.elim_lt_gt >> Formula.of_atom)
           else Formula.mk_brel (Const.Eq ty) t1 t2
         | _ ->
@@ -673,14 +732,14 @@ let aux ?(real=false) phi m =
                |> (if real
                    then Formula.map_atom (CunAtom.int_to_real >> Formula.of_atom)
                    else id))
-          then Formula.mk_brel (Const.Lt ty) t1 t2
+          then Formula.mk_brel (Const.Lt ty) t1 t2 
                |> Formula.map_atom (CunAtom.elim_lt_gt >> Formula.of_atom)
           else if SMTProver.is_valid_dyn
               (Formula.subst m (Formula.mk_brel (Const.Gt ty) t1 t2)
                |> (if real
                    then Formula.map_atom (CunAtom.int_to_real >> Formula.of_atom)
                    else id))
-          then Formula.mk_brel (Const.Gt ty) t1 t2
+          then Formula.mk_brel (Const.Gt ty) t1 t2 
                |> Formula.map_atom (CunAtom.elim_lt_gt >> Formula.of_atom)
           else Formula.mk_brel (Const.Eq ty) t1 t2
         | _ ->

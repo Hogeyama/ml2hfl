@@ -67,33 +67,84 @@ let tuple_sort_of sorts =
                  |> Symbol.mk_string ctx))
     sorts
 
-let rec of_type ty =
+let rec of_type kon_tenv ty =
   Type.fold
     (object
-      method fvar _ = of_type !SMTProver.var_type
+      method fvar _ = of_type kon_tenv !SMTProver.var_type
       method fbase = function
-        | TypConst.Unit -> of_type !SMTProver.var_type
+        | TypConst.Unit -> of_type kon_tenv !SMTProver.var_type
         | TypConst.Bool -> bool_type
         | TypConst.Int -> int_type
         | TypConst.Real -> real_type
-        | TypConst.Top -> of_type !SMTProver.var_type
+        | TypConst.Top -> of_type kon_tenv !SMTProver.var_type
         | _ ->
           raise (Global.NotImplemented "fbase in Z3Interface.of_type")
       method farrow r1 r2 =
         raise (Global.NotImplemented "farrow in Z3Interface.of_type")
+      method fadt id cs =
+        List.assocF ~on_failure:(fun () ->
+            Format.printf "error in Z3Interface: %a not found@," Idnt.pr id)
+          (TypConst.Adt(id, cs))
+          kon_tenv
+      method ftuple rs = tuple_sort_of rs
+      method fset r = Set.mk_sort ctx r
+      method fvector =
+        raise (Global.NotImplemented "fvector in Z3Interface.of_type")
       method fforall p r =
         raise (Global.NotImplemented "fforall in Z3Interface.of_type")
       method fexists p r =
         raise (Global.NotImplemented "fexists in Z3Interface.of_type")
     end)
     ty
-let of_type = Logger.log_block1 "Z3Interface.of_type" of_type
+let of_type = Logger.log_block2 "Z3Interface.of_type" of_type
+
+let mk_constructors tenv lst =
+  List.fold_right
+    (function
+      | TypConst.Adt(id, cs) as t ->
+        fun kon_tenv ->
+          let consts =
+            List.map
+              (fun name ->
+                 let args, _ =
+                   List.assoc_fail ~on_failure:(fun () ->
+                       Format.printf
+                         "error in Z3Interface: %a not found@,"
+                         Idnt.pr name)
+                     name tenv
+                   |> Type.args_ret
+                 in
+                 let sym = sym_of_var_nonenc name in
+                 let is_sym =
+                   "is_" ^ Idnt.string_of name |> Symbol.mk_string ctx
+                 in
+                 let arg_num = List.length args in
+                 Datatype.mk_constructor ctx
+                   sym
+                   is_sym
+                   (List.init arg_num
+                      (fun x ->
+                         Symbol.mk_string ctx
+                           (Idnt.string_of name ^ "_" ^ string_of_int x)))
+                   (List.map
+                      (function
+                        | Type.Const(TypConst.Adt(id', _)) when id=id' -> None
+                        | ty -> Some(of_type kon_tenv ty))
+                      args)
+                   (List.make arg_num 0))
+              cs
+          in
+          let sort = Datatype.mk_sort ctx (sym_of_var_nonenc id) consts in
+          (t, sort) :: kon_tenv
+      | _ -> assert false)
+    lst
+    []
 
 let of_formula' = ref (fun _ -> assert false)
 let of_term =
   CunTerm.fold
     (object
-      method fvar x rs = fun var_tenv bind_tenv ->
+      method fvar x rs = fun kon_tenv var_tenv bind_tenv ->
         try
           if rs <> [] then raise Not_found;
           let i, (_, ty) = List.findi (fun _ -> fst >> (=) x) bind_tenv in
@@ -106,172 +157,284 @@ let of_term =
             FuncDecl.apply
               (FuncDecl.mk_func_decl ctx
                  sym
-                 (List.map of_type args)
-                 (of_type ret))
-              (List.map (fun r -> r var_tenv bind_tenv) rs)
-          else Expr.mk_const ctx sym (ty |> of_type)
-      method funit () = fun var_tenv bind_tenv ->
+                 (List.map (of_type kon_tenv) args)
+                 (of_type kon_tenv ret))
+              (List.map (fun r -> r kon_tenv var_tenv bind_tenv) rs)
+          else Expr.mk_const ctx sym (ty |> of_type kon_tenv)
+      method funit () = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.Integer.mk_numeral_i ctx 0 (* @todo ad-hoc *)
-      method ftrue () = fun var_tenv bind_tenv ->
+      method ftrue () = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_true ctx
-      method ffalse () = fun var_tenv bind_tenv ->
+      method ffalse () = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_false ctx
-      method fint n = fun var_tenv bind_tenv ->
+      method fint n = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.Integer.mk_numeral_i ctx n
-      method fbigint n = fun var_tenv bind_tenv ->
+      method fbigint n = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.Integer.mk_numeral_s ctx (Big_int_Z.string_of_big_int n)
-      method frational n d = fun var_tenv bind_tenv ->
+      method frational n d = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.Real.mk_numeral_nd ctx n d
-      method freal f = fun var_tenv bind_tenv ->
+      method freal f = fun kon_tenv var_tenv bind_tenv ->
         Q.of_float f
         |> Q.to_string (* need this? *) (* @todo check if nan *)
         |> Arithmetic.Real.mk_numeral_s ctx
-      method fstring _ = fun var_tenv bind_tenv ->
+      method fstring _ = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fstring in Z3Interface.of_term")
-      method fneg _ r = fun var_tenv bind_tenv ->
-        Arithmetic.mk_unary_minus ctx (r var_tenv bind_tenv)
-      method fadd _ r1 r2 = fun var_tenv bind_tenv ->
+      method fneg _ r = fun kon_tenv var_tenv bind_tenv ->
+        Arithmetic.mk_unary_minus ctx (r kon_tenv var_tenv bind_tenv)
+      method fadd _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_add ctx
-          [ r1 var_tenv bind_tenv;
-            r2 var_tenv bind_tenv ]
-      method fsub _ r1 r2 = fun var_tenv bind_tenv ->
+          [ r1 kon_tenv var_tenv bind_tenv;
+            r2 kon_tenv var_tenv bind_tenv ]
+      method fsub _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_sub ctx
-          [ r1 var_tenv bind_tenv;
-            r2 var_tenv bind_tenv ]
-      method fmul _ r1 r2 = fun var_tenv bind_tenv ->
+          [ r1 kon_tenv var_tenv bind_tenv;
+            r2 kon_tenv var_tenv bind_tenv ]
+      method fmul _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_mul ctx
-          [ r1 var_tenv bind_tenv;
-            r2 var_tenv bind_tenv ]
-      method fdiv _ r1 r2 = fun var_tenv bind_tenv ->
+          [ r1 kon_tenv var_tenv bind_tenv;
+            r2 kon_tenv var_tenv bind_tenv ]
+      method fdiv _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_div ctx
-          (r1 var_tenv bind_tenv)
-          (r2 var_tenv bind_tenv)
-      method fmax _ r1 r2 = fun var_tenv bind_tenv ->
+          (r1 kon_tenv var_tenv bind_tenv)
+          (r2 kon_tenv var_tenv bind_tenv)
+      method fmax _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fmax in Z3Interface.of_term")
-      method fmin _ r1 r2 = fun var_tenv bind_tenv ->
+      method fmin _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fmin in Z3Interface.of_term")
-      method fmod r1 r2 = fun var_tenv bind_tenv ->
+      method fmod r1 r2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.Integer.mk_mod ctx
-          (r1 var_tenv bind_tenv)
-          (r2 var_tenv bind_tenv)
-      method fufun ty x rs = fun var_tenv bind_tenv ->
+          (r1 kon_tenv var_tenv bind_tenv)
+          (r2 kon_tenv var_tenv bind_tenv)
+      method fufun ty x rs = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fufun in Z3Interface.of_term")
-      method fcoerce _ r = fun var_tenv bind_tenv ->
-        Z3.Arithmetic.Integer.mk_int2real ctx (r var_tenv bind_tenv)
+      method ftuple tl rs = fun kon_tenv var_tenv bind_tenv ->
+        let args = List.map (fun r -> r kon_tenv var_tenv bind_tenv) rs in
+        FuncDecl.apply
+          (Tuple.get_mk_decl (tuple_sort_of (List.map Expr.get_sort args)))
+          args
+      method fproj _ n r = fun kon_tenv var_tenv bind_tenv ->
+        let org = r kon_tenv var_tenv bind_tenv in
+        FuncDecl.apply
+          (List.nth (Tuple.get_field_decls (Expr.get_sort org)) n)
+          [org]
+      method fkon ty s rs = fun kon_tenv var_tenv bind_tenv ->
+        let t = Type.base_or_adt_ret_of ty in
+        let sort =
+          List.assocF ~on_failure:(fun () ->
+              Format.printf
+                "error in Z3Interface.of_term: %a not found@,"
+                (TypConst.pr []) t)
+            t kon_tenv
+        in
+        let TypConst.Adt(id, cs) = t in
+        let func_num =
+          try List.findi (fun _ -> (=) s) cs |> fst
+          with Not_found ->
+            Format.printf
+              "error in Z3Interface.of_term: %a not found@,"
+              Idnt.pr id;
+            assert false
+        in
+        FuncDecl.apply
+          (List.nth (Datatype.get_constructors sort) func_num)
+          (List.map (fun r -> r kon_tenv var_tenv bind_tenv) rs)
+      method faccessor ty id i r = fun kon_tenv var_tenv bind_tenv ->
+        let t = Type.args_ret ty |> fst |> List.hd |> Type.base_or_adt_of in
+        let sort =
+          List.assocF ~on_failure:(fun () ->
+              Format.printf
+                "error in Z3Interface.of_term: %a not found@,"
+                (TypConst.pr []) t)
+            t kon_tenv
+        in
+        let TypConst.Adt(_, cs) = t in
+        let func_num =
+          try List.findi (fun _ -> (=) id) cs |> fst
+          with Not_found ->
+            Format.printf
+              "error in Z3Interface.of_term: %a not found@,"
+              Idnt.pr id;
+            assert false
+        in
+        FuncDecl.apply
+          (List.nth (List.nth (Datatype.get_accessors sort) func_num) i)
+          [r kon_tenv var_tenv bind_tenv]
+      method fsempty ty =  fun kon_tenv var_tenv bind_tenv ->
+        of_type kon_tenv ty |> Set.mk_empty ctx
+      method fsadd _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
+        Set.mk_set_add ctx
+          (r2 kon_tenv var_tenv bind_tenv)
+          (r1 kon_tenv var_tenv bind_tenv)
+      method fsunion _ r1 r2 =  fun kon_tenv var_tenv bind_tenv ->
+        Set.mk_union ctx
+          [ r1 kon_tenv var_tenv bind_tenv;
+            r2 kon_tenv var_tenv bind_tenv ]
+      method fsintersect _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
+        Set.mk_intersection ctx
+          [ r1 kon_tenv var_tenv bind_tenv;
+            r2 kon_tenv var_tenv bind_tenv ]
+      method fsdiff _ r1 r2 = fun kon_tenv var_tenv bind_tenv ->
+        Set.mk_difference ctx
+          (r1 kon_tenv var_tenv bind_tenv)
+          (r2 kon_tenv var_tenv bind_tenv)
+      method fscomplement _ r =  fun kon_tenv var_tenv bind_tenv ->
+        Set.mk_complement ctx (r kon_tenv var_tenv bind_tenv)
+      method farray n rs = fun kon_tenv var_tenv bind_tenv ->
+        raise (Global.NotImplemented "farray in Z3Interface.of_term")
+      method faget a n = fun kon_tenv var_tenv bind_tenv ->
+        raise (Global.NotImplemented "faget in Z3Interface.of_term")
+      method faset a n m e = fun kon_tenv var_tenv bind_tenv ->
+        raise (Global.NotImplemented "faset in Z3Interface.of_term")
+      method fcoerce _ r = fun kon_tenv var_tenv bind_tenv ->
+        Z3.Arithmetic.Integer.mk_int2real ctx (r kon_tenv var_tenv bind_tenv)
       method fformula = !of_formula'
     end)
-let of_term = Logger.log_block3 "Z3Interface.of_term" of_term
+let of_term = Logger.log_block4 "Z3Interface.of_term" of_term
 
 let of_atom =
   CunAtom.fold
     (object
-      method fvar x ts = fun var_tenv bind_tenv ->
+      method fvar x ts = fun kon_tenv var_tenv bind_tenv ->
         if ts <> [] then
           let args, _ = TypEnv.lookup var_tenv x |> Type.args_ret in
           FuncDecl.apply
             (FuncDecl.mk_func_decl ctx
                (sym_of_var x)
-               (List.map of_type args)
+               (List.map (of_type []) args)
                bool_type)
-            (List.map (fun t -> of_term t var_tenv bind_tenv) ts)
+            (List.map (fun t -> of_term t kon_tenv var_tenv bind_tenv) ts)
         else
           let sym = sym_of_var x in
           Boolean.mk_eq ctx
             (Expr.mk_const ctx sym bool_type)
             (Boolean.mk_true ctx)
-      method feq _ t1 t2 = fun var_tenv bind_tenv ->
+      method feq _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_eq ctx
-          (of_term t1 var_tenv bind_tenv)
-          (of_term t2 var_tenv bind_tenv)
-      method fneq _ t1 t2 = fun var_tenv bind_tenv ->
+          (of_term t1 kon_tenv var_tenv bind_tenv)
+          (of_term t2 kon_tenv var_tenv bind_tenv)
+      method fneq _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_not ctx
           (Boolean.mk_eq ctx
-             (of_term t1 var_tenv bind_tenv)
-             (of_term t2 var_tenv bind_tenv))
-      method flt _ t1 t2 = fun var_tenv bind_tenv ->
+             (of_term t1 kon_tenv var_tenv bind_tenv)
+             (of_term t2 kon_tenv var_tenv bind_tenv))
+      method flt _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_lt ctx
-          (of_term t1 var_tenv bind_tenv)
-          (of_term t2 var_tenv bind_tenv)
-      method fgt _ t1 t2 = fun var_tenv bind_tenv ->
+          (of_term t1 kon_tenv var_tenv bind_tenv)
+          (of_term t2 kon_tenv var_tenv bind_tenv)
+      method fgt _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_gt ctx
-          (of_term t1 var_tenv bind_tenv)
-          (of_term t2 var_tenv bind_tenv)
-      method fleq _ t1 t2 = fun var_tenv bind_tenv ->
+          (of_term t1 kon_tenv var_tenv bind_tenv)
+          (of_term t2 kon_tenv var_tenv bind_tenv)
+      method fleq _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_le ctx
-          (of_term t1 var_tenv bind_tenv)
-          (of_term t2 var_tenv bind_tenv)
-      method fgeq _ t1 t2 = fun var_tenv bind_tenv ->
+          (of_term t1 kon_tenv var_tenv bind_tenv)
+          (of_term t2 kon_tenv var_tenv bind_tenv)
+      method fgeq _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
         Arithmetic.mk_ge ctx
-          (of_term t1 var_tenv bind_tenv)
-          (of_term t2 var_tenv bind_tenv)
-      method fdivides n t = fun var_tenv bind_tenv ->
+          (of_term t1 kon_tenv var_tenv bind_tenv)
+          (of_term t2 kon_tenv var_tenv bind_tenv)
+      method fdivides n t = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fdivides in Z3Interface.of_atom")
-      method fterm c ts = fun var_tenv bind_tenv ->
+      method frecognizer ty id r = fun kon_tenv var_tenv bind_tenv ->
+        let t =
+          Type.args_ret ty
+          |> fst
+          |> List.hd
+          |> Type.base_or_adt_of
+        in
+        let sort =
+          List.assocF ~on_failure:(fun () ->
+              Format.printf
+                "error in Z3Interface.of_atom: %a not found@,"
+                (TypConst.pr []) t)
+            t kon_tenv
+        in
+        let TypConst.Adt(_, cs) = t in
+        let func_num =
+          try List.findi (fun _ -> (=) id) cs |> fst
+          with Not_found ->
+            Format.printf
+              "error in Z3Interface.of_atom: %a not found@,"
+              Idnt.pr id;
+            assert false
+        in
+        FuncDecl.apply
+          (List.nth (Datatype.get_recognizers sort) func_num)
+          [of_term r kon_tenv var_tenv bind_tenv]
+      method fsmem _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
+        Set.mk_membership ctx
+          (of_term t1 kon_tenv var_tenv bind_tenv)
+          (of_term t2 kon_tenv var_tenv bind_tenv)
+      method fssubset _ t1 t2 = fun kon_tenv var_tenv bind_tenv ->
+        Set.mk_subset ctx
+          (of_term t1 kon_tenv var_tenv bind_tenv)
+          (of_term t2 kon_tenv var_tenv bind_tenv)
+      method fterm c ts = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_eq ctx
           (of_term
              (Term.mk_app (Term.mk_const c) ts)
-             var_tenv bind_tenv)
+             kon_tenv var_tenv bind_tenv)
           (Boolean.mk_true ctx)
     end)
-let of_atom = Logger.log_block3 "Z3Interface.of_atom" of_atom
+let of_atom = Logger.log_block4 "Z3Interface.of_atom" of_atom
 
 let of_formula =
   Formula.fold
     (object
-      method fatom atm = fun var_tenv bind_tenv ->
-        of_atom atm var_tenv bind_tenv
-      method ftrue () = fun var_tenv bind_tenv ->
+      method fatom atm = fun kon_tenv var_tenv bind_tenv ->
+        of_atom atm kon_tenv var_tenv bind_tenv
+      method ftrue () = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_true ctx
-      method ffalse () = fun var_tenv bind_tenv ->
+      method ffalse () = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_false ctx
-      method fnot s = fun var_tenv bind_tenv ->
-        Boolean.mk_not ctx (s var_tenv bind_tenv)
-      method fand s1 s2 = fun var_tenv bind_tenv ->
+      method fnot s = fun kon_tenv var_tenv bind_tenv ->
+        Boolean.mk_not ctx (s kon_tenv var_tenv bind_tenv)
+      method fand s1 s2 = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_and ctx
-          [ s1 var_tenv bind_tenv;
-            s2 var_tenv bind_tenv ]
-      method for_ s1 s2 = fun var_tenv bind_tenv ->
+          [ s1 kon_tenv var_tenv bind_tenv;
+            s2 kon_tenv var_tenv bind_tenv ]
+      method for_ s1 s2 = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_or ctx
-          [ s1 var_tenv bind_tenv;
-            s2 var_tenv bind_tenv ]
-      method fimply s1 s2 = fun var_tenv bind_tenv ->
+          [ s1 kon_tenv var_tenv bind_tenv;
+            s2 kon_tenv var_tenv bind_tenv ]
+      method fimply s1 s2 = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_implies ctx
-          (s1 var_tenv bind_tenv)
-          (s2 var_tenv bind_tenv)
-      method fiff s1 s2 = fun var_tenv bind_tenv ->
+          (s1 kon_tenv var_tenv bind_tenv)
+          (s2 kon_tenv var_tenv bind_tenv)
+      method fiff s1 s2 = fun kon_tenv var_tenv bind_tenv ->
         Boolean.mk_iff ctx
-          (s1 var_tenv bind_tenv)
-          (s2 var_tenv bind_tenv)
-      method fforall (x, ty) s1 = fun var_tenv bind_tenv ->
+          (s1 kon_tenv var_tenv bind_tenv)
+          (s2 kon_tenv var_tenv bind_tenv)
+      method fforall (x, ty) s1 = fun kon_tenv var_tenv bind_tenv ->
         let ty = SMTProver.instantiate_type ty in
         let sym = sym_of_var x in
-        let ty' = of_type ty in
+        let ty' = of_type kon_tenv ty in
         (*let bv = Quantifier.mk_bound ctx 0 ty' in*)
         Quantifier.mk_forall ctx [ ty' ] [ sym ]
-          (s1 var_tenv ((x, ty') :: bind_tenv))
+          (s1 kon_tenv var_tenv ((x, ty') :: bind_tenv))
           None [] [] None None
         |> Quantifier.expr_of_quantifier
-      method fexists (x, ty) s1 = fun var_tenv bind_tenv ->
+      method fexists (x, ty) s1 = fun kon_tenv var_tenv bind_tenv ->
         let ty = SMTProver.instantiate_type ty in
         let sym = sym_of_var x in
-        let ty' = of_type ty in
+        let ty' = of_type kon_tenv ty in
         (*let bv = Quantifier.mk_bound ctx 0 ty' in*)
         Quantifier.mk_exists ctx [ ty' ] [ sym ]
-          (s1 var_tenv ((x, ty') :: bind_tenv))
+          (s1 kon_tenv var_tenv ((x, ty') :: bind_tenv))
           None [] [] None None
         |> Quantifier.expr_of_quantifier
-      method fbox idx s1 = fun var_tenv bind_tenv ->
+      method fbox idx s1 = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fox in Z3Interface.of_formula")
-      method fdiamond idx s1 = fun var_tenv bind_tenv ->
+      method fdiamond idx s1 = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fdiamond in Z3Interface.of_formula")
-      method fmu x s1 = fun var_tenv bind_tenv ->
+      method fmu x s1 = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fmu in Z3Interface.of_formula")
-      method fnu x s1 = fun var_tenv bind_tenv ->
+      method fnu x s1 = fun kon_tenv var_tenv bind_tenv ->
         raise (Global.NotImplemented "fnu in Z3Interface.of_formula")
     end)
 let of_formula =
-  Logger.log_block3 "Z3Interface.of_formula"
-    ~before:(fun p _ _ -> Logger.printf "input: %a@," Formula.pr p)
+  Logger.log_block4 "Z3Interface.of_formula"
+    ~before:(fun p _ _ _ -> Logger.printf "input: %a@," Formula.pr p)
     of_formula
 let () = of_formula' := of_formula
 
@@ -286,6 +449,31 @@ let rec term_of expr =
   try
     if Arithmetic.is_int_numeral expr then
       Arithmetic.Integer.get_int expr |> IntTerm.make
+    else if Arithmetic.is_rat_numeral expr then
+      if true then
+        expr
+        |> Arithmetic.Real.numeral_to_string
+        |> Q.of_string
+        |> Float.of_q
+        |> RealTerm.make
+      else
+        let n1 =
+          expr
+          |> Arithmetic.Real.get_numerator
+          |> Arithmetic.Integer.get_int
+        in
+        let n2 =
+          expr
+          |> Arithmetic.Real.get_denominator
+          |> Arithmetic.Integer.get_int
+        in
+        (*let n = Int64.div n1 n2 |> Int64.to_int in*)
+        (*Logger.printf3
+          "rounding %a/%a to %a@,"
+          String.pr (Int64.to_string n1)
+          String.pr (Int64.to_string n2)
+          Integer.pr n;*)
+        RationalTerm.make n1 n2
     else if Expr.is_const expr then
       Expr.to_string expr
       |> Idnt.deserialize
@@ -542,7 +730,12 @@ let is_sat solver tenv phi =
     SimTypInfer.infer_formula tenv phi
     (*SimTypJudge.infer (Formula.term_of phi) Type.mk_bool*)
   in
-  let p = of_formula phi tenv [] in
+  let ctenv =
+    phi
+    |> CunFormula.get_adts
+    |> mk_constructors tenv
+  in
+  let p = of_formula phi ctenv tenv [] in
   if !SMTProver.print_z3 then begin
     Format.printf "tenv: %a@." TypEnv.pr tenv;
     Format.printf "input to Z3:@.  %a@." String.pr (Expr.to_string p)
@@ -628,7 +821,8 @@ let solve solver tenv phi =
     phi |> CunFormula.elim_unit |> Formula.map_atom CunAtom.elim_beq_bneq
   in
   let tenv, phi = SimTypInfer.infer_formula tenv phi in
-  let p = of_formula phi tenv [] in
+  let ctenv = phi |> CunFormula.get_adts |> mk_constructors tenv in
+  let p = of_formula phi ctenv tenv [] in
   if !SMTProver.print_z3 then begin
     Format.printf "tenv: %a@." TypEnv.pr tenv;
     Format.printf "input to Z3:@.  %a@." String.pr (Expr.to_string p)
@@ -655,8 +849,8 @@ let solve = Logger.log_block2 "Z3Interface.solve" solve
 
 let subtract_model tenv0 m1 m2 =
   let xs = List.map fst tenv0 in
-  let m1 = Map_.restrict m1 xs |> List.sort compare in
-  let m2 = Map_.restrict m2 xs |> List.sort compare in
+  let m1 = Map_.restrict m1 xs |> List.sort in
+  let m2 = Map_.restrict m2 xs |> List.sort in
   if List.length m1 <> List.length m2 then begin
     Format.printf "m1: %a@.m2: %a@." TermSubst.pr m1 TermSubst.pr m2;
     assert false
@@ -677,9 +871,10 @@ let solve_opt solver tenv0 phi obj =
     phi |> CunFormula.elim_unit |> Formula.map_atom CunAtom.elim_beq_bneq
   in
   let tenv, phi = SimTypInfer.infer_formula tenv0 phi in
-  let p = of_formula phi tenv [] in
+  let ctenv = phi |> CunFormula.get_adts |> mk_constructors tenv in
+  let p = of_formula phi ctenv tenv [] in
   let obj_t = match obj with SMTProver.Max(obj_t) | SMTProver.Min(obj_t) -> obj_t in
-  let q = of_term obj_t tenv [] in
+  let q = of_term obj_t [] tenv [] in
   if !SMTProver.print_z3 then begin
     Format.printf "tenv: %a@." TypEnv.pr tenv;
     Format.printf
@@ -715,7 +910,7 @@ let solve_opt solver tenv0 phi obj =
         | SMTProver.Max(_) -> RealFormula.geq obj_t (RealTerm.add best step)
         | SMTProver.Min(_) -> RealFormula.leq obj_t (RealTerm.sub best step)
       in
-      Optimize.add solver [of_formula d tenv []];
+      Optimize.add solver [of_formula d ctenv tenv []];
       let _ =
         match obj with
         | SMTProver.Max(_) -> Optimize.maximize solver q
@@ -756,14 +951,14 @@ let find_min_sat phi x =
     |> List.unique
     |> List.map (flip Pair.make Type.mk_int)
   in
-  let p = of_formula phi tenv [] in
+  let p = of_formula phi [] tenv [] in
   if !SMTProver.print_z3 then
     Format.printf "input to Z3:@.  %a@." String.pr (Expr.to_string p);
   Solver.add solver [p];
   let rec loop n =
     Solver.push solver;
     Solver.add solver
-      [of_formula (IntFormula.eq (Term.mk_var x) (IntTerm.make n)) tenv []];
+      [of_formula (IntFormula.eq (Term.mk_var x) (IntTerm.make n)) [] tenv []];
     match Solver.check solver [] with
     | Solver.UNSATISFIABLE ->
       Solver.pop solver 1;
@@ -801,10 +996,14 @@ let solve_labeled tenv lphis =
     SimTypInfer.infer_formulas tenv (List.map snd lphis)
     |> Pair.map_snd (List.zip (List.map fst lphis))
   in
+  let ctenv =
+    lphis
+    |> List.concat_map (snd >> CunFormula.get_adts >> mk_constructors tenv)
+  in
   let ps, ls =
     List.split_mapi
       (fun i (l, phi) ->
-         let p = of_formula phi tenv [] in
+         let p = of_formula phi ctenv tenv [] in
          if !SMTProver.print_z3 then
            Format.printf "input to Z3:@.  %a@." String.pr (Expr.to_string p);
          p, Expr.mk_const ctx (Symbol.mk_string ctx l) bool_type)
@@ -833,8 +1032,8 @@ let solve_labeled =
 
 let interpolate phi1 phi2 =
   let tenv, _ = SimTypInfer.infer_formula [] (Formula.band [phi1; phi2]) in
-  let p1 = of_formula phi1 tenv [] in
-  let p2 = of_formula phi2 tenv [] in
+  let p1 = of_formula phi1 [] tenv [] in
+  let p2 = of_formula phi2 [] tenv [] in
   let pat = Boolean.mk_and ctx [Interpolation.mk_interpolant ctx p1; p2] in
   match Interpolation.compute_interpolant ctx pat (Params.mk_params ctx) with
   | _, Some(astv), _ -> List.hd astv |> formula_of
@@ -873,7 +1072,7 @@ let mk_bind_tenv hc =
   let fvs =
     hc
     |> HornClause.fvs_ty
-    |> List.map (Pair.fold (fun x t -> x, of_type t))
+    |> List.map (Pair.fold (fun x t -> x, of_type [(*@todo tcenv*)] t))
   in
   let coeff =
     hc
@@ -883,22 +1082,22 @@ let mk_bind_tenv hc =
   fvs @ coeff
 let mk_bind_tenv = Logger.log_block1 "mk_bind_tenv" mk_bind_tenv
 
-let make_body tenv bind_tenv body =
+let make_body ctenv tenv bind_tenv body =
   body
   |> HornClause.pvas_of_body
   |> List.map
     (fun pva ->
        of_atom
          (Pva.to_formula pva |> Formula.atom_of)
-         tenv bind_tenv)
+         ctenv tenv bind_tenv)
   |> (fun exprs ->
       (of_formula
          (HornClause.phi_of_body body)
-         tenv bind_tenv)::exprs)
+         ctenv tenv bind_tenv)::exprs)
   |> Boolean.mk_and ctx
-let make_body = Logger.log_block3 "make_body" make_body
+let make_body = Logger.log_block4 "make_body" make_body
 
-let of_def_hc tenv hc =
+let of_def_hc ctenv tenv hc =
   let head, body = HornClause.head_of hc, HornClause.body_of hc in
   let bind_tenv = mk_bind_tenv hc in
   let hd =
@@ -908,24 +1107,24 @@ let of_def_hc tenv hc =
       pvar
       |> PredVar.to_formula
       |> Formula.atom_of
-      |> (fun a -> of_atom a tenv bind_tenv)
+      |> (fun a -> of_atom a ctenv tenv bind_tenv)
   in
-  let bd = make_body tenv bind_tenv body in
+  let bd = make_body ctenv tenv bind_tenv body in
   Boolean.mk_implies ctx bd hd
-let of_def_hc = Logger.log_block2 "Z3Interface.of_def_hc" of_def_hc
+let of_def_hc = Logger.log_block3 "Z3Interface.of_def_hc" of_def_hc
 
-let of_goal_hc tenv hc =
+let of_goal_hc ctenv tenv hc =
   let bind_tenv = mk_bind_tenv hc in
   let body = hc |> HornClause.body_of in
-  make_body tenv bind_tenv body
-let of_goal_hc = Logger.log_block2 "Z3Interface.of_goal_hc" of_goal_hc
+  make_body ctenv tenv bind_tenv body
+let of_goal_hc = Logger.log_block3 "Z3Interface.of_goal_hc" of_goal_hc
 
-let of_hccs tenv hccs =
+let of_hccs ctenv tenv hccs =
   let defs, goals = hccs |> Pair.unfold HCCS.defs_of HCCS.goals_of in
-  let def_exprs = defs |> List.map (of_def_hc tenv) in
-  let goal_exprs = goals |> List.map (of_goal_hc tenv) in
+  let def_exprs = defs |> List.map (of_def_hc ctenv tenv) in
+  let goal_exprs = goals |> List.map (of_goal_hc ctenv tenv) in
   def_exprs, goal_exprs
-let of_hccs = Logger.log_block2 "Z3Interface.of_hccs" of_hccs
+let of_hccs = Logger.log_block3 "Z3Interface.of_hccs" of_hccs
 
 (** fixedpoint *)
 let get_answer fixed = Fixedpoint.get_answer fixed
@@ -985,11 +1184,11 @@ let get_model_fixedpoint =
 
 let solve_fixedpoint solver hccs =
   let fixed = Fixedpoint.mk_fixedpoint ctx in
-  let tenv = HCCS.tenv hccs in
+  let ctenv, tenv = [(*@todo*)], HCCS.tenv hccs in
   let args_ty ty =
     let args, ret = Type.args_ret ty in
     assert(Type.is_bool ret);
-    List.map of_type args
+    List.map (of_type [(*@todo ctenv*)]) args
   in
   let params = Params.mk_params ctx in
   Params.add_symbol params
@@ -1013,7 +1212,7 @@ let solve_fixedpoint solver hccs =
          |> Fixedpoint.register_relation fixed)
       pvs;
   in
-  let def_exprs, goal_exprs = of_hccs tenv hccs in
+  let def_exprs, goal_exprs = of_hccs ctenv tenv hccs in
   List.iter
     (fun x -> Fixedpoint.add_rule fixed x None) def_exprs; (* add rules *)
   if !SMTProver.print_z3 then

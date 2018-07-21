@@ -32,17 +32,39 @@ type t =
   | BitShiftLeft | BitShiftRight | BitAnd | BitOr | BitXor
   | Mod
   | Divides of int
+  (* rational numbers *)
+  | Rational of int * int
   (* real numbers *)
   | Real of float
   | FRsq | FRcp | FLog2 | FExp2 | FClamp
   | FPow
   (* strings *)
   | String of string
+  (* tuples *)
+  | Proj of Type.t list * int
+  | Tuple of Type.t list
   (* lists *)
   | Nil of Type.t
   | Cons of Type.t
+  (* ADT constructors *)
+  | Con of Type.t * Idnt.t
+  | Accessor of Type.t * Idnt.t * int
+  | Recognizer of Type.t * Idnt.t
   (* uninterpreted functions *)
   | UFun of Type.t * Idnt.t
+  (* set constructor and oprations *)
+  | SEmpty of Type.t
+  | SAdd of Type.t
+  | SMem of Type.t
+  | SUnion of Type.t
+  | SIntersect of Type.t
+  | SDiff of Type.t
+  | SComplement of Type.t
+  | SSubset of Type.t
+  (* array constructors *)
+  | Array of int
+  | ASet 
+  | AGet 
   (* path constructors *)
   | Call | Ret of Type.t | Error
   (* ML expressions *)
@@ -52,6 +74,13 @@ type t =
   | ML_LetAnd
   | ML_LetRec of int
   | ML_Match
+  (* vectors *)
+  | Vector of Type.t * int
+  | VElem of Type.t * int * int
+  | VRnorm of Type.t * int
+  | VNormalize of Type.t * int
+  | VScale of Type.t * int
+  | VDot of Type.t * int
   (* functions *)
   | App | Flip | Comp | Tlu
   | FShift
@@ -70,6 +99,13 @@ type t =
   (* others *)
   | Undef (** deprecated ? *)
   | Bot | Top
+  (* regular expression *)
+  | TreeAutomaton of TreeAutomaton.t
+  | In
+  | Subset
+  | InterSection
+  | Union
+  | Complement
   (* *)
   | Coerce of Type.t
 

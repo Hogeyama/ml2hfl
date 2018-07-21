@@ -77,7 +77,12 @@ let eliminate t =
     let tenv, phi =
       SimTypInfer.infer_formula [] phi
     in
-    F.Z3Interface.of_formula phi tenv []
+    let ctenv =
+      phi
+      |> CunFormula.get_adts
+      |> Z3Interface.mk_constructors tenv
+    in
+    F.Z3Interface.of_formula phi ctenv tenv []
   in
   let fv = get_fv t in
   let map = List.map (Pair.add_right @@ String.replace_chars (function '!' -> "_bang_" | c -> String.of_char c)) fv in

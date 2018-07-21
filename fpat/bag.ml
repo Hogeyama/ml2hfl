@@ -17,10 +17,10 @@ let rec subset l1 l2 =
 let equiv l1 l2 = subset l1 l2 && subset l2 l1
 
 
-let non_duplicated ?(eq = (=)) b =
-  List.eq_length (List.unique ~eq b) b
+let non_duplicated ?(cmp = (=)) b =
+  List.eq_length (List.unique ~cmp:cmp b) b
 
-let duplicated ?(eq = (=)) = non_duplicated ~eq >> not
+let duplicated ?(cmp = (=)) = non_duplicated ~cmp:cmp >> not
 
 let num_occurrences x = List.filter ((=) x) >> List.length
 

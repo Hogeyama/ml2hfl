@@ -279,7 +279,7 @@ let make_eq_dec t1 t2 =
   assert (Flag.Debug.check_typ => Type.can_unify t1.typ t2.typ);
   let aux t =
     match t.desc with
-    | Var x -> make_var x, Fun.id
+    | Var x -> make_var x, Std.identity
     | _ ->
         let x = Id.new_var t.typ in
         make_var x, make_let [x,t]

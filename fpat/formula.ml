@@ -212,11 +212,11 @@ let mk_not_iff_conj t1 t2 =
 
 let rec para f phi =
   match fun_args phi with
-  | Const(Const.True), [] ->
+  | Const(Const.True), [] -> 
     f#ftrue ()
-  | Const(Const.False), [] ->
+  | Const(Const.False), [] -> 
     f#ffalse ()
-  | Const(Const.Not), [phi1] ->
+  | Const(Const.Not), [phi1] -> 
     f#fnot phi1 (para f phi1)
   | Const(Const.And), [phi1; phi2] ->
     f#fand phi1 (para f phi1) phi2 (para f phi2)
@@ -444,7 +444,7 @@ let pr_tex ppf phi =
          if l < 2 then Format.fprintf ppf "@]\\right)@]"
        method fimply r1 r2 = fun ppf l ->
          if l < 3 then Format.fprintf ppf "@[\\left(";
-         Format.fprintf
+         Format.fprintf 
            ppf "@[<hv2>@[<hv>%a@] \\Rightarrow @ @[<hv>%a@]@]" r1 2 r2 3;
          if l < 3 then Format.fprintf ppf "\\right)@]"
        method fiff r1 r2 = fun ppf l ->
@@ -809,7 +809,7 @@ let extract_ttsub =
     ~after:(Logger.printf "output: %a" (Pair.pr TypTermSubst.pr pr)) extract_ttsub
 
 let is_simple x t =
-  not (Idnt.is_coeff x) && Term.coeffs t = []
+  not (Idnt.is_coeff x) && Term.coeffs t = [] && not (TupTerm.is_tuple t)
 let to_simple_ttsub =
   conjuncts_of
   >> List.partition_map

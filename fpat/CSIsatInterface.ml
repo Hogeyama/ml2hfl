@@ -272,6 +272,9 @@ let rec term_of s =
     Formula.term_of Formula.mk_true, Type.mk_bool
   | CsisatAst.Application(_, _) when s = csisat_false ->
     Formula.term_of Formula.mk_false, Type.mk_bool
+  | CsisatAst.Application("tuple", ss) ->
+    let ts, tys = List.map term_of ss |> List.split in
+    TupTerm.make tys ts, Type.mk_tuple tys
   | CsisatAst.Sum(ss) ->
     let ty' =
       if !InterpProver.csisat_int_mode

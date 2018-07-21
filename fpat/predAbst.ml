@@ -59,7 +59,7 @@ let rec weakest env phi pbss1' pbss2' pbss3' pbss of_pbs =
   in
   List.concat_map
     (fun pbs1 ->
-       List.map (fun pbs2 -> List.sort compare (List.unique (pbs1 @ pbs2))) pbss2)
+       List.map (fun pbs2 -> List.sort (List.unique (pbs1 @ pbs2))) pbss2)
     pbss2
   |> List.unique
   |> List.filter
@@ -130,7 +130,7 @@ let rec min_unsat_cores of_pbs env pbss1' pbss2' pbss =
   in
   List.concat_map
     (fun pbs1 ->
-       List.map (fun pbs2 -> List.sort compare (List.unique (pbs1 @ pbs2))) pbss)
+       List.map (fun pbs2 -> List.sort (List.unique (pbs1 @ pbs2))) pbss)
     pbss2
   |> List.unique
   |> List.filter

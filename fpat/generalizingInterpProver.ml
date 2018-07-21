@@ -35,7 +35,7 @@ let interpolate (ip : InterpProver.t) phi1 phi2 =
             List.pick (fun (x, _) -> !gen_pivot = x) xns
           in
           (x, n) :: xns1 @ xns2
-        with Not_found -> List.sort (fun (_, n1) (_, n2) -> n1 - n2) xns
+        with Not_found -> List.sort ~cmp:(fun (_, n1) (_, n2) -> n1 - n2) xns
       in
       let phis2 =
         List.map

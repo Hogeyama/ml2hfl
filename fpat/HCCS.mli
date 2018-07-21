@@ -33,6 +33,8 @@ val map_pred : (t -> 'a) -> t -> 'a list
 val fvs : t -> Idnt.t list
 val coeffs : t -> Idnt.t list
 val ufuns : t -> Idnt.t list
+(** @return the set of constructors *)
+val kons : t -> (Idnt.t * int) list
 (** @return the predicate variables in the body *)
 val pvsB : t -> Idnt.t Bag.t
 (** @return the predicate variables in the body *)
@@ -118,6 +120,7 @@ val simplify_light : Idnt.t list -> t -> t
 val simplify_full : ?tenv:TypEnv.t -> Idnt.t list -> t -> t
 val simplify_trivial : ?no_inline:(Idnt.t -> bool) -> t -> t
 val goal_flattening : t -> t
+val extract_constr_arg_equality : t -> t
 
 (** @require [not (Set.intersects (Map.dom sub) (fvs popt))] *)
 val subst_varsB : TermSubst.t -> t -> t
@@ -210,3 +213,6 @@ val elim_ufuns : t -> t
 val save_graphviz : string -> t -> unit
 val save_smtlib : string -> t -> unit
 val save_smtlib2 : string -> t -> unit
+
+
+val tenv_of_constructors : t -> TypEnv.t

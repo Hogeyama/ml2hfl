@@ -169,9 +169,9 @@ let tupling_term env t =
             List.map (Option.map fst) ftfs,
             List.map (Option.map snd) ftfs
           in
-          let tfs' = List.filter_map Fun.id tfs in
+          let tfs' = List.filter_map Std.identity tfs in
           let xs = List.map (Option.map (fun t -> Id.new_var @@ get_opt_typ t.typ)) tfs in
-          let xs' = List.filter_map Fun.id xs in
+          let xs' = List.filter_map Std.identity xs in
           let bodies =
             let zts = List.map (Option.map @@ assoc_env -$- env) fs in
             let aux zt x =
@@ -189,7 +189,7 @@ let tupling_term env t =
                 TTuple (List.filter_map (Option.map @@ Id.map_typ get_opt_typ) ys')
             | _ -> assert false
           in
-          let fs' = List.filter_map Fun.id fs in
+          let fs' = List.filter_map Std.identity fs in
           let fg =
             try
               let _,(fg,_) = List.find (fun (gs,_) -> List.eq ~eq:Id.same fs' gs) !new_funs in
@@ -408,7 +408,7 @@ let rec decomp_let_app_option f t =
   | Local(Decl_let [x, {desc=App({desc=Var g}, [{desc=Tuple ts}])} as binding], t2) when Id.(f = g) && is_non_rec [binding] ->
       let ts' = List.map decomp_some ts in
       if not @@ List.for_all2 (fun t t' -> Option.is_some t' || is_none t) ts ts' then invalid_arg "decomp_let_app_option";
-      let args = List.filter_map Fun.id @@ List.mapi (fun i t -> Option.map (fun t' -> i, x, t') t) ts' in
+      let args = List.filter_map Std.identity @@ List.mapi (fun i t -> Option.map (fun t' -> i, x, t') t) ts' in
       let bindings,args',t' = decomp_let_app_option f t2 in
       binding::bindings, args@@@args', t'
   | Local(Decl_let ([x, {desc=App({desc=Var g}, [_])}] as bindings), t2) when Id.(f = g) && is_non_rec bindings ->
@@ -444,7 +444,7 @@ let replace_app_term env t =
           let sbst, arg =
             List.iteri (fun i _ -> if 1 < List.length @@ List.filter ((=) i -| Triple.fst) used then raise (invalid_arg "replace_app")) @@ decomp_ttuple t1.typ;
             let aux sbst (i,x,_) = sbst |- replace_term (make_proj i @@ make_var x) (make_proj i @@ make_var y) in
-            let sbst = List.fold_left aux Fun.id used in
+            let sbst = List.fold_left aux Std.identity used in
             let aux i typ =
               try
                 make_some @@ Triple.trd @@ List.find ((=) i -| Triple.fst) used

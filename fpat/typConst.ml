@@ -11,6 +11,7 @@ type t =
   | Bool
   | Int
   | Real
+  | Rational
   | String
   | Ext of string (* external types *)
   | Bot
@@ -18,7 +19,11 @@ type t =
   | Unknown
   (* composed types *)
   | Arrow
+  | Tuple of int (*>=2*)
+  | Array
   | List
+  | Adt of Idnt.t * Idnt.t list
+  | Vector of int
   (* intersection and union types *)
   | Inter of int
   | Union of int
@@ -26,17 +31,23 @@ type t =
   | Ref (*of t * Idnt.t * Formulat.t*)
   (* abstraction types *)
   | Abs (*of t * Idnt.t * Formulat.t*)
+  | RegExp
+  | Set
 
 (** {6 Inspectors} *)
 
 let arity_of = function
-  | Unit | Bool | Int | Real | String -> 0
+  | Unit | Bool | Int | Real | Rational | String -> 0
   | Ext(_) -> 0(*@todo*)
   | Bot | Top -> 0
   | Unknown -> 0
-
+		
   | Arrow -> 2
+  | Tuple(n) -> n
+  | Array -> 1
   | List -> 1
+  | Adt(_, _) -> 0
+  | Vector(_) -> 1
 
   | Inter(n) -> n
   | Union(n) -> n
@@ -48,6 +59,7 @@ let rec string_of = function
   | Bool -> "bool"
   | Int -> "int"
   | Real -> "real"
+  | Rational -> "rational"
   | String -> "string"
   | Ext(a) -> a
   | Bot -> "bot"
@@ -55,10 +67,18 @@ let rec string_of = function
   | Unknown -> "unknown"
 
   | Arrow -> "arrow"
+  | Tuple(n) -> "tuple " ^ string_of_int n
+  | Array -> "array"
   | List -> "list"
+  | Adt(d, cs) ->
+     Idnt.string_of d
+     (*^ " = "
+     ^ String.concat "|" (List.map Idnt.string_of cs)*)
+  | Vector(n) -> "vector " ^ string_of_int n
 
   | Inter(n) -> "inter " ^ string_of_int n
   | Union(n) -> "union " ^ string_of_int n
+  | Set -> "set"
   | Ref -> "refine"
   | Abs -> "abst"
 
@@ -70,10 +90,15 @@ let sexp_of = function
   | _ -> assert false
 
 let is_base = function
-  | Unit | Bool | Int | Real | String
+  | Unit | Bool | Int | Real | Rational | String
+  | Array
   | Ext(_)(*@todo?*)
   | Bot | Top
   | Unknown -> true
+  | _ -> false
+
+let is_adt = function
+  | Adt(_, _) -> true
   | _ -> false
 
 let is_ext = function
@@ -83,7 +108,7 @@ let is_ext = function
 let is_unknown = function
   | Unknown -> true
   | _ -> false
-
+	
 let equiv_mod_unknown tyc1 tyc2 =
   tyc1 = tyc2
   || is_unknown tyc1
@@ -93,6 +118,13 @@ let equiv_mod_unknown tyc1 tyc2 =
 
 let pr uprs ppf c =
   match c, uprs with
+  | Tuple(_), [] -> (*@todo*)
+     Format.fprintf ppf "()"
+  | Tuple(_), _ ->
+     Format.fprintf
+       ppf
+       "@[(@[<hov>%a@])@]"
+       (Printer.concat_uprs uprs " *@ ") ()
   | Arrow, [upr1; upr2] ->
      Format.fprintf
        ppf
@@ -108,6 +140,13 @@ let pr uprs ppf c =
 
 let pr_tex uprs ppf c =
   match c, uprs with
+  | Tuple(_), [] -> (*@todo*)
+     Format.fprintf ppf "\\left(\\right)"
+  | Tuple(_), _ ->
+     Format.fprintf
+       ppf
+       "@[\\left(@[<hov>%a@]\\right)@]"
+       (Printer.concat_uprs uprs " *@ ") ()
   | Arrow, [upr1; upr2] ->
      Format.fprintf
        ppf

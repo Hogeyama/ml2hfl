@@ -10,6 +10,8 @@ let rec encode_type ty =
   else if Type.is_fun ty then
     Type.let_fun ty
       (fun ty1 ty2 -> Type.mk_fun [encode_type ty1; encode_type ty2])
+  else if Type.is_tuple ty then
+    Type.let_tuple ty (fun tys -> Type.mk_tuple (List.map encode_type tys))
   else begin
     Logger.printf "ty: %a@," Type.pr ty;
     if true then ty (*Type.mk_int*) else assert false
@@ -28,8 +30,17 @@ let encode_term true_as_pos =
         else Term.mk_const c
       method fuop = NumTerm.mk_uop
       method fbop = NumTerm.mk_bop
+      method ftuple tys rs = TupTerm.make (List.map encode_type tys) rs
+(*
+        method faccessor ty x i t1 =
+          CunTerm.mk_accessor ty x i t1
+ *)
       method fformula phi = assert false
     end)
+
+let encode_const = function
+  | Const.Proj(tys, i) -> Const.Proj(List.map encode_type tys, i)
+  | c -> c(*@todo*)
 
 let encode_atom true_as_pos =
   CunAtom.fold_brel
@@ -43,18 +54,38 @@ let encode_atom true_as_pos =
           assert false
         | Const.Neq(ty) when Type.is_unit ty || Type.is_bool ty ->
           assert false
+        | Const.Eq(ty) when Type.is_tuple ty ->
+          Formula.mk_brel
+            (Const.Eq(encode_type ty))
+            (encode_term true_as_pos t1) (encode_term true_as_pos t2)
+        | Const.Neq(ty) when Type.is_tuple ty ->
+          Formula.mk_brel
+            (Const.Neq(encode_type ty))
+            (encode_term true_as_pos t1) (encode_term true_as_pos t2)
+        (*| _ ->
+          Formula.of_term (encode_term true_as_pos (Formula.term_of t))
+        *)
         | _ ->
           Formula.mk_brel c
             (encode_term true_as_pos t1)
             (encode_term true_as_pos t2)
       method fdivides n t1 = IntFormula.divides n (encode_term true_as_pos t1)
+      method frecognizer ty x t1 =
+        ADTFormula.mk_recognizer ty x (encode_term true_as_pos t1)
+      method fsmem ty e t1 =
+        SetFormula.mk_mem ty e (encode_term true_as_pos t1)
+      method fssubset ty t1 t2 =
+        SetFormula.mk_subset ty
+          (encode_term true_as_pos t1) (encode_term true_as_pos t2)
       method fterm c ts =
         if true_as_pos then
+          let c = encode_const c in
           IntFormula.gt
             (Term.mk_app (Term.mk_const c)
                (List.map (encode_term true_as_pos) ts))
             IntTerm.zero
         else
+          let c = encode_const c in
           IntFormula.eq
             (Term.mk_app (Term.mk_const c)
                (List.map (encode_term true_as_pos) ts))

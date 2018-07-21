@@ -27,17 +27,41 @@ type t =
   | BitShiftLeft | BitShiftRight | BitAnd | BitOr | BitXor
   | Mod
   | Divides of int
+  (* rational numbers *)
+  | Rational of int * int
   (* real numbers *)
   | Real of float
   | FRsq | FRcp | FLog2 | FExp2 | FClamp
   | FPow
   (* strings *)
   | String of string
+  (* tuples *)
+  | Proj of Type.t list * int
+  | Tuple of Type.t list
   (* lists *)
   | Nil of Type.t
   | Cons of Type.t
+  (* ADT constructors *)
+  | Con of Type.t * Idnt.t
+  | Accessor of Type.t * Idnt.t * int
+  | Recognizer of Type.t * Idnt.t (* The second argument is the name of the constructor
+                                     App(Recognizer(_,x), [t]) means "t is of the form x(...)"
+                                     The first argument is a function type from an ADT to bool *)
   (* uninterpreted functions *)
   | UFun of Type.t * Idnt.t
+  (* set constructor and oprations *)
+  | SEmpty of Type.t
+  | SAdd of Type.t
+  | SMem of Type.t
+  | SUnion of Type.t
+  | SIntersect of Type.t
+  | SDiff of Type.t
+  | SComplement of Type.t
+  | SSubset of Type.t
+  (* array constructors *)
+  | Array of int
+  | ASet 
+  | AGet 
   (* path constructors *)
   | Call | Ret of Type.t | Error
   (* ML expressions *)
@@ -47,6 +71,13 @@ type t =
   | ML_LetAnd
   | ML_LetRec of int
   | ML_Match
+  (* vectors *)
+  | Vector of Type.t * int
+  | VElem of Type.t * int * int
+  | VRnorm of Type.t * int
+  | VNormalize of Type.t * int
+  | VScale of Type.t * int
+  | VDot of Type.t * int
   (* functions *)
   | App | Flip | Comp | Tlu
   | FShift
@@ -65,6 +96,13 @@ type t =
   (* others *)
   | Undef
   | Bot | Top
+  (* regular expression *)
+  | TreeAutomaton of TreeAutomaton.t
+  | In
+  | Subset
+  | InterSection
+  | Union
+  | Complement
   (* *)
   | Coerce of Type.t
 
@@ -91,15 +129,19 @@ let string_of = function
   | Neg(ty) when Type.is_int ty -> "-"
   | Neg(ty) when Type.is_real ty -> "-."
   (* @todo not supported by OCaml *)
+  | Neg(ty) when Type.is_vector ty -> "-"
   | Add(ty) when Type.is_int ty -> "(+)"
   | Add(ty) when Type.is_real ty -> "(+.)"
   (* @todo not supported by OCaml *)
+  | Add(ty) when Type.is_vector ty -> "(+)"
   | Sub(ty) when Type.is_int ty -> "(-)"
   | Sub(ty) when Type.is_real ty -> "(-.)"
   (* @todo not supported by OCaml *)
+  | Sub(ty) when Type.is_vector ty -> "(-)"
   | Mul(ty) when Type.is_int ty -> "( * )"
   | Mul(ty) when Type.is_real ty -> "( *. )"
   (* @todo not supported by OCaml *)
+  | Mul(ty) when Type.is_vector ty -> "( * )"
   | Div(ty) when Type.is_int ty -> "(/)"
   | Div(ty) when Type.is_real ty -> "(/.)"
   | Max(_) -> "max"
@@ -130,6 +172,8 @@ let string_of = function
   | Mod -> "(mod)"
   (* @todo not supported by OCaml *)
   | Divides(n) -> "divides(n)" (*"n |"*)
+  (* rational numbers *)
+  | Rational(n1, n2) -> "(" ^ string_of_int n1 ^ "/" ^ string_of_int n2 ^ ")"
   (* real numbers *)
   | Real(f) -> string_of_float f
   (* @todo not supported by OCaml *)
@@ -146,10 +190,35 @@ let string_of = function
   | FPow -> "pow"
   (* strings *)
   | String(str) -> "\"" ^ String.escaped str ^ "\""
+  (* tuples *)
+  (* @todo not supported by OCaml *)
+  | Proj(_, i) -> "proj" ^ "(" ^ string_of_int i ^ ")"
+  (* @todo not supported by OCaml *)
+  | Tuple(_) -> "tuple"
   (* lists *)
   | Nil(_) -> "[]"
   (* @todo not supported by OCaml *)
   | Cons(_) -> "(::)"
+  (* ADT constructors *)
+  | Con(ty, x) -> Idnt.string_of x
+  | Accessor(ty, id, i) ->
+    "_get_" ^ Idnt.string_of id ^ "_" ^ string_of_int i
+  | Recognizer(ty, id) -> "_is_" ^ Idnt.string_of id
+  (* uninterpreted functions *)
+  | UFun(ty, x) -> Idnt.string_of x
+  (* set constructor and oprations *)
+  | SEmpty _ -> "{}"
+  | SAdd _ -> "+"
+  | SMem _ -> "in"
+  | SUnion _ -> "++"
+  | SIntersect _ -> "**"
+  | SDiff _ -> "--"
+  | SComplement _ -> "---"
+  | SSubset _ -> "sub"
+  (* array constructors *)
+  | Array n -> "array"
+  | ASet -> "array set"
+  | AGet -> "array get"
   (* path constructors *)
   | Call -> "Call"
   | Ret(_) -> "Ret"
@@ -161,6 +230,22 @@ let string_of = function
   | ML_LetAnd -> "letand"
   (* @todo not supported by OCaml *)
   | ML_Closure(_) -> "closure"
+  (* vectors *)
+  (* @todo not supported by OCaml *)
+  | Vector(_, size) -> "vector" ^ string_of_int size
+  (* @todo not supported by OCaml *)
+  | VElem(_, size, i) ->
+    "elem" ^ string_of_int size ^ "(" ^ string_of_int i ^ ")"
+  (* @todo not supported by OCaml *)
+  | VRnorm(_, size) ->
+    "rnorm" ^ string_of_int size
+  (* @todo not supported by OCaml *)
+  | VNormalize(_, size) ->
+    "normalize" ^ string_of_int size
+  (* @todo not supported by OCaml *)
+  | VScale(_, _) -> "( * )"
+  (* @todo not supported by OCaml *)
+  | VDot(_, size) -> "dot" ^ string_of_int size
   (* functions *)
   | App -> "(@@)"
   (* @todo not supported by OCaml *)
@@ -193,6 +278,12 @@ let string_of = function
   | Bot -> "bot"
   (* @todo not supported by OCaml *)
   | Top -> "top"
+  | TreeAutomaton _ -> "tree_automaton"
+  | In -> "in"
+  | Subset -> "subset"
+  | InterSection -> "intersection"
+  | Union -> "union"
+  | Complement -> "complement"
   (**)
   | Coerce ty -> "coerce[" ^ Type.string_of ty ^ "]"
   | _ -> "(?undef:\"const.ml\")"(*assert false*)
@@ -200,8 +291,8 @@ let string_of = function
 let tex_string_of = function
   (* comparables *)
   | Eq(ty) -> if !Global.debug then "(=)[" ^ Type.string_of ty ^ "]" else "(=)"
-  | Neq(ty) -> if !Global.debug
-               then "(\\neq)[" ^ Type.string_of ty ^ "]"
+  | Neq(ty) -> if !Global.debug 
+               then "(\\neq)[" ^ Type.string_of ty ^ "]" 
                else "(\\neq)"
   | Lt(ty) -> if !Global.debug then "(<)[" ^ Type.string_of ty ^ "]" else "(<)"
   | Gt(ty) -> if !Global.debug then "(>)[" ^ Type.string_of ty ^ "]" else "(>)"
@@ -215,15 +306,19 @@ let tex_string_of = function
   | Neg(ty) when Type.is_int ty -> "-"
   | Neg(ty) when Type.is_real ty -> "-."
   (* @todo not supported by OCaml *)
+  | Neg(ty) when Type.is_vector ty -> "-"
   | Add(ty) when Type.is_int ty -> "(+)"
   | Add(ty) when Type.is_real ty -> "(+.)"
   (* @todo not supported by OCaml *)
+  | Add(ty) when Type.is_vector ty -> "(+)"
   | Sub(ty) when Type.is_int ty -> "(-)"
   | Sub(ty) when Type.is_real ty -> "(-.)"
   (* @todo not supported by OCaml *)
+  | Sub(ty) when Type.is_vector ty -> "(-)"
   | Mul(ty) when Type.is_int ty -> "( * )"
   | Mul(ty) when Type.is_real ty -> "( *. )"
   (* @todo not supported by OCaml *)
+  | Mul(ty) when Type.is_vector ty -> "( * )"
   | Div(ty) when Type.is_int ty -> "(/)"
   | Div(ty) when Type.is_real ty -> "(/.)"
   | Max(_) -> "max"
@@ -254,6 +349,8 @@ let tex_string_of = function
   | Mod -> "(mod)"
   (* @todo not supported by OCaml *)
   | Divides(n) -> "divides(n)" (*"n |"*)
+  (* rational numbers *)
+  | Rational(n1, n2) -> "(" ^ string_of_int n1 ^ "/" ^ string_of_int n2 ^ ")"
   (* real numbers *)
   | Real(f) -> string_of_float f
   (* @todo not supported by OCaml *)
@@ -270,12 +367,35 @@ let tex_string_of = function
   | FPow -> "pow"
   (* strings *)
   | String(str) -> "\"" ^ String.escaped str ^ "\""
+  (* tuples *)
+  (* @todo not supported by OCaml *)
+  | Proj(_, i) -> "proj" ^ "(" ^ string_of_int i ^ ")"
+  (* @todo not supported by OCaml *)
+  | Tuple(_) -> "tuple"
   (* lists *)
   | Nil(_) -> "[]"
   (* @todo not supported by OCaml *)
   | Cons(_) -> "(::)"
+  (* ADT constructors *)
+  | Con(ty, x) -> Idnt.string_of x
+  | Accessor(ty, id, i) ->
+    "_get_" ^ Idnt.string_of id ^ "_" ^ string_of_int i
+  | Recognizer(ty, id) -> "_is_" ^ Idnt.string_of id
   (* uninterpreted functions *)
   | UFun(ty, x) -> Idnt.string_of x
+  (* set constructor and oprations *)
+  | SEmpty _ -> "{}"
+  | SAdd _ -> "+"
+  | SMem _ -> "in"
+  | SUnion _ -> "++"
+  | SIntersect _ -> "**"
+  | SDiff _ -> "--"
+  | SComplement _ -> "---"
+  | SSubset _ -> "sub"
+  (* array constructors *)
+  | Array n -> "array"
+  | ASet -> "array set"
+  | AGet -> "array get"
   (* path constructors *)
   | Call -> "Call"
   | Ret(_) -> "Ret"
@@ -287,6 +407,22 @@ let tex_string_of = function
   | ML_LetAnd -> "letand"
   (* @todo not supported by OCaml *)
   | ML_Closure(_) -> "closure"
+  (* vectors *)
+  (* @todo not supported by OCaml *)
+  | Vector(_, size) -> "vector" ^ string_of_int size
+  (* @todo not supported by OCaml *)
+  | VElem(_, size, i) ->
+    "elem" ^ string_of_int size ^ "(" ^ string_of_int i ^ ")"
+  (* @todo not supported by OCaml *)
+  | VRnorm(_, size) ->
+    "rnorm" ^ string_of_int size
+  (* @todo not supported by OCaml *)
+  | VNormalize(_, size) ->
+    "normalize" ^ string_of_int size
+  (* @todo not supported by OCaml *)
+  | VScale(_, _) -> "( * )"
+  (* @todo not supported by OCaml *)
+  | VDot(_, size) -> "dot" ^ string_of_int size
   (* functions *)
   | App -> "(@@)"
   (* @todo not supported by OCaml *)
@@ -319,6 +455,12 @@ let tex_string_of = function
   | Bot -> "bot"
   (* @todo not supported by OCaml *)
   | Top -> "top"
+  | TreeAutomaton _ -> "tree_automaton"
+  | In -> "in"
+  | Subset -> "subset"
+  | InterSection -> "intersection"
+  | Union -> "union"
+  | Complement -> "complement"
   (**)
   | Coerce ty -> "coerce[" ^ Type.string_of ty ^ "]"
   | _ -> "(?undef:\"const.ml\")"(*assert false*)
@@ -336,14 +478,17 @@ let string_of_infix = function
   | Add(ty) when Type.is_int ty -> "+"
   | Add(ty) when Type.is_real ty -> "+."
   (* @todo not supported by OCaml *)
+  | Add(ty) when Type.is_vector ty -> "+"
   | Add(_) -> "+"
   | Sub(ty) when Type.is_int ty -> "-"
   | Sub(ty) when Type.is_real ty -> "-."
   (* @todo not supported by OCaml *)
+  | Sub(ty) when Type.is_vector ty -> "-"
   | Sub(_) -> "-"
   | Mul(ty) when Type.is_int ty -> "*"
   | Mul(ty) when Type.is_real ty -> "*."
   (* @todo not supported by OCaml *)
+  | Mul(ty) when Type.is_vector ty -> "*"
   | Mul(_) -> "*"
   | Div(ty) when Type.is_int ty -> "/"
   | Div(ty) when Type.is_real ty -> "/."
@@ -366,16 +511,26 @@ let string_of_infix = function
   | Mod -> "mod"
   (* lists *)
   | Cons(_) -> "::"
+  (* vectors *)
+  (* @todo not supported by OCaml *)
+  | VScale(_, _) -> "*"
+  | VDot(_, _) -> "."
   (* functions *)
   | App -> "@@"
   (* @todo not supported by OCaml *)
   | Comp -> "."
+  (* set constructor and oprations *)
+  | SAdd ty -> "+"
+  | SUnion ty -> "++"
+  | SIntersect ty -> "**"
+  | SDiff ty -> "--"
+  | SSubset ty -> "(="
   | _ -> "CONST_ERROR(string_of_infix)"
 
 let tex_string_of_infix = function
   (* comparables *)
   | Eq(ty) -> if !Global.debug then "=[" ^ Type.string_of ty ^ "]" else "="
-  | Neq(ty) -> if !Global.debug then "\\neq[" ^ Type.string_of ty ^ "]"
+  | Neq(ty) -> if !Global.debug then "\\neq[" ^ Type.string_of ty ^ "]" 
                else "\\neq"
   | Lt(ty) -> if !Global.debug then "<[" ^ Type.string_of ty ^ "]" else "<"
   | Gt(ty) -> if !Global.debug then ">[" ^ Type.string_of ty ^ "]" else ">"
@@ -385,14 +540,17 @@ let tex_string_of_infix = function
   | Add(ty) when Type.is_int ty -> "+"
   | Add(ty) when Type.is_real ty -> "+."
   (* @todo not supported by OCaml *)
+  | Add(ty) when Type.is_vector ty -> "+"
   | Add(_) -> "+"
   | Sub(ty) when Type.is_int ty -> "-"
   | Sub(ty) when Type.is_real ty -> "-."
   (* @todo not supported by OCaml *)
+  | Sub(ty) when Type.is_vector ty -> "-"
   | Sub(_) -> "-"
   | Mul(ty) when Type.is_int ty -> "*"
   | Mul(ty) when Type.is_real ty -> "*."
   (* @todo not supported by OCaml *)
+  | Mul(ty) when Type.is_vector ty -> "*"
   | Mul(_) -> "*"
   | Div(ty) when Type.is_int ty -> "/"
   | Div(ty) when Type.is_real ty -> "/."
@@ -415,10 +573,20 @@ let tex_string_of_infix = function
   | Mod -> "mod"
   (* lists *)
   | Cons(_) -> "::"
+  (* vectors *)
+  (* @todo not supported by OCaml *)
+  | VScale(_, _) -> "*"
+  | VDot(_, _) -> "."
   (* functions *)
   | App -> "@@"
   (* @todo not supported by OCaml *)
   | Comp -> "."
+  (* set constructor and oprations *)
+  | SAdd ty -> "+"
+  | SUnion ty -> "++"
+  | SIntersect ty -> "**"
+  | SDiff ty -> "--"
+  | SSubset ty -> "(="
   | _ -> "CONST_ERROR(string_of_infix)"
 
 let type_of = function
@@ -443,17 +611,39 @@ let type_of = function
   | BitShiftLeft | BitShiftRight | BitAnd | BitOr | BitXor
   | Mod -> Type.mk_iii
   | Divides(_) -> Type.mk_ib
+  (* rational numbers *)
+  | Rational(_, _) -> Type.mk_rational
   (* real numbers *)
   | Real(_) -> Type.mk_real
   | FRsq | FRcp | FLog2 | FExp2 | FClamp -> Type.mk_rr
   | FPow -> Type.mk_rrr
   (* strings *)
   | String(_) -> Type.mk_string
+  (* tuples *)
+  | Proj(tys, i) -> Type.mk_fun ([Type.mk_tuple tys] @ [List.nth tys i])
+  | Tuple(tys) -> Type.mk_fun (tys @ [Type.mk_tuple tys])
   (* lists *)
   | Nil(ty) -> Type.mk_list ty
   | Cons(ty) -> Type.mk_fun [ty; Type.mk_list ty; Type.mk_list ty]
+  (* ADT constructors *)
+  | Con(ty, _) -> ty
+  | Accessor(ty,_,_) -> ty
+  | Recognizer(ty,_) -> ty
   (* uninterpreted functions *)
   | UFun(ty, _) -> ty
+  (* set constructor and oprations *)
+  | SEmpty ty -> Type.mk_set ty
+  | SAdd ty -> Type.mk_fun [ty; Type.mk_set ty; Type.mk_set ty]
+  | SMem ty -> Type.mk_fun [ty; Type.mk_set ty; Type.mk_bool]
+  | SUnion ty -> Type.mk_fun [Type.mk_set ty; Type.mk_set ty; Type.mk_set ty]
+  | SIntersect ty -> Type.mk_fun [Type.mk_set ty; Type.mk_set ty; Type.mk_set ty]
+  | SDiff ty -> Type.mk_fun [Type.mk_set ty; Type.mk_set ty; Type.mk_set ty]
+  | SComplement ty -> Type.mk_fun [Type.mk_set ty; Type.mk_set ty]
+  | SSubset ty -> Type.mk_fun [Type.mk_set ty; Type.mk_set ty; Type.mk_bool]
+  (* array constructors *)
+  | Array n -> Type.mk_unknown
+  | ASet -> Type.mk_unknown
+  | AGet -> Type.mk_unknown
   (* path constructors *)
   | Call | Ret _ | Error -> raise (Global.NotImplemented "Const.type_of")
   (* ML expressions *)
@@ -469,6 +659,17 @@ let type_of = function
        Type.mk_fun [Type.mk_top(*@todo*); Type.mk_top(*@todo*)];
        Type.mk_top(*@todo*)]
   | ML_Closure(_) -> Type.mk_top(*@todo*)
+  (* vectors *)
+  | Vector(ty, size) ->
+    Type.mk_fun (List.duplicate ty size @ [Type.mk_vector ty size])
+  | VElem(ty, size, _) | VRnorm(ty, size) ->
+    Type.mk_fun [Type.mk_vector ty size; ty]
+  | VNormalize(ty, size) ->
+    Type.mk_fun [Type.mk_vector ty size; Type.mk_vector ty size]
+  | VScale(ty, size) ->
+    Type.mk_fun [Type.mk_vector ty size; ty; Type.mk_vector ty size]
+  | VDot(ty, size) ->
+    Type.mk_fun [Type.mk_vector ty size; Type.mk_vector ty size; ty]
   (* functions *)
   | App | Flip | Comp | Tlu | FShift ->
     raise (Global.NotImplemented "Const.type_of")
@@ -488,6 +689,13 @@ let type_of = function
   | Undef -> assert false
   | Bot -> Type.mk_bot
   | Top -> Type.mk_top
+  (* regular expression *)
+  | TreeAutomaton(ta) -> assert false
+  | In -> assert false
+  | Subset -> assert false
+  | InterSection -> assert false
+  | Union -> assert false
+  | Complement -> assert false
   (* *)
   | Coerce(ty) -> ty
   | _ -> assert false
@@ -519,6 +727,12 @@ let rec is_infix c =
   | BitShiftLeft | BitShiftRight | BitAnd | BitOr | BitXor
   | Mod
   | Cons(_)
+  | VScale(_, _) | VDot(_, _)
+  | SAdd(_)
+  | SUnion(_) 
+  | SIntersect(_) 
+  | SDiff(_) 
+  | SSubset(_)
   | App | Comp -> true
   | _ -> false
 
@@ -577,6 +791,15 @@ let pr uprs ppf c =
   | _, [upr1; upr2] when is_bin c && is_infix c ->
     Format.fprintf ppf "@[<hov>%a %s@ %a@]" upr1 () (string_of_infix c) upr2 ()
   | Annot(_), [upr1] -> upr1 ppf ()
+  | Tuple(tys), _ ->
+    Format.fprintf ppf
+      ("(%a)[%s]")
+      (Printer.concat_uprs uprs ",@ ")
+      ()
+      (String.concat " * " (List.map Type.string_of tys))
+  | Vector(_, _), _ ->
+    Format.fprintf ppf "<%a>" (Printer.concat_uprs uprs ",@ ") ()
+  | VElem(_, _, i), [upr] -> Format.fprintf ppf "%a.%d" upr () i
   | _, _ ->
     Printer.concat_uprs_app
       ((Printer.upr_of String.pr (string_of c)) :: uprs)
@@ -587,9 +810,18 @@ let pr uprs ppf c =
 let pr_tex uprs ppf c =
   match c, uprs with
   | _, [upr1; upr2] when is_bin c && is_infix c ->
-    Format.fprintf
+    Format.fprintf 
       ppf "@[<hov>%a %s@ %a@]" upr1 () (tex_string_of_infix c) upr2 ()
   | Annot(_), [upr1] -> upr1 ppf ()
+  | Tuple(tys), _ ->
+    Format.fprintf ppf
+      ("\\left(%a\\right)[%s]")
+      (Printer.concat_uprs uprs ",@ ")
+      ()
+      (String.concat " * " (List.map Type.string_of tys))
+  | Vector(_, _), _ ->
+    Format.fprintf ppf "<%a>" (Printer.concat_uprs uprs ",@ ") ()
+  | VElem(_, _, i), [upr] -> Format.fprintf ppf "%a.%d" upr () i
   | _, _ ->
     Printer.concat_uprs_app
       ((Printer.upr_of String.pr (tex_string_of c)) :: uprs)
@@ -1081,6 +1313,8 @@ let subst_tvars tsub = function
   | BitXor -> BitXor
   | Mod -> Mod
   | Divides(n) -> Divides(n)
+  (* rational numbers *)
+  | Rational(n1, n2) -> Rational(n1, n2)
   (* real numbers *)
   | Real(f) -> Real(f)
   | FRsq -> FRsq
@@ -1091,11 +1325,31 @@ let subst_tvars tsub = function
   | FPow -> FPow
   (* strings *)
   | String(str) -> String(str)
+  (* tuples *)
+  | Proj(tys, i) -> Proj(List.map (Type.subst tsub) tys, i)
+  | Tuple(tys) -> Tuple(List.map (Type.subst tsub) tys)
   (* lists *)
   | Nil(ty) -> Nil(Type.subst tsub ty)
   | Cons(ty) -> Cons(Type.subst tsub ty)
+  (* ADT constructors *)
+  | Con(ty, id) -> Con(Type.subst tsub ty, id)
+  | Accessor(ty, id, i) -> Accessor(Type.subst tsub ty, id, i) 
+  | Recognizer(ty, id) -> Recognizer(Type.subst tsub ty, id)
   (* uninterpreted functions *)
   | UFun(ty, id) -> UFun(Type.subst tsub ty, id)
+  (* set constructor and oprations *)
+  | SEmpty ty -> SEmpty(Type.subst tsub ty)
+  | SAdd ty -> SAdd(Type.subst tsub ty)
+  | SMem ty -> SMem(Type.subst tsub ty)
+  | SUnion ty -> SUnion(Type.subst tsub ty)
+  | SIntersect ty -> SIntersect(Type.subst tsub ty)
+  | SDiff ty -> SDiff(Type.subst tsub ty)
+  | SComplement ty -> SComplement(Type.subst tsub ty)
+  | SSubset ty -> SSubset(Type.subst tsub ty)
+  (* array constructors *)
+  | Array n -> Array n
+  | ASet -> ASet 
+  | AGet -> AGet
   (* path constructors *)
   | Call -> Call
   | Ret(ty) -> Ret(Type.subst tsub ty)
@@ -1104,6 +1358,13 @@ let subst_tvars tsub = function
   | ML_If(ty) -> ML_If(Type.subst tsub ty)
   | ML_Let(ty) -> ML_Let(Type.subst tsub ty)
   | ML_Closure(n) -> ML_Closure(n)
+  (* vectors *)
+  | Vector(ty, size) -> Vector(Type.subst tsub ty, size)
+  | VElem(ty, size, i) -> VElem(Type.subst tsub ty, size, i)
+  | VRnorm(ty, size) -> VRnorm(Type.subst tsub ty, size)
+  | VNormalize(ty, size) -> VNormalize(Type.subst tsub ty, size)
+  | VScale(ty, n) -> VScale(Type.subst tsub ty, n)
+  | VDot(ty, size) -> VDot(Type.subst tsub ty, size)
   (* functions *)
   | App -> App
   | Flip -> Flip
@@ -1126,6 +1387,13 @@ let subst_tvars tsub = function
   | Undef -> Undef
   | Bot -> Bot
   | Top -> Top
+  (* regular expression *)
+  | TreeAutomaton(ta) -> TreeAutomaton(ta)
+  | In -> In
+  | Subset -> Subset
+  | InterSection -> InterSection
+  | Union -> Union
+  | Complement -> Complement
   (* *)
   | Coerce(ty) -> Coerce(Type.subst tsub ty)
   | _ -> assert false

@@ -92,7 +92,7 @@ let simplify_cube =
             if LinIntExp.equiv (nxs1, 0) (nxs2, 0) then c2, -n2
             else Const.neg c2, n2)
          las
-       |> List.sort compare
+       |> List.sort
        |> Const.candns
        |> List.map (fun (c, n) -> c, (nxs1, -n)))
 
@@ -112,7 +112,7 @@ let simplify_clause =
             if LinIntExp.equiv (nxs1, 0) (nxs2, 0) then c2, -n2
             else Const.neg c2, n2)
          las
-       |> List.sort compare
+       |> List.sort
        |> Const.corns
        |> List.map (fun (c, n) -> c, (nxs1, -n)))
 

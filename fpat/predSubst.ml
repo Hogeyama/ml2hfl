@@ -141,7 +141,8 @@ let restrict = Map_.restrict
 
 let normalize =
   List.map (Pair.map_snd Pred.normalize)
-  >> List.sort (comp2 compare fst fst)
+  >> List.sort ~cmp:(comp2 compare fst fst)
 
 
 let size = List.map (snd >> snd >> CunFormula.size) >> Integer.sum_list
+

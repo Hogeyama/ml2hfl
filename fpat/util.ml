@@ -13,7 +13,7 @@ end
 
 (** Strings *)
 module String = struct
-  include BatString
+  include ExtString.String
 
   let pr ppf str = Format.fprintf ppf "%s" str
 
@@ -32,7 +32,7 @@ end
 
 (** Lists *)
 module List = struct
-  include BatList
+  include ExtList.List
 
   (** {6 Auxiliary constructors} *)
 
@@ -338,13 +338,13 @@ module List = struct
 
   let sort_by f xs =
     xs
-    |> map (fun x -> f x, x)
-    |> sort (fun (n1, _) (n2, _) -> n1 - n2)
+    |>  map (fun x -> f x, x)
+    |> sort ~cmp:(fun (n1, _) (n2, _) -> n1 - n2)
     |> map snd
   let sort_dec_by f xs =
     xs
     |> map (fun x -> f x, x)
-    |> sort (fun (n1, _) (n2, _) -> n2 - n1)
+    |> sort ~cmp:(fun (n1, _) (n2, _) -> n2 - n1)
     |> map snd
 
   (** {6 Operators for sublists} *)
