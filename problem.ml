@@ -5,6 +5,7 @@ type t =
      env: (Syntax.id * Ref_type.t) list;
      attr: attr list;
      kind: kind}
+    [@@deriving show]
 
 (* TODO: add Termination etc. *)
 and kind =
