@@ -303,6 +303,12 @@ let rec of_simple typ =
   | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
+  | T.TApp(T.TList,[typ]) ->
+      List(Id.new_var T.Ty.int,
+           U.true_term,
+           Id.new_var T.Ty.int,
+           U.true_term,
+           of_simple typ)
   | _ ->
       Format.printf "%a@." Print.typ typ;
       unsupported "Ref_type.of_simple"

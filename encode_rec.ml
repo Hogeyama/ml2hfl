@@ -5,95 +5,60 @@ open Type
 
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-let make_tuple' ts =
-  match ts with
-  | [t] -> t
-  | _ -> make_tuple ts
-let make_ttuple' : Syntax.typ list -> Syntax.typ =
-  fun tys -> match tys with
-  | [ty] -> ty
-  | _ -> make_ttuple tys
-let make_ptuple' ps =
-  match ps with
-  | [p] -> p
-  | _ -> make_ptuple ps
-module Term = struct
-  include Term
-  let tuple' = make_tuple'
-end
-module Ty = struct
-  include Ty
-  let tuple' = make_ttuple'
-end
-
-(******************************************************************************)
-(* abst_recdata ここから *)
-
-type env = (string * (Syntax.typ * bool * Syntax.typ)) list
-  (* string      -- 's' of 'TData s'
-   * Syntax.type -- type before encoding
-   * bool        -- whether recursive or not
-   * Syntax.type -- type after encoding
-   * *)
-type 'a transducer = env -> 'a -> 'a
-let abst_recdata : env Syntax.trans2 = make_trans2 ()
-
-(*
-let abst_recdata_leaves env typs =
-  let typs' = List.map (abst_recdata.tr2_typ env) typs in
-  let r_typ =
-    if typs = []
-    then Ty.int
-    else Ty.(tuple [int; tuple' typs'])
-  in
-  Ty.(tuple [unit; (* extra-param *)
-             pureTFun(Id.new_var ~name:"path" @@ list int, r_typ)])
-*)
+type env = (string * (typ * bool * typ)) list
+  (* string -- 's' of 'TData s'
+     typ    -- type before encoding
+     bool   -- whether recursive or not
+     typ    -- type after encoding
+   *)
+let abst_recdata : env trans2 = make_trans2 ()
 
 (* Example:
- *    type tree = Leaf of int | Node of tree * int * tree
- * i.e.,
- *    s = "tree",
- *    ty = TVariant(false, [ ("Leaf",int)
- *                         ; ("Node", TData "tree" * int * TData "tree")])
- * is encoded into
- *    unit * (path:int list -> TTuple [ TTuple [bool; int]
- *                                    ; TTuple [bool; TTuple [] ])
- * Note that
- *    make_tuple' []  = TTuple [] and
- *    make_tuple' int = int
- * *)
-(* 今考えているのはrecを含まないのでアレでした．まあいずれやるので *)
+     type tree = Leaf of int | Node of tree * tree
+   i.e.,
+     s = "tree",
+     ty = TVariant(false, [ ("Leaf", int)
+                          ; ("Node", TData "tree" * TData "tree")])
+   is encoded into
+     unit * (path:int list -> TTuple [ TTuple [ TTuple [bool; TTuple [int]]
+                                              ; TTuple [bool; TTuple [] ] ;
+                                       unit (* <- for predicate *)
+                                     ])
+  *)
 let encode_recdata_typ env s ty =
   match ty with
   | TVariant(false,labels) when List.mem s @@ get_tdata ty ->
-      let tys =
-        (* これなにやってんだ -> 完全に理解した *)
+      let ty: typ =
         let aux ty =
           match ty with
-          | TData s' ->
-              if s' = s then
-                None
-              else
-                unsupported "encode_variant: non-simple recursion"
+          | TData s' when s' = s ->
+              None
+          | _ when get_tdata ty = [] ->
+              Some (abst_recdata.tr2_typ env ty)
           | _ ->
-              if get_tdata ty = [] then
-                Some (abst_recdata.tr2_typ env ty)
-              else
-                unsupported "encode_variant: non-simple recursion"
+              unsupported "encode_variant: non-simple recursion"
         in
-        List.map (make_tpair Ty.bool) @@ List.map (make_ttuple' -| List.filter_map aux -| snd) labels
+        Ty.(pair
+          (tuple (List.map (pair bool -| tuple -| List.filter_map aux -| snd) labels))
+          unit) (* for predicate *)
       in
-      Ty.(pair unit (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, tuple' tys)))
+      Ty.(pair unit
+               (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, ty)))
   | _ -> abst_recdata.tr2_typ env ty
 
-(* recを含まない場合（上のwildcardのケースからも呼ばれる） *)
-let abst_recdata_typ : Syntax.typ transducer = fun env typ ->
+(* e.g.
+     type foo = Foo of int | Bar of bool * string
+       => (bool * (int)) * (bool * (bool * string)) * unit
+                  ^^^^^ one element tuple             ^^^^ for predicate
+*)
+let abst_recdata_typ env typ =
   match typ with
   | TRecord fields -> unsupported "abst_recdata_typ TRecord"
   | TVariant(false,labels) ->
-      let aux (s,tys) = Ty.(pair bool (tuple' @@ List.map (abst_recdata.tr2_typ env) tys)) in
-      make_ttuple @@ List.map aux labels
+      let aux (s,tys) =
+        Ty.(pair bool (tuple @@ List.map (abst_recdata.tr2_typ env) tys))
+      in
+        Ty.(pair (make_ttuple @@ List.map aux labels) unit)
   | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
   | _ -> abst_recdata.tr2_typ_rec env typ
 
@@ -130,7 +95,9 @@ let rec abst_recdata_pat (env: env) p =
     | TData s when not @@ List.mem s prim_base_types ->
         begin
           try Triple.trd @@ List.assoc s env
-          with Not_found -> assert false
+          with Not_found ->
+            Format.printf "%s@." s;
+            assert false
         end
     | typ -> typ
   in
@@ -150,54 +117,90 @@ let rec abst_recdata_pat (env: env) p =
             p'::ps, make_and cond' cond, bind'@bind
           in
           let ps,cond,bind = List.fold_right aux ps ([],true_term,[]) in
-          make_ptuple' ps, cond, bind
+          make_ptuple ps, cond, bind
         in
         let ps' =
           let aux (c',tys) =
             if c = c' then
               Pat.(pair true_ p')
             else
-              let ty = make_ttuple' @@ List.map (abst_recdata.tr2_typ env) tys in
+              let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
               Pat.(pair false_ (__ ty))
           in
           let poly,decls = decomp_tvariant @@ expand_typ env p.pat_typ in
           if poly then unsupported "encode_rec: polymorphic variant";
           List.map aux decls
         in
-        PTuple ps', true_term, []
+        PTuple [Pat.tuple ps'; Pat.(__ Ty.unit)], true_term, []
     | PConstr(c,ps) ->
         let f = Id.new_var typ in
-        Format.printf "f: %a@." Print.id_typ f;
-        let pcbs = List.map (abst_recdata_pat env) ps in
-        let binds =
-          let make_bind (acc,i) p (p',_,_) =
-            let i',t' =
-              if is_rec_type env p.pat_typ then
-                let path = Id.new_var ~name:"path" Ty.(list int) in
-                i+1, Term.(pair unit (* extra-param *)
-                                (fun_ path (snd (var f) @ [list [int i]])))
-              else
-                i, Term.(snd (proj i (snd (var f) @ [list [int i]])))
-            in
-            acc@[t', p'], i'
-          in
-          fst @@ List.fold_left2 make_bind ([],0) ps pcbs
+        (* [c] is [constr_ix]th constructor of type TData s *)
+        let constr_ix =
+          let poly,decls = decomp_tvariant @@ expand_typ env p.pat_typ in
+          if poly then unsupported "encode_rec: polymorphic variant";
+          List.find_pos (fun _ (c',_) -> c = c') decls
         in
+        Debug.printf "f: %a@." Print.id_typ f;
+        let pcbs = List.map (abst_recdata_pat env) ps in
+
+        Debug.printf "HERE1@.";
+        let binds =
+          (* i: index of non-recursive types
+             j: index of recursive types
+             e.g.,
+                type tree = Node of tree * int * tree * int
+                                    _      0     _       1   <- i
+                                    0      _     1       _   <- j
+                match t: tree with
+                | Node(p1,p2,p3,p4) as p -> ...
+              =>
+                p1 path = (), snd p (0::path)
+                p2      = proj 0 @@ snd @@ proj constr_ix @@ fst @@ snd p []
+                p3 path = (), snd p (1::path)
+                p4      = proj 1 @@ snd @@ proj constr_ix @@ fst @@ snd p []
+
+             TODO refactor
+           *)
+          let make_bind (acc,i,j) p (p',_,_) =
+            let i',j',t' = match () with
+              | _ when is_rec_type env p.pat_typ ->
+                Debug.printf "%a has rec type %a@." Print.pattern p Print.typ p.pat_typ;
+                let path = Id.new_var ~name:"path" Ty.(list int) in
+                begin
+                  let t = Term.(pair unit (* extra-param *)
+                                     (fun_ path (snd (var f) @ [cons (int j) (var path)])))
+                  in
+                    Debug.printf "%a@." Print.term' t;
+                    i, j+1, t
+                end
+              | _ ->
+                Debug.printf "%a has non-rec type %a@." Print.pattern p Print.typ p.pat_typ;
+                let t = Term.(proj i (snd (proj constr_ix (fst (snd (var f) @ [nil Ty.int]))))) in
+                i+1, j, t
+            in
+              List.snoc acc (t', p'), i', j'
+          in
+          Triple.fst @@ List.fold_left2 make_bind ([],0,0) ps pcbs
+        in
+        Debug.printf "binds = %a@."
+          Print.(list (
+            fun fm (x,p) ->
+              triple pattern typ term fm (p, x.typ, x)
+          ))
+          binds;
         let cond =
+          let cond0 =
+            Term.(fst (proj constr_ix (fst (snd (var f) @ [nil Ty.int]))))
+          in
           let conds' =
             let make_cond (t,pt) (p,cond,_) =
               match p.pat_desc with
               | PAny
               | PVar _ -> true_term
-              | _ -> make_match t [pt,true_term,true_term; make_pany p.pat_typ,true_term,false_term]
+              | _ -> make_match t [pt, true_term, true_term;
+                                   make_pany p.pat_typ, true_term, false_term]
             in
             List.map2 make_cond binds pcbs
-          in
-          let cond0 =
-            let poly,decls = decomp_tvariant @@ expand_typ env p.pat_typ in
-            if poly then unsupported "encode_rec: polymorphic variant";
-            let i = List.find_pos (fun _ (c',_) -> c = c') decls in
-            Term.(fst (proj i (snd (var f) @ [nil Ty.int])))
           in
           make_ands (cond0 :: conds')
         in
@@ -254,17 +257,24 @@ let rec abst_recdata_pat (env: env) p =
 
 let abst_recdata_term (env: env) t =
   match t.desc with
-  | Constr("Abst",[]) -> {desc=Constr("Abst",[]); typ=abst_recdata.tr2_typ env t.typ; attr=[]}
+  | Constr("Abst",[]) ->
+      {desc = Constr("Abst",[]);
+       typ  = abst_recdata.tr2_typ env t.typ;
+       attr = []}
   | Constr(c,ts) when not (is_rec_type env t.typ) ->
       let aux (c',tys) =
         if c = c' then
-          let t' = make_tuple' @@ List.map (abst_recdata.tr2_term env) ts in
+          let t' = make_tuple @@ List.map (abst_recdata.tr2_term env) ts in
           Term.(pair true_ t')
         else
-          let ty = make_ttuple' @@ List.map (abst_recdata.tr2_typ env) tys in
+          let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
           Term.(pair false_ (rand ty))
       in
-      make_tuple @@ List.map aux @@ snd @@ decomp_tvariant @@ expand_typ env t.typ
+      make_tuple
+        [ make_tuple @@
+            List.map aux @@ snd @@ decomp_tvariant @@ expand_typ env t.typ;
+          Term.unit
+        ]
   | Constr(c,ts) ->
       let ts' = List.map (abst_recdata.tr2_term env) ts in
       let xtys = List.map2 (fun t' t -> Id.new_var @@ expand_enc_typ env t'.typ, t.typ) ts' ts in
@@ -276,18 +286,20 @@ let abst_recdata_term (env: env) t =
           let make_return ts' =
             let aux (c',tys) =
               if c = c' then
-                Term.(pair true_ (tuple' ts'))
+                Term.(pair true_ (tuple ts'))
               else
                 let tys' = List.filter_out ((=) t.typ) tys in
-                let ty = make_ttuple' @@ List.map (abst_recdata.tr2_typ env) tys' in
+                let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys' in
                 Term.(pair false_ (rand ty))
             in
             make_tuple @@ List.map aux labels
           in
-          List.combine ts xtys
-          |> List.filter_out (fun (t',_) -> t.typ = t'.typ)
-          |> List.map (snd |- fst |- make_var)
-          |> make_return
+          make_tuple
+            [ List.combine ts xtys
+              |> List.filter_out (fun (t',_) -> t.typ = t'.typ)
+              |> List.map (snd |- fst |- make_var)
+              |> make_return;
+              Term.unit ]
         in
         make_pnil Ty.int, true_term, top
       in
@@ -332,11 +344,12 @@ let abst_recdata_term (env: env) t =
         make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ abst_recdata.tr2_term env t
   | SetField _ -> assert false
   | Local(Decl_type [s,ty], t) ->
+      (* TODO subst_tdataは最初にまとめてやる *)
       let ty' = encode_recdata_typ env s ty in
       let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
       subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t
   | Local(Decl_type decls, t) ->
-      (* iwayama TODO *)
+      (* TODO *)
       unsupported "encode_rec: Decl_type"
   (*| Var x ->*)
       (*Format.printf "VV_: %a@." Print.id_typ x;*)
@@ -355,8 +368,6 @@ let () = abst_recdata.tr2_term <- abst_recdata_term
 let () = abst_recdata.tr2_typ <- abst_recdata_typ
 (*let () = abst_recdata.tr2_var <- abst_recdata_var*)
 
-(* abst_recdata ここまで *)
-(******************************************************************************)
 
 let typ_in_env ty tys =
   match ty with
@@ -371,9 +382,6 @@ let trans_term t =
   t
   |@> pr "input"
   |> Trans.abst_ext_recdata
-  (* TODO これ何やってるかわからん
-   * trans.ml:l2717辺りを見た感じ不明な型をintにしている？
-   *)
   |@> pr "abst_ext_rec"
   |@> Type_check.check ~ty
   |> abst_recdata.tr2_term []
@@ -383,169 +391,201 @@ let trans_term t =
   |@> pr "simpify_match"
   |@> Type_check.check ~ty
 
-(******************************************************************************)
+(* ********************************************** *
+ * Encode in refinement type enviroment from here *
+ * ********************************************** *)
 
-(* toplevelにしかtypeの定義は出てこないのでこれで大丈夫なはず
- * TODO: merge with trans_term
- *)
 let gather_env : Syntax.term -> env =
   let rec go env t = match t.desc with
     | Local(Decl_type [s,ty], t) ->
         let ty' = encode_recdata_typ env s ty in
         let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
-        env'
-    | Local(_, t) -> go env t
+        go env' t
+    (*| Local(_, t) -> go env t*) (* can be ignored because of Preprocess.Lift_type_decl *)
     | _ -> env
   in
     go []
 
-let rec is_DNF =
-  let rec is_prim t =
-    match t.desc with
-    | BinOp ((Or|And), _, _) | Not(_) -> false
-    | _ -> true
-  and is_literal t =
-    match t.desc with
-    | BinOp ((Or|And), _, _) -> false
-    | Not(t) -> is_prim t
-    | _ -> is_prim t
-  and is_conjunctive t =
-    match t.desc with
-    | BinOp (Or, t1, t2) -> false
-    | BinOp (And, t1, t2) -> is_conjunctive t1 && is_conjunctive t2
-    | _ -> is_literal t
-  and is_disjunctive t =
-    match t.desc with
-    | BinOp (Or, t1, t2) -> is_disjunctive t1 && is_disjunctive t2
-    | _ -> is_conjunctive t
-  in
-  is_disjunctive
+let subst_all_tdata =
+  subst_tdata_map -| List.map (Pair.map_snd Triple.trd)
 
-let rec decompose_DNF : Syntax.term -> Syntax.term list list =
-  let rec de_literal t =
-    match t.desc with
-    | BinOp ((Or|And), _, _) -> assert false
-    | _ -> t
-  and de_conjunctive t =
-    match t.desc with
-    | BinOp (Or, t1, t2) -> assert false
-    | BinOp (And, t1, t2) -> de_conjunctive t1 @ de_conjunctive t2
-    | _ -> [de_literal t]
-  and de_disjunctive t =
-    match t.desc with
-    | BinOp (Or, t1, t2) -> de_disjunctive t1 @ de_disjunctive t2
-    | _ -> [de_conjunctive t]
-  in
-  de_disjunctive
+type sym_env = (string * (term * (int, term) Map.t)) list
 
-exception UnMatch
-(** Assumption:
-      [x] is a variable of type [s] where [type s = ... | l of sty' | ...] and [s] is not recursive,
-      [sty] is an encoding of sty', and
-      [t_in_DNF] is a predicate for [x] in DNF.
-    [trans_rty_one_case all_labels x t_in_DNF l sty] returns refinement type
-    for the case of [l].
+let trans_pred =
+  let tr = make_trans2 () in
+  let term (x, sym_env) t =
+    match t.desc with
+    | Match({desc=Var(y)}, pts) when Id.(x=y) ->
+        let labels = List.map fst sym_env in
+        let preds =
+          snd @@ List.Labels.fold_right pts ~init:(labels,[]) ~f:(
+            fun (p, cond, t) (remain, arms) ->
+              assert (cond = true_term);
+              match p.pat_desc with
+              | PConstr(c, ps) when not (List.mem c remain) ->
+                  (* already matched (would it be better to raise an error?) *)
+                  (remain, List.snoc arms false_term)
+              | PConstr(c, ps) ->
+                  let is_c, map = try List.assoc c sym_env with _ -> assert false in
+                  let remain' = List.remove remain c in
+                  let sbst = List.Labels.filter_map (List.mapi Pair.pair ps) ~f:(
+                    fun (j, p) ->
+                      match p.pat_desc with
+                      | PAny -> None
+                      | PVar(x) -> (try Some (x, Map.find j map)
+                                    with Not_found -> None)
+                          (* TODO assert x is not in FV(t) when Not_found *)
+                      | _ -> assert false
+                  ) in
+                  let t' = subst_map sbst t in
+                  (remain', List.snoc arms (make_and is_c t'))
+              | PVar(y) ->
+                  let match_ = make_ors @@
+                    try List.Labels.map (fun l -> fst @@ List.assoc l sym_env) remain
+                    with Not_found -> assert false
+                  in
+                  let t' = subst y (make_var x) t in
+                  ([], List.snoc arms (make_and match_ t'))
+              | PAny ->
+                  let match_ = make_ors @@
+                    try List.Labels.map (fun l -> fst @@ List.assoc l sym_env) remain
+                    with Not_found -> assert false
+                  in
+                  ([], List.snoc arms (make_and match_ t))
+              | _ -> assert false
+          )
+        in make_ors preds
+    | _ -> tr.tr2_term_rec (x,sym_env) t
+  in
+  tr.tr2_term <- term;
+  term
+
+(* e.g.1:
+      type foo = Foo of (int * string) | Bar of (bool * int)
+        => foo = ((bool * (int * string)) * (bool * (bool * int))) * unit
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      [ Foo, ([int, string], [int, string]);
+        Bar, ([int, string], [int, string]);
+      ]
+  e.g.2:
+      type tree = Leaf of int | Node of tree * int * bool * tree
+        => tree = unit * (int list -> ((bool * (int)) * (bool * (int * bool))) * unit)
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      [ Leaf, ([int], [int]);
+        Node, ([tree, int, bool, tree], [int, bool]);
+      ]
 *)
-let trans_rty_nonrec_data_one_case all_labels x t_in_DNF l sty =
-  let ty_bool = Type.Ty.bool in
-  let x_is_l = Id.new_var ~name:(Id.name x ^ "_is_" ^ l) ty_bool in
-  let x_un_l = Id.new_var ~name:(Id.name x ^ "_un_" ^ l) sty in
+type lts = (string * (typ list * typ list)) list
 
-  let check_is_label l' =
-    if List.mem l' all_labels then ()
-    else failwith @@ "unknown label: " ^ l' ^ " in SPEC"
-  in
+let mk_sym_env s t (lts:lts) =
+  List.Labels.mapi lts ~f:(
+    fun i (l,(tys,tys')) ->
+      let t_base = Term.(proj i t) in
+      let is_l = Term.(fst t_base) in
+      Debug.printf "tys  = %a@." Print.(list typ) tys;
+      Debug.printf "tys' = %a@." Print.(list typ) tys';
+      let map : (int, term) Map.t =
+        (* i: index in tys
+           j: index in tys' *)
+        let rec go m i j tys tys' =
+          match tys, tys' with
+          | _, [] -> m
+          | ty::tys, _ when ty = TData s ->
+              go m (i+1) j tys tys'
+          | _::tys, ty'::tys' ->
+              let m' = Map.add i Term.(proj j (snd t_base)) m in
+              go m' (i+1) (j+1) tys tys'
+          | _ -> assert false
+        in go Map.empty 0 0 tys tys'
+      in
+      (l, (is_l, map))
+  )
 
-  let tr = make_trans() in
-  begin
-    let tr_term t : Syntax.term = match t.desc with
-      | App({desc=Var(f)},[{desc=Var(y)}]) when x=y ->
-          let f = Id.name f in
-          let l'= BatString.lchop ~n:3 f in
-          begin match () with
-          | () when BatString.starts_with f "is_" && l = l' -> true_term
-          | () when BatString.starts_with f "un_" && l = l' -> make_var x_un_l
-          | () when BatString.starts_with f "is_" ||
-                    BatString.starts_with f "un_" -> check_is_label l'; raise UnMatch
-          | _ -> tr.tr_term_rec t
-          end
-      | _ -> tr.tr_term_rec t
-    in
-    tr.tr_term <- tr_term
-  end;
-  let trans_literal_pred pred =
-    try tr.tr_term pred with UnMatch -> false_term
-  in
+let trans_rty_rec_data (s,x,t) (ty_before: typ) (ty_after: typ) =
+  begin match ty_before, ty_after with
+  | TVariant(false,ts), TTuple([{Id.typ=ty1};{Id.typ=ty2}]) ->
+      assert (ty1 = Ty.unit);
+      (* ty_after should is the form of [unit * (int list -> t_variant * unit)]
+         where t_variant = (bool * _) * (bool * _) * ...
+      *)
+      let t_variant =
+        let arg, ret_ty = decomp_tfun ty2 in
+        assert (List.length arg = 1 && Id.typ (List.hd arg) = Ty.(list int));
+        match decomp_ttuple ret_ty with
+        | [t_variant; t_unit] -> assert (t_unit = Ty.unit); t_variant
+        | _ -> assert false
+      in
+      let v = Id.new_var t_variant in
+      let lts = List.Labels.map2 ts (decomp_ttuple t_variant) ~f:(
+        fun (l,tys) x -> (l,(tys, decomp_ttuple (snd_typ x)))
+      ) in
+      let sym_env : sym_env= mk_sym_env s (make_var v) lts in
+      Debug.printf "sym_env = %a@."
+        Print.(list (pair
+          string
+          (fun fm (t, map) ->
+            Print.(pair term (list (pair int term)))
+              fm (t, Map.bindings map))))
+        sym_env;
+      let path = Id.new_var ~name:"path" Ty.(list int) in
+      let u = Id.new_var Ty.unit in
+      let t' = Term.(var path <> nil Ty.int || trans_pred (x,sym_env) t) in
+      Debug.printf "%a@." Print.term' t';
+      Type_check.check ~ty:Ty.bool t';
+      let rty =
+        Ref_type.(Tuple(
+          [ v, of_simple t_variant;
+            u, Base(TUnit, u, t')
+          ]))
+      in
+      let x = Ref_type.Fun(path, Ref_type.of_simple Ty.(list int), rty) in
+      Ref_type.Tuple
+        [ Id.new_var Ty.unit,
+            Ref_type.of_simple Ty.unit
+        ; Id.new_var (Ref_type.to_simple x),
+            x
+        ]
 
-  let rty = match sty with
-    | Type.TBase base ->
-        let pred = make_ors @@
-            Term.(not (var x_is_l)) ::
-            List.map
-              (make_ands -| List.map trans_literal_pred)
-              t_in_DNF
-        in
-        Ref_type.Base(base, x_un_l, pred)
-    | ty ->
-        Format.eprintf
-          "non-base type in Ref_type: @.%a@."
-          Syntax.pp_typ ty;
-        unsupported "TODO: tuple in Data (e.g. Foo of int * bool)"
-  in
-    Ref_type.Tuple([(x_is_l, Ref_type.of_simple ty_bool);(x_un_l, rty)])
+  | _ -> assert false
+  end
 
-
-(** Assumption:
-      [x] is a variable of non-recursive variant type [s].
-      [t] is a predicate for [x].
-      [ty_before] and [ty_after] is the body of [s] before/after encoding.
-    for example,
-      if [type s = Foo of int | Bar of bool], then
-      [ty_before = TVariant(false, [("Foo",[int]);("Bar",[bool])])] and
-      [ty_after  = (bool * int) * (bool * bool)]
-*)
-let trans_rty_nonrec_data (s, x, t) ty_before ty_after: Ref_type.t =
-  let rts : (Syntax.id * Ref_type.t) list =
-    match ty_before, ty_after with
-    | TVariant(false,ts), Type.TTuple(xts) ->
-        if not (is_DNF t) then
-          unsupported @@ Format.asprintf "non DNF predicate for variant@.%a@." Syntax.pp_term t;
-        let labels = List.map fst ts in
-        let stypes = List.map (Type.snd_typ -| Id.typ) xts in
-        let t_in_DNF = decompose_DNF t in
-        begin try
-          List.map2
-            begin fun l sty ->
-              let x_l = Id.new_var (make_ttuple [Type.Ty.bool; sty]) in
-              let rty = trans_rty_nonrec_data_one_case labels x t_in_DNF l sty in
-              x_l, rty
-            end
-            labels stypes
-        with e ->
-          print_endline (Printexc.to_string e);
-          assert false
-        end
-    | _ -> assert false
-  in
-  Ref_type.Tuple(rts)
-
+let trans_rty_nonrec_data (s,x,t) (ty_before: typ) (ty_after: typ) =
+  match ty_before, ty_after with
+  | TVariant(false,ts), TTuple([{Id.typ=ty1};{Id.typ=ty2}]) ->
+      let xs = match ty1 with TTuple(xs) -> xs | _ -> assert false in
+      assert (ty2 = Ty.unit);
+      let v = Id.new_var ty1 in
+      let lts = List.Labels.map2 ts xs ~f:(
+        fun (l,tys) x -> (l,(tys, decomp_ttuple (snd_typ @@ Id.typ x)))
+      ) in
+      let sym_env = mk_sym_env s (make_var v) lts in
+      Debug.printf "sym_env = %a@."
+        Print.(list (pair
+          string
+          (fun fm (t, map) ->
+            Print.(pair term (list (pair int term)))
+              fm (t, Map.bindings map))))
+        sym_env;
+      let u = Id.new_var Ty.unit in
+      let t' = trans_pred (x,sym_env) t in
+      Type_check.check ~ty:Ty.bool t';
+      Ref_type.(Tuple(
+        [ v, of_simple ty1;
+          u, Base(TUnit, u, t')
+        ]))
+  | _, _ -> assert false
 
 let rec trans_rty env =
   let tr = make_trans() in
-  tr.tr_typ <-
-    begin fun ty ->
-      if ty = Type.typ_unknown then ty (* TODO typ_unknownはどうして残ってるんだろう *)
-      else expand_enc_typ env ty
-    end;
+  tr.tr_typ <- expand_enc_typ env;
   let open Ref_type in
   function
-  | ADT(s,x,t) when is_rec_type env (TData s) ->
-      unsupported "encode of recursive data in refinement type"
-  | ADT(s,x,t) when not @@ List.mem s prim_base_types ->
+  | ADT(s,x,t) ->
       let ty_before = expand_typ env (TData s) in
       let ty_after = expand_enc_typ env (TData s) in
-      trans_rty_nonrec_data (s,x,t) ty_before ty_after
-  | ADT(s,x,t) -> assert false
+      if is_rec_type env (TData s)
+      then trans_rty_rec_data (s,x,t) ty_before ty_after
+      else trans_rty_nonrec_data (s,x,t) ty_before ty_after
   | Base(base,x,t) -> Base(base, tr.tr_var x, tr.tr_term t)
   | Fun(x,ty1,ty2) -> Fun(tr.tr_var x, trans_rty env ty1, trans_rty env ty2)
   | Tuple xtys -> Tuple(List.map (Pair.map tr.tr_var (trans_rty env)) xtys)
@@ -559,8 +599,8 @@ let rec trans_rty env =
                                     trans_rty env ty2)
   | Exn(ty1,ty2) -> Exn(trans_rty env ty1, trans_rty env ty2)
 
-let trans_rid : env -> Syntax.id -> Syntax.id = fun env ->
-  abst_recdata.tr2_var env
+
+let trans_rid = abst_recdata.tr2_var
 
 let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t) list = fun env renv ->
   List.map (Pair.map (trans_rid env) (trans_rty env)) renv
@@ -568,8 +608,5 @@ let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t)
 (* TODO: support records in refinement types *)
 let trans p =
   let env = gather_env @@ Problem.term p in
-  let p' = Problem.map ~tr_env:(trans_env env) trans_term p in
-  p'
-
-(* TODO: recdata, type check *)
+  Problem.map ~tr_env:(trans_env env) trans_term p
 
