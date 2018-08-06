@@ -149,7 +149,7 @@ and generate typ_exn make_fail genv cenv typ =
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
         genv', cenv', U.Term.(let_ [x',rand typ'] (assume t_check (var x')))
     | ADT(s, x, p) ->
-        assert false; (* TODO *)
+        assert false
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_abst_typ ~with_pred:true typ1 in
         let typ2' = subst_var x x' typ2 in

@@ -304,7 +304,7 @@ let rec of_simple typ =
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
   | _ ->
-      Debug.printf "%a@." Print.typ typ;
+      Format.printf "%a@." Print.typ typ;
       unsupported "Ref_type.of_simple"
 
 
@@ -328,7 +328,7 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
       let typ' = T.TBase base in
       let ps =
         if !Flag.PredAbst.decomp_pred then
-          Term_util.decomp_bexp @@ U.subst_var x x' t
+          U.decomp_bexp @@ U.subst_var x x' t
         else
           [U.subst_var x x' t]
       in
@@ -352,7 +352,7 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
       (*let typ' = T.TBase b in*)
       (*let ps =*)
         (*if !Flag.PredAbst.decomp_pred then*)
-          (*Term_util.decomp_bexp @@ U.subst_var x x' t*)
+          (*U.decomp_bexp @@ U.subst_var x x' t*)
         (*else*)
           (*[U.subst_var x x' t]*)
       (*in*)
@@ -369,7 +369,7 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
       T.TTuple (List.fold_right aux xtyps [])
   | Inter(styp, typs)
   | Union(styp, typs) ->
-      List.fold_right (Term_util.merge_typ -| to_abst_typ ~decomp_pred ~with_pred) typs styp
+      List.fold_right (U.merge_typ -| to_abst_typ ~decomp_pred ~with_pred) typs styp
   | ExtArg _ -> unsupported "Ref_type.to_abst_typ"
   | List(x,p_len,y,p_i,typ1) ->
       if p_i.S.desc <> S.Const S.True || occur y typ1 then

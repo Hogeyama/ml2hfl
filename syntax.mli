@@ -258,5 +258,7 @@ val decomp_locals : term -> declaration list * term
 val pp_term : Format.formatter -> term -> unit
 val pp_id : Format.formatter -> id -> unit
 val pp_typ : Format.formatter -> typ -> unit
+val pp_declaration : Format.formatter -> declaration -> unit
+val pp_pattern : Format.formatter -> pattern -> unit
 
 
