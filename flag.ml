@@ -223,7 +223,7 @@ end
 
 module Experiment = struct
   module HORS_quickcheck = struct
-    type use = Do_not_use | Shortest | Longest
+    type use = Do_not_use | Shortest | Longest | LowestCoverage | HighestCoverage
     let command = ref Mconfig.hors_quickcheck
     let use = ref Do_not_use
     let num = ref 5

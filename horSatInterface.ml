@@ -191,9 +191,17 @@ let rec verifyFile cmd parser token filename =
         match !QC.use with
         | QC.Do_not_use -> ce
         | use ->
-            let cmd = Format.sprintf "%s %s %d" !QC.command filename !Flag.Experiment.HORS_quickcheck.num in
+            let option =
+              match use with
+              | QC.Do_not_use -> assert false
+              | QC.Shortest -> "-shortest"
+              | QC.Longest -> "-longest"
+              | QC.LowestCoverage -> "-lowest-coverage"
+              | QC.HighestCoverage -> "-highest-coverage"
+            in
+            let cmd = Format.sprintf "%s %s %d %s" !QC.command filename !Flag.Experiment.HORS_quickcheck.num option in
             let r = Time.measure_and_add Flag.Log.Time.hors_quickcheck (fun () -> Unix.CPS.open_process_in cmd IO.input_all) in
-            let ces =
+            let ce =
               r
               |> String.trim
               |> String.split_on_char '\n'
@@ -201,12 +209,7 @@ let rec verifyFile cmd parser token filename =
                            |- List.map (String.split_on_char ',')
                            |- List.map (function [s;n] -> s, int_of_string n | _ -> assert false))
               |> List.sort (Compare.on List.length)
-            in
-            let ce =
-              match use with
-              | QC.Do_not_use -> assert false
-              | QC.Shortest -> List.hd ces
-              | QC.Longest -> List.last ces
+              |> List.hd
             in
             Flag.Experiment.HORS_quickcheck.(cex_length_history := List.length ce :: !cex_length_history);
             ce
