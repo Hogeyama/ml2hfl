@@ -347,7 +347,7 @@ let abst_recdata_term (env: env) t =
       (* TODO subst_tdataは最初にまとめてやる *)
       let ty' = encode_recdata_typ env s ty in
       let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
-      subst_tdata s ty' @@ abst_recdata.tr2_term_rec env' t
+      subst_tdata s ty' @@ abst_recdata.tr2_term env' t
   | Local(Decl_type decls, t) ->
       (* TODO *)
       unsupported "encode_rec: Decl_type"
