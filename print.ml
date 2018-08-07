@@ -723,6 +723,7 @@ let bool = Format.pp_print_bool
 let string = Format.pp_print_string
 let option = Option.print
 let pair = Pair.print
+let ( * ) = pair
 let triple = Triple.print
 let list = List.print
 let ignore s fm _ = Format.pp_print_string fm s

@@ -95,7 +95,7 @@ let instansiate_pred_by_env env c =
   Debug.printf "env: %a@." CEGAR_print.env env;
   let paths = List.flatten_map (Fun.uncurry fix_pred_of) env in
   Debug.printf "c: %a@." Fpat.HCCS.pr c;
-  Debug.printf "paths: %a@." Print.(list (pair (pair Fpat.Idnt.pr (list int)) (pair __ CEGAR_print.term))) paths;
+  Debug.printf "paths: %a@." Print.(list ((Fpat.Idnt.pr * list int) * (__ * CEGAR_print.term))) paths;
   let rec has_path x (y,path) =
     match x with
     | Fpat.Idnt.T(x', _, arg) ->
@@ -117,7 +117,7 @@ let instansiate_pred_by_env env c =
     Fpat.HCCS.tenv c
     |@> Debug.printf "tenv: %a@." Fpat.TypEnv.pr
     |> List.filter_map aux
-    |@> Debug.printf "tenv': %a@." Print.(list (pair Fpat.Idnt.pr (pair Fpat.TypEnv.pr Fpat.Formula.pr)))
+    |@> Debug.printf "tenv': %a@." Print.(list (Fpat.Idnt.pr * (Fpat.TypEnv.pr * Fpat.Formula.pr)))
   in
   Fpat.HCCS.subst map c
 

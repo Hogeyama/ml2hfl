@@ -96,7 +96,7 @@ let lift env ?name t =
   Debug.printf "   => %a@." RT.print r;
   r
 
-let print_env = Print.(list (pair id RT.print))
+let print_env = Print.(list (id * RT.print))
 
 let print_sub_constrs fm (cs:sub_constr list) =
   let pr fm (env,(rty1,rty2)) =

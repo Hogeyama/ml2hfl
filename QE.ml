@@ -81,7 +81,7 @@ let eliminate t =
   in
   let fv = get_fv t in
   let map = List.map (Pair.add_right @@ String.replace_chars (function '!' -> "_bang_" | c -> String.of_char c)) fv in
-  Debug.printf "  map: @[%a@." Print.(list (pair string string)) map;
+  Debug.printf "  map: @[%a@." Print.(list (string * string)) map;
   t
   |@> Debug.printf "  BEFORE: @[%a@." CEGAR_print.term
   |> subst_map @@ List.map (fun (x,y) -> x, Var y) map

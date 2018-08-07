@@ -312,7 +312,7 @@ let remove_pair_ref_typ (x,t) =
   |> remove_pair_ref_typ
   |> fst
   |> List.map (Pair.map_snd @@ Ref_type.map_pred Trans.eta_tuple)
-  |*@> Format.printf "TRANS: @[%a@." Print.(list @@ pair (option id) Ref_type.print)
+  |*@> Format.printf "TRANS: @[%a@." Print.(list (option id * Ref_type.print))
   |> aux
 
 
