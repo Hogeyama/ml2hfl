@@ -189,11 +189,10 @@ let rec verifyFile cmd parser token filename =
       let ce' =
         let module QC = Flag.Experiment.HORS_quickcheck in
         match !QC.use with
-        | QC.Do_not_use -> ce
-        | use ->
+        | None -> ce
+        | Some use ->
             let option =
               match use with
-              | QC.Do_not_use -> assert false
               | QC.Shortest -> "-shortest"
               | QC.Longest -> "-longest"
               | QC.LowestCoverage -> "-lowest-coverage"

@@ -223,9 +223,9 @@ end
 
 module Experiment = struct
   module HORS_quickcheck = struct
-    type use = Do_not_use | Shortest | Longest | LowestCoverage | HighestCoverage
+    type use = Shortest | Longest | LowestCoverage | HighestCoverage
     let command = ref Mconfig.hors_quickcheck
-    let use = ref Do_not_use
+    let use : use option ref = ref None
     let num = ref 5
     let cex_length_history : int list ref = ref []
   end
