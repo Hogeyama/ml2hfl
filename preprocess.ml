@@ -343,6 +343,9 @@ let all spec : t list =
     Ignore_excep_arg,
       cond_trans !Flag.Method.ignore_exn_arg @@
       map_trans ignore_exn_arg;
+    Make_ext_funs,
+      cond_trans (not !Flag.Method.encode_before_make_ext_fun) @@
+      map_trans make_ext_funs;
     Encode_simple_variant,
       map_trans Encode.simple_variant;
     Replace_base_with_int,
@@ -377,6 +380,7 @@ let all spec : t list =
     Inline,
       (fun prog -> Some [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog, get_rtyp_id]);
     Make_ext_funs,
+      cond_trans !Flag.Method.encode_before_make_ext_fun @@
       map_trans make_ext_funs;
     Reduce_rand,
       map_trans reduce_rand;

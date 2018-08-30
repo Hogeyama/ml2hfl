@@ -817,6 +817,9 @@ let make_if t1 t2 t3 =
 let make_assert t = make_if t unit_term fail_unit_term
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
 let make_br t2 t3 = make_if randbool_unit_term t2 t3
+let make_brs ts =
+  if ts = [] then invalid_arg "Term_util.make_brs";
+  List.reduce_right make_br ts
 
 let rec get_top_funs acc = function
   | {desc=Local(Decl_let defs, t)} ->
@@ -1341,6 +1344,7 @@ module Term = struct
   let (~-) = make_neg
   let if_ = make_if
   let br = make_br
+  let brs = make_brs
   let (=) = make_eq
   let (<>) = make_neq
   let (<) = make_lt

@@ -399,6 +399,8 @@ let rec arg_spec () =
      "-base-to-int", Arg.Set Flag.Method.base_to_int, " Replace primitive base types with int";
      "-data-to-int", Arg.Set Flag.Method.data_to_int, " Replace data types with int";
      "-bool-to-int", Arg.Set Flag.Method.bool_to_int, " Encode booleans into integers";
+     "-encode-before-make-ext-fun", Arg.Set Flag.Method.encode_before_make_ext_fun, " Encode before make external functions";
+     "-make-ext-fun-before-encode", Arg.Clear Flag.Method.encode_before_make_ext_fun, " Make external functions before encode";
      (* verification *)
      "", Arg.Unit ignore, "Options_for_verifier";
      "-modular",

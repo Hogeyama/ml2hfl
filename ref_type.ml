@@ -340,29 +340,8 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
       in
       U.add_tapred x' ps typ'
   | ADT(s, x, t) ->
-      assert false
-  (*| Base(Prim(b), x, ({S.desc=S.Const _} as p)) ->*)
-      (*let sty = T.TBase b in*)
-      (*if with_pred then*)
-        (*T.add_tattr (T.TARefPred(x,p)) sty*)
-      (*else*)
-        (*let ps =*)
-          (*if decomp_pred then*)
-            (*U.decomp_and p*)
-          (*else*)
-            (*[p]*)
-        (*in*)
-        (*T.add_tattr (T.TAPred(x,ps)) sty*)
-  (*| Base(Prim(b), x, t) ->*)
-      (*let x' = Id.new_var_id x in*)
-      (*let typ' = T.TBase b in*)
-      (*let ps =*)
-        (*if !Flag.PredAbst.decomp_pred then*)
-          (*U.decomp_bexp @@ U.subst_var x x' t*)
-        (*else*)
-          (*[U.subst_var x x' t]*)
-      (*in*)
-      (*U.add_tapred x' ps typ'*)
+      if not with_pred then warning "Abstraction type of ADT cannot have predicates";
+      TData s
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ ~decomp_pred ~with_pred typ1 in
       let typ2' = to_abst_typ ~decomp_pred ~with_pred @@ subst_var x x' typ2 in
@@ -719,7 +698,7 @@ and make_weakest typ =
   | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
   | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
   | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
-  | T.TData s -> assert false; 
+  | T.TData s -> assert false;
       (*Base(Data s, Id.new_var typ, U.true_term)*)
   | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)

@@ -2736,7 +2736,7 @@ let abst_recdata =
 
 let abst_ext_recdata =
   let typ_not_in_env ty tys =
-    match ty with
+    match elim_tattr ty with
     | TData s -> not (List.mem s tys)
     | TVariant _ -> false
     | _ -> true

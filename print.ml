@@ -226,7 +226,7 @@ and print_desc cfg pri attr fm desc =
   | If(t1, t2, {desc=Bottom}) when not !!Debug.check && (not cfg.as_ocaml || cfg.for_dmochi) ->
       let p = 9 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[assume%a %a;@ %a@]%s" s1 print_if_label attr (pr_t p) t1 (pr_t p) t2 s2
+      fprintf fm "%s@[assume%a %a;@ %a@]%s" s1 print_if_label attr (pr_t 80) t1 (pr_t p) t2 s2
   | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) when not !!Debug.check ->
       let p = 80 in
       let s1,s2 = paren pri p in

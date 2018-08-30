@@ -16,9 +16,10 @@ let comment s t =
 let rec generate_check typ_exn make_fail genv cenv x typ =
   Debug.printf "Ref_type_gen.generate_check: %a : %a@." Id.print x print typ;
   match typ with
-  | Base(base, y, p) ->
+  | Base(_, y, p) ->
       genv, cenv, U.subst_var y x p
-  | ADT(_,_,_) -> assert false (* "TODO" *)
+  | ADT(_, y, p) ->
+      genv, cenv, U.subst_var y x p
   | Fun(y, typ1, Exn(typ2, typ3)) ->
       begin
         match typ_exn with
@@ -132,7 +133,7 @@ and generate typ_exn make_fail genv cenv typ =
   Debug.printf "Ref_type_gen.generate: %a@." print typ;
   let genv',cenv',t =
     match typ with
-    | Base(T.TInt, x, p) ->
+    | Base(T.TInt, _, _) ->
         let x' = Id.new_var T.Ty.int in
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
         genv', cenv', U.make_let [x',U.randint_unit_term] @@ U.make_assume t_check @@ U.make_var x'
@@ -148,8 +149,52 @@ and generate typ_exn make_fail genv cenv typ =
         let x' = Id.new_var typ' in
         let genv',cenv',t_check = generate_check typ_exn make_fail genv cenv x' typ in
         genv', cenv', U.Term.(let_ [x',rand typ'] (assume t_check (var x')))
-    | ADT(s, x, p) ->
-        assert false
+    | ADT(s, x, t) ->
+        let uns() = unsupported "Ref_type_gen.generate ADT" in
+        let sty = to_simple ~with_pred:true typ in
+        let x' = Id.new_var sty in
+        let bindings : (string * (_ list * _)) list =
+          let open Syntax in
+          match t.desc with
+          | Const _ -> assert false
+          | Match({desc=Var y}, ps) when Id.(x = y) ->
+              let bindings =
+                let aux (p,cond,t) =
+                  let s', xs =
+                    if cond.desc <> Const True then uns();
+                    match p.pat_desc with
+                    | PConstr(s, ps) ->
+                        let aux' p =
+                          match p.pat_desc with
+                          | PAny -> Id.new_var p.pat_typ
+                          | PVar x -> x
+                          | _ -> uns()
+                        in
+                        s, List.map aux' ps
+                    | PAny -> "_", []
+                    | _ -> uns()
+                  in
+                  s', (xs, t)
+                in
+                List.map aux ps
+              in
+              if List.length (List.map fst bindings) <> List.length (List.unique @@ List.map fst bindings) then uns();
+              bindings
+          | Match _ -> uns();
+          | _ -> ["_", ([], t)]
+        in
+        let ts =
+          let aux (s,(xs,t)) =
+            if s = "_" then
+              U.Term.(let_ [x', rand sty] (assume t (var x')))
+            else
+              let defs = List.map (fun x -> x, U.Term.rand @@ Id.typ x) xs in
+              let t_s = S.{desc=Constr(s, List.map U.Term.var xs); typ=sty; attr=[]} in
+              U.Term.(lets defs (assume t t_s))
+          in
+          List.map aux bindings
+        in
+        genv, cenv, U.Term.brs ts
     | Fun(x,typ1,typ2) ->
         let x' = Id.new_var @@ to_abst_typ ~with_pred:true typ1 in
         let typ2' = subst_var x x' typ2 in
@@ -316,7 +361,7 @@ and generate typ_exn make_fail genv cenv typ =
         unsupported "Ref_type_gen.generate: Inter"
     | Union(styp, []) -> [], [], U.make_bottom styp
     | Union(_, [typ]) -> generate typ_exn make_fail genv cenv typ
-(*
+    (*
     | Union(_, ((Tuple _)::_ as typs)) ->
         let genv',cenv',ts =
           let aux typ (genv,cenv,ts) =
@@ -326,7 +371,7 @@ and generate typ_exn make_fail genv cenv typ =
           List.fold_right aux typs (genv,cenv,[])
         in
         genv', cenv', List.fold_left U.make_br (List.hd ts) (List.tl ts)
- *)
+     *)
     | Union(_, typs) ->
         let genv',cenv',ts =
           let aux typ (genv,cenv,ts) =

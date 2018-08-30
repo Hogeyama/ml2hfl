@@ -60,10 +60,13 @@ let abst_recdata_typ env typ =
       in
         Ty.(pair (make_ttuple @@ List.map aux labels) unit)
   | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
+  | TAttr(attr, ty) ->
+      let attr' = List.filter (function TARefPred _ -> false | _ -> true) attr in
+      _TAttr attr' @@ abst_recdata.tr2_typ_rec env ty
   | _ -> abst_recdata.tr2_typ_rec env typ
 
 let is_rec_type (env: env) ty =
-  match ty with
+  match elim_tattr ty with
   | TData s when not @@ List.mem s prim_base_types ->
       begin
         try Triple.snd @@ List.assoc s env
@@ -256,12 +259,13 @@ let rec abst_recdata_pat (env: env) p =
 
 
 let abst_recdata_term (env: env) t =
+  let typ = elim_tattr t.typ in
   match t.desc with
   | Constr("Abst",[]) ->
       {desc = Constr("Abst",[]);
-       typ  = abst_recdata.tr2_typ env t.typ;
+       typ  = abst_recdata.tr2_typ env typ;
        attr = []}
-  | Constr(c,ts) when not (is_rec_type env t.typ) ->
+  | Constr(c,ts) when not (is_rec_type env typ) ->
       let aux (c',tys) =
         if c = c' then
           let t' = make_tuple @@ List.map (abst_recdata.tr2_term env) ts in
@@ -270,15 +274,12 @@ let abst_recdata_term (env: env) t =
           let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys in
           Term.(pair false_ (rand ty))
       in
-      make_tuple
-        [ make_tuple @@
-            List.map aux @@ snd @@ decomp_tvariant @@ expand_typ env t.typ;
-          Term.unit
-        ]
+      let ts' = List.map aux @@ snd @@ decomp_tvariant @@ expand_typ env typ in
+      Term.(tuple [tuple ts'; unit])
   | Constr(c,ts) ->
       let ts' = List.map (abst_recdata.tr2_term env) ts in
       let xtys = List.map2 (fun t' t -> Id.new_var @@ expand_enc_typ env t'.typ, t.typ) ts' ts in
-      let poly,labels = decomp_tvariant @@ expand_typ env t.typ in
+      let poly,labels = decomp_tvariant @@ expand_typ env typ in
       if poly then unsupported "encode_rec: polymorphic variant";
       let path = Id.new_var ~name:"path" Ty.(list int) in
       let pat0 =
@@ -288,7 +289,7 @@ let abst_recdata_term (env: env) t =
               if c = c' then
                 Term.(pair true_ (tuple ts'))
               else
-                let tys' = List.filter_out ((=) t.typ) tys in
+                let tys' = List.filter_out ((=) typ) tys in
                 let ty = make_ttuple @@ List.map (abst_recdata.tr2_typ env) tys' in
                 Term.(pair false_ (rand ty))
             in
@@ -296,7 +297,7 @@ let abst_recdata_term (env: env) t =
           in
           make_tuple
             [ List.combine ts xtys
-              |> List.filter_out (fun (t',_) -> t.typ = t'.typ)
+              |> List.filter_out (fun (t',_) -> typ = t'.typ)
               |> List.map (snd |- fst |- make_var)
               |> make_return;
               Term.unit ]
@@ -304,7 +305,7 @@ let abst_recdata_term (env: env) t =
         make_pnil Ty.int, true_term, top
       in
       let make_pat (i,acc) (x,ty) =
-        if ty = t.typ then
+        if ty = typ then
           let path' = Id.new_var ~name:"path'" Ty.(list int) in
           let t = Term.(snd (var x) @ [var path']) in
           i+1, acc @ [Pat.(cons (int i) (var path')), true_term, t]
@@ -327,15 +328,15 @@ let abst_recdata_term (env: env) t =
       let t1' = abst_recdata.tr2_term env t1 in
       let pats' = List.map aux pats in
       make_match t1' pats'
-  | TNone -> make_none @@ abst_recdata.tr2_typ env @@ option_typ t.typ
+  | TNone -> make_none @@ abst_recdata.tr2_typ env @@ option_typ typ
   | TSome t -> make_some @@ abst_recdata.tr2_term env t
   | Record [] -> assert false
   | Record fields ->
-      if List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord t.typ
+      if List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord typ
       then unsupported "Mutable records"
       else make_tuple @@ List.map (abst_recdata.tr2_term env -| snd) fields
   | Field(t,s) ->
-      let fields = decomp_trecord t.typ in
+      let fields = decomp_trecord typ in
       if Mutable =
           try fst @@ List.assoc s fields
           with Not_found -> assert false then
@@ -374,7 +375,7 @@ let typ_in_env ty tys =
   | TData s -> List.mem s tys
   | _ -> false
 
-let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term_typ t
+let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
 let trans_typ = abst_recdata.tr2_typ []
 let trans_term t =
@@ -609,4 +610,3 @@ let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t)
 let trans p =
   let env = gather_env @@ Problem.term p in
   Problem.map ~tr_env:(trans_env env) trans_term p
-

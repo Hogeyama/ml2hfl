@@ -61,6 +61,7 @@ val make_div : term -> term -> term
 val make_neg : term -> term
 val make_if : term -> term -> term -> term
 val make_br : term -> term -> term
+val make_brs : term list -> term
 val make_eq : term -> term -> term
 val make_eq_dec : term -> term -> term
 val make_neq : term -> term -> term
@@ -263,6 +264,7 @@ module Term : sig
   val (~-) : term -> term
   val if_ : term -> term -> term -> term
   val br : term -> term -> term
+  val brs : term list -> term
   val (=) : term -> term -> term
   val (<>) : term -> term -> term
   val (<) : term -> term -> term
