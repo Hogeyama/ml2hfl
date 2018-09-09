@@ -600,13 +600,61 @@ let rec trans_rty env =
                                     trans_rty env ty2)
   | Exn(ty1,ty2) -> Exn(trans_rty env ty1, trans_rty env ty2)
 
-
 let trans_rid = abst_recdata.tr2_var
 
 let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t) list = fun env renv ->
   List.map (Pair.map (trans_rid env) (trans_rty env)) renv
 
+(******************************************************************************
+ * decompose single tuple
+ ******************************************************************************)
+
+let decompose_single_tuple =
+  let tr = make_trans () in
+  let dst_typ (ty: typ) : typ = match ty with
+    | TTuple [ty] -> Id.typ ty
+    | _ -> tr.tr_typ_rec ty
+  in
+  let dst_pat p = match p.pat_desc with
+    | PTuple[p0] -> p0
+    | _ -> tr.tr_pat_rec p
+  in
+  let rec dst_term t = match t.desc with
+    | Proj (0, ({typ=TTuple[_]} as t_inner)) ->
+        dst_term t_inner
+        (* t_inner が Var なら型を変えてくれるし Tuple なら取り出してくれる *)
+    | Proj (0, t0) ->
+        (*Format.printf "{}%a | %a | %a@."*)
+          (*Print.term_typ t*)
+          (*Print.typ t.typ*)
+          (*Print.typ t0.typ;*)
+        tr.tr_term_rec t
+    | Tuple[t] -> t
+    | _ -> tr.tr_term_rec t
+  in
+  tr.tr_typ <- dst_typ;
+  tr.tr_term <- dst_term;
+  tr.tr_pat <- dst_pat;
+  tr
+let dst_term t =
+  let t' = decompose_single_tuple.tr_term t in
+  Type_check.check ~ty:t'.typ t';
+  t'
+
+let dst_env env =
+  let trans_rty = Ref_type.mk_trans_rty decompose_single_tuple in
+  let tr_var = Fun.id in
+  let env' = List.map (Pair.map (tr_var -| decompose_single_tuple.tr_var) trans_rty) env in
+  env'
+
 (* TODO: support records in refinement types *)
 let trans p =
   let env = gather_env @@ Problem.term p in
-  Problem.map ~tr_env:(trans_env env) trans_term p
+  let p = Problem.map ~tr_env:(trans_env env) trans_term p in
+  let p = Problem.map ~tr_env:dst_env dst_term p in
+  Type_check.check Problem.(p.term);
+  p
+
+(* shaddowing よくない *)
+let trans_typ = decompose_single_tuple.tr_typ -| trans_typ
+

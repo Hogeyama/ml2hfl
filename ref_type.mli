@@ -98,5 +98,6 @@ end
 (* ppx_deriving show *)
 val pp : Format.formatter -> t -> unit
 
+val mk_trans_rty : Syntax.trans -> t -> t
 
 
