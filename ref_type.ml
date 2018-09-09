@@ -341,7 +341,7 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
       U.add_tapred x' ps typ'
   | ADT(s, x, t) ->
       if not with_pred then warning "Abstraction type of ADT cannot have predicates";
-      TData s
+      T.TData s
   | Fun(x,typ1,typ2) ->
       let x' = Id.new_var ~name:(Id.name x) @@ to_abst_typ ~decomp_pred ~with_pred typ1 in
       let typ2' = to_abst_typ ~decomp_pred ~with_pred @@ subst_var x x' typ2 in

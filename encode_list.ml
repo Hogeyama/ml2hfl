@@ -332,7 +332,7 @@ let make_list_eq typ =
 let inst_list_eq = make_trans2 ()
 let inst_list_eq_term map t =
   match t.desc with
-  | BinOp(Eq, ({desc=Var(path)} as t1), {desc=Nil; typ=TApp(TList, [typ])}) when path.Id.name = "path" ->
+  | BinOp(Eq, ({desc=Var(path)}), {desc=Nil; typ=TApp(TList, [typ])}) when path.Id.name = "path" ->
       (* XXX temporary measure
          path = nil
        *)

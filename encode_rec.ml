@@ -49,7 +49,7 @@ let encode_recdata_typ env s ty =
 (* e.g.
      type foo = Foo of int | Bar of bool * string
        => (bool * (int)) * (bool * (bool * string)) * unit
-                  ^^^^^ one element tuple             ^^^^ for predicate
+                  ^^^^^ single element tuple          ^^^^ for predicate
 *)
 let abst_recdata_typ env typ =
   match typ with
@@ -74,7 +74,7 @@ let is_rec_type (env: env) ty =
       end
   | _ -> false
 
-let expand_typ (env: env) ty =
+let expand_typ env ty =
   match ty with
   | TData s when not @@ List.mem s prim_base_types ->
       begin
@@ -83,7 +83,7 @@ let expand_typ (env: env) ty =
       end
   | _ -> ty
 
-let expand_enc_typ (env: env) ty =
+let expand_enc_typ env ty =
   match ty with
   | TData s when not @@ List.mem s prim_base_types ->
       begin
@@ -92,7 +92,7 @@ let expand_enc_typ (env: env) ty =
       end
   | _ -> ty
 
-let rec abst_recdata_pat (env: env) p =
+let rec abst_recdata_pat env p =
   let typ =
     match abst_recdata.tr2_typ env p.pat_typ with
     | TData s when not @@ List.mem s prim_base_types ->
@@ -352,22 +352,11 @@ let abst_recdata_term (env: env) t =
   | Local(Decl_type decls, t) ->
       (* TODO *)
       unsupported "encode_rec: Decl_type"
-  (*| Var x ->*)
-      (*Format.printf "VV_: %a@." Print.id_typ x;*)
-      (*let x' = Id.map_typ (abst_recdata.tr2_typ env) x in*)
-      (*Format.printf "WW_: %a@." Print.id_typ x';*)
-      (*{ t with desc = Var x' }*)
   | _ -> abst_recdata.tr2_term_rec env t
 
-(*let abst_recdata_var : env -> Syntax.id -> Syntax.id = fun env x ->*)
-  (*Format.printf "VVV: %a@." Print.id_typ x;*)
-  (*let x' = Id.map_typ (abst_recdata.tr2_typ env) x in*)
-  (*Format.printf "WWW: %a@." Print.id_typ x';*)
-  (*x'*)
-
-let () = abst_recdata.tr2_term <- abst_recdata_term
-let () = abst_recdata.tr2_typ <- abst_recdata_typ
-(*let () = abst_recdata.tr2_var <- abst_recdata_var*)
+let () =
+  abst_recdata.tr2_term <- abst_recdata_term;
+  abst_recdata.tr2_typ <- abst_recdata_typ
 
 
 let typ_in_env ty tys =
@@ -521,17 +510,17 @@ let trans_rty_rec_data (s,x,t) (ty_before: typ) (ty_after: typ) =
         fun (l,tys) x -> (l,(tys, decomp_ttuple (snd_typ x)))
       ) in
       let sym_env : sym_env= mk_sym_env s (make_var v) lts in
-      Debug.printf "sym_env = %a@."
-        Print.(list (pair
-          string
-          (fun fm (t, map) ->
-            Print.(pair term (list (pair int term)))
-              fm (t, Map.bindings map))))
-        sym_env;
+      (*Debug.printf "sym_env = %a@."*)
+        (*Print.(list (pair*)
+          (*string*)
+          (*(fun fm (t, map) ->*)
+            (*Print.(pair term (list (pair int term)))*)
+              (*fm (t, Map.bindings map))))*)
+        (*sym_env;*)
       let path = Id.new_var ~name:"path" Ty.(list int) in
       let u = Id.new_var Ty.unit in
       let t' = Term.(var path <> nil Ty.int || trans_pred (x,sym_env) t) in
-      Debug.printf "%a@." Print.term' t';
+      (*Debug.printf "%a@." Print.term' t';*)
       Type_check.check ~ty:Ty.bool t';
       let rty =
         Ref_type.(Tuple(
@@ -560,13 +549,13 @@ let trans_rty_nonrec_data (s,x,t) (ty_before: typ) (ty_after: typ) =
         fun (l,tys) x -> (l,(tys, decomp_ttuple (snd_typ @@ Id.typ x)))
       ) in
       let sym_env = mk_sym_env s (make_var v) lts in
-      Debug.printf "sym_env = %a@."
-        Print.(list (pair
-          string
-          (fun fm (t, map) ->
-            Print.(pair term (list (pair int term)))
-              fm (t, Map.bindings map))))
-        sym_env;
+      (*Debug.printf "sym_env = %a@."*)
+        (*Print.(list (pair*)
+          (*string*)
+          (*(fun fm (t, map) ->*)
+            (*Print.(pair term (list (pair int term)))*)
+              (*fm (t, Map.bindings map))))*)
+        (*sym_env;*)
       let u = Id.new_var Ty.unit in
       let t' = trans_pred (x,sym_env) t in
       Type_check.check ~ty:Ty.bool t';

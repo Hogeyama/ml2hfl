@@ -241,6 +241,7 @@ end = struct
             {t with desc = Var (Id.set_typ x ty);
                     typ  = ty}
           with Not_found ->
+            Format.eprintf "unbound variable %a found in SPEC@." Print.id_typ x;
             assert false
           end
       | Match(t1,cases) ->
