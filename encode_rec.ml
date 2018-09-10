@@ -609,15 +609,8 @@ let decompose_single_tuple =
     | _ -> tr.tr_pat_rec p
   in
   let rec dst_term t = match t.desc with
-    | Proj (0, ({typ=TTuple[_]} as t_inner)) ->
-        dst_term t_inner
-        (* t_inner が Var なら型を変えてくれるし Tuple なら取り出してくれる *)
-    | Proj (0, t0) ->
-        (*Format.printf "{}%a | %a | %a@."*)
-          (*Print.term_typ t*)
-          (*Print.typ t.typ*)
-          (*Print.typ t0.typ;*)
-        tr.tr_term_rec t
+    | Proj (0, ({typ=TTuple[_]} as t_inner)) -> dst_term t_inner
+    | Proj (0, t0) -> tr.tr_term_rec t
     | Tuple[t] -> t
     | _ -> tr.tr_term_rec t
   in
@@ -630,11 +623,18 @@ let dst_term t =
   Type_check.check ~ty:t'.typ t';
   t'
 
-let dst_env env =
-  let trans_rty = Ref_type.mk_trans_rty decompose_single_tuple in
+let dst_env renv =
+  let trans_rty =
+    Ref_type.mk_trans_rty decompose_single_tuple
+      ~special_case:(
+        fun rty _tr tr_rty -> match rty with
+        | Ref_type.Tuple[(_x, rty)] -> Some (tr_rty rty)
+        | _ -> None
+      )
+  in
   let tr_var = Fun.id in
-  let env' = List.map (Pair.map (tr_var -| decompose_single_tuple.tr_var) trans_rty) env in
-  env'
+  let renv' = List.map (Pair.map (tr_var -| decompose_single_tuple.tr_var) trans_rty) renv in
+  renv'
 
 (* TODO: support records in refinement types *)
 let trans p =

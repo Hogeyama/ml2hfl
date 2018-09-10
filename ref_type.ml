@@ -815,22 +815,29 @@ let rec has_inter_union ty =
   | List(_,_,_,_,ty') -> has_inter_union ty'
   | Exn(ty1,ty2) -> has_inter_union ty1 || has_inter_union ty2
 
-let mk_trans_rty tr =
+(* special_case : Ref_type.t -> Syntax.trans -> (Ref_type.t -> Ref_type.t) -> Ref_type.t option
+   for example, see Encode_rec.dst_env
+ *)
+let mk_trans_rty ?special_case:(special_case = fun _rty _trans _trans_rty -> None) tr =
   let open Syntax in
-  let rec trans_rty rty = match rty with
-    | ADT(s,x,t) -> ADT(s, tr.tr_var x, tr.tr_term t)
-    | Base(base,x,t) -> Base(base, tr.tr_var x, tr.tr_term t)
-    | Fun(x,ty1,ty2) -> Fun(tr.tr_var x, trans_rty ty1, trans_rty ty2)
-    | Tuple xtys -> Tuple(List.map (Pair.map tr.tr_var trans_rty) xtys)
-    | Inter(sty,tys) -> Inter(tr.tr_typ sty, List.map trans_rty tys)
-    | Union(sty,tys) -> Union(tr.tr_typ sty, List.map trans_rty tys)
-    | ExtArg(x,ty1,ty2) -> ExtArg(tr.tr_var x, trans_rty ty1, trans_rty ty2)
-    | List(x,p_len,y,p_i,ty2) -> List(tr.tr_var x,
-                                      tr.tr_term p_len,
-                                      tr.tr_var y,
-                                      tr.tr_term p_i,
-                                      trans_rty ty2)
-    | Exn(ty1,ty2) -> Exn(trans_rty ty1, trans_rty ty2)
+  let rec trans_rty rty = match special_case rty tr trans_rty with
+    | None ->
+        begin match rty with
+        | ADT(s,x,t) -> ADT(s, tr.tr_var x, tr.tr_term t)
+        | Base(base,x,t) -> Base(base, tr.tr_var x, tr.tr_term t)
+        | Fun(x,ty1,ty2) -> Fun(tr.tr_var x, trans_rty ty1, trans_rty ty2)
+        | Tuple xtys -> Tuple(List.map (Pair.map tr.tr_var trans_rty) xtys)
+        | Inter(sty,tys) -> Inter(tr.tr_typ sty, List.map trans_rty tys)
+        | Union(sty,tys) -> Union(tr.tr_typ sty, List.map trans_rty tys)
+        | ExtArg(x,ty1,ty2) -> ExtArg(tr.tr_var x, trans_rty ty1, trans_rty ty2)
+        | List(x,p_len,y,p_i,ty2) -> List(tr.tr_var x,
+                                          tr.tr_term p_len,
+                                          tr.tr_var y,
+                                          tr.tr_term p_i,
+                                          trans_rty ty2)
+        | Exn(ty1,ty2) -> Exn(trans_rty ty1, trans_rty ty2)
+        end
+    | Some rty -> rty
   in trans_rty
 
 module Ty = struct

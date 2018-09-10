@@ -98,6 +98,6 @@ end
 (* ppx_deriving show *)
 val pp : Format.formatter -> t -> unit
 
-val mk_trans_rty : Syntax.trans -> t -> t
+val mk_trans_rty : ?special_case:(t -> Syntax.trans -> (t -> t) -> t option) -> Syntax.trans -> t -> t
 
 
