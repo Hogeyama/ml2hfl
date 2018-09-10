@@ -365,14 +365,16 @@ ref_typ:
 | id COLON ref_simple TIMES ref_typ
   {
     let x = Id.set_typ $1 (RT.to_simple $3) in
-    RT.Tuple[x, $3; Id.new_var @@ Ref_type.to_simple $5, $5]
+    let t = RT.subst_var (orig_id x) x $5 in
+    let y = Id.new_var (Ref_type.to_simple t) in
+    RT.Tuple[x, $3; y, t]
   }
 | ref_typ TIMES ref_typ
   {
     let x  =
       match $1 with
       | RT.Base(_,y,_) -> y
-      | _ -> Id.new_var @@ RT.to_simple $1
+      | _ -> Id.new_var (RT.to_simple $1)
     in
     RT.Tuple[x, $1; Id.new_var @@ Ref_type.to_simple $3, $3]
   }
