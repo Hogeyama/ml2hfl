@@ -65,7 +65,7 @@ let abst_recdata_typ env typ =
       _TAttr attr' @@ abst_recdata.tr2_typ_rec env ty
   | _ -> abst_recdata.tr2_typ_rec env typ
 
-let is_rec_type (env: env) ty =
+let is_rec_type env ty =
   match elim_tattr ty with
   | TData s when not @@ List.mem s prim_base_types ->
       begin
@@ -626,11 +626,11 @@ let dst_term t =
 let dst_env renv =
   let trans_rty =
     Ref_type.mk_trans_rty decompose_single_tuple
-      ~special_case:(
+      ~special_case:begin
         fun rty _tr tr_rty -> match rty with
         | Ref_type.Tuple[(_x, rty)] -> Some (tr_rty rty)
         | _ -> None
-      )
+      end
   in
   let tr_var = Fun.id in
   let renv' = List.map (Pair.map (tr_var -| decompose_single_tuple.tr_var) trans_rty) renv in

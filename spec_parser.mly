@@ -30,6 +30,16 @@ let ref_list typ = RT.List(Id.new_var Ty.int, true_term, Id.new_var Ty.int, true
 let ref_fun x ty1 ty2 =
   let ty2' = RT.subst_var (orig_id x) (Id.set_typ x @@ elim_tattr @@ RT.to_simple ty1) ty2 in
   RT.Fun(x, ty1, ty2')
+let ref_tuple xtys =
+  let xtys' = snd @@
+    List.Labels.fold_left ~init:([],[]) xtys ~f:
+      begin fun (map,tuple) (x,rty) ->
+        let x' = Id.set_typ x (RT.to_simple rty) in
+        let rty' = RT.subst_map map rty in
+        List.snoc map (orig_id x, make_var x'),
+        List.snoc tuple (x', rty')
+      end
+  in RT.Tuple(xtys')
 
 let normalize_ref ty =
   RT.map_pred Trans.set_length_typ ty
@@ -192,7 +202,6 @@ opt_bar:
 
 id:
 | LIDENT { make_tmp_id $1 }
-/* TODO idのidが0になってしまうが大丈夫？ */
 
 spec:
   spec_list EOF { $1 }
@@ -364,10 +373,8 @@ ref_typ:
 | ref_simple { $1 }
 | id COLON ref_simple TIMES ref_typ
   {
-    let x = Id.set_typ $1 (RT.to_simple $3) in
-    let t = RT.subst_var (orig_id x) x $5 in
-    let y = Id.new_var (Ref_type.to_simple t) in
-    RT.Tuple[x, $3; y, t]
+    let y = Id.new_var (Ref_type.to_simple $5) in
+    ref_tuple [($1,$3);(y,$5)]
   }
 | ref_typ TIMES ref_typ
   {
@@ -384,7 +391,8 @@ ref_typ:
     in ref_fun x $3 $5
   }
 | LPAREN id COLON ref_simple RPAREN ARROW ref_typ
-  { let x = Id.set_typ $2 (Ref_type.to_simple $4)
+  {
+    let x = Id.set_typ $2 (Ref_type.to_simple $4)
     in ref_fun x $4 $7
   }
 | ref_typ ARROW ref_typ
