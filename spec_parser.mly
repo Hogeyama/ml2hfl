@@ -376,6 +376,11 @@ ref_typ:
     let y = Id.new_var (Ref_type.to_simple $5) in
     ref_tuple [($1,$3);(y,$5)]
   }
+| LPAREN id COLON ref_simple RPAREN TIMES ref_typ
+  {
+    let y = Id.new_var (Ref_type.to_simple $7) in
+    ref_tuple [($2,$4);(y,$7)]
+  }
 | ref_typ TIMES ref_typ
   {
     let x  =
