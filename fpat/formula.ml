@@ -231,15 +231,6 @@ let rec para f phi =
   | Binder(Binder.Exists(ty), Pattern.V(x), phi1), [] ->
     f#fexists (x, ty) phi1 (para f phi1)
 
-  | Const(Const.Box(index)), [phi1] ->
-    f#fbox index phi1 (para f phi1)
-  | Const(Const.Diamond(index)), [phi1] ->
-    f#fdiamond index phi1 (para f phi1)
-  | Binder(Binder.Mu, Pattern.V(x), phi1), [] ->
-    f#fmu x phi1 (para f phi1)
-  | Binder(Binder.Nu, Pattern.V(x), phi1), [] ->
-    f#fnu x phi1 (para f phi1)
-
   | Var(_), _ | Const(_), _ ->
     phi |> Atom.of_term |> f#fatom
   | _ ->
@@ -274,14 +265,6 @@ let lazy_para f phi =
            lazy (f#fforall xty phi1 r1)
          method fexists xty phi1 r1 =
            lazy (f#fexists xty phi1 r1)
-         method fbox idx phi1 r1 =
-           lazy (f#fbox idx phi1 r1)
-         method fdiamond idx phi1 r1 =
-           lazy (f#fdiamond idx phi1 r1)
-         method fmu x phi1 r1 =
-           lazy (f#fmu x phi1 r1)
-         method fnu x phi1 r1 =
-           lazy (f#fnu x phi1 r1)
        end)
        phi)
 
@@ -298,10 +281,6 @@ let fold f =
       method fiff _ r1 _ r2 = f#fiff r1 r2
       method fforall xty _ = f#fforall xty
       method fexists xty _ = f#fexists xty
-      method fbox idx _ r1 = f#fbox idx r1
-      method fdiamond idx _ r1 = f#fdiamond idx r1
-      method fmu x _ r1 = f#fmu x r1
-      method fnu x _ r1 = f#fnu x r1
     end)
 
 let fold_pos f phi =
@@ -317,10 +296,6 @@ let fold_pos f phi =
       method fiff r1 r2 = fun pos -> f#fiff (r1 pos) (r2 pos)
       method fforall xty r1 = fun pos -> f#fforall xty (r1 pos)
       method fexists xty r1 = fun pos -> f#fexists xty (r1 pos)
-      method fbox idx r1 = fun pos -> f#fbox idx (r1 pos)
-      method fdiamond idx r1 = fun pos -> f#fdiamond idx (r1 pos)
-      method fmu x r1 = fun pos -> f#fmu x (r1 pos)
-      method fnu x r1 = fun pos -> f#fnu x (r1 pos)
     end)
     phi
     true
@@ -338,10 +313,6 @@ let visit f =
       method fiff phi1 _ phi2 _ = f#fiff phi1 phi2
       method fforall xty phi1 _ = f#fforall xty phi1
       method fexists xty phi1 _ = f#fexists xty phi1
-      method fbox idx phi1 _ = f#fbox idx phi1
-      method fdiamond idx phi1 _ = f#fdiamond idx phi1
-      method fmu x phi1 _ = f#fmu x phi1
-      method fnu x phi1 _ = f#fnu x phi1
     end)
 
 let map_atom f =
@@ -357,10 +328,6 @@ let map_atom f =
       method fiff phi1 phi2 = mk_iff phi1 phi2
       method fforall xty phi1 = forall [xty] phi1
       method fexists xty phi1 = exists [xty] phi1
-      method fbox idx phi1 = box idx phi1
-      method fdiamond idx phi1 = diamond idx phi1
-      method fmu x phi1 = mu x phi1
-      method fnu x phi1 = nu x phi1
     end)
 
 let fold_band f =
@@ -376,10 +343,6 @@ let fold_band f =
       method fiff b1 b2 = b1 && b2
       method fforall _ b1 = b1
       method fexists _ b1 = b1
-      method fbox _ b1 = b1
-      method fdiamond _ b1 = b1
-      method fmu _ b1 = b1
-      method fnu _ b1 = b1
     end)
 
 let fold_bor f =
@@ -395,10 +358,6 @@ let fold_bor f =
       method fiff b1 b2 = b1 || b2
       method fforall _ b1 = b1
       method fexists _ b1 = b1
-      method fbox _ b1 = b1
-      method fdiamond _ b1 = b1
-      method fmu _ b1 = b1
-      method fnu _ b1 = b1
     end)
 
 let fold_set f =
@@ -414,10 +373,6 @@ let fold_set f =
       method fiff r1 r2 = r1 @ r2
       method fforall _ r1 = r1
       method fexists _ r1 = r1
-      method fbox _ r1 = r1
-      method fdiamond _ r1 = r1
-      method fmu _ r1 = r1
-      method fnu _ r1 = r1
     end)
 
 (** {6 Printers} *)
@@ -456,14 +411,6 @@ let pr_tex ppf phi =
          Format.fprintf ppf "\\forall %a.@. %a" TypEnv.pr_elem_compact xty r1 0
        method fexists xty r1 = fun ppf l ->
          Format.fprintf ppf "\\exists %a.@. %a" TypEnv.pr_elem_compact xty r1 0
-       method fbox idx r1 = fun ppf l ->
-         Format.fprintf ppf "([%s] %a)" idx r1 0
-       method fdiamond idx r1 = fun ppf l ->
-         Format.fprintf ppf "(<%s> %a)" idx r1 0
-       method fmu x r1 = fun ppf l ->
-         Format.fprintf ppf "mu %a. %a" Idnt.pr x r1 0
-       method fnu x r1 = fun ppf l ->
-         Format.fprintf ppf "nu %a. %a" Idnt.pr x r1 0
      end)
     phi ppf 4;
   Format.fprintf ppf "@]"
@@ -500,14 +447,6 @@ let pr ppf phi =
         Format.fprintf ppf "A %a. %a" TypEnv.pr_elem_compact xty r1 0
       method fexists xty r1 = fun ppf l ->
         Format.fprintf ppf "E %a. %a" TypEnv.pr_elem_compact xty r1 0
-      method fbox idx r1 = fun ppf l ->
-        Format.fprintf ppf "([%s] %a)" idx r1 0
-      method fdiamond idx r1 = fun ppf l ->
-        Format.fprintf ppf "(<%s> %a)" idx r1 0
-      method fmu x r1 = fun ppf l ->
-        Format.fprintf ppf "mu %a. %a" Idnt.pr x r1 0
-      method fnu x r1 = fun ppf l ->
-        Format.fprintf ppf "nu %a. %a" Idnt.pr x r1 0
     end)
     phi ppf 4;
   Format.fprintf ppf "@]"
@@ -662,10 +601,6 @@ let conjuncts_of =
       (*[imply phi1 phi2; imply phi2 phi1]*)
       method fforall xty phi1 _ = [forall [xty] phi1]
       method fexists xty phi1 _ = [exists [xty] phi1]
-      method fbox idx phi1 _ = [box idx phi1]
-      method fdiamond idx phi1 r1 = [diamond idx phi1]
-      method fmu x phi1 r1 = [mu x phi1]
-      method fnu x phi1 r1 = [nu x phi1]
     end)
 
 let disjuncts_of =
@@ -683,10 +618,6 @@ let disjuncts_of =
       (*[band [phi1; phi2]; band [bnot phi1; bnot phi2]]*)
       method fforall xty phi1 _ = [forall [xty] phi1]
       method fexists xty phi1 _ = [exists [xty] phi1]
-      method fbox idx phi1 _ = [box idx phi1]
-      method fdiamond idx phi1 _ = [diamond idx phi1]
-      method fmu x phi1 _ = [mu x phi1]
-      method fnu x phi1 _ = [nu x phi1]
     end)
 
 (** {6 Operators} *)
@@ -707,10 +638,6 @@ let elim_imply_iff =
         bor [band [phi1'; phi2']; band [bnot phi1'; bnot phi2']]
       method fforall xty phi' = forall [xty] phi'
       method fexists xty phi' = exists [xty] phi'
-      method fbox = box
-      method fdiamond = diamond
-      method fmu = mu
-      method fnu = nu
     end)
 
 let eqcls_of =

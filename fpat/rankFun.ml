@@ -11,7 +11,6 @@ type t = elem list
 (** {6 Options} *)
 
 let num_rankfuns = ref 1
-let piecewise_linear = ref false
 
 (** {6 Printers} *)
 
@@ -46,20 +45,7 @@ let mk_templates ranks (f, tys) =
     let tenv = List.map (fun ty -> Idnt.new_var (), ty) tys in
     let ts =
       List.gen !num_rankfuns
-        (fun _ ->
-           if !piecewise_linear then
-             Term.mk_app
-               (Term.mk_const (Const.ML_If(Type.mk_bool)))
-               [Template.mk_atom tenv 1 |> Formula.term_of;
-                Term.mk_binder
-                  (Binder.Lambda Type.mk_unit)
-                  Pattern.W
-                  (Template.mk_linexp tenv);
-                Term.mk_binder
-                  (Binder.Lambda Type.mk_unit)
-                  Pattern.W
-                  (Template.mk_linexp tenv)]
-           else Template.mk_linexp tenv)
+        (fun _ -> Template.mk_linexp tenv)
     in
     f, (tenv, ts)
 
@@ -94,6 +80,4 @@ let wfrel_of tmpss f1 args1 f2 args2 =
        IntFormula.geq next IntTerm.zero]
     :: wfrel_of_aux (prev, next) (rest1, rest2)
     |> Formula.bor
-    |> Formula.map_atom CunAtom.elim_ifte
   | _, _ -> assert false
-

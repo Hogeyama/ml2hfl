@@ -1083,7 +1083,7 @@ let make_ext_funs ?(fvs=[]) env t =
   let typ_exn = find_exn_typ t in
   let t' = remove_defs (List.map fst env) t in
   Debug.printf "MEF t': %a@." Print.term t';
-  Debug.printf "MEF env: %a@." Print.(list @@ pair id Ref_type.print) env;
+  Debug.printf "MEF env: %a@." Print.(list (id * Ref_type.print)) env;
   let fv =
     get_fv ~eq:(fun x y -> Id.(x = y) && Type.can_unify (Id.typ x) (Id.typ y)) t'
     |> List.filter Id.is_external

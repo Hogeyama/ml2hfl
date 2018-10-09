@@ -271,27 +271,6 @@ let elim_neg =
       method fterm = Formula.mk_atom
     end)
 
-let elim_ifte =
-  fold_brel
-    (object
-      method fvar = Formula.mk_var
-      method fbrel c t1 t2 =
-        let bs1 = CunTerm.branches_of Formula.mk_true t1 in
-        let bs2 = CunTerm.branches_of Formula.mk_true t2 in
-        Vector.multiply
-          (fun (g1, t1) (g2, t2) ->
-             Formula.imply (Formula.mk_and g1 g2) (Formula.mk_brel c t1 t2))
-          bs1 bs2
-        |> Formula.band
-      (*Vector.multiply
-        (fun (g1, t1) (g2, t2) ->
-           Formula.band [g1; g2; Formula.mk_brel c t1 t2])
-        bs1 bs2
-        |> Formula.bor*)
-      method fdivides = IntFormula.divides
-      method fterm = Formula.mk_atom
-    end)
-
 let linearize =
   fold_brel_ty
     (object

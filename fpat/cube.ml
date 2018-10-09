@@ -26,10 +26,6 @@ let of_formula =
       method fiff _ _ _ _ = raise NonCube
       method fforall _ _ _ = raise NonCube
       method fexists _ _ _ = raise NonCube
-      method fbox idx _ _ = assert false
-      method fdiamond idx _ _ = assert false
-      method fmu x _ _ = assert false
-      method fnu x _ _ = assert false
     end)
 
 (** {6 Auxiliary destructors} *)

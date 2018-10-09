@@ -42,18 +42,18 @@ let print_attr fm attr =
 let print_kind fm kind =
   match kind with
   | Safety -> Format.fprintf fm "Safety"
-  | Ref_type_check env -> Format.fprintf fm "Refinement type checking %a" Print.(list @@ pair id Ref_type.print) env
+  | Ref_type_check env -> Format.fprintf fm "Refinement type checking %a" Print.(list (id * Ref_type.print)) env
 
 let print fm {term; env; attr; kind} =
   Format.fprintf fm "@[{@[term:%a@];@ @[env:%a@];@ @[attr:%a@];@ @[kind:%a@]}@]"
                  Print.term_typ_top term
-                 Print.(list @@ pair id Ref_type.print) env
+                 Print.(list (id * Ref_type.print)) env
                  (Print.list print_attr) attr
                  print_kind kind
 
 let print_debug fm {term; env; attr; kind} =
   Format.fprintf fm "@[{@[term:%a@];@ @[env:%a@];@ @[attr:%a@];@ @[kind:%a@]}@]"
                  Print.term' term
-                 Print.(list @@ pair id Ref_type.print) env
+                 Print.(list (id * Ref_type.print)) env
                  (Print.list print_attr) attr
                  print_kind kind

@@ -38,6 +38,7 @@ val bool : Format.formatter -> bool -> unit
 val string : Format.formatter -> string -> unit
 val option : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a option -> unit
 val pair : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> Format.formatter -> ('a * 'b) -> unit
+val ( * ) : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> Format.formatter -> ('a * 'b) -> unit
 val triple : (Format.formatter -> 'a -> unit) -> (Format.formatter -> 'b -> unit) -> (Format.formatter -> 'c -> unit) -> Format.formatter -> ('a * 'b * 'c) -> unit
 val list : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
 val ignore : string -> Format.formatter -> 'a -> unit

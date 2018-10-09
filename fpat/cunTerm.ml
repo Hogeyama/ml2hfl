@@ -69,10 +69,6 @@ let fold_op f =
 
 (*val is_fun : t -> bool*)
 let is_fun = function Binder(Binder.Lambda(_), _, _) -> true | _ -> false
-(*val is_if : t -> bool*)
-let is_if = fun_args >> function
-  |  Const(Const.ML_If(ty)), e1 :: e2 :: e3 :: es -> true
-  | _ -> false
 
 (*val let_fun_pat : t -> (Pattern.t * Type.t -> t -> 'a) -> 'a*)
 let let_fun_pat e f =
@@ -85,70 +81,6 @@ let let_fun e f =
        | (Pattern.V(x), ty) -> f (x, ty) e'
        | (Pattern.W, ty) -> f (Idnt.new_var (),ty) e'
        | _ -> assert false)
-(*val let_if : t -> (Type.t -> t -> t -> t -> t list -> 'a) -> 'a*)
-let let_if e f =
-  match fun_args e with
-  | Const(Const.ML_If(ty)), e1 :: e2 :: e3 :: es ->
-    let_fun e2 (fun _ e2' -> let_fun e3 (fun _ e3' -> f ty e1 e2' e3' es))
-  | _ -> assert false
-
-let rec branches_of phi t =
-  if is_if t then
-    let_if t (fun _ t1 t2 t3 [] ->
-        let phi_then = Formula.band [phi; t1 |> Formula.of_term] in
-        let phi_else =
-          Formula.band [phi; t1 |> Formula.of_term |> Formula.bnot]
-        in
-        branches_of phi_then t2 @ branches_of phi_else t3)
-  else [phi, t]
-
-let get_adts =
-  fold
-    (object
-      method fvar x rs = List.concat rs
-      method funit () = []
-      method ftrue () = []
-      method ffalse () = []
-      method fint _ = []
-      method fbigint _ = []
-      method freal _ = []
-      method fstring _ = []
-      method fneg _ r = r
-      method fadd _ r1 r2 = r1 @ r2
-      method fsub _ r1 r2 = r1 @ r2
-      method fmul _ r1 r2 = r1 @ r2
-      method fdiv _ r1 r2 = r1 @ r2
-      method fmax _ r1 r2 = r1 @ r2
-      method fmin _ r1 r2 = r1 @ r2
-      method fmod r1 r2 = r1 @ r2
-      method fufun _ _ rs = List.concat rs
-      method fcoerce _ r = r
-      method fformula phi = assert false
-    end)
-
-let kons =
-  fold
-    (object
-      method fvar _ rs = List.concat rs
-      method funit () = []
-      method ftrue () = []
-      method ffalse () = []
-      method fint _ = []
-      method fbigint _ = []
-      method freal _ = []
-      method fstring _ = []
-      method fneg _ r = r
-      method fadd _ r1 r2 = r1 @ r2
-      method fsub _ r1 r2 = r1 @ r2
-      method fmul _ r1 r2 = r1 @ r2
-      method fdiv _ r1 r2 = r1 @ r2
-      method fmax _ r1 r2 = r1 @ r2
-      method fmin _ r1 r2 = r1 @ r2
-      method fmod r1 r2 = r1 @ r2
-      method fufun _ _ rs = List.concat rs
-      method fcoerce _ r = r
-      method fformula phi = assert false
-    end)
 
 let size =
   fold
@@ -236,10 +168,6 @@ and sexp_of_formula ?(smt2=false) =
       method fiff s1 s2 = "(iff " ^ s1 ^ " " ^ s2 ^ ")"
       method fforall (x, ty) s = assert false
       method fexists (x, ty) s = assert false
-      method fbox idx s1 = assert false
-      method fdiamond idx s1 = assert false
-      method fmu x s1 = assert false
-      method fnu x s1 = assert false
     end)
 
 and sexp_of t =

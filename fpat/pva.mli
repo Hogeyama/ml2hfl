@@ -38,7 +38,6 @@ val fvs_ty : t -> (Idnt.t *Type.t) list
 val fvs : t -> Idnt.t list
 val fvs_bool: t -> Idnt.t list
 val coeffs : t -> Idnt.t list
-val kons : t -> (Idnt.t * int) list
 val ufuns_of : (Formula.t -> Idnt.t list) -> t -> Idnt.t list
 
 (** @return the number of duplicate predicate variables in [atms] *)

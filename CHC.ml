@@ -90,7 +90,7 @@ let rename_map ?(body=false) map a =
   | PApp(p,xs) ->
       let dom,range = List.split map in
       if not (body || List.Set.(disjoint ~eq:Id.eq range (diff ~eq:Id.eq xs dom))) then
-        (Format.eprintf "%a %a@." Print.(list (pair id id)) map print_atom a;
+        (Format.eprintf "%a %a@." Print.(list (id * id)) map print_atom a;
          invalid_arg "CHC.rename_map");
       PApp(p, List.map (fun z -> List.assoc_default ~eq:Id.eq z z map) xs)
   | Term t' -> Term (subst_var_map map t')
@@ -338,7 +338,7 @@ let simplify_inlining_backward (deps,ps,constrs,sol : data) =
   if goals = [] then
     None
   else
-    let () = Debug.printf "goals: %a@." Print.(list (pair id (triple (list id) __ print_atom))) goals in
+    let () = Debug.printf "goals: %a@." Print.(list (id * triple (list id) __ print_atom)) goals in
     let new_constrs =
       let aux {head;body} =
         match head with
@@ -450,8 +450,8 @@ let check_data_validity (deps,ps,constrs,sol : data) =
   let ps' = get_pvars deps' in
   if not (List.Set.eq ~eq:(Pair.eq Id.eq Id.eq) deps deps') then
     begin
-      Format.eprintf "deps: %a@." Print.(list (pair id id)) deps;
-      Format.eprintf "deps': %a@." Print.(list (pair id id)) deps';
+      Format.eprintf "deps: %a@." Print.(list (id * id)) deps;
+      Format.eprintf "deps': %a@." Print.(list (id * id)) deps';
       assert false
     end;
   if not (PVarSet.equal ps' ps) then
@@ -466,7 +466,7 @@ let simplify ?(normalized=false) (constrs:t) =
   Debug.printf "dummy_pred: %a@." Id.print dummy_pred;
   Debug.printf "INPUT: %a@." print constrs;
   let deps = get_dependencies constrs in
-  Debug.printf "deps: %a@." Print.(list (pair id id)) deps;
+  Debug.printf "deps: %a@." Print.(list (id * id)) deps;
   let ps = get_pvars deps in
   let rec loop ?(cnt=0) orig rest x =
     Debug.printf "cnt: %d@." cnt;
@@ -484,7 +484,7 @@ let simplify ?(normalized=false) (constrs:t) =
   let loop orig x = loop orig orig x in
   let deps',ps',constrs',sol = loop simplifiers (deps, ps, constrs, []) in
   Debug.printf "REMOVED: %a@." Print.(list id) @@ List.map fst sol;
-  Debug.printf "deps': %a@." Print.(list (pair id id)) @@ List.sort (Compare.on (Pair.map_same Id.id)) deps';
+  Debug.printf "deps': %a@." Print.(list (id * id)) @@ List.sort (Compare.on (Pair.map_same Id.id)) deps';
   Debug.printf "SIMPLIFIED: %a@." print constrs';
   Debug.printf "sol: %a@." print_sol sol;
   sol, constrs'

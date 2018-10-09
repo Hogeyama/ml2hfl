@@ -254,10 +254,6 @@ let rec cgen_formula env phi =
         let ty = Type.new_var () in
         let constr1, phi1 = r1 ((x, ty) :: env) in
         constr1, Formula.exists [x, ty] phi1
-      method fbox idx r1 = fun env -> assert false
-      method fdiamond idx r1 = fun env -> assert false
-      method fmu x r1 = fun env -> assert false
-      method fnu x r1 = fun env -> assert false
     end)
     phi env
 let cgen_formula = Logger.log_block2 "SimTypInfer.cgen_formula" cgen_formula

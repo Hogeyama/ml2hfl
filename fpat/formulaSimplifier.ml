@@ -28,10 +28,6 @@ let rec simplify phi =
       method fiff _ phi1 _ phi2 = mk_iff (Lazy.force phi1) (Lazy.force phi2)
       method fforall xty _ phi1 = forall [xty] (Lazy.force phi1)
       method fexists xty _ phi1 = exists [xty] (Lazy.force phi1)
-      method fbox idx _ phi1 = box idx (Lazy.force phi1)
-      method fdiamond idx _ phi1 = diamond idx (Lazy.force phi1)
-      method fmu x _ phi1 = mu x (Lazy.force phi1)
-      method fnu x _ phi1 = nu x (Lazy.force phi1)
     end)
     phi
 let simplify =

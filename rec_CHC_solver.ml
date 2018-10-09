@@ -24,7 +24,7 @@ let solve_file filename =
   Smtlib2_interface.parse_sexp s
   |@> Debug.printf "PARSED: %a@." (List.print Sexp.print)
 
-let print_sol = Print.(list (pair string (pair (list (pair string CEGAR_print.typ)) CEGAR_print.term)))
+let print_sol = Print.(list (string * (list (string * CEGAR_print.typ) * CEGAR_print.term)))
 
 let preprocess_rec_hccs ?(for_debug=false) hcs =
   let map =
