@@ -13,12 +13,8 @@ let mk_unit = mk_const TypConst.Unit
 let mk_bool = mk_const TypConst.Bool
 let mk_int = mk_const TypConst.Int
 let mk_real = mk_const TypConst.Real
-let mk_rational = mk_const TypConst.Rational
 let mk_string = mk_const TypConst.String
 let mk_list ty = mk_app (mk_const TypConst.List) [ty]
-let mk_adt d cs = mk_const (TypConst.Adt(d, cs))
-let mk_tuple tys = mk_app (mk_const (TypConst.Tuple (List.length tys))) tys
-let mk_set ty = mk_app (mk_const TypConst.Set) [ty]
 let mk_ext id = mk_const (TypConst.Ext(id))
 
 let tyc_answer = TypConst.Ext("X"(*@todo*))
@@ -54,9 +50,6 @@ let mk_raa = mk_fun [mk_real; mk_answer; mk_answer]
 let mk_rrb = mk_fun [mk_real; mk_real; mk_bool]
 let mk_ir = mk_fun [mk_int; mk_real]
 
-let mk_vector ty size = mk_app (mk_const (TypConst.Vector(size))) [ty]
-let mk_array ty = mk_app (mk_const (TypConst.Array)) [ty]
-
 let mk_forall xs ty =
   List.fold_right
     (fun x ty -> mk_binder TypBinder.Forall (Pattern.V x) ty)
@@ -81,17 +74,6 @@ let rec para f ty =
     let r1 = para f ty1 in
     let r2 = para f ty2 in
     f#farrow ty1 r1 ty2 r2
-  | Const(TypConst.Adt(d, cs)), [](*@todo*) ->
-    f#fadt d cs
-  | Const(TypConst.Tuple(n)), tys ->
-    let rs = List.map (para f) tys in
-    f#ftuple tys rs
-  | Const(TypConst.Set), [ty1] ->
-    let r1 = para f ty1 in
-    f#fset ty1 r1
-  | Const(TypConst.Vector(size)), [ty1] ->
-    let r1 = para f ty1 in
-    f#fvector ty1 r1 size
   | Binder(TypBinder.Forall, p, ty1), [] ->
     let r1 = para f ty1 in
     f#fforall p ty1 r1
@@ -109,10 +91,6 @@ let visit f ty =
       method fvar x = fun () -> f#fvar x
       method fbase c = fun () -> f#fbase c
       method farrow ty1 r1 ty2 r2 = fun () -> f#farrow ty1 ty2
-      method fadt d cs = fun () -> f#fadt d cs
-      method ftuple tys rs = fun () -> f#ftuple tys
-      method fset ty1 r1 = fun () -> f#fset ty1
-      method fvector ty1 r1 size = fun () -> f#fvector ty1 size
       method fforall p ty1 r1 = fun () -> f#fforall p ty1
       method fexists p ty1 r1 = fun () -> f#fexists p ty1
     end)
@@ -125,10 +103,6 @@ let fold f =
       method fvar x = f#fvar x
       method fbase c = f#fbase c
       method farrow ty1 r1 ty2 r2 = f#farrow r1 r2
-      method fadt d cs = f#fadt d cs
-      method ftuple tys rs = f#ftuple rs
-      method fset ty1 r1 = f#fset r1
-      method fvector ty1 r1 size = f#fvector r1 size
       method fforall p ty1 r1 = f#fforall p r1
       method fexists p ty1 r1 = f#fexists p r1
     end)
@@ -161,16 +135,6 @@ let arg_ret ty = let_fun ty Pair.make
 let args_ret_for_accessor ty =
   let_fun ty Pair.make
 
-let let_base_or_adt ty k =
-  match fun_args ty with
-  | Const(c), [] when TypConst.is_base c || TypConst.is_adt c -> k c
-  | c,cs ->
-    Logger.debug_assert_false
-      ~on_failure:
-        (fun () ->
-           Format.printf "error in Type.let_base_or_adt:@,  ty=%a@," pr ty)
-      ()
-
 let let_base ty k =
   match fun_args ty with
   | Const(c), [] when TypConst.is_base c -> k c
@@ -185,26 +149,12 @@ let let_ext ty k =
   | Const(TypConst.Ext(id)), [](*@todo*) -> k id
   | _ -> assert false
 
-let let_tuple ty k =
-  match fun_args ty with
-  | Const(TypConst.Tuple(_)), tys -> k tys
-  | _ -> assert false
-
-let let_set e f =
-  match fun_args e with
-  | Const TypConst.Set, [t] -> f t
-  | _ -> assert false
-
 let rec forall_of ty =
   visit
     (object
       method fvar x = [], mk_var x
       method fbase c = [], mk_const c
       method farrow ty1 ty2 = [], mk_fun [ty1; ty2]
-      method fadt d cs = [], mk_adt d cs
-      method ftuple tys = [], mk_tuple tys
-      method fset ty1 = [], mk_set ty1
-      method fvector ty1 size = [], mk_vector ty1 size
       method fforall (Pattern.V x) ty1 =
         let xs, ty1' = forall_of ty1 in
         x :: xs, ty1'
@@ -214,12 +164,6 @@ let rec forall_of ty =
 
 let let_forall ty k = uncurry2 k (forall_of ty)
 
-(*let base_of ty = let_base ty id*)
-let base_or_adt_of ty = let_base_or_adt ty id
-(*let base_ret_of = args_ret >> snd >> base_of*)
-let base_or_adt_ret_of = args_ret >> snd >> base_or_adt_of
-let tuple_of ty = let_tuple ty id
-let set_of ty = let_set ty id
 
 (** {6 Inspectors} *)
 
@@ -230,9 +174,6 @@ let is_var =
       method fbase _ = false
       method farrow _ _ = false
       method fadt _ _ = false
-      method ftuple _ = false
-      method fset _ = false
-      method fvector _ _ = false
       method fforall _ _ = assert false
       method fexists _ _ = assert false
     end)
@@ -243,10 +184,6 @@ let is_base =
       method fvar _ = false(*@todo*)
       method fbase _ = true
       method farrow _ _ = false
-      method fadt _ _ = false
-      method ftuple _ = false
-      method fset _ = false
-      method fvector _ _ = false
       method fforall _ _ = assert false
       method fexists _ _ = assert false
     end)
@@ -257,10 +194,6 @@ let is_const c' =
       method fvar x = false(*@todo assert false*)
       method fbase c = c = c'
       method farrow _ _ = false
-      method fadt _ _ = false
-      method ftuple _ = false
-      method fset _ = false
-      method fvector _ _ = false
       method fforall _ _ = assert false
       method fexists _ _ = assert false
     end)
@@ -275,10 +208,6 @@ let is_ext =
       method fvar x = assert false
       method fbase = function TypConst.Ext(_) -> true | _ -> false
       method farrow _ _ = false
-      method fadt _ _ = false
-      method ftuple _ = false
-      method fset _ = false
-      method fvector _ _ = false
       method fforall _ _ = assert false
       method fexists _ _ = assert false
     end)
@@ -311,56 +240,10 @@ let is_fun =
       method fvar _ = false(*@todo*)
       method fbase _ = false
       method farrow _ _ = true
-      method fadt _ _ = false
-      method ftuple _ = false
-      method fset _ = false
-      method fvector _ _ = false
       method fforall _ _ = assert false
       method fexists _ _ = assert false
     end)
 
-let is_adt =
-  visit
-    (object
-      method fvar _ = false(*@todo*)
-      method fbase _ = false
-      method farrow _ _ = false
-      method fadt _ _ = true
-      method ftuple _ = false
-      method fset _ = false
-      method fvector _ _ = false
-      method fforall _ _ = assert false
-      method fexists _ _ = assert false
-    end)
-
-let is_tuple =
-  visit
-    (object
-      method fvar _ = false(*@todo*)
-      method fbase _ = false
-      method farrow _ _ = false
-      method fadt _ _ = false
-      method ftuple _ = true
-      method fset _ = false
-      method fvector _ _ = false
-      method fforall _ _ = assert false
-      method fexists _ _ = assert false
-    end)
-let is_tuple_unknown ty = is_tuple ty || is_unknown ty
-
-let is_vector =
-  visit
-    (object
-      method fvar _ = false(*@todo*)
-      method fbase _ = false
-      method farrow _ _ = false
-      method fadt _ _ = false
-      method ftuple _ = false
-      method fset _ = false
-      method fvector _ _ = true
-      method fforall _ _ = assert false
-      method fexists _ _ = assert false
-    end)
 
 let contain_tvar t =
   let args, ret = args_ret t in
@@ -384,10 +267,6 @@ let size_of =
       method fvar x = assert false
       method fbase c = assert false
       method farrow _ _ = assert false
-      method fadt _ _ = assert false
-      method ftuple tys = List.length tys
-      method fset _ = assert false
-      method fvector _ size = size
       method fforall _ _ = assert false
       method fexists _ _ = assert false
     end)
@@ -397,7 +276,7 @@ let nth ty i =
   let args, ret = args_ret ty in
   try
     List.nth (args @ [ret]) i
-  with List.Invalid_index _ ->
+  with Invalid_argument _ ->
     Format.printf "%a, %a@," pr ty Integer.pr i;
     assert false
 
@@ -412,13 +291,6 @@ let rec meet ty1 ty2 =
   | ty, Const(TypConst.Unknown)
   | ty, Var(_) -> ty
   | ty1, ty2 when ty1 = ty2 -> ty1
-  | ty1, ty2 when is_tuple ty1 && is_tuple ty2 ->
-    (tuple_of ty1, tuple_of ty2)
-    |> (fun (tys1, tys2) ->
-        assert (List.length tys1 = List.length tys2);
-        (tys1, tys2))
-    |> Pair.fold (List.map2 meet)
-    |> mk_tuple
   | ty1, ty2 when is_fun ty1 && is_fun ty2 ->
     let ty11, ty12 = arg_ret ty1 in
     let ty21, ty22 = arg_ret ty2 in
@@ -435,13 +307,6 @@ let rec join ty1 ty2 =
   | Const(TypConst.Bot), ty
   | ty, Const(TypConst.Bot) -> ty
   | ty1, ty2 when ty1 = ty2 -> ty1
-  | ty1, ty2 when is_tuple ty1 && is_tuple ty2 ->
-    (tuple_of ty1, tuple_of ty2)
-    |> (fun (tys1, tys2) ->
-        assert (List.length tys1 = List.length tys2);
-        (tys1, tys2))
-    |> Pair.fold (List.map2 meet)
-    |> mk_tuple
   | _, _ ->
     (*@todo use union types*)
     Logger.debug_assert_false
@@ -465,10 +330,6 @@ let int_to_real =
       method fvar = mk_var
       method fbase c = if c = TypConst.Int then mk_real else mk_const c
       method farrow ty1 ty2 = mk_fun [ty1; ty2]
-      method fadt = mk_adt
-      method ftuple = mk_tuple
-      method fset = mk_set
-      method fvector = mk_vector
       method fforall (Pattern.V(x)) = mk_forall [x]
       method fexists (Pattern.V(x)) = mk_exists [x]
     end)
@@ -479,10 +340,6 @@ let real_to_int =
       method fvar = mk_var
       method fbase c = if c = TypConst.Real then mk_int else mk_const c
       method farrow ty1 ty2 = mk_fun [ty1; ty2]
-      method fadt = mk_adt
-      method ftuple = mk_tuple
-      method fset = mk_set
-      method fvector = mk_vector
       method fforall (Pattern.V(x)) = mk_forall [x]
       method fexists (Pattern.V(x)) = mk_exists [x]
     end)

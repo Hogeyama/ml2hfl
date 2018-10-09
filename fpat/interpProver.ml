@@ -21,16 +21,6 @@ let csisat_use_theory = ref true
 let csisat_int_mode = ref true
 let degree = ref 1
 
-(** {6 aiSat options} *)
-
-let degree = ref 1
-let truncate = ref None
-let round_bits = ref 52
-let use_mosek = ref false
-let grad = ref (Some "fact")
-let aisat_debug = ref false
-let nocomb = ref false
-
 (** {6 Interpolating prover combinators} *)
 
 let interpolate_quick ip phi1 phi2 =

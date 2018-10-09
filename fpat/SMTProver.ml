@@ -24,10 +24,6 @@ let instantiate_type =
       method fvar _ = !var_type
       method fbase = Type.mk_const
       method farrow ty1 ty2 = Type.mk_fun [ty1; ty2]
-      method fadt = Type.mk_adt
-      method ftuple = Type.mk_tuple
-      method fset = Type.mk_set
-      method fvector = Type.mk_vector
       method fforall (Pattern.V(x)) = Type.mk_forall [x]
       method fexists (Pattern.V(x)) = Type.mk_exists [x]
     end)
@@ -69,7 +65,7 @@ let uninitialized =
   object
     method initialize _ = assert false
     method finalize _ = assert false
-    method is_valid _ _ = assert false 
+    method is_valid _ _ = assert false
     method is_sat _ _ = assert false
     method implies _ _ _ = assert false
     method solve _ _ = assert false

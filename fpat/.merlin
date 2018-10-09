@@ -1,1 +1,1 @@
-PKG extlib compiler-libs.bytecomp compiler-libs.optcomp compiler-libs.common atp csisat aiSat minisat Z3 apron apron.polkaMPQ glpk gsl sppoc cil llvm llvm.bitreader llvm.analysis llvm.ipo llvm.scalar_opts zarith osdp
+PKG batteries compiler-libs.bytecomp compiler-libs.optcomp compiler-libs.common atp csisat Z3 apron apron.polkaMPQ zarith

@@ -124,7 +124,6 @@ let map_pred f = List.classify HornClause.eq_shapeH >> List.map f
 let fvs = List.concat_map HornClause.fvs >> List.unique
 let coeffs = List.concat_map HornClause.coeffs >> List.unique
 let ufuns = List.concat_map HornClause.ufuns >> List.unique
-let kons = List.concat_map HornClause.kons >> List.unique
 
 let pvsB = List.concat_map HornClause.pvsB
 let pvsH = List.concat_map HornClause.pvsH
@@ -337,8 +336,6 @@ let simplify_full ?(tenv=[]) vs =
 let simplify_full ?(tenv=[]) =
   Logger.log_block2 "HCCS.simplify_full" (simplify_full ~tenv)
 
-let extract_constr_arg_equality =
-  List.map HornClause.extract_constr_arg_equality
 
 let subst_varsB sub = List.map (HornClause.subst_varsB sub) >> simplify_lv1
 let subst_tvars tsub = List.map (HornClause.subst_tvars tsub)
@@ -708,7 +705,7 @@ let merge hcs =
       | [] -> assert false
       | hc :: _ as hcs ->
         let pvas =
-          hc |> HornClause.bpvas_of |> List.sort
+          hc |> HornClause.bpvas_of |> List.sort compare
           |> List.map Pva.fresh
         in
         HornClause.make
@@ -720,7 +717,7 @@ let merge hcs =
                 (fun hc' ->
                    List.map2
                      CunFormula.eq_pva
-                     (hc' |> HornClause.bpvas_of |> List.sort)
+                     (hc' |> HornClause.bpvas_of |> List.sort compare)
                      pvas
                    |> List.cons (HornClause.bphi_of hc')
                    |> Formula.band
@@ -1002,11 +999,3 @@ let goal_flattening hccs =
   |> (fun x -> Format.printf "non-related HCCS: %a@." pr x; x)
   |> (@) goals'
   |> (fun x -> Format.printf "new HCCS: %a@." pr x; x)
-
-
-let tenv_of_constructors hcs =
-  let cs = kons hcs in
-  let ty = Type.mk_adt (Idnt.make "atom") (List.map fst cs) in
-  List.map
-    (Pair.map_snd (fun i -> Type.mk_fun_args_ret (List.gen i (fun _ -> Type.new_var ())) ty))
-    cs

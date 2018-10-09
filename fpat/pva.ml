@@ -79,7 +79,7 @@ let pat_match pv (p, tts) =
          x, t)
       (PredVar.args_of pv)
       tts
-  with ExtList.List.Different_list_size("map2") -> raise Not_found(*@todo*)
+  with Invalid_argument _ -> raise Not_found(*@todo*)
 
 let equiv implies_formulas simplify_formula
           env (p1, tts1) (p2, tts2) =

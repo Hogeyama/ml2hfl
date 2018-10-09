@@ -17,7 +17,7 @@ let flag_coeff = ref false
 let root_id_of (x, uid) = CallId.root_id_of (Idnt.T(x, uid, (*dummy*)-1))
 
 let refinable ty =
-  (Type.is_base ty || Type.is_adt ty)
+  Type.is_base ty
   && ty <> Type.mk_unit(*sound @todo*)
 
 let pres env loc x =
@@ -166,14 +166,14 @@ let rec cgen_etr env (Zipper.Loc(tr, p) as loc) etr0 hcs0 =
                     SimTypJudge.env_of t ty
                     |> TypEnv.filter_ty Type.mk_int
                     |> List.map (fun x -> x, Type.mk_int)
-                    |> List.sort
+                    |> List.sort compare
                     |> flip (@) [x, ty]
                   in
                   let pid =
                     if not !flag_coeff then
                       Idnt.new_coeff ()
                     else
-                      List.hd (List.sort (Term.coeffs t))
+                      List.hd (List.sort compare (Term.coeffs t))
                   in
                   HornClause.mk_def
                     (PredVar.make pid tenv)
@@ -207,7 +207,7 @@ let rec cgen_etr env (Zipper.Loc(tr, p) as loc) etr0 hcs0 =
           cgen_etr env loc' etr hcs
      end
   | Trace.Ret(Idnt.T(f, _, _) as x, (t, ty)) :: etr ->
-     assert (Type.is_base ty || Type.is_adt ty);
+     assert (Type.is_base ty);
      let hcs =
        (if refinable ty then [x, (t, ty)] else [])
        |> List.map Formula.of_ttsub_elem
@@ -521,24 +521,6 @@ let rec rty_of_sol env sol fcs x =
           |> RefType.merge
         with Not_found ->
           RefType.of_simple_type ty
-      method fadt d cs =
-        sol
-        |> List.filter_map
-          (function
-            | (x', (tenv, phi))
-              when x' = x ->
-              phi
-              |> Formula.subst
-                (PredVar.pat_match
-                   (PredVar.make x tenv)
-                   (RefType.pred_of_var env x))
-              |> Option.some
-            | _ -> None)
-        |> Formula.band
-        |> fun phi -> RefType.Base(x, TypConst.Adt(d, cs), phi)
-      method ftuple tys = assert false
-      method fset ty1 = assert false
-      method fvector ty1 size = assert false
       method fforall p ty1 = assert false
       method fexists p ty1 = assert false
     end)

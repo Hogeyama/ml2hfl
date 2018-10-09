@@ -19,7 +19,7 @@ let cgen t ty =
           |> List.split
           |> Pair.map List.concat List.concat
           |> Pair.map_fst (List.cons (x, Type.mk_fun (args @ [ty])))
-        with List.Different_list_size _ ->
+        with Invalid_argument _ ->
           Format.printf "%a@." Term.pr (Term.mk_app (Term.mk_var x) ts);
           assert false
       method fcon c ts rs = fun ty ->
@@ -27,10 +27,6 @@ let cgen t ty =
         | Const.Eq ty_arg, [t1; t2], [r1; r2] ->
           assert (Type.is_bool_unknown ty);
           (match Term.fun_args t1, Term.fun_args t2 with
-           | (Term.Const(Const.Con(ty, _)), _), _
-           | _, (Term.Const(Const.Con(ty, _)), _) ->
-             let _, ret = Type.args_ret ty in
-             Pair.map2 (@) (@) (r1 ret) (r2 ret)
            | (Term.Var(x1), []), (Term.Var(x2), []) ->
              Pair.map2 (@) (@) (r1 ty_arg) (r2 ty_arg)
              |> Pair.map_snd (List.cons (x1, x2))
@@ -39,9 +35,6 @@ let cgen t ty =
         | _, _, _ ->
           let args, ret = (* args : [obj] , ret : (obj -> bool)*)
             match c with
-            | Const.Con(ty, _) -> ty |> Type.args_ret
-            | Const.Accessor(ty,_,_) ->
-              let (ty1, ty2) = Type.args_ret_for_accessor ty in ([ty1], ty2)
             | Const.Annot(ty) -> ([ty], ty)
             | _ ->
               let ty = Const.type_of c in
@@ -62,7 +55,7 @@ let cgen t ty =
             List.map2 apply rs args
             |> List.split
             |> Pair.map List.concat List.concat
-          with List.Different_list_size _ ->
+          with Invalid_argument _ ->
             Format.printf "%a@." Term.pr (Term.mk_app (Term.mk_const c) ts);
             assert false
       method fbin b x _ r _ [] = fun ty ->

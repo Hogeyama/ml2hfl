@@ -344,7 +344,7 @@ let find_valid_sol sol hcs =
         @todo implement topological sort of [sol]
               w.r.t. the parent-child relation of
               the tree structure of HCCS *)
-    List.sort ~cmp:(fun (p1, _) (p2,_) ->
+    List.sort (fun (p1, _) (p2,_) ->
         if p1 = p2 then 0  else if Idnt.lt p2 p1 then -1 else 1)
       sol
   in
