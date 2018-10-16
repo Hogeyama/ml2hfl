@@ -371,6 +371,7 @@ let rec arg_spec () =
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Set Flag.Method.ignore_exn_arg, " Ignore exception arguments";
      "-abst-literal", Arg.Set_int Flag.Method.abst_literal, " Abstract literals";
+     "-abst-list-eq", Arg.Set Flag.Method.abst_list_eq, " Abstract list equalities";
      "-ignore-non-termination", Arg.Set Flag.Method.ignore_non_termination, " Ignore non-termination";
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";
