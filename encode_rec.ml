@@ -123,7 +123,6 @@ let rec abst_recdata_pat env p =
         PTuple ps', true_term, []
     | PConstr(c,ps) ->
         let f = Id.new_var typ in
-        Format.printf "f: %a@." Print.id_typ f;
         let pcbs = List.map (abst_recdata_pat env) ps in
         let binds =
           let make_bind (acc,i) p (p',_,_) =
