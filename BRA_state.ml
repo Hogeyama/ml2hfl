@@ -64,7 +64,6 @@ let build_record {id = {Id.name = f_name}; args = f_args} =
 	; statevars      = List.map (make_statevar f_name) f_args
 	; argvars        = List.map Term_util.make_var f_args
 	} in
-  let open Flag in
   let _ = record := filter_non_integer !record in
   !record
 

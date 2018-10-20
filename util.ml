@@ -721,6 +721,15 @@ module IO = struct
     output_file ~filename:dest ~text
 end
 
+module Exception = struct
+  let not_raise f x =
+    try
+      ignore @@ f x; true
+    with _ -> false
+  let finally = BatPervasives.finally
+end
+
+
 module Ref = struct
   let map f x =
     x := f !x
@@ -731,9 +740,7 @@ module Ref = struct
   let tmp_set x v f =
     let prev = !x in
     x := v;
-    let r = f () in
-    x := prev;
-    r
+    Exception.finally (fun () -> x := prev) f ()
 end
 
 module Counter : sig
@@ -837,15 +844,6 @@ module Unix = struct
       check st;
       r
   end
-end
-
-
-module Exception = struct
-  let not_raise f x =
-    try
-      ignore @@ f x; true
-    with _ -> false
-  let finally = BatPervasives.finally
 end
 
 
