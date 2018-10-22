@@ -346,6 +346,7 @@ let infer ?(for_cps=false) t =
 let rec exists_dest ty =
   effect_of_typ ty = ENone &&
   match elim_tattr ty with
+  | TBase TUnit -> false (** Workaround: due to the ad-hoc CPS transformation? *)
   | _ when is_base_typ ty -> true
   | TFun(x,ty2) ->
       is_base_var x ||
