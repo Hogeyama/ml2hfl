@@ -238,7 +238,7 @@ let main_trans spec t =
   begin
     match !Flag.Trans.destination with
     | Flag.Trans.Before_CPS -> print_as_ml Preprocess.(before CPS pps_all) t
-    | Flag.Trans.CPS -> print_as_ml Preprocess.(before_and CPS pps_all) t
+    | Flag.Trans.CPS -> print_as_ml Preprocess.(before_and Remove_pair pps_all) t
     | Flag.Trans.CHC ->
         Flag.PredAbst.shift_pred := true;
         let t' =
