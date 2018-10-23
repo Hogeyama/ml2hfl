@@ -219,6 +219,13 @@ let make_renv n prog =
 
 let nil = fun _ -> []
 
+let int_binop_typ op =
+  TFun(TBase(TInt,nil), fun x ->
+       TFun(TBase(TInt,nil), fun y ->
+            TBase(TInt,fun r -> [make_eq_int r (op x y)])))
+let bool_binop_typ b =
+  TFun(b, fun x -> TFun(b, fun y -> typ_bool()))
+
 let get_const_typ env = function
   | Unit -> typ_unit
   | True -> typ_bool()
@@ -233,30 +240,23 @@ let get_const_typ env = function
   | Rand(TInt, Some n) -> assoc_renv n env
   | Rand(TBool, _) -> TBase(TBool,nil)
   | Rand _ -> assert false
-  | And -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
-  | Or -> TFun(typ_bool(), fun x -> TFun(typ_bool(), fun y -> typ_bool()))
-  | Not -> TFun(TBase(TInt,nil), fun x -> typ_bool())
-  | Lt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
-  | Gt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
-  | Leq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
-  | Geq -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
-  | EqUnit -> TFun(TBase(TUnit,nil), fun x -> TFun(TBase(TUnit,nil), fun y -> typ_bool()))
-  | EqBool -> TFun(TBase(TBool,nil), fun x -> TFun(TBase(TBool,nil), fun y -> typ_bool()))
-  | EqInt -> TFun(TBase(TInt,nil), fun x -> TFun(TBase(TInt,nil), fun y -> typ_bool()))
-  | CmpPoly(typ,_) -> TFun(TBase(TAbst typ,nil), fun x -> TFun(TBase(TAbst typ,nil), fun y -> typ_bool()))
+  | And -> bool_binop_typ !!typ_bool
+  | Or -> bool_binop_typ !!typ_bool
+  | Not -> TFun(!!typ_bool, fun x -> !!typ_bool)
+  | Lt -> bool_binop_typ (TBase(TInt,nil))
+  | Gt -> bool_binop_typ (TBase(TInt,nil))
+  | Leq -> bool_binop_typ (TBase(TInt,nil))
+  | Geq -> bool_binop_typ (TBase(TInt,nil))
+  | EqUnit -> bool_binop_typ (TBase(TUnit,nil))
+  | EqBool -> bool_binop_typ !!typ_bool
+  | EqInt -> bool_binop_typ (TBase(TInt,nil))
+  | CmpPoly(typ,_) -> bool_binop_typ (TBase(TAbst typ,nil))
   | Int n -> TBase(TInt, fun x -> [make_eq_int x (Const (Int n))])
-  | Add -> TFun(TBase(TInt,nil), fun x ->
-                TFun(TBase(TInt,nil), fun y ->
-                     TBase(TInt,fun r -> [make_eq_int r (make_add x y)])))
-  | Sub -> TFun(TBase(TInt,nil), fun x ->
-                TFun(TBase(TInt,nil), fun y ->
-                     TBase(TInt,fun r -> [make_eq_int r (make_sub x y)])))
-  | Mul -> TFun(TBase(TInt,nil), fun x ->
-                TFun(TBase(TInt,nil), fun y ->
-                     TBase(TInt,fun r -> [make_eq_int r (make_mul x y)])))
-  | Div -> TFun(TBase(TInt,nil), fun x ->
-                TFun(TBase(TInt,nil), fun y ->
-                     TBase(TInt,fun r -> [make_eq_int r (make_div x y)])))
+  | Add -> int_binop_typ make_add
+  | Sub -> int_binop_typ make_sub
+  | Mul -> int_binop_typ make_mul
+  | Div -> int_binop_typ make_div
+  | Mod -> int_binop_typ make_mod
   | Tuple _ -> assert false
   | Proj _ -> assert false
   | If -> assert false

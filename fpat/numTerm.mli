@@ -9,3 +9,4 @@ val mul : Type.t -> Term.t -> Term.t -> Term.t
 val div : Type.t -> Term.t -> Term.t -> Term.t
 val max : Type.t -> Term.t -> Term.t -> Term.t
 val min : Type.t -> Term.t -> Term.t -> Term.t
+val mod_ : Type.t -> Term.t -> Term.t -> Term.t

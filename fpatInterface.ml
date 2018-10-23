@@ -68,6 +68,7 @@ let conv_const c =
   | Sub -> F.Const.Sub F.Type.mk_int
   | Mul -> F.Const.Mul F.Type.mk_int
   | Div -> F.Const.Div F.Type.mk_int
+  | Mod -> F.Const.Mod
   | Char c -> F.Const.Int (int_of_char c)
   | String s -> F.Const.String s
   | Float r -> F.Const.Real r
@@ -211,6 +212,7 @@ let inv_const c =
             && F.Type.is_ext ty && F.Type.let_ext ty ((=) "X") ->
      CPS_result
   | F.Const.Iff -> EqBool
+  | F.Const.Mod -> Mod
   | _ -> Format.eprintf "%s@." (F.Const.string_of c); assert false
 
 let rec inv_term t =

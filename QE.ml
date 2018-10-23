@@ -35,7 +35,6 @@ let rec used_as_bool x t =
   | Const (Or|And), [_; Var y] when x = y -> true
   | Const Not, [Var y] -> x = y
   | _, ts -> List.exists (used_as_bool x) ts
-  | _ -> false
 
 let rec eliminate_bool t =
   match t with

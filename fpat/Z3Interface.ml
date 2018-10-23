@@ -336,6 +336,16 @@ let rec term_of expr =
                NumTerm.div ty x t)
             (term_of zt)
             zts)
+    else if Arithmetic.is_modulus expr then
+      Expr.get_args expr
+      |> (fun (zt :: zts) ->
+          List.fold_left
+            (fun x y ->
+               let t = term_of y in
+               let ty = Expr.get_sort y |> of_sort in
+               NumTerm.mod_ ty x t)
+            (term_of zt)
+            zts)
     else begin(*@todo*)
       Format.printf "error: %s@," (Expr.to_string expr);
       assert false

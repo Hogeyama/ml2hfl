@@ -16,3 +16,4 @@ let div ty t1 t2 = mk_bop (Const.Div ty) t1 t2
 let div ty t1 t2 = mk_bop (Const.Div ty) t1 t2
 let max ty t1 t2 = mk_bop (Const.Max ty) t1 t2
 let min ty t1 t2 = mk_bop (Const.Min ty) t1 t2
+let mod_ ty t1 t2 = mk_bop Const.Mod t1 t2

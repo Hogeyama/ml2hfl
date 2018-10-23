@@ -1,6 +1,6 @@
 let set_all = ref (fun () -> ())
 let set r x =
-  set_all := (fun () -> !set_all; r := x);
+  set_all := (fun () -> !set_all(); r := x);
   r := x
 let (=:) = set
 

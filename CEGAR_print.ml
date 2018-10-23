@@ -117,6 +117,7 @@ and print_const fm = function
   | Sub -> Format.fprintf fm "-"
   | Mul -> Format.fprintf fm "*"
   | Div -> Format.fprintf fm "/"
+  | Mod -> Format.fprintf fm "mod"
   | Tuple n -> Format.fprintf fm "(%d)" n
   | Proj(n,i) -> Format.fprintf fm "#(%d/%d)" i n
   | If -> Format.fprintf fm "if"
@@ -318,6 +319,7 @@ and print_const_ML fm = function
   | Sub -> Format.fprintf fm "(-)"
   | Mul -> Format.fprintf fm "(*)"
   | Div -> Format.fprintf fm "(/)"
+  | Mod -> Format.fprintf fm "(mod)"
   | Tuple 0 -> Format.fprintf fm "()"
   | Tuple 1 -> ()
   | Tuple n -> Format.fprintf fm "(%d)" n
@@ -414,6 +416,7 @@ and print_const_as_tree fm = function
   | Sub -> Format.fprintf fm "Sub"
   | Mul -> Format.fprintf fm "Mult"
   | Div -> Format.fprintf fm "Div"
+  | Mod -> Format.fprintf fm "Mod"
   | Tuple n -> assert false
   | Proj _ -> assert false
   | If -> Format.fprintf fm "If"
