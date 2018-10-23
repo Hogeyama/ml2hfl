@@ -116,6 +116,7 @@ let print_env cmd json =
   let horsat = HorSatInterface.version () in
   let horsat2 = HorSat2Interface.version () in
   let horsatp = HorSatPInterface.version () in
+  let hoice = if Mconfig.hoice_available then Some (List.nth (String.split_blanc @@ Unix.CPS.open_process_in (Mconfig.hoice ^ " -V") IO.input_all) 1) else None in
   if json then
     try
       Option.iter (Format.printf "{Build:%S," -| fst) mochi;
@@ -125,6 +126,7 @@ let print_env cmd json =
       Option.iter (Format.printf "HorSat:%S,") horsat;
       Option.iter (Format.printf "HorSat2:%S,") horsat2;
       Option.iter (Format.printf "HorSatP:%S,") horsatp;
+      Option.iter (Format.printf "HoIce:%S,") hoice;
       Format.printf "OCaml:%S}" Sys.ocaml_version;
     with Option.No_value -> exit 1
   else
@@ -137,6 +139,7 @@ let print_env cmd json =
       Option.iter (Format.printf "  HorSat version: %s@.") horsat;
       Option.iter (Format.printf "  HorSat2 version: %s@.") horsat2;
       Option.iter (Format.printf "  HorSatP version: %s@.") horsatp;
+      Option.iter (Format.printf "  HoIce version: %s@.") hoice;
       Format.printf "  OCaml version: %s@." Sys.ocaml_version;
       if cmd then
         !Flag.Log.args
