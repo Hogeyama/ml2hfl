@@ -1,9 +1,3 @@
-let set_all = ref (fun () -> ())
-let set r x =
-  set_all := (fun () -> !set_all(); r := x);
-  r := x
-let (=:) = set
-
 let omega = ref Mconfig.omega
 let cvc3 = ref Mconfig.cvc3
 
