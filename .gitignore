@@ -66,6 +66,8 @@ DONE
 *.smt
 *.smt2
 *.sol
+*.json
+*.status
 
 # Other generated files
 gmon.out

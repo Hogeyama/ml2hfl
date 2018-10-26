@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 open BRA_types
 open BRA_transform
 
@@ -74,7 +75,7 @@ let verify_with holed exparam_sol pred =
     transformed
     |> List.fold_right (fun (x,n) -> Term_util.subst x @@ Term_util.make_int n) exparam_sol''
     |> save_to_file;
-  Main_loop.run ~exparam_sol:exparam_sol'' orig @@ Problem.safety transformed
+  Main_loop.run ~exparam_sol:exparam_sol'' ~orig @@ Problem.safety transformed
 
 let inferCoeffs argumentVariables linear_templates constraints =
   (* reduce to linear constraint solving *)

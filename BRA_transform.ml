@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 open BRA_util
 open Type
 open Syntax
@@ -430,10 +431,10 @@ let callsite_split ({program = t; verified = {id = f}; verified_no_checking_ver 
 	counter := 0;
 	replace_index := !replace_index + 1;
 	let holed' = {holed with program = everywhere_expr aux_subst_each t} in
-	Util.Verbose.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Print.term holed'.program;
-	Util.Verbose.printf "is_update: %s@." (string_of_bool !is_update);
-	Util.Verbose.printf "counter: %s@." (string_of_int !counter);
-	Util.Verbose.printf "replace_index: %s@." (string_of_int !replace_index);
+	Verbose.printf "HOLED[%a -> %a]:%a@." Id.print f Id.print f_no Print.term holed'.program;
+	Verbose.printf "is_update: %s@." (string_of_bool !is_update);
+	Verbose.printf "counter: %s@." (string_of_int !counter);
+	Verbose.printf "replace_index: %s@." (string_of_int !replace_index);
 	if !is_update then
 	  holed' :: subst_each t
 	else

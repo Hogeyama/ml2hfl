@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 open Syntax
 open Term_util
 open Type
@@ -440,9 +441,11 @@ let main _ spec parsed =
       if !Flag.Print.result then
         report_safe env;
       Flag.Log.result := "Safe";
+      set_status "Done: Safe";
       true
   | `Untypable ->
       if !Flag.Print.result then
         report_unsafe neg_env ce_set;
       Flag.Log.result := "Unsafe";
+      set_status "Done: Unsafe";
       false

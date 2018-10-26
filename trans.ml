@@ -3174,3 +3174,9 @@ let split_assert t =
   let cnt,t'' = mark_fail t' in
   let ids = List.init cnt Fun.id in
   List.map (replace_fail_with_bot -$- t'') ids
+
+let insert_extra_param t =
+  t
+  |> lift_fst_snd
+  |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
+  |@> Debug.printf "insert_extra_param (%d added)::@. @[%a@.@." (List.length !Fpat.RefTypInfer.params) Print.term

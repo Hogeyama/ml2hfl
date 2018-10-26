@@ -5,8 +5,6 @@ let filenames : string list ref = ref []
 let mainfile : string ref = ref ""
 let spec_file = ref ""
 
-let time_limit = ref 0
-
 let use_abst : string list ref = ref []
 let add_use_abst s = if not @@ List.mem s !use_abst then use_abst := s :: !use_abst
 let pp : string option ref = ref None
@@ -18,9 +16,15 @@ module TRecS = struct
   let param2 = ref 10
 end
 
+module Limit = struct
+  let time = ref 0
+  let time_parallel = ref 0
+end
+
 module Method = struct
   type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | Trans
   let mode = ref Reachability
+  let parallel = ref 0
   let input_cegar = ref false
   let nondet = ref false (* eager evaluation for branch *)
   let use_nint = ref false
@@ -98,9 +102,6 @@ module Log = struct
 
   let cegar_loop = ref 1
   let args = ref [""] (* command-line options *)
-
-  let output_csv : string option ref = ref None
-  let output_json : string option ref = ref None
 end
 
 module Trans = struct

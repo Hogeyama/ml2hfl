@@ -1,13 +1,3 @@
-module Verbose = Debug.Make(struct let check () = !Flag.Print.progress end)
-module MVerbose = Debug.Make(struct let check () = !Flag.Print.modular_progress end)
-
-let set_only_result () =
-  Flag.Print.progress := false;
-  Flag.Print.modular_progress := false
-let is_only_result () =
-  not !Flag.Print.progress &&
-  not !Flag.Print.modular_progress
-
 exception Fatal of string
 exception Unsupported of string
 exception TimeOut
@@ -719,6 +709,7 @@ module IO = struct
   let copy_file ~src ~dest =
     let text = input_file src in
     output_file ~filename:dest ~text
+  let empty_file file = output_file file ""
 end
 
 module Exception = struct
@@ -816,19 +807,48 @@ end
 module Marshal = struct
   include BatMarshal
 
-  let to_file file x =
-    IO.CPS.open_out file (fun cout -> Marshal.to_channel cout x [])
+  let to_file ?(flag=[]) file x =
+    IO.CPS.open_out file (fun cout -> Marshal.to_channel cout x flag)
 
   let from_file file default =
     if Sys.file_exists file then
       IO.CPS.open_in file Marshal.from_channel
     else
       default
+
+  let from_file_exn file =
+    IO.CPS.open_in file Marshal.from_channel
 end
 
 
 module Unix = struct
   include Unix
+
+  let parallel ?(wait=wait) limit cmds =
+    let rec loop running map waiting =
+      let debug = false in
+      if debug then Format.printf "running: %d@." running;
+      if debug then Format.printf "limit: %d@." limit;
+      if debug then Format.printf "|waiting|: %d@.@." (List.length waiting);
+      if limit = running || waiting = [] then
+        let pid,status = wait () in
+        let i = List.assoc pid map in
+        if debug then Format.printf "DONE #%d (pid: %d)@." i pid;
+        let running' = running - 1 in
+        (if running' <> 0 || waiting <> [] then loop running' map waiting)
+      else
+        match waiting with
+        | [] -> invalid_arg "Util.Unix.parallel"
+        | (i, cmd)::waiting' ->
+            let pid = create_process "sh" [|"sh"; "-c"; cmd|] stdin stdout stderr in
+            if debug then Format.printf "Run #%d by process %d@." i pid;
+            let map' = (pid,i)::map in
+            loop (running+1) map' waiting'
+    in
+    cmds
+    |> List.mapi Pair.pair
+    |> loop 0 []
+
   module CPS = struct
     let open_process ?(check=ignore) cmd k =
       let cin,cout = open_process cmd in
@@ -897,6 +917,17 @@ module CommandLine = struct
         | _ -> aux ()
     in
     aux ()
+end
+
+module Cursor = struct
+  let up fm n = Format.fprintf fm "\027[%dA" n
+  let down fm n = Format.fprintf fm "\027[%dB" n
+  let left fm n = Format.fprintf fm "\027[%dC" n
+  let right fm n = Format.fprintf fm "\027[%dD" n
+  let down_begin fm n = Format.fprintf fm "\027[%dE" n
+  let up_begin fm n = Format.fprintf fm "\027[%dF" n
+  let show fm = Format.fprintf fm "\027[?25h"
+  let hide fm = Format.fprintf fm "\027[?25l"
 end
 
 

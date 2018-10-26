@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 open CEGAR_syntax
 open CEGAR_type
 open CEGAR_print
@@ -135,8 +136,8 @@ let abstract orig_fun_list force ?(top_funs=[]) prog =
     Time.measure_and_add
       Flag.Log.Time.abstraction
       (fun () ->
-         if !Flag.Print.progress
-         then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.Log.cegar_loop;
+         if !Flag.Print.progress then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.Log.cegar_loop;
+         set_status @@ Format.sprintf "(%d-1) Abstraction" !Flag.Log.cegar_loop;
          let labeled,abst =
            if List.mem ACPS prog.info.attr then
              CEGAR_abst_CPS.abstract prog top_funs

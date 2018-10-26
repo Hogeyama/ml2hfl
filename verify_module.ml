@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 open Syntax
 open Type
 open Term_util

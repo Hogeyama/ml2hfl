@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 
 module Debug_ty = Debug.Make(struct let check = Flag.Debug.make_check (__MODULE__^".ty") end)
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
@@ -56,6 +57,7 @@ type preprocess_label =
   | Reduce_ignore
   | Reduce_branch
   | Split_assert
+  | Insert_extra_param
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -115,6 +117,7 @@ let string_of_label = function
   | Reduce_ignore -> "Reduce ignore"
   | Reduce_branch -> "Reduce branch"
   | Split_assert -> "Split assert"
+  | Insert_extra_param -> "Insert extra parameters"
 
 let get xs =
   match xs with
@@ -162,6 +165,9 @@ let all spec : t list =
       map_trans mark_fv_as_external;
     Eliminate_unused_let,
       map_trans @@ elim_unused_let ~leave_last:true;
+    Insert_extra_param,
+      cond_trans !Flag.Method.relative_complete @@
+      map_trans insert_extra_param;
     Encode_bool_as_int,
       cond_trans !Flag.Method.bool_to_int @@
       map_trans encode_bool_as_int;

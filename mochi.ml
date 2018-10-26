@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 
 let print_info_default () =
   if !Flag.Termination.add_closure_exparam && !Flag.Log.result = "terminating" then
@@ -26,30 +27,13 @@ let print_info_default () =
     Format.printf "    exparam: %.3f sec@." !Flag.Log.Time.parameter_inference;
   Format.pp_print_flush Format.std_formatter ()
 
-let output_csv filename =
-  let oc = open_out_gen [Open_append; Open_creat] 0o644 filename in
-  let pr fmt = Printf.fprintf oc fmt in
-  let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
-  pr "%s," @@ Filename.chop_extension_if_any @@ Filename.basename !Flag.mainfile;
-  pr "%S," !Flag.Log.result;
-  pr "%d," !Flag.Log.cegar_loop;
-  pr "%f," !!Time.get;
-  pr "%f," !Flag.Log.Time.abstraction;
-  pr "%f," !Flag.Log.Time.mc;
-  pr "%f," !Flag.Log.Time.cegar;
-  pr "%f," !Flag.Log.Time.parameter_inference;
-  pr_mod "%n," !Modular.num_tycheck;
-  pr_mod "%f," !Modular.time_check;
-  pr_mod "%f," !Modular.time_synthesize;
-  pr "0\n";
-  close_out oc
-
-let output_json filename =
+let output_json () =
+  let filename = Filename.change_extension !Flag.mainfile "json" in
   let oc =
     if filename = "-" then
       stdout
     else
-      open_out_gen [Open_append; Open_creat] 0o644 filename
+      open_out filename
   in
   let pr fmt = Printf.fprintf oc fmt in
   let pr_ter fmt = if Flag.Method.(!mode = Termination) then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
@@ -92,12 +76,8 @@ let print_info_modular () =
   Format.printf "  typeChecker: %.3f sec@." !Modular.time_check;
   Format.printf "  typeSynthesizer: %.3f sec@." !Modular.time_synthesize
 
-let output_exp () =
-  Option.iter output_csv !Flag.Log.output_csv;
-  Option.iter output_json !Flag.Log.output_json
-
 let print_info () =
-  output_exp ();
+  output_json ();
   if !Flag.Print.result then
     if !Flag.Method.modular then
       print_info_modular ()
@@ -191,11 +171,13 @@ let main_termination orig parsed =
   if result then
     begin
       Flag.Log.result := "terminating";
+      set_status "Done: Terminating";
       if !Flag.Print.result then Format.printf "Terminating!@."
     end
   else
    begin
      Flag.Log.result := "unknown";
+      set_status "Done: Unknown";
      if !Flag.Print.result then Format.printf "Unknown...@."
    end;
   result
@@ -258,72 +240,6 @@ let main_trans spec t =
   end;
   exit 0
 
-let main cin =
-  let input_string =
-    let s = IO.input_all cin in
-    if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination)
-    then Fair_termination_util.add_event s
-    else s
-  in
-  let lb = Lexing.from_string input_string in
-  lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename !Flag.mainfile;
-     Lexing.pos_lnum = 1;
-     Lexing.pos_cnum = 0;
-     Lexing.pos_bol = 0};
-  if !Flag.Method.input_cegar then
-    main_input_cegar lb
-  else
-    let orig = Parse.use_file lb in
-    let parsed = Parser_wrapper.from_use_file orig in
-    Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
-    if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
-    let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
-    (* TODO: Refactor below *)
-    let verify t =
-      if !Flag.Method.modular then
-        Modular.main orig spec t
-      else
-        let env_assume = Spec.get_ext_ref_env spec t in
-        let env_assert = Spec.get_ref_env spec t in
-        let problem =
-          if env_assert = [] then
-            Problem.safety ~env:env_assume t
-          else
-            Problem.ref_type_check ~env:env_assume t env_assert
-        in
-        Main_loop.run orig ~spec problem
-    in
-    if Flag.Method.(!mode = Trans) then
-        main_trans spec parsed
-    else if !Flag.Method.quick_check then
-      main_quick_check spec parsed
-    else if !Flag.Method.verify_ref_typ then
-      Verify_ref_typ.main orig spec parsed
-    else if Flag.Method.(!mode = Termination) then
-      main_termination orig parsed
-    else if Flag.Method.(!mode = FairTermination) then
-      main_fair_termination orig spec parsed
-    else if !Flag.Mode.module_mode then
-      Verify_module.main verify parsed
-    else
-      verify parsed
-
-
-let set_exp_filename filename =
-  if Filename.check_suffix filename ".csv" then
-    Flag.Log.output_csv := Some filename
-  else if Filename.check_suffix filename ".json" then
-    Flag.Log.output_json := Some filename
-  else if filename = "-" then
-    begin
-      set_only_result ();
-      Flag.Print.result := false;
-      Flag.Log.output_json := Some filename
-    end
-  else
-    unsupported "Experimental results file type"
-
 let just_run_other_command cmd =
   if !Flag.filenames = [] then
     (Format.eprintf "Option \"-just-run\" must follow input file@."; exit 1);
@@ -349,7 +265,8 @@ let rec arg_spec () =
      "-v", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version shortly";
      "-env", Arg.Unit (fun () -> print_env false true; exit 0), " Print the version and the environment as JSON";
      "-version", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version";
-     "-limit", Arg.Set_int Flag.time_limit, " Set time limit (seconds)";
+     "-limit", Arg.Set_int Flag.Limit.time, " Set time limit (seconds)";
+     "-par-limit", Arg.Set_int Flag.Limit.time_parallel, " Set time limit for parallel execution (seconds)";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";
@@ -360,10 +277,10 @@ let rec arg_spec () =
                                  set_only_result ()),
        Format.asprintf "<desc>  Translate the input to <dest> which must be one of the following:\n%s"
                        !!Flag.Trans.string_of_destinations;
+     "-p", Arg.Set_int Flag.Method.parallel, " Numbers of jobs to run simultaneously";
+     "-s", Arg.Unit set_silent, " Do not print any information";
      (* experiment *)
      "", Arg.Unit ignore, "Options_for_experiments";
-     "-exp", Arg.String set_exp_filename, "<filename>  Output experimental results to <filename> (Support file types: *.csv, *.json)";
-     "-exp-json", Arg.Unit (fun () -> set_exp_filename "-"), " Output experimental results to starndard output as JSON";
      "-just-run", Arg.String just_run_other_command, " (just for experiments, %i is replaced with the filename)";
      "-hors-quickcheck-short", Arg.Unit Flag.(fun () -> Experiment.HORS_quickcheck.(use := Some Shortest)), " Use shortest counterexample generated by hors_quickcheck";
      "-hors-quickcheck-long", Arg.Unit Flag.(fun () -> Experiment.HORS_quickcheck.(use := Some Longest)), " Use longest counterexample generated by hors_quickcheck";
@@ -570,20 +487,24 @@ let set_file name =
   in
   Flag.filenames := name' :: !Flag.filenames
 
-let read_option_conf () =
+let parse_arg_list has_head args =
+  Arg.current := 0;
   try
-    let args =
-      IO.CPS.open_in "option.conf" @@
-        (input_line |- String.split_blanc)
-    in
-    Arg.current := 0;
-    Arg.parse_argv (Array.of_list @@ Sys.argv.(0) :: args) arg_spec set_file usage;
-    Flag.Log.args := !Flag.Log.args @ args
+    let args' = if has_head then args else Sys.argv.(0) :: args in
+    Arg.parse_argv (Array.of_list args') arg_spec set_file usage
   with
   | Arg.Bad s
   | Arg.Help s -> Format.eprintf "%s@." s; exit 1
-  | Sys_error _
   | End_of_file -> ()
+
+let read_option_conf () =
+  try
+    let args = IO.CPS.open_in "option.conf" (input_line |- String.split_blanc) in
+    parse_arg_list false args;
+    Flag.Log.args := !Flag.Log.args @ args
+  with
+  | End_of_file -> ()
+  | Sys_error _ -> ()
 
 let make_temp_file () =
   let dir = "/tmp/mochi" in
@@ -743,10 +664,77 @@ let init_after_parse_arg () =
   if Flag.ModelCheck.(!mc <> TRecS) then
     Flag.ModelCheck.church_encode := true;
   fpat_init2 ();
-  ignore @@ Unix.alarm !Flag.time_limit;
+  ignore @@ Unix.alarm !Flag.Limit.time;
   Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
   Color.init ();
   check_env ()
+
+let main cin =
+  set_status "Start";
+  if String.ends_with !Flag.mainfile ".bin" then
+    begin
+      let open Main_loop in
+      let {args;preprocessed} = Marshal.from_file_exn !Flag.mainfile in
+      parse_arg_list true args;
+      let spec = Spec.init in
+      let s,r =
+        match Main_loop.check spec preprocessed with
+        | CEGAR.Safe _, _, _, _ -> "Done: Safe", 0
+        | CEGAR.Unsafe _, _, _, _ -> "Done: Unsafe", 0
+        | exception _ -> "Error/Timeout", 1
+      in
+      set_status s;
+      exit r
+    end;
+  let input_string =
+    let s = IO.input_all cin in
+    if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination)
+    then Fair_termination_util.add_event s
+    else s
+  in
+  let lb = Lexing.from_string input_string in
+  lb.Lexing.lex_curr_p <-
+    {Lexing.pos_fname = Filename.basename !Flag.mainfile;
+     Lexing.pos_lnum = 1;
+     Lexing.pos_cnum = 0;
+     Lexing.pos_bol = 0};
+  if !Flag.Method.input_cegar then
+    main_input_cegar lb
+  else
+    let orig = Parse.use_file lb in
+    let parsed = Parser_wrapper.from_use_file orig in
+    Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
+    if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
+    let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
+    (* TODO: Refactor below *)
+    let verify t =
+      if !Flag.Method.modular then
+        Modular.main orig spec t
+      else
+        let env_assume = Spec.get_ext_ref_env spec t in
+        let env_assert = Spec.get_ref_env spec t in
+        let problem =
+          if env_assert = [] then
+            Problem.safety ~env:env_assume t
+          else
+            Problem.ref_type_check ~env:env_assume t env_assert
+        in
+        Main_loop.run ~orig ~spec problem
+    in
+    if Flag.Method.(!mode = Trans) then
+        main_trans spec parsed
+    else if !Flag.Method.quick_check then
+      main_quick_check spec parsed
+    else if !Flag.Method.verify_ref_typ then
+      Verify_ref_typ.main orig spec parsed
+    else if Flag.Method.(!mode = Termination) then
+      main_termination orig parsed
+    else if Flag.Method.(!mode = FairTermination) then
+      main_fair_termination orig spec parsed
+    else if !Flag.Mode.module_mode then
+      Verify_module.main verify parsed
+    else
+      verify parsed
 
 let timeout_handler _ = raise TimeOut
 
@@ -766,10 +754,10 @@ let () =
     with
     | e when !Flag.Debug.debug_module = [] ->
         Flag.Log.result := string_of_exception e;
+        set_status ("Error: " ^ !Flag.Log.result);
         Format.print_flush ();
         flush_all ();
-        Option.iter output_csv !Flag.Log.output_csv;
-        Option.iter output_json !Flag.Log.output_json;
+        output_json ();
         Main_loop.print_result_delimiter ();
         print_error e;
         exit 1

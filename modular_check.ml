@@ -1,4 +1,5 @@
 open Util
+open Mochi_util
 open Syntax
 open Term_util
 open Type
@@ -307,7 +308,7 @@ let check prog f typ depth =
       Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
       Trans.merge_bound_var_typ map
     in
-    let result, make_get_rtyp, _, set_target, main =
+    let result, make_get_rtyp, set_target, main =
       t
       |@> Debug.printf "  t: %a@.@." Print.term_typ
       |> make_lets fun_env'
@@ -317,7 +318,7 @@ let check prog f typ depth =
       |> Trans.map_main Term.(seq -$- eod) (* ??? *)
       |> Problem.safety
       |@> Debug.printf "Problem: %a@.@." Problem.print
-      |> Main_loop.loop ~make_pps:Preprocess.(all |- and_after CPS) ~fun_list:[] [] Spec.init
+      |> Main_loop.loop ~make_pps:Preprocess.(all |- and_after CPS) ~fun_list:[] Spec.init
       |> List.get
     in
     match result with
