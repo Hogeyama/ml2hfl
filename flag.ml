@@ -113,7 +113,7 @@ module Log = struct
     | NonTerminating -> hd "NonTerminating"
     | Unknown "" -> hd "Unknown"
     | Unknown s -> hd @@ Format.sprintf "Unknown (%s)" s
-    | Error s -> "Error: " ^ s
+    | Error s -> if head then "Error: " ^ s else s
     | Other s -> s
 
   let cegar_loop = ref 1
