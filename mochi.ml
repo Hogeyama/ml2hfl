@@ -2,9 +2,9 @@ open Util
 open Mochi_util
 
 let print_info_default () =
-  if !Flag.Termination.add_closure_exparam && !Flag.Log.result = "terminating" then
+  if !Flag.Termination.add_closure_exparam && Flag.Log.(!result = Terminating) then
     Format.printf "exparam inserted program:@. %a@." Print.(term_custom {!config_default with unused=true}) !ExtraParamInfer.origWithExparam;
-  if Flag.Method.(!mode = Termination) && !Flag.Log.result = "terminating" then
+  if Flag.Method.(!mode = Termination) && Flag.Log.(!result = Terminating) then
     begin
       List.iter
         (fun (f_name, (cycles, pred)) ->
@@ -39,7 +39,7 @@ let output_json () =
   let pr_ter fmt = if Flag.Method.(!mode = Termination) then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   pr "{\"filename\": %S" !Flag.mainfile;
-  pr ", \"result\": %S" !Flag.Log.result;
+  pr ", \"result\": %S" !!Flag.Log.string_of_result;
   pr ", \"cycles\": %d" !Flag.Log.cegar_loop;
   pr_ter ", \"ranking\": {";
   let rec pr_rfs rfs =
@@ -170,14 +170,12 @@ let main_termination orig parsed =
   in
   if result then
     begin
-      Flag.Log.result := "terminating";
-      set_status "Done: Terminating";
+      set_status Flag.Log.Terminating;
       if !Flag.Print.result then Format.printf "Terminating!@."
     end
   else
    begin
-     Flag.Log.result := "unknown";
-      set_status "Done: Unknown";
+      set_status @@ Flag.Log.Unknown "";
      if !Flag.Print.result then Format.printf "Unknown...@."
    end;
   result
@@ -266,7 +264,7 @@ let rec arg_spec () =
      "-env", Arg.Unit (fun () -> print_env false true; exit 0), " Print the version and the environment as JSON";
      "-version", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.Limit.time, " Set time limit (seconds)";
-     "-par-limit", Arg.Set_int Flag.Limit.time_parallel, " Set time limit for parallel execution (seconds)";
+     "-par-limit", Arg.Set_int Flag.Parallel.time, " Set time limit for parallel execution (seconds)";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";
@@ -277,7 +275,7 @@ let rec arg_spec () =
                                  set_only_result ()),
        Format.asprintf "<desc>  Translate the input to <dest> which must be one of the following:\n%s"
                        !!Flag.Trans.string_of_destinations;
-     "-p", Arg.Set_int Flag.Method.parallel, " Numbers of jobs to run simultaneously";
+     "-p", Arg.Set_int Flag.Parallel.num, " Numbers of jobs to run simultaneously";
      "-s", Arg.Unit set_silent, " Do not print any information";
      (* experiment *)
      "", Arg.Unit ignore, "Options_for_experiments";
@@ -669,23 +667,26 @@ let init_after_parse_arg () =
   Color.init ();
   check_env ()
 
+let check_bin () =
+  let open Main_loop in
+  let {args;preprocessed} = Marshal.from_file_exn !Flag.mainfile in
+  parse_arg_list true args;
+  let spec = Spec.init in
+  let s,r =
+    match Main_loop.((check spec preprocessed).result) with
+    | CEGAR.Safe _ -> Flag.Log.Safe, 0
+    | CEGAR.Unsafe _ -> Flag.Log.Unsafe, 0
+    | CEGAR.Unknown s -> Flag.Log.Unknown s, 0
+    | exception e -> Flag.Log.Error (string_of_exception e), 1
+  in
+  set_status s;
+  output_json ();
+  exit r
+
 let main cin =
-  set_status "Start";
+  set_status @@ Flag.Log.Other "Start";
   if String.ends_with !Flag.mainfile ".bin" then
-    begin
-      let open Main_loop in
-      let {args;preprocessed} = Marshal.from_file_exn !Flag.mainfile in
-      parse_arg_list true args;
-      let spec = Spec.init in
-      let s,r =
-        match Main_loop.check spec preprocessed with
-        | CEGAR.Safe _, _, _, _ -> "Done: Safe", 0
-        | CEGAR.Unsafe _, _, _, _ -> "Done: Unsafe", 0
-        | exception _ -> "Error/Timeout", 1
-      in
-      set_status s;
-      exit r
-    end;
+    check_bin ();
   let input_string =
     let s = IO.input_all cin in
     if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination)
@@ -753,8 +754,7 @@ let () =
       print_info ()
     with
     | e when !Flag.Debug.debug_module = [] ->
-        Flag.Log.result := string_of_exception e;
-        set_status ("Error: " ^ !Flag.Log.result);
+        set_status @@ Flag.Log.Error (string_of_exception e);
         Format.print_flush ();
         flush_all ();
         output_json ();

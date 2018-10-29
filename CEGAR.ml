@@ -11,6 +11,7 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 type result =
   | Safe of (var * CEGAR_ref_type.t) list
   | Unsafe of int list * MC.counterexample
+  | Unknown of string
 
 let pre () =
   ()

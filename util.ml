@@ -824,30 +824,30 @@ end
 module Unix = struct
   include Unix
 
-  let parallel ?(wait=wait) limit cmds =
-    let rec loop running map waiting =
+  let parallel ?(wait = fun _ -> wait()) limit cmds =
+    let rec loop running waiting =
       let debug = false in
-      if debug then Format.printf "running: %d@." running;
+      if debug then Format.printf "|running|: %d@." (List.length running);
       if debug then Format.printf "limit: %d@." limit;
       if debug then Format.printf "|waiting|: %d@.@." (List.length waiting);
-      if limit = running || waiting = [] then
-        let pid,status = wait () in
-        let i = List.assoc pid map in
+      if limit = List.length running || waiting = [] then
+        let pid,status = wait running in
+        let i = List.assoc pid running in
         if debug then Format.printf "DONE #%d (pid: %d)@." i pid;
-        let running' = running - 1 in
-        (if running' <> 0 || waiting <> [] then loop running' map waiting)
+        let running' = List.filter_out (fst |- (=) pid) running in
+        (if running' <> [] || waiting <> [] then loop running' waiting)
       else
         match waiting with
         | [] -> invalid_arg "Util.Unix.parallel"
         | (i, cmd)::waiting' ->
             let pid = create_process "sh" [|"sh"; "-c"; cmd|] stdin stdout stderr in
             if debug then Format.printf "Run #%d by process %d@." i pid;
-            let map' = (pid,i)::map in
-            loop (running+1) map' waiting'
+            let running' = (pid,i)::running in
+            loop running' waiting'
     in
     cmds
     |> List.mapi Pair.pair
-    |> loop 0 []
+    |> loop []
 
   module CPS = struct
     let open_process ?(check=ignore) cmd k =

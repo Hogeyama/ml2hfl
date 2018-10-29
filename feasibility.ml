@@ -129,7 +129,7 @@ let check ce {defs; main} =
   Verbose.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
   let time_tmp = Time.get () in
   Verbose.printf "%a(%d-3) Checking counterexample ...%t @?" Color.set Color.Green !Flag.Log.cegar_loop Color.reset;
-  set_status @@ Format.sprintf "(%d-3) Feasibility checking" !Flag.Log.cegar_loop;
+  set_status @@ Flag.Log.Other (Format.sprintf "(%d-3) Feasibility checking" !Flag.Log.cegar_loop);
   if false then Format.printf "ce:	  %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
@@ -153,7 +153,7 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   if !Flag.Print.progress then Format.printf "Spurious counterexample::@.  %a@.@." CEGAR_print.ce ce;
   let time_tmp = Time.get () in
   if !Flag.Print.progress then Color.printf Color.Green "(%d-3) Checking counterexample ... @?" !Flag.Log.cegar_loop;
-  set_status @@ Format.sprintf "(%d-3) Feasibility checking" !Flag.Log.cegar_loop;
+  set_status @@ Flag.Log.Other (Format.sprintf "(%d-3) Feasibility checking" !Flag.Log.cegar_loop);
   if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
   let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in

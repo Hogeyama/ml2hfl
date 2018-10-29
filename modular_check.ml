@@ -308,7 +308,7 @@ let check prog f typ depth =
       Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
       Trans.merge_bound_var_typ map
     in
-    let result, make_get_rtyp, set_target, main =
+    let {Main_loop.result; make_get_rtyp; set_main; main} =
       t
       |@> Debug.printf "  t: %a@.@." Print.term_typ
       |> make_lets fun_env'
@@ -330,7 +330,7 @@ let check prog f typ depth =
         Typable (Ref_type.Env.normalize @@ Ref_type.Env.of_list env')
     | CEGAR.Unsafe(sol, ModelCheck.CESafety ce_single) ->
         let ce_single' = List.map ((=) 0) ce_single in
-        if !!Debug.check then Main_loop.report_unsafe main sol set_target;
+        if !!Debug.check then Main_loop.report_unsafe main sol set_main;
         Debug.printf "  Untypable@.@.";
         Debug.printf "    CE_INIT: %a@\n" (List.print Format.pp_print_bool) ce_single';
         Debug.printf "    TOP_FUNS: %a@\n" (List.print Id.print) top_funs;

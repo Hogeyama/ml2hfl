@@ -326,7 +326,7 @@ let preprocess_cps prog =
 let check abst prog spec =
   if !Flag.Print.progress
   then Color.printf Color.Green "(%d-2) Checking HORS ... @?" !Flag.Log.cegar_loop;
-  set_status @@ Format.sprintf "(%d-2) Model checking" !Flag.Log.cegar_loop;
+  set_status @@ Flag.Log.Other (Format.sprintf "(%d-2) Model checking" !Flag.Log.cegar_loop);
   let abst' =
     if List.mem ACPS prog.info.attr
     then preprocess_cps abst

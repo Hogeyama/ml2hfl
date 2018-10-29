@@ -137,7 +137,7 @@ let abstract orig_fun_list force ?(top_funs=[]) prog =
       Flag.Log.Time.abstraction
       (fun () ->
          if !Flag.Print.progress then Color.printf Color.Green "(%d-1) Abstracting ... @?" !Flag.Log.cegar_loop;
-         set_status @@ Format.sprintf "(%d-1) Abstraction" !Flag.Log.cegar_loop;
+         set_status @@ Flag.Log.Other (Format.sprintf "(%d-1) Abstraction" !Flag.Log.cegar_loop);
          let labeled,abst =
            if List.mem ACPS prog.info.attr then
              CEGAR_abst_CPS.abstract prog top_funs

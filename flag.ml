@@ -18,13 +18,17 @@ end
 
 module Limit = struct
   let time = ref 0
-  let time_parallel = ref 0
+end
+
+module Parallel = struct
+  let num = ref 0
+  let time = ref 0
+  let continue = ref true
 end
 
 module Method = struct
   type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | Trans
   let mode = ref Reachability
-  let parallel = ref 0
   let input_cegar = ref false
   let nondet = ref false (* eager evaluation for branch *)
   let use_nint = ref false
@@ -98,7 +102,18 @@ module Log = struct
     let hors_quickcheck = ref 0.
   end
 
-  let result = ref ""
+  type status = Safe | Unsafe | Terminating | NonTerminating | Unknown of string | Error of string | Other of string
+  let result = ref (Other "Init")
+  let string_of_result () =
+    match !result with
+    | Safe -> "Done: Safe"
+    | Unsafe -> "Done: Unsafe"
+    | Terminating -> "Done: Terminating"
+    | NonTerminating -> "Done: NonTerminating"
+    | Unknown "" -> "Done: Unknown"
+    | Unknown s -> Format.sprintf "Done: Unknown (%s)" s
+    | Error s -> "Error: " ^ s
+    | Other s -> s
 
   let cegar_loop = ref 1
   let args = ref [""] (* command-line options *)

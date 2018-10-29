@@ -2,3 +2,4 @@ PKG batteries
 PKG compiler-libs.common
 PKG unix
 PKG fpat
+PKG yojson

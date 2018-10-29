@@ -1,10 +1,14 @@
 open Util
 open Mochi_util
 
-type result = Safe of (Syntax.id * Ref_type.t) list | Unsafe of int list
-
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
+
+type return =
+    {result : CEGAR.result;
+     make_get_rtyp : (CEGAR_syntax.var -> CEGAR_ref_type.t) -> Syntax.id -> Ref_type.t;
+     set_main: Problem.t option;
+     main: Syntax.id option}
 
 
 let cegar_of_preprocessed ?fun_list spec results =
@@ -117,7 +121,7 @@ let report_safe env orig {Problem.term=t0} =
 
 
 let report_unsafe main ce set_main =
-  Color.printf Color.Bright "%s@.@." !Flag.Log.result;
+  Color.printf Color.Bright "%s@.@." !!Flag.Log.string_of_result;
   if !Flag.use_abst = [] then
     let pr main_fun =
       let arg_num = Type.arity @@ Id.typ main_fun in
@@ -134,15 +138,14 @@ let rec run_cegar prog =
   try
     match CEGAR.run prog with
     | CEGAR.Safe env ->
-        Flag.Log.result := "Safe";
-        set_status "Done: Safe";
+        set_status Flag.Log.Safe;
         Color.printf Color.Bright "Safe!@.@.";
         true
     | CEGAR.Unsafe _ ->
-        Flag.Log.result := "Unsafe";
-        set_status "Done: Unsafe";
+        set_status Flag.Log.Unsafe;
         Color.printf Color.Bright "Unsafe!@.@.";
         false
+    | CEGAR.Unknown _ -> unsupported "Main_loop.run_cegar"
   with
   | Fpat.RefTypInfer.FailedToRefineTypes when Flag.Method.(not !insert_param_funarg && not !no_exparam) ->
       Flag.Method.insert_param_funarg := true;
@@ -187,33 +190,42 @@ let trans_env top_funs make_get_rtyp env : (Syntax.id * Ref_type.t) list =
   let aux f = Option.try_any (fun () -> f, Ref_type.rename @@ make_get_rtyp get_rtyp f) in
   List.filter_map aux top_funs
 
-let report orig parsed (result, make_get_rtyp, set_main, main) =
+let status_of_result r =
+  match r with
+  | CEGAR.Safe env -> Flag.Log.Safe
+  | CEGAR.Unsafe _ when Flag.Method.(!mode = NonTermination || !ignore_non_termination) ->
+      Flag.Log.Unknown ""
+  | CEGAR.Unsafe _ when !Flag.use_abst <> [] ->
+      Flag.Log.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.use_abst)
+  | CEGAR.Unsafe _ ->
+      Flag.Log.Unsafe
+  | CEGAR.Unknown s when String.starts_with s "Error: " ->
+      Flag.Log.Error (snd @@ String.split_nth s (String.length "Error: "))
+  | CEGAR.Unknown s ->
+      Flag.Log.Unknown s
+
+let report orig parsed num i {result; make_get_rtyp; set_main; main} =
   print_result_delimiter ();
+  if !Flag.Print.result && num > 1 then Format.printf "Sub-problem %d/%d:@." (i+1) num;
   match result with
   | CEGAR.Safe env ->
-      Flag.Log.result := "Safe";
-      set_status "Done: Safe";
-      Debug.printf "report env: %a@." (List.print @@ Pair.print CEGAR_print.var CEGAR_ref_type.print) env;
+      Debug.printf "report env: %a@." Print.(list (CEGAR_print.var * CEGAR_ref_type.print)) env;
       let top_funs = Term_util.get_top_funs @@ Problem.term parsed in
-      Debug.printf "report top_funs: %a@." (List.print Print.id) top_funs;
+      Debug.printf "report top_funs: %a@." Print.(list id) top_funs;
       let env' = trans_env top_funs make_get_rtyp env in
-      Debug.printf "report env': %a@." (List.print @@ Pair.print Print.id Ref_type.print) env';
+      Debug.printf "report env': %a@." Print.(list (id * Ref_type.print)) env';
       if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
         if !Flag.Print.result then
           report_safe env' orig parsed
   | CEGAR.Unsafe(sol,_) ->
-      let s =
-        if Flag.Method.(!mode = NonTermination || !ignore_non_termination) then
-          "Unknown."
-        else if !Flag.use_abst <> [] then
-          Format.asprintf "Unknown (because of abstraction options %a)" Print.(list string) !Flag.use_abst
-        else
-          "Unsafe"
-      in
-      Flag.Log.result := s;
-      set_status ("Done: " ^ s);
       if !Flag.Print.result then
         report_unsafe main sol set_main
+  | CEGAR.Unknown s when String.starts_with s "Error: " ->
+      Color.printf Color.Bright "%s@.@." s
+  | CEGAR.Unknown s ->
+      Color.printf Color.Bright "Unknown";
+      if s <> "" then Color.printf Color.Bright " %s" s;
+      Color.printf Color.Bright "@.@."
 
 let check ?fun_list ?(exparam_sol=[]) spec pp =
   let preprocessed, make_get_rtyp, set_main, main = cegar_of_preprocessed ?fun_list spec pp in
@@ -231,12 +243,14 @@ let check ?fun_list ?(exparam_sol=[]) spec pp =
       preprocessed
   in
   let result = CEGAR.run cegar_prog in
-  result, make_get_rtyp, set_main, main
+  {result; make_get_rtyp; set_main; main}
 
 
 type bin_input =
     {args : string list;
      preprocessed : Preprocess.result list}
+
+exception QuitWithUnsafe
 
 let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
   if !Flag.Print.progress
@@ -246,11 +260,11 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
   let problem i preprocessed =
     let input = Filename.change_extension !Flag.mainfile @@ Format.sprintf "%d.bin" i in
     let status = Filename.change_extension input "status" in
-    let cmd = Format.sprintf "%s -s -limit %d %s" Sys.argv.(0) !Flag.Limit.time_parallel input in
-    i, input, status, cmd, preprocessed
+    let cmd = Format.sprintf "%s -s -limit %d %s" Sys.argv.(0) !Flag.Parallel.time input in
+    i, (input, status, cmd, preprocessed)
   in
   let problems = List.mapi problem pps in
-  let prepare (_,input,status,_,preprocessed) =
+  let prepare (_,(input,status,_,preprocessed)) =
     let args = !Flag.Log.args in
     let bin = {args; preprocessed} in
     Marshal.to_file ~flag:[Marshal.Closures] input bin;
@@ -258,7 +272,7 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
   in
   let len = List.length pps in
   List.iter prepare problems;
-  let print_status (i,_,status,_,_) =
+  let print_status (i,(_,status,_,_)) =
     let s = BatPervasives.input_file status in
     let f,st =
       try
@@ -280,24 +294,56 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
       Verbose.printf "%d: [%s%s]  %-40s@." i s1 s2 st
   in
   let b = Unix.isatty Unix.stdout in
-  let rec wait () =
+  let result_of i =
+    let input,_,_,_ = List.assoc i problems in
+    let file = Filename.change_extension input "json" in
+    let r =
+      let open Yojson.Basic in
+      file
+      |> IO.input_file
+      |> from_string
+      |> Util.member "result"
+      |> Util.to_string
+    in
+    match r with
+    | "Done: Safe" -> CEGAR.Safe []
+    | "Done: Unsafe" -> CEGAR.Unsafe([], ModelCheck.CESafety [])
+    | r when !Flag.Parallel.continue -> CEGAR.Unknown r
+    | _ -> failwith r
+  in
+  let finished = ref [] in
+  let rec wait running =
     let pid,st = Unix.(waitpid [WNOHANG] (-1)) in
     if b then List.iter print_status problems;
     if b then Verbose.printf "%a" Cursor.up_begin len;
     if pid = 0 then
-      wait ()
+      wait running
     else
+      let i = List.assoc pid running in
+      let r = result_of i in
+      let is_safe = match r with CEGAR.Safe _ -> true | _ -> false in
+      Format.printf "FINISHED: %d@." i;
+      finished := (i,r) :: !finished;
+      if not (is_safe || !Flag.Parallel.continue) then raise QuitWithUnsafe;
       pid, st
   in
   if b then Verbose.printf "%t" Cursor.hide;
-  Unix.parallel ~wait !Flag.Method.parallel @@ List.map (fun (_,_,_,cmd,_) -> cmd) problems;
-  if b then Verbose.printf "%t%a" Cursor.show Cursor.down len;
+  Exception.finally (fun () -> if b then Verbose.printf "%t%a" Cursor.show Cursor.down len)
+    (Unix.parallel ~wait !Flag.Parallel.num)
+    (List.map (fun (_,(_,_,cmd,_)) -> cmd) problems);
   if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
-  exit 0
+  let result_of (i,(input,status,cmd,preprocessed)) =
+    let result = List.assoc_default (CEGAR.Unknown "") i !finished in
+    let make_get_rtyp _ _ = unsupported "check_parallel" in
+    let set_main = None in
+    let main = None in
+    {result; make_get_rtyp; set_main; main}
+  in
+  List.map result_of problems
 
 let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
   let preprocessed = run_preprocess ?make_pps spec problem in
-  if !Flag.Method.parallel >= 2 then
+  if !Flag.Parallel.num >= 2 then
     check_parallel ?fun_list ?exparam_sol spec preprocessed
   else
     try
@@ -309,18 +355,19 @@ let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
 
 let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
   let results = loop ?make_pps ?fun_list ?exparam_sol spec parsed in
-  let bool_of_result (result, make_get_rtyp, set_main, main) =
+  let bool_of_result {result; make_get_rtyp; set_main; main} =
     match result with
     | CEGAR.Safe _ -> true
     | CEGAR.Unsafe _ -> false
+    | CEGAR.Unknown _ -> false
   in
   if results = [] then
     begin
-      Flag.Log.result := "Safe";
-      set_status "Done: Safe";
+      set_status Flag.Log.Safe;
       if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
         if !Flag.Print.result then
           report_safe [] orig parsed
     end;
-  List.iter (report orig parsed) results;
+  List.iteri (report orig parsed @@ List.length results) results;
+  set_status @@ List.fold_left merge_status Flag.Log.Safe @@ List.map (fun r -> status_of_result r.result) results;
   List.for_all bool_of_result results

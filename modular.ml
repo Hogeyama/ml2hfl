@@ -440,12 +440,10 @@ let main _ spec parsed =
   | `Typable ->
       if !Flag.Print.result then
         report_safe env;
-      Flag.Log.result := "Safe";
-      set_status "Done: Safe";
+      set_status Flag.Log.Safe;
       true
   | `Untypable ->
       if !Flag.Print.result then
         report_unsafe neg_env ce_set;
-      Flag.Log.result := "Unsafe";
-      set_status "Done: Unsafe";
+      set_status Flag.Log.Unsafe;
       false

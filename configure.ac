@@ -30,14 +30,19 @@ else
   AC_SUBST(FPAT)
 fi
 
-AC_CHECK_OCAML_PKG([extlib])
-if test "$OCAML_PKG_extlib" = "no"; then
-  AC_MSG_ERROR([extlib not found])
+AC_CHECK_OCAML_PKG([batteries])
+if test "$OCAML_PKG_batteries" = "no"; then
+  AC_MSG_ERROR([batteries not found])
 fi
 
 AC_CHECK_OCAML_PKG([Z3])
 if test "$OCAML_PKG_Z3" = "no"; then
   AC_MSG_ERROR([Z3 not found])
+fi
+
+AC_CHECK_OCAML_PKG([yojson])
+if test "$OCAML_PKG_yojson" = "no"; then
+  AC_MSG_ERROR([yojson not found])
 fi
 
 AC_PATH_TOOL(CVC3, cvc3, [no], [$PATH:$PWD])
