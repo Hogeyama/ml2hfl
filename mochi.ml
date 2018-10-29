@@ -39,7 +39,7 @@ let output_json () =
   let pr_ter fmt = if Flag.Method.(!mode = Termination) then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   let pr_mod fmt = if !Flag.Method.modular then Printf.fprintf oc fmt else Printf.ifprintf oc fmt in
   pr "{\"filename\": %S" !Flag.mainfile;
-  pr ", \"result\": %S" !!Flag.Log.string_of_result;
+  pr ", \"result\": %S" (Flag.Log.string_of_result false);
   pr ", \"cycles\": %d" !Flag.Log.cegar_loop;
   pr_ter ", \"ranking\": {";
   let rec pr_rfs rfs =

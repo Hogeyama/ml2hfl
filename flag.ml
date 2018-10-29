@@ -104,14 +104,15 @@ module Log = struct
 
   type status = Safe | Unsafe | Terminating | NonTerminating | Unknown of string | Error of string | Other of string
   let result = ref (Other "Init")
-  let string_of_result () =
+  let string_of_result head =
+    let hd s = if head then "Done: " ^ s else s in
     match !result with
-    | Safe -> "Done: Safe"
-    | Unsafe -> "Done: Unsafe"
-    | Terminating -> "Done: Terminating"
-    | NonTerminating -> "Done: NonTerminating"
-    | Unknown "" -> "Done: Unknown"
-    | Unknown s -> Format.sprintf "Done: Unknown (%s)" s
+    | Safe -> hd "Safe"
+    | Unsafe -> hd "Unsafe"
+    | Terminating -> hd "Terminating"
+    | NonTerminating -> hd "NonTerminating"
+    | Unknown "" -> hd "Unknown"
+    | Unknown s -> hd @@ Format.sprintf "Unknown (%s)" s
     | Error s -> "Error: " ^ s
     | Other s -> s
 

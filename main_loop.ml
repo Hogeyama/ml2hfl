@@ -121,7 +121,7 @@ let report_safe env orig {Problem.term=t0} =
 
 
 let report_unsafe main ce set_main =
-  Color.printf Color.Bright "%s@.@." !!Flag.Log.string_of_result;
+  Color.printf Color.Bright "%s@.@." (Flag.Log.string_of_result false);
   if !Flag.use_abst = [] then
     let pr main_fun =
       let arg_num = Type.arity @@ Id.typ main_fun in

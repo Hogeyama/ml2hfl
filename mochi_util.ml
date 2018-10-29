@@ -20,7 +20,7 @@ let set_status s =
   Flag.Log.result := s;
   let filename = Filename.change_extension !Flag.mainfile "status" in
   let f = if !Flag.Limit.time = 0 then -1. else !!Time.get /. float_of_int !Flag.Limit.time in
-  let text = Format.sprintf "%.2f,%s" f !!Flag.Log.string_of_result in
+  let text = Format.sprintf "%.2f,%s" f (Flag.Log.string_of_result true) in
   IO.output_file ~filename ~text
 let merge_status s1 s2 =
   let open Flag.Log in
