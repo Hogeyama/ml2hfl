@@ -580,6 +580,6 @@ let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t)
 let trans p =
   let env = gather_env @@ Problem.term p in
   let p = Problem.map ~tr_env:(trans_env env) trans_term p in
-  Type_check.check Problem.(p.term);
+  let t = Problem.(p.term) in
+  Type_check.check t ~ty:t.typ;
   p
-
