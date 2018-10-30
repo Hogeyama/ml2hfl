@@ -75,6 +75,7 @@ let rec get_rtyp_list rtyp typ =
      RT.Inter(typ, List.map (get_rtyp_list -$- typ) rtyps)
   | RT.Union(_, rtyps), _ ->
       RT.Union(typ, List.map (get_rtyp_list -$- typ) rtyps)
+  (* TODO RT.Data *)
   | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Fun(y, RT.Base(TInt, y', p_i), typ2)], TApp(TList, [typ]) ->
       let p_len' = subst_var x' x p_len in
       let p_i' = subst_var y' y p_i in
@@ -88,6 +89,7 @@ let rec get_rtyp_list rtyp typ =
   | _, TApp(TList, [typ]) ->
       Format.eprintf "%a@." RT.print rtyp;
       raise (Fatal "not implemented get_rtyp_list")
+  | RT.ADT(_,_,_), _ -> assert false
   | RT.Base(b,x,ps), _ -> RT.Base(b,x,ps)
   | RT.Fun(x,rtyp1,rtyp2), TFun(y,typ2) ->
       let rtyp1' = get_rtyp_list rtyp1 (Id.typ y) in
@@ -330,6 +332,12 @@ let make_list_eq typ =
 let inst_list_eq = make_trans2 ()
 let inst_list_eq_term map t =
   match t.desc with
+  | BinOp(Eq, ({desc=Var(path)}), {desc=Nil; typ=TApp(TList, [typ])}) when path.Id.name = "path" ->
+      (* XXX temporary measure
+         path = nil
+       *)
+      let t1' = make_var @@ Id.set_typ path Ty.(pair int (fun_ int typ)) in
+      Term.(fst t1' = int 0)
   | BinOp(Eq, t1, t2) ->
       let t1' = inst_list_eq.tr2_term map t1 in
       let t2' = inst_list_eq.tr2_term map t2 in
@@ -525,6 +533,7 @@ let rec trans_rty ty =
   let open Ref_type in
   match ty with
   | Base(base,x,t) -> Base(base, x, fst @@ trans_term t)
+  | ADT(_,_,_) -> assert false
   | Fun(x,ty1,ty2) -> Fun(trans_var x, trans_rty ty1, trans_rty ty2)
   | Tuple xtys -> Tuple (List.map (Pair.map trans_var trans_rty) xtys)
   | Inter(sty,tys) -> Inter(trans_typ sty, List.map trans_rty tys)

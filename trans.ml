@@ -1534,7 +1534,7 @@ let short_circuit_eval =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
-    | _ when has_no_effect t -> t
+    | _ when has_no_effect t -> tr.tr_term_rec t
     | BinOp(And, t1, t2) -> make_if (tr.tr_term t1) (tr.tr_term t2) false_term
     | BinOp(Or, t1, t2) -> make_if (tr.tr_term t1) true_term (tr.tr_term t2)
     | _ -> tr.tr_term_rec t
@@ -2736,7 +2736,7 @@ let abst_recdata =
 
 let abst_ext_recdata =
   let typ_not_in_env ty tys =
-    match ty with
+    match elim_tattr ty with
     | TData s -> not (List.mem s tys)
     | TVariant _ -> false
     | _ -> true

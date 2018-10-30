@@ -5,11 +5,13 @@ type 'a t =
    name : string;
    typ : 'a;
    attr : attr list}
+  [@@deriving show]
 
 and attr =
   | External
   | Coefficient
   | Predicate
+  [@@deriving show]
 
 let init_counter = 0
 let counter = ref init_counter

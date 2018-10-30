@@ -569,6 +569,8 @@ module Array = BatArray
 
 module Hashtbl = BatHashtbl
 
+module Map = BatMap
+
 module Char = BatChar
 
 module String = struct

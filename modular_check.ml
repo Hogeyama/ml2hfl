@@ -18,6 +18,7 @@ let to_CEGAR_ref_type_base base =
 let rec to_CEGAR_ref_type typ =
   match typ with
   | Ref_type.Base(base, x, p) -> CEGAR_ref_type.Base(to_CEGAR_ref_type_base base, Id.to_string x, snd @@ CEGAR_trans.trans_term p)
+  | Ref_type.ADT(_, _, _) -> assert false (* XXX tekitou *)
   | Ref_type.Fun(x, typ1, typ2) -> CEGAR_ref_type.Fun(Id.to_string x, to_CEGAR_ref_type typ1, to_CEGAR_ref_type typ2)
   | Ref_type.Inter(styp, typs) -> CEGAR_ref_type.Inter(CEGAR_trans.trans_typ styp, List.map to_CEGAR_ref_type typs)
   | _ -> unsupported "Ref_type.to_CEGAR_ref_type"

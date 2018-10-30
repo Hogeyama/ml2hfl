@@ -120,6 +120,7 @@ let apply = ()
 let rec from_ref_type typ =
   match typ with
   | Ref_type.Base(_, x, t) -> Const(x, t)
+  | Ref_type.ADT(_, x, t) -> assert false
   | Ref_type.Fun(x, typ1, Ref_type.Base(base,_,t)) ->
       assert (base = TUnit && t.desc = Const True);
       Fun(x, from_ref_type typ1, Base None)
@@ -1165,6 +1166,7 @@ let rec instantiate_any mode pos typ =
         Term_util.subst any_var t p
       in
       Base(base, y, p')
+  | ADT(_,_,_) -> assert false
   | Fun(y,typ1,typ2) -> Fun(y, instantiate_any mode (not pos) typ1, instantiate_any mode pos typ2)
   | Tuple xtyps -> Tuple (List.map (Pair.map_snd @@ instantiate_any mode pos) xtyps)
   | Inter(typ, typs) -> Inter(typ, List.map (instantiate_any mode pos) typs)

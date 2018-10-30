@@ -1,4 +1,5 @@
 %{
+open Util
 open Type
 open Syntax
 open Term_util
@@ -23,17 +24,37 @@ let make_id_typ s typ = Id.make 0 s [] typ
 let make_self_id typ = Id.new_var ~name:"_" typ
 let orig_id x = {x with Id.id = 0}
 
-let ref_base b = Ref_type.Base(b, Id.new_var typ_unknown, true_term)
+let ref_base b = Ref_type.Base(b, Id.new_var (TBase(b)), true_term)
+let ref_ADT s = Ref_type.ADT(s, Id.new_var (TData(s)), true_term)
 let ref_list typ = RT.List(Id.new_var Ty.int, true_term, Id.new_var Ty.int, true_term, typ)
 let ref_fun x ty1 ty2 =
   let ty2' = RT.subst_var (orig_id x) (Id.set_typ x @@ elim_tattr @@ RT.to_simple ty1) ty2 in
   RT.Fun(x, ty1, ty2')
+let ref_tuple xtys =
+  let xtys' = snd @@
+    List.Labels.fold_left ~init:([],[]) xtys ~f:
+      begin fun (map,tuple) (x,rty) ->
+        let x' = Id.set_typ x (RT.to_simple rty) in
+        let rty' = RT.subst_map map rty in
+        List.snoc map (orig_id x, make_var x'),
+        List.snoc tuple (x', rty')
+      end
+  in RT.Tuple(xtys')
 
 let normalize_ref ty =
   RT.map_pred Trans.set_length_typ ty
+
+let make_pat p = { pat_typ=typ_unknown; pat_desc=p }
+let make_var_pat (x: Syntax.id) = make_pat @@ PVar(x)
+let make_match x cases =
+  {desc=Match(make_var x, cases);
+   typ=typ_unknown;
+   attr=[]}
+
 %}
 
-%token <string> IDENT
+%token <string> LIDENT /* start with lowercase letter */
+%token <string> UIDENT /* start with uppercase letter */
 %token <string> EVENT
 %token <int> INT
 %token LPAREN
@@ -77,6 +98,10 @@ let normalize_ref ty =
 %token FALSE
 %token INTER
 %token UNION
+%token MATCH
+%token WITH
+%token UNDER_SCORE
+%token END
 %token EOF
 
 /* priority : low -> high */
@@ -101,7 +126,7 @@ let normalize_ref ty =
 exp:
   id
   { make_var $1 }
-| LPAREN exp RPAREN
+| LPAREN full_exp RPAREN
   { $2 }
 | INT
   { make_int $1 }
@@ -143,9 +168,40 @@ exp:
     make_length @@ make_var $2
   }
 
+full_exp:
+| exp { $1 }
+| MATCH id WITH opt_bar match_cases
+  { make_match $2 $5 }
+
+match_cases:
+| match_case                 { [$1] }
+| match_case BAR match_cases { $1::$3 }
+
+/* do not support `when` for the time being */
+match_case:
+| pattern ARROW exp { (make_pat $1, true_term, $3) }
+
+pattern:
+| UNDER_SCORE                         { PAny }
+| id                                  { PVar($1) }
+| UIDENT                              { PConstr($1, []) }
+| UIDENT id                           { PConstr($1, [make_var_pat $2]) }
+| UIDENT LPAREN pat_simple_seq RPAREN { PConstr($1, $3) }
+
+pat_simple_seq:
+| pat_simple                      { [$1] }
+| pat_simple COMMA pat_simple_seq { $1::$3 }
+
+pat_simple:
+| id          { make_var_pat $1 }
+| UNDER_SCORE { make_pat PAny }
+
+opt_bar:
+| {()}
+| BAR {()}
 
 id:
-| IDENT { make_tmp_id $1 }
+| LIDENT { make_tmp_id $1 }
 
 spec:
   spec_list EOF { $1 }
@@ -253,14 +309,23 @@ typ:
 ref_base:
 | TUNIT { TUnit }
 | TBOOL { TBool }
-| TINT { TInt }
+| TINT  { TInt }
+
+ref_ADT:
+| LIDENT { $1 }
 
 ref_simple:
 | ref_base { ref_base $1 }
-| LBRACE id COLON ref_base BAR exp RBRACE
+| LBRACE id COLON ref_base BAR full_exp RBRACE
   {
     let x = Id.set_typ $2 (TBase $4) in
     RT.Base($4, x, subst_var $2 x $6)
+  }
+| ref_ADT { ref_ADT $1 }
+| LBRACE id COLON ref_ADT BAR full_exp RBRACE
+  {
+    let x = Id.set_typ $2 (TData $4) in
+    RT.ADT($4, x, subst_var $2 x $6)
   }
 | LPAREN ref_typ RPAREN { $2 }
 | ref_simple LIST { RT.List(Id.new_var Ty.int,true_term,Id.new_var Ty.int,true_term,$1) }
@@ -306,18 +371,35 @@ length_ref:
 
 ref_typ:
 | ref_simple { $1 }
-| id COLON ref_simple TIMES ref_typ { RT.Tuple[$1, $3; Id.new_var @@ Ref_type.to_simple $5, $5] }
+| id COLON ref_simple TIMES ref_typ
+  {
+    let y = Id.new_var (Ref_type.to_simple $5) in
+    ref_tuple [($1,$3);(y,$5)]
+  }
+| LPAREN id COLON ref_simple RPAREN TIMES ref_typ
+  {
+    let y = Id.new_var (Ref_type.to_simple $7) in
+    ref_tuple [($2,$4);(y,$7)]
+  }
 | ref_typ TIMES ref_typ
   {
     let x  =
       match $1 with
       | RT.Base(_,y,_) -> y
-      | _ -> Id.new_var @@ RT.to_simple $1
+      | _ -> Id.new_var (RT.to_simple $1)
     in
     RT.Tuple[x, $1; Id.new_var @@ Ref_type.to_simple $3, $3]
   }
-| id COLON ref_simple ARROW ref_typ { ref_fun $1 $3 $5 }
-| LPAREN id COLON ref_simple RPAREN ARROW ref_typ { ref_fun $2 $4 $7 }
+| id COLON ref_simple ARROW ref_typ
+  {
+    let x = Id.set_typ $1 (Ref_type.to_simple $3)
+    in ref_fun x $3 $5
+  }
+| LPAREN id COLON ref_simple RPAREN ARROW ref_typ
+  {
+    let x = Id.set_typ $2 (Ref_type.to_simple $4)
+    in ref_fun x $4 $7
+  }
 | ref_typ ARROW ref_typ
   {
     let x  =

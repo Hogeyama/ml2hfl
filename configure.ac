@@ -35,6 +35,11 @@ if test "$OCAML_PKG_batteries" = "no"; then
   AC_MSG_ERROR([batteries not found])
 fi
 
+AC_CHECK_OCAML_PKG([ppx_deriving])
+if test "$OCAML_PKG_ppx_deriving" = "no"; then
+  AC_MSG_ERROR([ppx_deriving not found])
+fi
+
 AC_CHECK_OCAML_PKG([Z3])
 if test "$OCAML_PKG_Z3" = "no"; then
   AC_MSG_ERROR([Z3 not found])

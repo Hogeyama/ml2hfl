@@ -1,6 +1,7 @@
 
 type t =
   | Base of Type.base * Syntax.id * Syntax.term
+  | ADT of string * Syntax.id * Syntax.term
   | Fun of Syntax.id * t * t
   | Tuple of (Syntax.id * t) list
   | Inter of Syntax.typ * t list
@@ -93,3 +94,10 @@ module Ty : sig
   val base : ?pred:Syntax.term -> Type.base -> t
   val fun_ : t -> t -> t
 end
+
+(* ppx_deriving show *)
+val pp : Format.formatter -> t -> unit
+
+val mk_trans_rty : ?special_case:(t -> Syntax.trans -> (t -> t) -> t option) -> Syntax.trans -> t -> t
+
+

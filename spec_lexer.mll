@@ -56,11 +56,16 @@ rule token = parse
 | "fairness" { FAIRNESS }
 | "true" { TRUE }
 | "false" { FALSE }
+| "match" { MATCH }
+| "with" { WITH }
+| "end" { END }
 | "/\\" { INTER }
 | "\\/" { UNION }
+| "_" { UNDER_SCORE }
 | digit+ { INT(int_of_string (Lexing.lexeme lexbuf)) }
-| (upper(digit|lower|upper)*'.')*lower(digit|lower|upper)* { IDENT(Lexing.lexeme lexbuf) }
-| "#randint_"digit+ { IDENT(Lexing.lexeme lexbuf) }
+| (upper(digit|lower|upper)*'.')*lower(digit|lower|upper)* { LIDENT(Lexing.lexeme lexbuf) }
+| (upper(digit|lower|upper)*'.')*upper(digit|lower|upper)* { UIDENT(Lexing.lexeme lexbuf) }
+| "#randint_"digit+ { LIDENT(Lexing.lexeme lexbuf) }
 | (lower|upper)(digit|lower|upper)* { EVENT(Lexing.lexeme lexbuf) }
 | eof { EOF }
 | _

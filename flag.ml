@@ -66,6 +66,7 @@ module Method = struct
   let quick_check = ref false
   let bool_to_int = ref false
   let abst_for_loop = ref true
+  let encode_before_make_ext_fun = ref true
 end
 
 module Print = struct
