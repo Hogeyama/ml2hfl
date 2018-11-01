@@ -22,14 +22,6 @@ if test "$OCAMLYACC" = "no"; then
   AC_MSG_ERROR([ocamlyacc not found])
 fi
 
-AC_CHECK_OCAML_PKG([fpat])
-if test "$OCAML_PKG_fpat" = "no"; then
-  AC_MSG_ERROR([fpat not found])
-else
-  FPAT=`$OCAMLFIND query fpat`
-  AC_SUBST(FPAT)
-fi
-
 AC_CHECK_OCAML_PKG([batteries])
 if test "$OCAML_PKG_batteries" = "no"; then
   AC_MSG_ERROR([batteries not found])
@@ -40,7 +32,7 @@ if test "$OCAML_PKG_ppx_deriving" = "no"; then
   AC_MSG_ERROR([ppx_deriving not found])
 fi
 
-AC_CHECK_OCAML_PKG([Z3])
+AC_CHECK_OCAML_PKG([z3])
 if test "$OCAML_PKG_Z3" = "no"; then
   AC_MSG_ERROR([Z3 not found])
 fi
@@ -83,6 +75,7 @@ AC_SUBST(OMEGA)
 
 AC_CHECK_PROG(GIT, git, git)
 AC_SUBST(GIT)
+AC_CHECK_FILE([.git], [], [GIT=""])
 
 OCAML_VER=`ocamlc -version`
 AC_SUBST(OCAML_VER)

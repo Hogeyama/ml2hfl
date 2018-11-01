@@ -15,13 +15,6 @@ else
     echo "ocamlfind detected"
     OCAMLLIB=`ocamlfind query stdlib | tr -d '\\r'`
 
-    EXTLIB=`ocamlfind query extlib | tr -d '\\r'`
-    if test $EXTLIB; then
-        echo "extlib detected"
-    else
-        AC_MSG_ERROR(Cannot find extlib)
-    fi
-
     ZARITH=`ocamlfind query zarith | tr -d '\\r'`
     if test $ZARITH; then
         echo "zarith detected"
@@ -74,11 +67,6 @@ if test "$CXX" = no ; then
     AC_MSG_ERROR(Cannot find g++.)
 fi
 
-AC_CHECK_PROG(CLANG,clang,clang,no)
-if test "$CLANG" = no ; then
-    AC_MSG_WARN(Cannot find clang.)
-fi
-
 AC_CHECK_PROG(GIT,git,git,no)
 if test "$GIT" = no ; then
     AC_MSG_WARN(Cannot find git.)
@@ -115,7 +103,7 @@ fi
 
 AC_ARG_ENABLE(z3, [  --disable-z3 disable Z3],,enable_z3=yes)
 AC_MSG_CHECKING(whether to enable Z3)
-Z3=`ocamlfind query Z3`
+Z3=`ocamlfind query z3`
 if test x$enable_z3 = xyes && test $Z3; then
   AC_MSG_RESULT(yes)
   ENABLE_Z3=1
@@ -159,45 +147,6 @@ else
   AC_MSG_RESULT(no)
 fi
 
-AC_ARG_ENABLE(glpk, [  --disable-glpk disable GLPK],,enable_glpk=yes)
-AC_MSG_CHECKING(whether to enable GLPK)
-GLPK=`ocamlfind query glpk`
-if test x$enable_glpk = xyes && test $GLPK; then
-  AC_MSG_RESULT(yes)
-  ENABLE_GLPK=1
-else
-  AC_MSG_RESULT(no)
-fi
-
-AC_ARG_ENABLE(csdp, [  --disable-csdp disable CSDP],,enable_csdp=yes)
-AC_MSG_CHECKING(whether to enable CSDP)
-CSDP=`ocamlfind query osdp`
-if test x$enable_csdp = xyes && test $CSDP; then
-  AC_MSG_RESULT(yes)
-  ENABLE_CSDP=1
-else
-  AC_MSG_RESULT(no)
-fi
-
-AC_ARG_ENABLE(gsl, [  --disable-gsl disable GSL],,enable_gsl=yes)
-AC_MSG_CHECKING(whether to enable GSL)
-GSL=`ocamlfind query gsl`
-if test x$enable_gsl = xyes && test $GSL; then
-  AC_MSG_RESULT(yes)
-  ENABLE_GSL=1
-else
-  AC_MSG_RESULT(no)
-fi
-
-AC_ARG_ENABLE(sppoc, [  --enable-sppoc enable SPPoC],,enable_sppoc=no)
-AC_MSG_CHECKING(whether to enable SPPoC)
-if test x$enable_sppoc = xyes; then
-  AC_MSG_RESULT(yes)
-  ENABLE_SPPOC=1
-else
-  AC_MSG_RESULT(no)
-fi
-
 AC_ARG_ENABLE(atp, [  --disable-atp disable ATP],,enable_atp=yes)
 AC_MSG_CHECKING(whether to enable ATP)
 if test x$enable_atp = xyes; then
@@ -217,32 +166,11 @@ else
   AC_MSG_RESULT(no)
 fi
 
-AC_ARG_ENABLE(cil, [  --disable-cil disable CIL],,enable_cil=yes)
-AC_MSG_CHECKING(whether to enable CIL)
-CIL=`ocamlfind query cil`
-if test x$enable_cil = xyes && test $CIL; then
-  AC_MSG_RESULT(yes)
-  ENABLE_CIL=1
-else
-  AC_MSG_RESULT(no)
-fi
-
-AC_ARG_ENABLE(llvm, [  --disable-llvm disable LLVM],,enable_llvm=yes)
-AC_MSG_CHECKING(whether to enable LLVM)
-LLVM=`ocamlfind query llvm`
-if test x$enable_llvm = xyes && test $LLVM; then
-  AC_MSG_RESULT(yes)
-  ENABLE_LLVM=1
-else
-  AC_MSG_RESULT(no)
-fi
-
 # substitutions to perform
 AC_SUBST(OCAMLLEX)
 AC_SUBST(OCAMLYACC)
 AC_SUBST(OCAMLLIB)
 AC_SUBST(CC)
-AC_SUBST(CLANG)
 AC_SUBST(GIT)
 
 AC_SUBST(ENABLE_COMPLIBS)
@@ -250,17 +178,9 @@ AC_SUBST(ENABLE_GRAPHICS)
 AC_SUBST(ENABLE_CVC3)
 AC_SUBST(ENABLE_Z3)
 AC_SUBST(ENABLE_CSISAT)
-AC_SUBST(ENABLE_MINISAT)
-AC_SUBST(ENABLE_RSREFINE)
-AC_SUBST(ENABLE_AISAT)
 AC_SUBST(ENABLE_GLPK)
-AC_SUBST(ENABLE_CSDP)
-AC_SUBST(ENABLE_GSL)
-AC_SUBST(ENABLE_SPPOC)
 AC_SUBST(ENABLE_ATP)
 AC_SUBST(ENABLE_APRON)
-AC_SUBST(ENABLE_CIL)
-AC_SUBST(ENABLE_LLVM)
 
 # Finally create the Makefile from Makefile.in
 AC_OUTPUT(Makefile)

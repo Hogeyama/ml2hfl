@@ -584,17 +584,9 @@ PACKAGE_URL=
 ac_unique_file="util.ml"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-ENABLE_LLVM
-ENABLE_CIL
 ENABLE_APRON
 ENABLE_ATP
-ENABLE_SPPOC
-ENABLE_GSL
-ENABLE_CSDP
 ENABLE_GLPK
-ENABLE_AISAT
-ENABLE_RSREFINE
-ENABLE_MINISAT
 ENABLE_CSISAT
 ENABLE_Z3
 ENABLE_CVC3
@@ -602,7 +594,6 @@ ENABLE_GRAPHICS
 ENABLE_COMPLIBS
 OCAMLLIB
 GIT
-CLANG
 CXX
 CC
 OCAMLYACC
@@ -659,14 +650,8 @@ enable_csisat
 enable_minisat
 enable_rsrefine
 enable_aisat
-enable_glpk
-enable_csdp
-enable_gsl
-enable_sppoc
 enable_atp
 enable_apron
-enable_cil
-enable_llvm
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1297,14 +1282,8 @@ Optional Features:
   --disable-minisat disable MiniSat
   --enable-rsrefine enable RSRefine
   --enable-aisat enable aiSat
-  --disable-glpk disable GLPK
-  --disable-csdp disable CSDP
-  --disable-gsl disable GSL
-  --enable-sppoc enable SPPoC
   --disable-atp disable ATP
   --disable-apron disable APRON
-  --disable-cil disable CIL
-  --disable-llvm disable LLVM
 
 Report bugs to the package provider.
 _ACEOF
@@ -1780,13 +1759,6 @@ else
     echo "ocamlfind detected"
     OCAMLLIB=`ocamlfind query stdlib | tr -d '\\r'`
 
-    EXTLIB=`ocamlfind query extlib | tr -d '\\r'`
-    if test $EXTLIB; then
-        echo "extlib detected"
-    else
-        as_fn_error $? "Cannot find extlib" "$LINENO" 5
-    fi
-
     ZARITH=`ocamlfind query zarith | tr -d '\\r'`
     if test $ZARITH; then
         echo "zarith detected"
@@ -2024,49 +1996,6 @@ if test "$CXX" = no ; then
     as_fn_error $? "Cannot find g++." "$LINENO" 5
 fi
 
-# Extract the first word of "clang", so it can be a program name with args.
-set dummy clang; ac_word=$2
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-$as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_prog_CLANG+:} false; then :
-  $as_echo_n "(cached) " >&6
-else
-  if test -n "$CLANG"; then
-  ac_cv_prog_CLANG="$CLANG" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  test -z "$as_dir" && as_dir=.
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_prog_CLANG="clang"
-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-  test -z "$ac_cv_prog_CLANG" && ac_cv_prog_CLANG="no"
-fi
-fi
-CLANG=$ac_cv_prog_CLANG
-if test -n "$CLANG"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CLANG" >&5
-$as_echo "$CLANG" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-
-if test "$CLANG" = no ; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Cannot find clang." >&5
-$as_echo "$as_me: WARNING: Cannot find clang." >&2;}
-fi
-
 # Extract the first word of "git", so it can be a program name with args.
 set dummy git; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -2175,7 +2104,7 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable Z3" >&5
 $as_echo_n "checking whether to enable Z3... " >&6; }
-Z3=`ocamlfind query Z3`
+Z3=`ocamlfind query z3`
 if test x$enable_z3 = xyes && test $Z3; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
@@ -2257,81 +2186,6 @@ else
 $as_echo "no" >&6; }
 fi
 
-# Check whether --enable-glpk was given.
-if test "${enable_glpk+set}" = set; then :
-  enableval=$enable_glpk;
-else
-  enable_glpk=yes
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable GLPK" >&5
-$as_echo_n "checking whether to enable GLPK... " >&6; }
-GLPK=`ocamlfind query glpk`
-if test x$enable_glpk = xyes && test $GLPK; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  ENABLE_GLPK=1
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-# Check whether --enable-csdp was given.
-if test "${enable_csdp+set}" = set; then :
-  enableval=$enable_csdp;
-else
-  enable_csdp=yes
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable CSDP" >&5
-$as_echo_n "checking whether to enable CSDP... " >&6; }
-CSDP=`ocamlfind query osdp`
-if test x$enable_csdp = xyes && test $CSDP; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  ENABLE_CSDP=1
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-# Check whether --enable-gsl was given.
-if test "${enable_gsl+set}" = set; then :
-  enableval=$enable_gsl;
-else
-  enable_gsl=yes
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable GSL" >&5
-$as_echo_n "checking whether to enable GSL... " >&6; }
-GSL=`ocamlfind query gsl`
-if test x$enable_gsl = xyes && test $GSL; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  ENABLE_GSL=1
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-# Check whether --enable-sppoc was given.
-if test "${enable_sppoc+set}" = set; then :
-  enableval=$enable_sppoc;
-else
-  enable_sppoc=no
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable SPPoC" >&5
-$as_echo_n "checking whether to enable SPPoC... " >&6; }
-if test x$enable_sppoc = xyes; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  ENABLE_SPPOC=1
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
 # Check whether --enable-atp was given.
 if test "${enable_atp+set}" = set; then :
   enableval=$enable_atp;
@@ -2369,54 +2223,7 @@ else
 $as_echo "no" >&6; }
 fi
 
-# Check whether --enable-cil was given.
-if test "${enable_cil+set}" = set; then :
-  enableval=$enable_cil;
-else
-  enable_cil=yes
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable CIL" >&5
-$as_echo_n "checking whether to enable CIL... " >&6; }
-CIL=`ocamlfind query cil`
-if test x$enable_cil = xyes && test $CIL; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  ENABLE_CIL=1
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-# Check whether --enable-llvm was given.
-if test "${enable_llvm+set}" = set; then :
-  enableval=$enable_llvm;
-else
-  enable_llvm=yes
-fi
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to enable LLVM" >&5
-$as_echo_n "checking whether to enable LLVM... " >&6; }
-LLVM=`ocamlfind query llvm`
-if test x$enable_llvm = xyes && test $LLVM; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  ENABLE_LLVM=1
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
 # substitutions to perform
-
-
-
-
-
-
-
-
-
 
 
 

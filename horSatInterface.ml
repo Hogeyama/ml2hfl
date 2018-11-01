@@ -28,7 +28,7 @@ module HS = HorSat_syntax
 
 (* returen "" if the version cannot be obtained *)
 let version_aux cmd name =
-  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null" cmd) in
+  let cin,cout = Unix.open_process (Format.sprintf "%s /dev/null 2> /dev/null" cmd) in
   let v =
     try
       let s = input_line cin in

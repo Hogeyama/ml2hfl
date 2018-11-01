@@ -11,7 +11,7 @@ exception HorSatPVersionError
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let version () =
-  let cin,cout = Unix.open_process (Format.sprintf "%s --version" !Flag.ModelCheck.horsatp) in
+  let cin,cout = Unix.open_process (Format.sprintf "%s --version 2> /dev/null" !Flag.ModelCheck.horsatp) in
   let v =
     try
       Some (input_line cin)

@@ -185,7 +185,7 @@ endif
 
 ifeq ($(ENABLE_Z3), 1)
   SRC := $(SRC) Z3Interface
-  REQUIRES := $(REQUIRES) Z3
+  REQUIRES := $(REQUIRES) z3
 endif
 
 ifeq ($(ENABLE_APRON), 1)

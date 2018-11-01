@@ -2,8 +2,9 @@ include Makefile.config
 
 .PHONY: main all byte opt top clean doc test
 
-PACKAGES = fpat,str,unix,batteries,compiler-libs.common,Z3,yojson,ppx_deriving.show
+PACKAGES = fpat,str,unix,batteries,compiler-libs.common,z3,yojson,ppx_deriving.show
 
+FPAT=fpat
 MOCHI_BIN_DIR = mochi_bin
 
 WARN_FLAGS = -w -52-57-58
@@ -29,8 +30,12 @@ ifdef GIT
 GIT_FILES = $(shell git ls-files)
 endif
 
+ifdef GIT
+revision.ml: .git/logs/HEAD $(GIT_FILES)
+endif
+
 main: revision.ml
-revision.ml: .git/logs/HEAD $(GIT_FILES) $(FPAT_LIB) Makefile Makefile.config
+revision.ml: $(FPAT_LIB) Makefile Makefile.config
 	@echo make revision.ml
 	@rm -f $@
 ifdef GIT
