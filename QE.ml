@@ -36,6 +36,27 @@ let rec used_as_bool x t =
   | Const Not, [Var y] -> x = y
   | _, ts -> List.exists (used_as_bool x) ts
 
+let rec alpha_rename t =
+  match t with
+  | App(App(Var ("exists"|"forall" as q), args), t1) ->
+      let xs =
+        try
+          match decomp_app args with
+          | Var "args", ts -> List.map (Option.get -| decomp_var) ts
+          | _ -> assert false
+        with _ ->
+          Format.eprintf "%a@." CEGAR_print.term t;
+          invalid_arg "QE.conv_formula'"
+      in
+      let xs' = List.map rename_id xs in
+      let t1' = List.fold_right2 (fun x x' t -> Term.(x |-> var x') t) xs xs' @@ alpha_rename t1 in
+      Term.(var q @ [var "args" @ vars xs'; t1'])
+  | Const c -> Const c
+  | Var x -> Var x
+  | App(t1, t2) -> App(alpha_rename t1, alpha_rename t2)
+  | Fun _ -> assert false
+  | Let _ -> assert false
+
 let rec eliminate_bool t =
   match t with
   | App(App(Var ("exists"|"forall" as q), args), t1) ->
@@ -84,6 +105,8 @@ let eliminate t =
   t
   |@> Debug.printf "  BEFORE: @[%a@." CEGAR_print.term
   |> subst_map @@ List.map (fun (x,y) -> x, Var y) map
+  |> alpha_rename
+  |@> Debug.printf "  alpha_rename: @[%a@." CEGAR_print.term
   |> eliminate_bool
   |@> Debug.printf "  eliminate_bool: @[%a@." CEGAR_print.term
   |> conv_formula'
