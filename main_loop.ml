@@ -133,6 +133,25 @@ let report_unsafe main ce set_main =
     | None -> ()
     | Some set_main -> Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_main)
 
+(** TODO: merge with report_unsafe *)
+let report_unsafe_par main ce set_main =
+  if !Flag.use_abst = [] then
+    begin
+      Color.printf Color.Bright "Unsafe@.@.";
+      report_unsafe main ce set_main
+    end
+  else
+    Color.printf Color.Bright "Unknown@.@.";
+    let pr main_fun =
+      let arg_num = Type.arity @@ Id.typ main_fun in
+      if arg_num > 0 then
+        Format.printf "Input for %a:@.  %a@." Id.print main_fun (print_list Format.pp_print_int "; ") (List.take arg_num ce)
+    in
+    Option.may pr main;
+    match set_main with
+    | None -> ()
+    | Some set_main -> Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_main)
+
 
 let rec run_cegar prog =
   try
@@ -306,8 +325,9 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
       |> Util.to_string
     in
     match r with
-    | "Done: Safe" -> CEGAR.Safe []
-    | "Done: Unsafe" -> CEGAR.Unsafe([], ModelCheck.CESafety [])
+    | "Safe" -> CEGAR.Safe []
+    | "Unsafe" when !Flag.use_abst <> [] -> CEGAR.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.use_abst)
+    | "Unsafe" -> CEGAR.Unsafe([], ModelCheck.CESafety [])
     | r when !Flag.Parallel.continue -> CEGAR.Unknown r
     | _ -> failwith r
   in
@@ -322,7 +342,6 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
       let i = List.assoc pid running in
       let r = result_of i in
       let is_safe = match r with CEGAR.Safe _ -> true | _ -> false in
-      Format.printf "FINISHED: %d@." i;
       finished := (i,r) :: !finished;
       if not (is_safe || !Flag.Parallel.continue) then raise QuitWithUnsafe;
       pid, st
@@ -368,6 +387,6 @@ let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
         if !Flag.Print.result then
           report_safe [] orig parsed
     end;
-  List.iteri (report orig parsed @@ List.length results) results;
   set_status @@ List.fold_left merge_status Flag.Log.Safe @@ List.map (fun r -> status_of_result r.result) results;
+  List.iteri (report orig parsed @@ List.length results) results;
   List.for_all bool_of_result results
