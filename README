@@ -1,15 +1,19 @@
 How to build MoCHi
 ==================
 
- Follow the instruction in the INSTALL file,
- or install the required tools/libraries below and run 'aclocal -I m4 && autoconf && ./configure && make'.
+ Install the required tools/libraries listed below,
+ and run "bash build", which generates "mochi.opt".
 
 
 What do you need?
 =================
 
 - OCaml compiler 4.03 (http://www.caml.org)
-- ocamlfind/findlib
-- Z3 library 4.7.0 (https://github.com/Z3Prover/z3)
+- Libraries available via OPAM
+  - ocamlfind/findlib
+  - Z3
+  - ppx_deriving
+  - Yojson
+  - batteries
 - CVC3 binary
-- TRecS or HarSat binary
+- TRecS or HorSat binary
