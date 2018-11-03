@@ -2948,13 +2948,13 @@ let split_type_decls =
 
 let is_big_literal t =
   match t.desc with
-  | Const (Int n) -> !Flag.Method.abst_literal <= abs n
-  | Const (String s) -> !Flag.Method.abst_literal <= String.length s
+  | Const (Int n) -> !Flag.Encode.abst_literal <= abs n
+  | Const (String s) -> !Flag.Encode.abst_literal <= String.length s
   | Cons _ ->
       begin
         match decomp_list t with
         | None -> false
-        | Some ts -> List.length ts >= !Flag.Method.abst_literal && List.for_all has_safe_attr ts
+        | Some ts -> List.length ts >= !Flag.Encode.abst_literal && List.for_all has_safe_attr ts
       end
   | _ -> false
 
@@ -2970,7 +2970,7 @@ let abst_literal =
       tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
-  fun t -> if !Flag.Method.abst_literal < 0 then t else tr.tr_term @@ reconstruct t
+  fun t -> if !Flag.Encode.abst_literal < 0 then t else tr.tr_term @@ reconstruct t
 
 let encode_bool_as_int =
   let tr = make_trans () in

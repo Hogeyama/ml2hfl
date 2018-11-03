@@ -287,8 +287,8 @@ let rec arg_spec () =
      (* abstraction *)
      "", Arg.Unit ignore, "Options_for_abstraction";
      "-ignore-exn-arg", Arg.Unit Flag.(fun () -> Method.ignore_exn_arg := true), " Ignore exception arguments";
-     "-abst-literal", Arg.Int Flag.(fun n -> Method.abst_literal := n), " Abstract literals";
-     "-abst-list-eq", Arg.Unit Flag.(fun () -> Method.abst_list_eq := true), " Abstract list equalities";
+     "-abst-literal", Arg.Int Flag.(fun n -> Encode.abst_literal := n), " Abstract literals";
+     "-abst-list-eq", Arg.Unit Flag.(fun () -> Encode.abst_list_eq := true), " Abstract list equalities";
      "-ignore-non-termination", Arg.Unit Flag.(fun () -> Method.ignore_non_termination := true), " Ignore non-termination";
      (* completion *)
      "", Arg.Unit ignore, "Options_for_completion";
@@ -309,16 +309,16 @@ let rec arg_spec () =
      "-replace-const", Arg.Set Flag.Method.replace_const, " Replace unchanging variables with constants";
      "-no-exparam", Arg.Set Flag.Method.no_exparam, " Do not add extra parameters";
      "-use-exparam", Arg.Clear Flag.Method.no_exparam, " Add extra parameters when CEGAR fails";
-     "-list-option", Arg.Set Flag.Method.encode_list_opt, " Encode list using options not pairs";
+     "-list-option", Arg.Set Flag.Encode.encode_list_opt, " Encode list using options not pairs";
      "-disable-preprocess", Arg.Clear Flag.Mode.init_trans, " Disable encoding of recursive data structures, CPS transformation, etc.";
      "-lift-fv", Arg.Set Flag.Method.lift_fv_only, " Lift variables which occur in a body";
      "-cps-naive", Arg.Set Flag.Method.cps_simpl, " Use naive CPS transformation";
      "-ins-param-funarg", Arg.Set Flag.Method.insert_param_funarg, " Insert an extra param for functions with function arguments";
      "-tupling", Arg.Unit Flag.Method.(fun () -> tupling := not !tupling), " Toggle tupling";
      "-elim-same-arg", Arg.Set Flag.Method.elim_same_arg, " Eliminate same arguments";
-     "-base-to-int", Arg.Set Flag.Method.base_to_int, " Replace primitive base types with int";
-     "-data-to-int", Arg.Set Flag.Method.data_to_int, " Replace data types with int";
-     "-bool-to-int", Arg.Set Flag.Method.bool_to_int, " Encode booleans into integers";
+     "-base-to-int", Arg.Set Flag.Encode.base_to_int, " Replace primitive base types with int";
+     "-data-to-int", Arg.Set Flag.Encode.data_to_int, " Replace data types with int";
+     "-bool-to-int", Arg.Set Flag.Encode.bool_to_int, " Encode booleans into integers";
      "-encode-before-make-ext-fun", Arg.Set Flag.Method.encode_before_make_ext_fun, " Encode before make external functions";
      "-make-ext-fun-before-encode", Arg.Clear Flag.Method.encode_before_make_ext_fun, " Make external functions before encode";
      (* verification *)
@@ -384,7 +384,7 @@ let rec arg_spec () =
      (* predicate discovery *)
      "", Arg.Unit ignore, "Options_for_predicate_discovery";
      "-fpat", Arg.String FpatInterface.parse_arg, "<option>  Pass <option> to FPAT";
-     "-bool-init-empty", Arg.Set Flag.Method.bool_init_empty,
+     "-bool-init-empty", Arg.Set Flag.PredAbst.bool_init_empty,
      " Use an empty set as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";

@@ -344,7 +344,7 @@ let inst_list_eq_term map t =
       begin
         match t1.typ with
         | TApp(TList, [TBase TInt|TData _ as typ]) when List.mem_assoc typ map ->
-            if !Flag.Method.abst_list_eq then
+            if !Flag.Encode.abst_list_eq then
               (Flag.add_use_abst "List equality";
                randbool_unit_term)
             else
@@ -362,7 +362,7 @@ let inst_list_eq t =
   let t' = inst_list_eq.tr2_term map t in
   let fv = get_fv t' in
   let defs' = List.filter (fun (_,(f,_)) -> Id.mem f fv) defs in
-  if !Flag.Method.abst_list_eq then
+  if !Flag.Encode.abst_list_eq then
     t'
   else
     make_lets (List.map snd defs') t'
@@ -489,7 +489,7 @@ let pr s t = Debug.printf "##[encode_list] %s:@.%a@.@." s Print.term t
 
 let trans_term t =
   let tr =
-    if !Flag.Method.encode_list_opt then
+    if !Flag.Encode.encode_list_opt then
       trans_opt
     else
       trans
@@ -518,13 +518,13 @@ let trans_term t =
   |*@> (fun t -> Type_check.check t ~ty:t.typ) -| fst
 
 let trans_var x =
-  if !Flag.Method.encode_list_opt then
+  if !Flag.Encode.encode_list_opt then
     abst_list_opt.tr_var x
   else
     abst_list.tr2_var "" x
 
 let trans_typ typ =
-  if !Flag.Method.encode_list_opt then
+  if !Flag.Encode.encode_list_opt then
     abst_list_opt.tr_typ typ
   else
     abst_list.tr2_typ "" typ
@@ -540,7 +540,7 @@ let rec trans_rty ty =
   | Union(sty,tys) -> Union(trans_typ sty, List.map trans_rty tys)
   | ExtArg(x,ty1,ty2) -> ExtArg(trans_var x, trans_rty ty1, trans_rty ty2)
   | List(x,p_len,y,p_i,ty2) ->
-      if !Flag.Method.encode_list_opt then
+      if !Flag.Encode.encode_list_opt then
         unsupported "encode_list_opt"
       else
         let p_len',_ = trans_term p_len in

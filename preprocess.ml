@@ -133,7 +133,7 @@ let take_result l (acc:result list) = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
 
-let cond_trans b (tr:tr) x : tr_result list option = if b then tr x else None
+let trans_if b (tr:tr) x : tr_result list option = if b then tr x else None
 let map_trans_list (tr:Problem.t->Problem.t list) r : tr_result list option = Some (List.map (Pair.pair -$- get_rtyp_id) @@ tr r)
 let map_trans tr = map_trans_list (tr |- List.singleton)
 
@@ -303,13 +303,13 @@ let all spec : t list =
     Eliminate_unused_let,
       map_trans @@ elim_unused_let ~leave_last:true;
     Insert_extra_param,
-      cond_trans !Flag.Method.relative_complete @@
+      trans_if !Flag.Method.relative_complete @@
       map_trans insert_extra_param;
     Encode_bool_as_int,
-      cond_trans !Flag.Method.bool_to_int @@
+      trans_if !Flag.Encode.bool_to_int @@
       map_trans encode_bool_as_int;
     Replace_const,
-      cond_trans !Flag.Method.replace_const @@
+      trans_if !Flag.Method.replace_const @@
       map_trans CFA.replace_const;
     Lift_type_decl,
       map_trans lift_type_decl;
@@ -330,38 +330,38 @@ let all spec : t list =
     Abst_ref,
       map_trans Encode.abst_ref;
     Make_fun_tuple,
-      cond_trans !Flag.Method.tupling @@
+      trans_if !Flag.Method.tupling @@
       map_trans @@ Problem.map Ref_trans.make_fun_tuple;
     Ignore_non_termination,
-      cond_trans !Flag.Method.ignore_non_termination @@
+      trans_if !Flag.Method.ignore_non_termination @@
       map_trans ignore_non_termination;
     Beta_reduce_trivial,
       map_trans beta_reduce_trivial;
     Eliminate_redundant_arguments,
-      cond_trans !Flag.Method.elim_redundant_arg @@
+      trans_if !Flag.Method.elim_redundant_arg @@
       map_trans elim_redundant_arg;
     Recover_const_attr,
       map_trans recover_const_attr;
     Decomp_pair_eq,
       map_trans decomp_pair_eq;
     Add_preds,
-      cond_trans (spec.Spec.abst_env <> [])
+      trans_if (spec.Spec.abst_env <> [])
       (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
     Ignore_excep_arg,
-      cond_trans !Flag.Method.ignore_exn_arg @@
+      trans_if !Flag.Method.ignore_exn_arg @@
       map_trans ignore_exn_arg;
     Make_ext_funs,
-      cond_trans (not !Flag.Method.encode_before_make_ext_fun) @@
+      trans_if (not !Flag.Method.encode_before_make_ext_fun) @@
       map_trans make_ext_funs;
     Encode_simple_variant,
       map_trans Encode.simple_variant;
     Replace_base_with_int,
-      cond_trans (!Flag.Method.base_to_int || !Flag.Method.data_to_int) @@
+      trans_if (!Flag.Encode.base_to_int || !Flag.Encode.data_to_int) @@
       map_trans replace_base_with_int;
     Inline_simple_types,
       map_trans inline_simple_types;
     Replace_data_with_int,
-      cond_trans !Flag.Method.data_to_int @@
+      trans_if !Flag.Encode.data_to_int @@
       map_trans replace_data_with_int;
     Inline_simple_types,
       map_trans inline_simple_types;
@@ -376,18 +376,18 @@ let all spec : t list =
     Encode_list,
       Option.some -| List.singleton -| Encode.list;
     Ret_fun,
-      cond_trans !Flag.Method.tupling @@
+      trans_if !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Ret_fun.trans;
     Ref_trans,
-      cond_trans !Flag.Method.tupling @@
+      trans_if !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Ref_trans.trans;
     Tupling,
-      cond_trans !Flag.Method.tupling @@
+      trans_if !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Tupling.trans;
     Inline,
       (fun prog -> Some [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog, get_rtyp_id]);
     Make_ext_funs,
-      cond_trans !Flag.Method.encode_before_make_ext_fun @@
+      trans_if !Flag.Method.encode_before_make_ext_fun @@
       map_trans make_ext_funs;
     Reduce_rand,
       map_trans reduce_rand;
@@ -396,32 +396,32 @@ let all spec : t list =
     Reduce_branch,
       map_trans reduce_branch;
     Split_assert,
-      cond_trans !Flag.Method.split_assert @@
+      trans_if !Flag.Method.split_assert @@
       map_trans_list split_assert;
     Mark_safe_fun_arg,
-      cond_trans !Flag.PredAbst.shift_pred @@
+      trans_if !Flag.PredAbst.shift_pred @@
       map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;
     Abst_polymorphic_comparison,
       map_trans Encode.abst_poly_comp;
     CPS,
-      cond_trans !Flag.Mode.trans_to_CPS @@
+      trans_if !Flag.Mode.trans_to_CPS @@
       Option.some -| List.singleton -| CPS.trans;
     Remove_pair,
-      cond_trans !Flag.Mode.trans_to_CPS @@
+      trans_if !Flag.Mode.trans_to_CPS @@
       Option.some -| List.singleton -| Curry.remove_pair;
     Replace_bottom_def,
        map_trans replace_bottom_def;
     Add_preds,
-      cond_trans (spec.Spec.abst_cps_env <> [])
+      trans_if (spec.Spec.abst_cps_env <> [])
       (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
     Eliminate_same_arguments,
-      cond_trans !Flag.Method.elim_same_arg @@
+      trans_if !Flag.Method.elim_same_arg @@
       map_trans @@ Problem.map Elim_same_arg.trans;
     Insert_unit_param,
-      cond_trans !Flag.Method.insert_param_funarg @@
+      trans_if !Flag.Method.insert_param_funarg @@
       map_trans insert_param_funarg;
     Alpha_rename,
-      cond_trans Flag.Method.(!mode <> Termination) @@
+      trans_if Flag.Method.(!mode <> Termination) @@
       Option.some -| List.singleton -| alpha_rename;
   ]
 

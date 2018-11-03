@@ -43,16 +43,11 @@ module Method = struct
   let never_use_relative_complete = ref true
   let no_exparam = ref true
   let cps_simpl = ref false
-  let bool_init_empty = ref false
   let insert_param_funarg = ref false
   let split_assert = ref false
-  let encode_list_opt = ref false
-  let abst_list_eq = ref false
-  let abst_literal = ref (-1)
   let tupling = ref false
   let elim_redundant_arg = ref true
   let elim_same_arg = ref false
-  let base_to_int = ref false
   let exists_unknown_false = true
   let replace_const = ref false
   let use_spec = ref false
@@ -62,11 +57,18 @@ module Method = struct
   let ignore_non_termination = ref false
   let fail_as_exception = ref false
   let ignore_exn_arg = ref false
-  let data_to_int = ref false
   let quick_check = ref false
-  let bool_to_int = ref false
   let abst_for_loop = ref true
   let encode_before_make_ext_fun = ref true
+end
+
+module Encode = struct
+  let bool_to_int = ref false
+  let base_to_int = ref false
+  let data_to_int = ref false
+  let encode_list_opt = ref false
+  let abst_list_eq = ref false
+  let abst_literal = ref (-1)
 end
 
 module Print = struct
@@ -166,6 +168,7 @@ module PredAbst = struct
   let no_simplification = ref false
   let cartesian = ref true
   let shift_pred = ref false
+  let bool_init_empty = ref false
 end
 
 module Refine = struct
