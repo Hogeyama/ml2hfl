@@ -618,7 +618,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         make_match t pats''
     | Texp_match(e,pats,_,tp) -> unsupported "Texp_match (exception)"
     | Texp_try(e,pats) ->
-        let typ_excep = !!exc_typ in
+        let typ_excep = TData "exn" in
         let x = Id.new_var ~name:"e" typ_excep in
         let declss,pats' = List.split_map (from_case id_env) pats in
         let pats'' = pats' @ [make_pany typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
