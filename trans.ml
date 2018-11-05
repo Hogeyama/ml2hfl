@@ -2704,9 +2704,10 @@ let abst_recdata =
             List.map2 aux pats pats'
           in
           Match(t1', pats'')
-      | Constr _ when check t.typ env ->
+      | Constr(_,ts) when check t.typ env ->
           Flag.add_use_abst "Data with int";
-          Term.randi.desc
+          let ts' = List.map (tr.tr2_term (check,env)) ts in
+          Term.(seqs ts' randi).desc
       | _ -> tr.tr2_desc_rec (check,env) t.desc
     in
     let typ = tr.tr2_typ (check,env) t.typ in
