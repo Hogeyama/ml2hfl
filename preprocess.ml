@@ -405,7 +405,7 @@ let all spec : t list =
       map_trans_list split_assert;
     Mark_safe_fun_arg,
       trans_if !Flag.PredAbst.shift_pred @@
-      map_trans @@ Problem.map Effect_analysis.mark_safe_fun_arg;
+      map_trans @@ Problem.map Effect.mark_safe_fun_arg;
     Abst_polymorphic_comparison,
       map_trans Encode.abst_poly_comp;
     CPS,
