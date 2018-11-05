@@ -20,6 +20,7 @@ let ignore_exn_arg = map Trans.ignore_exn_arg
 let replace_base_with_int = map Trans.replace_base_with_int
 let inline_simple_types = map Trans.inline_simple_types
 let replace_data_with_int = map Trans.replace_data_with_int
+let replace_complex_data_with_int = map Trans.replace_complex_data_with_int
 let inline_simple_types = map Trans.inline_simple_types
 let inline_type_decl = map Trans.inline_type_decl
 let replace_bottom_def = map Trans.replace_bottom_def

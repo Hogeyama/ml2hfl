@@ -64,8 +64,9 @@ end
 
 module Encode = struct
   let bool_to_int = ref false
-  let base_to_int = ref false
+  let base_to_int = ref true
   let data_to_int = ref false
+  let complex_data_to_int = ref true
   let encode_list_opt = ref false
   let abst_list_eq = ref false
   let abst_literal = ref (-1)

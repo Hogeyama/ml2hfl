@@ -676,68 +676,68 @@ let check_bin () =
   let spec = Spec.init in
   let s,r =
     match Main_loop.((check spec preprocessed).result) with
-    | CEGAR.Safe _ -> Flag.Log.Safe, 0
-    | CEGAR.Unsafe _ -> Flag.Log.Unsafe, 0
-    | CEGAR.Unknown s -> Flag.Log.Unknown s, 0
-    | exception e -> Flag.Log.Error (string_of_exception e), 1
+    | CEGAR.Safe _ -> Flag.Log.Safe, true
+    | CEGAR.Unsafe _ -> Flag.Log.Unsafe, true
+    | CEGAR.Unknown s -> Flag.Log.Unknown s, true
+    | exception e -> Flag.Log.Error (string_of_exception e), false
   in
   set_status s;
-  output_json ();
-  exit r
+  r
 
 let main cin =
   set_status @@ Flag.Log.Other "Start";
   if String.ends_with !Flag.mainfile ".bin" then
-    check_bin ();
-  let input_string =
-    let s = IO.input_all cin in
-    if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination)
-    then Fair_termination_util.add_event s
-    else s
-  in
-  let lb = Lexing.from_string input_string in
-  lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename !Flag.mainfile;
-     Lexing.pos_lnum = 1;
-     Lexing.pos_cnum = 0;
-     Lexing.pos_bol = 0};
-  if !Flag.Method.input_cegar then
-    main_input_cegar lb
+    check_bin ()
   else
-    let orig = Parse.use_file lb in
-    let parsed = Parser_wrapper.from_use_file orig in
-    Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
-    if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
-    let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
-    (* TODO: Refactor below *)
-    let verify t =
-      if !Flag.Method.modular then
-        Modular.main orig spec t
-      else
-        let env_assume = Spec.get_ext_ref_env spec t in
-        let env_assert = Spec.get_ref_env spec t in
-        let problem =
-          if env_assert = [] then
-            Problem.safety ~env:env_assume t
-          else
-            Problem.ref_type_check ~env:env_assume t env_assert
-        in
-        Main_loop.run ~orig ~spec problem
+    let input_string =
+      let s = IO.input_all cin in
+      if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination)
+      then Fair_termination_util.add_event s
+      else s
     in
-    if Flag.Method.(!mode = Trans) then
-        main_trans spec parsed
-    else if !Flag.Method.quick_check then
-      main_quick_check spec parsed
-    else if !Flag.Method.verify_ref_typ then
-      Verify_ref_typ.main orig spec parsed
-    else if Flag.Method.(!mode = Termination) then
-      main_termination orig parsed
-    else if Flag.Method.(!mode = FairTermination) then
-      main_fair_termination orig spec parsed
-    else if !Flag.Mode.module_mode then
-      Verify_module.main verify parsed
+    let lb = Lexing.from_string input_string in
+    lb.Lexing.lex_curr_p <-
+      {Lexing.pos_fname = Filename.basename !Flag.mainfile;
+       Lexing.pos_lnum = 1;
+       Lexing.pos_cnum = 0;
+       Lexing.pos_bol = 0};
+    if !Flag.Method.input_cegar then
+      main_input_cegar lb
     else
-      verify parsed
+      let orig = Parse.use_file lb in
+      let parsed = Parser_wrapper.from_use_file orig in
+      Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
+      if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
+      let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
+      (* TODO: Refactor below *)
+      let verify t =
+        if !Flag.Method.modular then
+          Modular.main orig spec t
+        else
+          let env_assume = Spec.get_ext_ref_env spec t in
+          let env_assert = Spec.get_ref_env spec t in
+          let problem =
+            if env_assert = [] then
+              Problem.safety ~env:env_assume t
+            else
+              Problem.ref_type_check ~env:env_assume t env_assert
+          in
+          Main_loop.run ~orig ~spec problem
+      in
+      if Flag.Method.(!mode = Trans) then
+        main_trans spec parsed
+      else if !Flag.Method.quick_check then
+        main_quick_check spec parsed
+      else if !Flag.Method.verify_ref_typ then
+        Verify_ref_typ.main orig spec parsed
+      else if Flag.Method.(!mode = Termination) then
+        main_termination orig parsed
+      else if Flag.Method.(!mode = FairTermination) then
+        main_fair_termination orig spec parsed
+      else if !Flag.Mode.module_mode then
+        Verify_module.main verify parsed
+      else
+        verify parsed
 
 let timeout_handler _ = raise TimeOut
 

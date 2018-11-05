@@ -933,6 +933,22 @@ module Cursor = struct
 end
 
 
+module JSON = struct
+  include Yojson.Basic
+  type t = json
+
+  let load file of_json =
+    IO.CPS.open_in file @@
+      (IO.input_all
+       |- from_string
+       |- of_json)
+
+  let save ?(pretty=false) file to_json data =
+    let to_s json = if pretty then pretty_to_string json else to_string json in
+    IO.CPS.open_out file @@
+      (output_string -$- (to_s @@ to_json data))
+end
+
 (* This function uses '\b' *)
 let print_begin_end ?(fm=Format.std_formatter) =
   let pre fm = Format.fprintf fm "%s" "BEGIN" in

@@ -33,6 +33,7 @@ val remove_label : ?label:string -> term -> term
 val alpha_rename : ?whole:bool -> ?set_counter:bool -> term -> term
 val replace_base_with_int : term -> term
 val replace_data_with_int : term -> term
+val replace_complex_data_with_int : term -> term
 val remove_top_por : term -> term
 val replace_bottom_def : term -> term
 val merge_bound_var_typ : (id * typ) list -> term -> term

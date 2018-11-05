@@ -2673,24 +2673,24 @@ let remove_pnondet =
 
 let abst_recdata =
   let tr = make_trans2 () in
-  let tr_term (check,tys) t =
+  let tr_term (check,env) t =
     let desc =
       match t.desc with
       | Local(Decl_type decls, t) ->
-          let tys' = List.map fst decls @ tys in
-          let t' = tr.tr2_term (check, tys') t in
-          let decls' = List.map (fun (s,ty) -> s, tr.tr2_typ (check,tys') ty) decls in
+          let env' = decls::env in
+          let t' = tr.tr2_term (check, env') t in
+          let decls' = List.map (fun (s,ty) -> s, tr.tr2_typ (check,env') ty) decls in
           Local(Decl_type decls', t')
       | Match(t1, pats) ->
           let t1',pats' =
-            match tr.tr2_desc_rec (check,tys) t.desc with
+            match tr.tr2_desc_rec (check,env) t.desc with
             | Match(t',pats') -> t', pats'
             | _ -> assert false
           in
           let pats'' =
             let aux (p1,_,_) (p2,cond,t) =
               let make x =
-                let ty = tr.tr2_typ (check,tys) @@ Id.typ x in
+                let ty = tr.tr2_typ (check,env) @@ Id.typ x in
                 Id.set_typ x ty, make_rand_unit ty
               in
               let bindings =
@@ -2704,26 +2704,26 @@ let abst_recdata =
             List.map2 aux pats pats'
           in
           Match(t1', pats'')
-      | Constr _ when check t.typ tys ->
-          Flag.add_use_abst "abst_recdata";
+      | Constr _ when check t.typ env ->
+          Flag.add_use_abst "Data with int";
           Term.randi.desc
-      | _ -> tr.tr2_desc_rec (check,tys) t.desc
+      | _ -> tr.tr2_desc_rec (check,env) t.desc
     in
-    let typ = tr.tr2_typ (check,tys) t.typ in
+    let typ = tr.tr2_typ (check,env) t.typ in
     {desc; typ; attr=t.attr}
   in
-  let tr_typ (check,tys) ty =
+  let tr_typ (check,env) ty =
     match ty with
-    | TData s when not (List.mem s prim_base_types) && check ty tys -> Ty.int
-    | TVariant _ when check ty tys -> Ty.int
-    | _ -> tr.tr2_typ_rec (check,tys) ty
+    | TData s when not (List.mem s prim_base_types) && check ty env -> Ty.int
+    | TVariant _ when check ty env -> Ty.int
+    | _ -> tr.tr2_typ_rec (check,env) ty
   in
-  let tr_pat (check,tys) p =
+  let tr_pat (check,env) p =
     match p.pat_desc with
-    | PConstr _ when check p.pat_typ tys ->
+    | PConstr _ when check p.pat_typ env ->
         Flag.add_use_abst "abst_recdata";
         {pat_desc=PNondet; pat_typ=Ty.int}
-    | _ -> tr.tr2_pat_rec (check,tys) p
+    | _ -> tr.tr2_pat_rec (check,env) p
   in
   tr.tr2_term <- tr_term;
   tr.tr2_typ <- tr_typ;
@@ -2735,9 +2735,9 @@ let abst_recdata =
     |> simplify_pattern
 
 let abst_ext_recdata =
-  let typ_not_in_env ty tys =
+  let typ_not_in_env ty env =
     match elim_tattr ty with
-    | TData s -> not (List.mem s tys)
+    | TData s -> not (List.exists (List.mem_assoc s) env)
     | TVariant _ -> false
     | _ -> true
   in
@@ -2745,6 +2745,24 @@ let abst_ext_recdata =
 
 let replace_data_with_int =
   abst_recdata (fun _ _ -> true)
+
+let replace_complex_data_with_int =
+  let rec get_leaves ty =
+    match elim_tattr ty with
+    | TTuple xs -> List.flatten_map (Id.typ |- get_leaves) xs
+    | _ -> [ty]
+  in
+  let is_complex ty env =
+    try
+      match elim_tattr ty with
+      | TData s ->
+          List.find (List.mem_assoc s) env
+          |> List.flatten_map (snd |- get_leaves)
+          |> List.exists (data_occurs s)
+      | _ -> false
+    with Not_found -> false
+  in
+  abst_recdata is_complex
 
 (* ASSUME: there is no recursive types *)
 let inline_type_decl =

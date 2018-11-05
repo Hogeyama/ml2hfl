@@ -59,6 +59,7 @@ type preprocess_label =
   | Reduce_branch
   | Split_assert
   | Insert_extra_param
+  | Replace_complex_data_with_int
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -93,6 +94,7 @@ let string_of_label = function
   | Encode_recdata -> "Encode recdata"
   | Replace_base_with_int -> "Replace base with int"
   | Replace_data_with_int -> "Replace data with int"
+  | Replace_complex_data_with_int -> "Replace non-regular data with int"
   | Inline_type_decl -> "Inline type decl"
   | Encode_list -> "Encode list"
   | Ret_fun -> "Ret fun"
@@ -360,6 +362,9 @@ let all spec : t list =
       map_trans replace_base_with_int;
     Inline_simple_types,
       map_trans inline_simple_types;
+    Replace_complex_data_with_int,
+      trans_if !Flag.Encode.complex_data_to_int @@
+      map_trans replace_complex_data_with_int;
     Replace_data_with_int,
       trans_if !Flag.Encode.data_to_int @@
       map_trans replace_data_with_int;
