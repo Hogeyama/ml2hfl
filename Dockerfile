@@ -15,6 +15,8 @@ RUN opam init -y --comp=$ocaml_var && \
 
 COPY . .
 
+ENV OCAMLFIND_IGNORE_DUPS_IN /home/mochi/.opam/4.03.0/lib/ocaml/compiler-libs
+
 RUN eval `opam config env` && \
     autoconf && \
     touch trecs && chmod +x trecs && \
