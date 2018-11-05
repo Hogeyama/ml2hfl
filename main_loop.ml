@@ -231,12 +231,12 @@ let status_of_result r =
 
 let report orig parsed num i {result; stats; make_get_rtyp; set_main; main} =
   print_result_delimiter ();
-  if !Flag.Print.result then
-  begin
-    match i with
-    | None -> Format.printf "Whole result:@."
-    | Some i -> Format.printf "Sub-problem %d/%d:@." i num
-  end;
+  if !Flag.Print.result && num > 1 then
+    begin
+      match i with
+      | None -> Format.printf "Whole result:@."
+      | Some i -> Format.printf "Sub-problem %d/%d:@." i num
+    end;
   begin
     match result with
     | CEGAR.Safe env ->
@@ -258,14 +258,15 @@ let report orig parsed num i {result; stats; make_get_rtyp; set_main; main} =
         if s <> "" then Color.printf Color.Bright " %s" s;
         Color.printf Color.Bright "@.@."
   end;
-  match stats with
-  | None -> ()
-  | Some {cycles; total; abst; mc; refine} ->
-      Format.printf "CEGAR-cycles: %d@." cycles;
-      Format.printf "total: %.3f sec@." total;
-      Format.printf "  abst: %.3f sec@." abst;
-      Format.printf "  mc: %.3f sec@." mc;
-      Format.printf "  refine: %.3f sec@." refine
+  if !Flag.Print.result && num > 1 then
+    match stats with
+    | None -> ()
+    | Some {cycles; total; abst; mc; refine} ->
+        Format.printf "CEGAR-cycles: %d@." cycles;
+        Format.printf "total: %.3f sec@." total;
+        Format.printf "  abst: %.3f sec@." abst;
+        Format.printf "  mc: %.3f sec@." mc;
+        Format.printf "  refine: %.3f sec@." refine
 
 
 let check ?fun_list ?(exparam_sol=[]) spec pp =
