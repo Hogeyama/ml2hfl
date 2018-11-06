@@ -76,7 +76,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	CEGAR_trans.mli CEGAR_util.mli fair_termination_type.mli	\
 	HORS_parser.mli fpatInterface.mli ref_type.mli encode.mli	\
 	ref_type_gen.mli modular_common.mli CEGAR_abst_CPS.mli		\
-	CEGAR_abst_util.mli ref_type_check.mli
+	CEGAR_abst_util.mli ref_type_check.mli ref_type_pred_typing.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = revision.cmo mconfig.cmo flag.cmo debug.cmo util.cmo		\
@@ -105,11 +105,11 @@ CMO = revision.cmo mconfig.cmo flag.cmo debug.cmo util.cmo		\
 	ref_trans.cmo ret_fun.cmo BRA_types.cmo BRA_util.cmo		\
 	BRA_state.cmo BRA_transform.cmo extraClsDepth.cmo		\
 	extraParamInfer.cmo eval.cmo quick_check.cmo			\
-	elim_same_arg.cmo preprocess.cmo main_loop.cmo			\
-	modular_common.cmo comp_tree.cmo horn_clause.cmo		\
-	modular_infer.cmo modular_check.cmo modular.cmo			\
-	termination_loop.cmo fair_termination.cmo verify_ref_typ.cmo	\
-	verify_module.cmo mochi.cmo
+	elim_same_arg.cmo ref_type_pred_typing.cmo preprocess.cmo	\
+	main_loop.cmo modular_common.cmo comp_tree.cmo			\
+	horn_clause.cmo modular_infer.cmo modular_check.cmo		\
+	modular.cmo termination_loop.cmo fair_termination.cmo		\
+	verify_ref_typ.cmo verify_module.cmo mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =
