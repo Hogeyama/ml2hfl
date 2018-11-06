@@ -10,10 +10,10 @@ What do you need?
 
 - OCaml compiler 4.03 (http://www.caml.org)
 - Libraries available via OPAM
-  - ocamlfind/findlib
-  - Z3
-  - ppx_deriving
-  - Yojson
-  - batteries
+    - ocamlfind/findlib
+    - Z3
+    - ppx_deriving
+    - Yojson
+    - batteries
 - CVC3 binary
 - TRecS or HorSat binary
