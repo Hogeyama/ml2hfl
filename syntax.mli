@@ -15,6 +15,7 @@ and attr =
   | AMark
   | ADoNotInline
   | AEffect of Type.effect
+  | ALoc of Location.t
 and term = {desc:desc; typ:typ; attr:attr list}
 and const = (* only base type constants *)
   | End_of_definitions
@@ -260,5 +261,3 @@ val pp_id : Format.formatter -> id -> unit
 val pp_typ : Format.formatter -> typ -> unit
 val pp_declaration : Format.formatter -> declaration -> unit
 val pp_pattern : Format.formatter -> pattern -> unit
-
-

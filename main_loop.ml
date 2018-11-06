@@ -9,7 +9,8 @@ type return =
      stats : stats option;
      make_get_rtyp : (CEGAR_syntax.var -> CEGAR_ref_type.t) -> Syntax.id -> Ref_type.t;
      set_main: Problem.t option;
-     main: Syntax.id option}
+     main: Syntax.id option;
+     info: Problem.info}
 and stats =
   {cycles : int;
    total : float;
@@ -66,7 +67,7 @@ let cegar_of_preprocessed ?fun_list spec results =
     in
     CEGAR_syntax.{prog.info with orig_fun_list; inlined; fairness}
   in
-  CEGAR_syntax.{prog with info}, make_get_rtyp, set_main, main
+  CEGAR_syntax.{prog with info}, make_get_rtyp, set_main, main, problem.Problem.info
 
 
 let run_preprocess ?make_pps spec problem =
@@ -229,14 +230,16 @@ let status_of_result r =
   | CEGAR.Unknown s ->
       Flag.Log.Unknown s
 
-let report orig parsed num i {result; stats; make_get_rtyp; set_main; main} =
+let report orig parsed num i {result; stats; make_get_rtyp; set_main; main; info} =
   print_result_delimiter ();
-  if !Flag.Print.result && num > 1 then
+  if num > 1 then
     begin
       match i with
       | None -> Format.printf "Whole result:@."
       | Some i -> Format.printf "Sub-problem %d/%d:@." i num
     end;
+  List.iter (Format.printf "%s@.") info;
+  if info <> [] then Format.printf "@.";
   begin
     match result with
     | CEGAR.Safe env ->
@@ -258,7 +261,7 @@ let report orig parsed num i {result; stats; make_get_rtyp; set_main; main} =
         if s <> "" then Color.printf Color.Bright " %s" s;
         Color.printf Color.Bright "@.@."
   end;
-  if !Flag.Print.result && num > 1 then
+  if num > 1 then
     match stats with
     | None -> ()
     | Some {cycles; total; abst; mc; refine} ->
@@ -270,7 +273,7 @@ let report orig parsed num i {result; stats; make_get_rtyp; set_main; main} =
 
 
 let check ?fun_list ?(exparam_sol=[]) spec pp =
-  let preprocessed, make_get_rtyp, set_main, main = cegar_of_preprocessed ?fun_list spec pp in
+  let preprocessed, make_get_rtyp, set_main, main, info = cegar_of_preprocessed ?fun_list spec pp in
   let cegar_prog =
     if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
       begin
@@ -285,7 +288,7 @@ let check ?fun_list ?(exparam_sol=[]) spec pp =
       preprocessed
   in
   let result = CEGAR.run cegar_prog in
-  {result; stats=None; make_get_rtyp; set_main; main}
+  {result; stats=None; make_get_rtyp; set_main; main; info}
 
 
 type bin_input =
@@ -387,7 +390,8 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
     let make_get_rtyp _ _ = unsupported "check_parallel" in
     let set_main = None in
     let main = None in
-    {result; stats; make_get_rtyp; set_main; main}
+    let info = (Preprocess.last_problem preprocessed).Problem.info in
+    {result; stats; make_get_rtyp; set_main; main; info}
   in
   List.map result_of problems
 
@@ -403,13 +407,14 @@ let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
          improve_precision e;
          loop ?make_pps ?fun_list ?exparam_sol spec problem
 
-let merge_result r1 r2 =
+let merge_result b r1 r2 =
   match r1, r2 with
   | CEGAR.Safe _, r
   | r, CEGAR.Safe _ -> r
   | CEGAR.Unsafe _ as r, _
   | _, (CEGAR.Unsafe _ as r) -> r
-  | CEGAR.Unknown s1, CEGAR.Unknown s2 -> CEGAR.Unknown (Format.sprintf "%s, %s" s1 s2)
+  | CEGAR.Unknown s1, CEGAR.Unknown s2 when b -> CEGAR.Unknown (Format.sprintf "%s, %s" s1 s2)
+  | CEGAR.Unknown _, CEGAR.Unknown _ -> CEGAR.Unknown ""
 
 let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
   let results = loop ?make_pps ?fun_list ?exparam_sol spec parsed in
@@ -426,10 +431,11 @@ let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
         if !Flag.Print.result then
           report_safe [] orig parsed
     end;
-  let r = List.reduce merge_result @@ List.map (fun r -> r.result) results in
+  let r = List.reduce (merge_result false) @@ List.map (fun r -> r.result) results in
   set_status @@ status_of_result r;
   let num = List.length results in
-  List.iteri (fun i -> report orig parsed num (Some (i+1))) results;
-  if num > 1 && !Flag.Parallel.num > 1 then
-    report orig parsed (List.length results) None {(List.hd results) with result=r; stats=None};
+  if !Flag.Print.result then
+    List.iteri (fun i -> report orig parsed num (Some (i+1))) results;
+  if !Flag.Print.result && num > 1 && !Flag.Parallel.num > 1 then
+    report orig parsed (List.length results) None {(List.hd results) with result=r; stats=None; info=[]};
   List.for_all bool_of_result results

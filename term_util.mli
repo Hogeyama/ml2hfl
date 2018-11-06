@@ -23,7 +23,7 @@ val fail_term_cps : term
 val randint_term : term
 val randbool_unit_term : term
 val randint_unit_term : term
-val fail_unit_term : term
+val make_fail_unit : Location.t option -> term
 val make_bool : bool -> term
 val make_bottom : typ -> term
 val make_event : string -> term
@@ -38,7 +38,7 @@ val make_rand_cps : typ -> term
 val make_randint_cps : bool -> term
 val make_app : term -> term list -> term
 val make_app_raw : term -> term list -> term (** Does not merge arguments *)
-val make_fail : typ -> term
+val make_fail : ?loc:Location.t -> typ -> term
 val make_local : declaration -> term -> term
 val make_let : (id * term) list -> term -> term
 val make_let_s : (id * term) list -> term -> term
@@ -82,7 +82,7 @@ val make_match : term -> (pattern * term * term) list -> term
 val make_single_match : ?total:bool -> term -> pattern -> term -> term
 val make_seq : term -> term -> term
 val make_ignore : term -> term
-val make_assert : term -> term
+val make_assert : ?loc:Location.t -> term -> term
 val make_assume : term -> term -> term
 val make_label : ?label:string -> Syntax.info -> Syntax.term -> Syntax.term
 val make_pany : typ -> pattern
@@ -119,7 +119,7 @@ val make_module : declaration list -> term
 
 
 (** {6 Term destructor / Inspector} *)
-val decomp_assert : term -> term option
+val decomp_assert : term -> (term * Location.t option) option
 val decomp_and : term -> term list
 val decomp_some : term -> term option
 val decomp_is_none : term -> term option
@@ -284,7 +284,7 @@ module Term : sig
   val seq : term -> term -> term
   val seqs : term list -> term -> term
   val ignore : term -> term
-  val assert_ : term -> term
+  val assert_ : ?loc:Location.t -> term -> term
   val assume : term -> term -> term
   val none : typ -> term
   val some : term -> term

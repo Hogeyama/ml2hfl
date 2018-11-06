@@ -43,7 +43,7 @@ let rec value_of ans =
   match ans with
   | Closure(_, v) -> v
   | VTuple anss -> make_tuple (List.map value_of anss)
-  | Fail -> fail_unit_term
+  | Fail -> make_fail_unit None
 
 let rec print_val_env n fm env =
   if n <= 0 then
@@ -352,3 +352,4 @@ let check prog f typ depth =
         assert (ce_single'' = []);
         Untypable ce
     | CEGAR.Unsafe _ -> assert false
+    | CEGAR.Unknown _ -> assert false

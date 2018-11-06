@@ -3,14 +3,10 @@ open Util
 open Type
 
 type label = Read | Write | Close
-  [@@deriving show]
-type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
-  [@@deriving show]
+and binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
 
-type typ = term Type.t
-  [@@deriving show]
+and typ = term Type.t
 and id = typ Id.t
-  [@@deriving show]
 
 and const = (* only base type constants *)
   | End_of_definitions
@@ -26,7 +22,6 @@ and const = (* only base type constants *)
   | Nativeint of nativeint
   | CPS_result
   | Rand of typ * bool (** true denotes CPS-term *)
-  [@@deriving show]
 
 and attr =
   | AAbst_under
@@ -38,10 +33,9 @@ and attr =
   | AMark
   | ADoNotInline
   | AEffect of Type.effect
-  [@@deriving show]
+  | ALoc of (Location.t [@printer Location.print])
 
 and term = {desc:desc; typ:typ; attr:attr list}
-  [@@deriving show]
 and desc =
   | Const of const
   | Var of id
@@ -71,12 +65,10 @@ and desc =
   | TNone
   | TSome of term
   | Module of declaration list
-  [@@deriving show]
 
 and declaration =
   | Decl_let of (id * term) list
   | Decl_type of (string * typ) list
-  [@@deriving show]
 
 and info =
   | InfoInt of int
@@ -84,7 +76,6 @@ and info =
   | InfoId of id
   | InfoTerm of term
   | InfoIdTerm of id * term
-  [@@deriving show]
 
 
 and type_kind =
@@ -97,7 +88,6 @@ and type_kind =
 and pred = desc
 
 and pattern = {pat_desc:pat_desc; pat_typ:typ}
-  [@@deriving show]
 and pat_desc =
   | PAny
   | PNondet (* match non-deterministically *)

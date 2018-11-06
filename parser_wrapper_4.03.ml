@@ -782,8 +782,8 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let decls,t = from_expression id_env e in
         let t' =
           if t.desc = Const False
-          then make_fail typ'
-          else make_assert t
+          then make_fail ~loc:exp_loc typ'
+          else make_assert ~loc:exp_loc t
         in
         decls, t'
     | Texp_lazy e -> assert false

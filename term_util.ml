@@ -38,6 +38,12 @@ let rec is_value t =
 
 let has_safe_attr t = List.Set.subset safe_attr t.attr
 let has_pure_attr t = List.Set.subset pure_attr t.attr
+let add_attr attr t = {t with attr=attr::t.attr}
+let add_attrs attrs t = List.fold_right add_attr attrs t
+let add_comment s t = add_attr (AComment s) t
+let add_id id t = add_attr (AId id) t
+let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}
+let replace_id id1 id2 t = add_id id2 @@ remove_attr (AId id1) t
 
 let end_of_definitions = {desc=Const End_of_definitions; typ=Ty.unit; attr=[]}
 let unit_term = {desc=Const Unit; typ=Ty.unit; attr=const_attr}
@@ -110,8 +116,12 @@ let make_ignore t =
     t
   else
     make_seq t unit_term
-let fail_unit_term = make_app fail_term [unit_term]
-let make_fail typ = make_seq fail_unit_term @@ make_bottom typ
+let make_fail_unit loc =
+  let t = make_app fail_term [unit_term] in
+  match loc with
+  | None -> t
+  | Some loc -> add_attr (ALoc loc) t
+let make_fail ?loc typ = make_seq (make_fail_unit loc) @@ make_bottom typ
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
 let make_funs = List.fold_right make_fun
 let make_not t =
@@ -442,7 +452,9 @@ let rec decomp_and t =
 
 let decomp_assert t =
   match t.desc with
-  | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) -> Some t1
+  | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}]); attr}) ->
+      let loc = List.find_map_option (function ALoc loc -> Some loc | _ -> None) attr in
+      Some (t1, loc)
   | _ -> None
 
 
@@ -814,7 +826,7 @@ let make_if t1 t2 t3 =
   | Const False -> t3
   | _ when has_safe_attr t2 && same_term' t2 t3 -> t2
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
-let make_assert t = make_if t unit_term fail_unit_term
+let make_assert ?loc t = make_if t unit_term (make_fail_unit loc)
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
 let make_br t2 t3 = make_if randbool_unit_term t2 t3
 let make_brs ts =
@@ -1068,13 +1080,6 @@ let rec get_body t =
 let count_occurrence x t =
   List.count Id.((=) x) @@ get_fv ~eq:(fun _ _ -> false) t
 
-let add_attr attr t = {t with attr=attr::t.attr}
-let add_attrs attrs t = List.fold_right add_attr attrs t
-let add_comment s t = add_attr (AComment s) t
-let add_id id t = add_attr (AId id) t
-let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}
-let replace_id id1 id2 t = add_id id2 @@ remove_attr (AId id1) t
-
 let get_id t =
   try
     List.find_map (function AId n -> Some n | _ -> None) t.attr
@@ -1315,7 +1320,7 @@ module Term = struct
   let true_ = true_term
   let ff = false_term
   let false_ = false_term
-  let fail = fail_unit_term
+  let fail = make_fail_unit None
   let randi = randint_unit_term
   let randb = randbool_unit_term
   let rand = make_rand_unit

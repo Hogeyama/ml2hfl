@@ -316,7 +316,7 @@ let remove_pair_ref_typ (x,t) =
   |> aux
 
 
-let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind} =
+let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind; info} =
   assert (check => List.mem Problem.ACPS attr);
   let pr s = Debug.printf "##[remove_pair] %s: %a@." s Print.term in
   let t' =
@@ -331,7 +331,7 @@ let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind} =
     |@> pr "beta_size1"
   in
   let rtenv = List.flatten_map remove_pair_ref_typ rtenv in
-  {Problem.term=t'; env=rtenv; attr; kind}, uncurry_rtyp t
+  {Problem.term=t'; env=rtenv; attr; kind; info}, uncurry_rtyp t
 
 let remove_pair_direct t =
   t

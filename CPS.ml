@@ -1181,7 +1181,7 @@ let rec trans_ref_typ is_CPS typ =
       Format.eprintf "%a@." Ref_type.print typ;
       assert false
 
-let trans {Problem.term=t; env=rtenv; attr; kind} =
+let trans {Problem.term=t; env=rtenv; attr; kind; info} =
   pr "INPUT" t;
   let env = initial_env () in
   let t =
@@ -1234,7 +1234,7 @@ let trans {Problem.term=t; env=rtenv; attr; kind} =
   in
   let rtenv = List.map (Pair.map_snd @@ trans_ref_typ true) rtenv in
   let attr = Problem.ACPS::attr in
-  {Problem.term=t'; env=rtenv; attr; kind}, make_get_rtyp sol typ_exn typed
+  {Problem.term=t'; env=rtenv; attr; kind; info}, make_get_rtyp sol typ_exn typed
 
 
 let trans_as_direct t =

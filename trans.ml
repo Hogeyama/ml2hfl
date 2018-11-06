@@ -1887,7 +1887,7 @@ let get_set_main t =
   | Some (_, (x, t)) when Id.name x = main_name -> Some x
   | _ -> None
 
-let ref_to_assert ?(make_fail=make_fail) ?typ_exn ref_env t =
+let ref_to_assert ?(make_fail=make_fail ?loc:None) ?typ_exn ref_env t =
   let typ_exn =
     match typ_exn with
     | None -> find_exn_typ t
@@ -2253,10 +2253,10 @@ let split_assert_and =
   let tr = make_trans () in
   let tr_term t =
     match decomp_assert t with
-    | Some t1 ->
-        let ts = decomp_and t1 in
-        ts
-        |> List.map make_assert
+    | Some (t1,loc) ->
+        t1
+        |> decomp_and
+        |> List.map (make_assert ?loc)
         |> List.reduce_right make_seq
     | _ -> tr.tr_term_rec t
   in
@@ -2366,7 +2366,7 @@ let reduce_fail_unit =
   let tr_term t =
     let t' = tr.tr_term_rec t in
     match t'.desc with
-    | Local(Decl_let [x,t''], _) when t''.desc = fail_unit_term.desc -> t''
+    | Local(Decl_let [x,t''], _) when t''.desc = (make_fail_unit None).desc -> t''
     | _ -> t'
   in
   tr.tr_term <- tr_term;
@@ -3167,16 +3167,19 @@ let reduce_branch =
 
 let mark_fail =
   let fld = make_fold_tr () in
-  let fld_term cnt t =
+  let fld_term map t =
     match t.desc with
-    | App({desc=Event("fail",false)}, [{desc=Const Unit}]) -> cnt+1, add_attr (AId cnt) t
+    | App({desc=Event("fail",false)}, [{desc=Const Unit}]) ->
+        let loc = List.find_map_option (function ALoc loc -> Some loc | _ -> None) t.attr in
+        let c = List.length map in
+        (c,loc)::map, add_attr (AId c) t
     | Event("fail",_) -> unsupported "mark_fail"
-    | _ -> fld.fld_term_rec cnt t
+    | _ -> fld.fld_term_rec map t
   in
   fld.fld_term <- fld_term;
-  fld.fld_term 0
+  fld.fld_term []
 
-let replace_fail_with_bot =
+let replace_fail_with_bot_except =
   let tr = make_trans2 () in
   let tr_term id t =
     if List.exists (function AId id' -> id <> id' | _ -> false) t.attr then
@@ -3190,9 +3193,8 @@ let replace_fail_with_bot =
 let split_assert t =
   if col_id t <> [] then unsupported "Trans.split_assert";
   let t' = split_assert_and t in
-  let cnt,t'' = mark_fail t' in
-  let ids = List.init cnt Fun.id in
-  List.map (replace_fail_with_bot -$- t'') ids
+  let map,t'' = mark_fail t' in
+  List.rev_map (fun (id,loc) -> replace_fail_with_bot_except id t'', loc) map
 
 let insert_extra_param t =
   t

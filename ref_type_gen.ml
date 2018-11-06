@@ -418,5 +418,5 @@ and generate typ_exn make_fail genv cenv typ =
   Debug.printf "Ref_type_gen.generate: %a@." print typ;
   genv', cenv', {t with S.typ = to_abst_typ ~with_pred:true typ}
 
-let generate_check typ_exn ?(make_fail=U.make_fail) genv cenv x typ = generate_check typ_exn make_fail genv cenv x typ
-let generate typ_exn ?(make_fail=U.make_fail) genv cenv typ = generate typ_exn make_fail genv cenv typ
+let generate_check typ_exn ?(make_fail=U.make_fail ?loc:None) genv cenv x typ = generate_check typ_exn make_fail genv cenv x typ
+let generate typ_exn ?(make_fail=U.make_fail ?loc:None) genv cenv typ = generate typ_exn make_fail genv cenv typ

@@ -44,7 +44,7 @@ val ignore_non_termination : term -> term
 val decomp_var_match_tuple : term -> term
 val map_attr : (attr list -> attr list) -> term -> term
 val filter_attr : (attr -> bool) -> term -> term
-val split_assert : term -> term list
+val split_assert : term -> (term * Location.t option) list
 val split_assert_and : term -> term
 val add_id : term -> int * term
 val add_id_if : (term -> bool) -> term -> int * term

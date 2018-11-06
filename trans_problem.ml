@@ -36,25 +36,30 @@ let reduce_rand = map Trans.reduce_rand
 let reduce_ignore = map Trans.reduce_ignore
 let reduce_branch = map Trans.reduce_branch
 let insert_extra_param = map Trans.insert_extra_param
-let split_assert {term; env; attr; kind} =
+let split_assert {term; env; attr; kind; info} =
+  let update_info loc info =
+    match loc with
+    | None -> info
+    | Some loc -> Format.asprintf "Target assertion: %a" Location.print_loc loc :: info
+  in
   Trans.split_assert term
-  |> List.map (fun term -> {term; env; attr; kind})
+  |> List.map (fun (term,loc) -> {term; env; attr; kind; info=update_info loc info})
 
-let expand_let_val {term; env; attr; kind} =
+let expand_let_val {term; env; attr; kind; info} =
   assert (List.mem ACPS attr);
   let term = Trans.expand_let_val term in
-  {term; env; attr; kind}
+  {term; env; attr; kind; info}
 
-let beta_reduce {term; env; attr; kind} =
+let beta_reduce {term; env; attr; kind; info} =
   assert (List.mem ACPS attr);
   let term = Trans.expand_let_val term in
-  {term; env; attr; kind}
+  {term; env; attr; kind; info}
 
-let set_main {term; env; attr; kind} =
+let set_main {term; env; attr; kind; info} =
   match kind with
   | Safety ->
       let term = Trans.set_main term in
-      [{term; env; attr; kind}]
+      [{term; env; attr; kind; info}]
   | Ref_type_check check ->
       let make_check (x, ty) =
         let tys,ty' = Ref_type.decomp_funs ty in
@@ -78,14 +83,14 @@ let set_main {term; env; attr; kind} =
       in
       check
       |> List.map make_check
-      |> List.map (fun (env',term) -> let env = env' @ env in {term; env; attr; kind=Safety})
+      |> List.map (fun (env',term) -> let env = env' @ env in {term; env; attr; kind=Safety; info})
 
-let make_ext_funs {term; env; attr; kind} =
+let make_ext_funs {term; env; attr; kind; info} =
   let term = Trans.make_ext_funs env term in
-  {term; env=[]; attr; kind}
+  {term; env=[]; attr; kind; info}
 
-let alpha_rename {term; env; attr; kind} =
+let alpha_rename {term; env; attr; kind; info} =
   let map_rtyp map get_rtyp f = get_rtyp f in
   let term = Trans.alpha_rename ~whole:true ~set_counter:true term in
   let map = [] in (* TODO *)
-  {term; env; attr; kind}, map_rtyp map
+  {term; env; attr; kind; info}, map_rtyp map
