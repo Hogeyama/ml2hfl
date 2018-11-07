@@ -142,7 +142,7 @@ let main_input_cegar filename =
     (fun () -> close_in cin)
     Main_loop.run_cegar {prog with env}
 
-let main_termination orig parsed =
+let main_termination parsed =
   let open BRA_util in
   (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
   let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
@@ -186,7 +186,7 @@ let main_termination orig parsed =
    end;
   result
 
-let main_fair_termination orig spec parsed =
+let main_fair_termination spec parsed =
   let result = Fair_termination.run spec parsed in
   if result
   then Format.printf "Fair terminating!@.@."
@@ -742,9 +742,9 @@ let main filenames =
       else if !Flag.Method.verify_ref_typ then
         Verify_ref_typ.main orig spec parsed
       else if Flag.Method.(!mode = Termination) then
-        main_termination orig parsed
+        main_termination parsed
       else if Flag.Method.(!mode = FairTermination) then
-        main_fair_termination orig spec parsed
+        main_fair_termination spec parsed
       else if !Flag.Mode.module_mode then
         Verify_module.main verify parsed
       else
