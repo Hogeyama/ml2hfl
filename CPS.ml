@@ -13,6 +13,7 @@ let new_evar () = incr counter; !counter
 type term = {t_orig:Syntax.term; t_cps:t_cps; typ_cps:typ_cps; effect:effect_var}
 and typed_ident = {id_cps:id; id_typ:typ_cps}
 and t_cps =
+  | EodCPS
   | ConstCPS of const
   | BottomCPS
   | RandIntCPS of bool
@@ -91,6 +92,7 @@ and print_term sol fm {t_cps=t; typ_cps=typ; effect=e} =
   | _ -> Format.fprintf fm "(%a : %a)" (print_t_cps sol) t (print_typ_cps sol) typ
 
 and print_t_cps sol fm = function
+  | EodCPS -> Format.fprintf fm "EOD"
   | ConstCPS c -> Format.fprintf fm "%a" Print.const c
   | BottomCPS -> Format.fprintf fm "_|_"
   | RandIntCPS b -> Format.fprintf fm "rand_int(%b)" b
@@ -199,6 +201,7 @@ let _TFunCPS env (e, typ1, typ2) =
 
 let rec infer_effect env tenv t =
   match t.desc with
+  | End_of_definitions -> {t_orig=t; t_cps=EodCPS; typ_cps=TBaseCPS t.typ; effect=new_evar()}
   | Const(Rand(TBase TInt,true)) -> assert false
   | Const(Rand(TBase TInt,false)) ->
       let e = new_evar () in
@@ -533,6 +536,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
   let typ_orig = t_orig.typ in
   let t' =
     match t, sol e with
+    | EodCPS, ENone -> {desc=End_of_definitions; typ=typ_orig; attr=const_attr}
     | ConstCPS c, ENone -> {desc=Const c; typ=typ_orig; attr=const_attr}
     | BottomCPS, ECont ->
         let k = new_k_var k_post @@ trans_typ sol typ_excep typ_orig typ in
@@ -862,6 +866,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
 
 let rec col_exn_typ {t_cps=t} =
   match t with
+  | EodCPS -> []
   | ConstCPS _ -> []
   | BottomCPS -> []
   | RandIntCPS _ -> []
@@ -885,6 +890,7 @@ let unify_exn_typ env typ_exn typed =
 
 let rec assoc_typ_cps f {t_cps=t; typ_cps=typ; effect=e} =
   match t with
+  | EodCPS -> []
   | ConstCPS _ -> []
   | BottomCPS -> []
   | RandIntCPS _ -> []
