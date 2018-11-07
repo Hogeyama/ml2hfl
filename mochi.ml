@@ -639,10 +639,11 @@ let init_after_parse_arg () =
   Color.init ();
   check_env ()
 
-let check_bin () =
+let check_bin filename =
   let open Main_loop in
   let {args;preprocessed} = Marshal.from_file_exn !!Flag.Input.main in
   parse_arg_list true args;
+  Flag.Input.filenames := [filename];
   let spec = Spec.init in
   let s,r =
     match Main_loop.((check spec preprocessed).result) with
@@ -707,7 +708,7 @@ let wrap_input_for_fair_termination () =
 let main filenames =
   set_status @@ Flag.Log.Other "Start";
   if String.ends_with !!Flag.Input.main ".bin" then
-    check_bin ()
+    check_bin !!Flag.Input.main
   else
     let () =
       if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination) then
