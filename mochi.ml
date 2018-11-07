@@ -637,7 +637,9 @@ let init_after_parse_arg () =
   ignore @@ Unix.alarm !Flag.Limit.time;
   Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
   Color.init ();
-  check_env ()
+  check_env ();
+  set_status @@ Flag.Log.Other "Start";
+  IO.empty_file @@ Filename.change_extension !!Flag.Input.main "json"
 
 let check_bin filename =
   let open Main_loop in
@@ -648,8 +650,8 @@ let check_bin filename =
   let s,r =
     match Main_loop.((check spec preprocessed).result) with
     | CEGAR.Safe _ -> Flag.Log.Safe, true
-    | CEGAR.Unsafe _ -> Flag.Log.Unsafe, true
-    | CEGAR.Unknown s -> Flag.Log.Unknown s, true
+    | CEGAR.Unsafe _ -> Flag.Log.Unsafe, false
+    | CEGAR.Unknown s -> Flag.Log.Unknown s, false
     | exception e -> Flag.Log.Error (string_of_exception e), false
   in
   set_status s;
@@ -706,7 +708,6 @@ let wrap_input_for_fair_termination () =
   Flag.Input.filenames := [filename]
 
 let main filenames =
-  set_status @@ Flag.Log.Other "Start";
   if String.ends_with !!Flag.Input.main ".bin" then
     check_bin !!Flag.Input.main
   else
