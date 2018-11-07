@@ -45,7 +45,7 @@ let add_id id t = add_attr (AId id) t
 let remove_attr attr t = {t with attr = List.filter_out ((=) attr) t.attr}
 let replace_id id1 id2 t = add_id id2 @@ remove_attr (AId id1) t
 
-let end_of_definitions = {desc=Const End_of_definitions; typ=Ty.unit; attr=[]}
+let end_of_definitions = {desc=End_of_definitions; typ=Ty.unit; attr=[]}
 let unit_term = {desc=Const Unit; typ=Ty.unit; attr=const_attr}
 let true_term = {desc=Const True; typ=Ty.bool; attr=const_attr}
 let false_term = {desc=Const False; typ=Ty.bool; attr=const_attr}
@@ -404,11 +404,6 @@ let is_randbool_unit t =
   | BinOp((Eq|Leq|Geq|Lt|Gt), t, {desc=Const _})
   | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, t) -> is_randint_unit t
   | _ -> false
-let rec defs_of_term t =
-  match t.desc with
-  | Const End_of_definitions -> []
-  | Local(Decl_let def, t') -> def :: defs_of_term t'
-  | _ -> invalid_arg "defs_of_term"
 
 
 
@@ -1373,6 +1368,7 @@ module Term = struct
   let none = make_none
   let some = make_some
   let match_ = make_match
+  let module_ = make_module
   let length = make_length
   let (|->) = subst ~rename_if_captured:false
 end

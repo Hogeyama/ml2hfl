@@ -82,7 +82,7 @@ let run_preprocess ?make_pps spec problem =
 let write_annot env orig =
   env
   |> List.map (Pair.map_fst Id.name)
-  |> WriteAnnot.f !!Flag.mainfile orig
+  |> WriteAnnot.f !!Flag.Input.main orig
 
 let report_safe env orig {Problem.term=t0} =
   if !Flag.PrettyPrinter.write_annot then Option.iter (write_annot env) orig;
@@ -129,7 +129,7 @@ let report_safe env orig {Problem.term=t0} =
 
 let report_unsafe main ce set_main =
   Color.printf Color.Bright "%s@.@." (Flag.Log.string_of_result false);
-  if !Flag.use_abst = [] then
+  if !Flag.Encode.used_abst = [] then
     let pr main_fun =
       let arg_num = Type.arity @@ Id.typ main_fun in
       if arg_num > 0 then
@@ -142,7 +142,7 @@ let report_unsafe main ce set_main =
 
 (** TODO: merge with report_unsafe *)
 let report_unsafe_par main ce set_main =
-  if !Flag.use_abst = [] then
+  if !Flag.Encode.used_abst = [] then
     begin
       Color.printf Color.Bright "Unsafe@.@.";
       report_unsafe main ce set_main
@@ -221,8 +221,8 @@ let status_of_result r =
   | CEGAR.Safe env -> Flag.Log.Safe
   | CEGAR.Unsafe _ when Flag.Method.(!mode = NonTermination || !ignore_non_termination) ->
       Flag.Log.Unknown ""
-  | CEGAR.Unsafe _ when !Flag.use_abst <> [] ->
-      Flag.Log.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.use_abst)
+  | CEGAR.Unsafe _ when !Flag.Encode.used_abst <> [] ->
+      Flag.Log.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.Encode.used_abst)
   | CEGAR.Unsafe _ ->
       Flag.Log.Unsafe
   | CEGAR.Unknown s when String.starts_with s "Error: " ->
@@ -303,7 +303,7 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
   if exparam_sol <> [] then unsupported "check_parallel";
   if spec.Spec.abst_cegar_env <> [] then unsupported "check_parallel";
   let problem i preprocessed =
-    let input = Filename.change_extension !!Flag.mainfile @@ Format.sprintf "%d.bin" i in
+    let input = Filename.change_extension !!Flag.Input.main @@ Format.sprintf "%d.bin" i in
     let status = Filename.change_extension input "status" in
     let cmd = Format.sprintf "%s -s -limit %d %s" Sys.argv.(0) !Flag.Parallel.time input in
     i, (input, status, cmd, preprocessed)
@@ -347,7 +347,7 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
       let result =
         match json |> member "result" |> to_string with
         | "Safe" -> CEGAR.Safe []
-        | "Unsafe" when !Flag.use_abst <> [] -> CEGAR.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.use_abst)
+        | "Unsafe" when !Flag.Encode.used_abst <> [] -> CEGAR.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.Encode.used_abst)
         | "Unsafe" -> CEGAR.Unsafe([], ModelCheck.CESafety [])
         | r when !Flag.Parallel.continue -> CEGAR.Unknown r
         | r -> failwith r

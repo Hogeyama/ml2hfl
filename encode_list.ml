@@ -345,12 +345,12 @@ let inst_list_eq_term map t =
         match t1.typ with
         | TApp(TList, [TBase TInt|TData _ as typ]) when List.mem_assoc typ map ->
             if !Flag.Encode.abst_list_eq then
-              (Flag.add_use_abst "List equality";
+              (Flag.Encode.use_abst "List equality";
                randbool_unit_term)
             else
               make_app (make_var @@ List.assoc typ map) [t1'; t2']
         | TApp(TList, _) ->
-            Flag.add_use_abst "List equality";
+            Flag.Encode.use_abst "List equality";
             randbool_unit_term
         | _ -> inst_list_eq.tr2_term_rec map t
       end

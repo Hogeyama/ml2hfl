@@ -28,9 +28,9 @@ let print_info_default () =
   Format.pp_print_flush Format.std_formatter ()
 
 let output_json () =
-  let filename = Filename.change_extension !!Flag.mainfile "json" in
+  let filename = Filename.change_extension !!Flag.Input.main "json" in
   let assoc =
-    ["filename", `String !!Flag.mainfile;
+    ["filename", `String !!Flag.Input.main;
      "result", `String (Flag.Log.string_of_result false);
      "cycles", `Int !Flag.Log.cegar_loop;
      "total", `Float !!Time.get;
@@ -126,12 +126,21 @@ let print_env cmd json =
 
 
 
-let main_input_cegar lb =
+let main_input_cegar filename =
   let open CEGAR_syntax in
+  let cin = open_in filename in
+  let lb = Lexing.from_channel cin in
+  lb.Lexing.lex_curr_p <-
+    {Lexing.pos_fname = Filename.basename filename;
+     Lexing.pos_lnum = 1;
+     Lexing.pos_cnum = 0;
+     Lexing.pos_bol = 0};
   let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
   let prog' = Typing.infer {prog with env=[]} in
   let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
-  Main_loop.run_cegar {prog with env}
+  Exception.finally
+    (fun () -> close_in cin)
+    Main_loop.run_cegar {prog with env}
 
 let main_termination orig parsed =
   let open BRA_util in
@@ -187,8 +196,8 @@ let main_fair_termination orig spec parsed =
 let output_randint_refinement_log input_string =
   let cout =
     let input =
-      let dirname = Filename.dirname !!Flag.mainfile in
-      let basename = Filename.basename !!Flag.mainfile in
+      let dirname = Filename.dirname !!Flag.Input.main in
+      let basename = Filename.basename !!Flag.Input.main in
       dirname ^ "/refinement/" ^ Filename.change_extension basename "refinement"
     in
     open_out_gen [Open_wronly; Open_trunc; Open_text; Open_creat] 0o644 input
@@ -236,9 +245,9 @@ let main_trans spec t =
   exit 0
 
 let just_run_other_command cmd =
-  if !Flag.filenames = [] then
+  if !Flag.Input.filenames = [] then
     (Format.eprintf "Option \"-just-run\" must follow input file@."; exit 1);
-  let filename = List.hd !Flag.filenames in
+  let filename = List.hd !Flag.Input.filenames in
   let total,r = Time.measure (fun () -> Sys.command @@ snd @@ String.replace ~str:cmd ~sub:"%i" ~by:filename) in
   let result = if r = 0 then "Safe" else "Error" in
   Format.printf "{filename:%S, result:%S, total:%f}@." filename result total;
@@ -335,7 +344,7 @@ let rec arg_spec () =
                       Modular.infer_ind := true),
        " Modular verification (inductive mode)";
      "-verify-ref-typ", Arg.Set Flag.Method.verify_ref_typ, " Verify functions have given refinement types";
-     "-spec", Arg.Set_string Flag.spec_file, "<filename>  use <filename> as a specification";
+     "-spec", Arg.Set_string Flag.Input.spec, "<filename>  use <filename> as a specification";
      "-use-spec", Arg.Set Flag.Method.use_spec, " use XYZ.spec for verifying XYZ.ml if exists\n(This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.Method.comment_spec, " disable {SPEC} on comments";
      "-module-verification", Arg.Set Flag.Mode.module_mode, " Check input as library";
@@ -398,8 +407,8 @@ let rec arg_spec () =
                    Format.sprintf "<cmd>  Change z3-spacer command to <cmd> (default: \"%s\")" !Flag.Refine.z3_spacer;
      (* SWT solver *)
      "", Arg.Unit ignore, "Options_for_SMT_solver";
-     "-cvc3-bin", Arg.Set_string Flag.cvc3,
-                  Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.cvc3;
+     "-cvc3-bin", Arg.Set_string Flag.External.cvc3,
+                  Format.sprintf "<cmd>  Change cvc3 command to <cmd> (default: \"%s\")" !Flag.External.cvc3;
      (* fair termination mode *)
      "", Arg.Unit ignore, "Options_for_fair_termination_mode";
      "-fair-termination", Arg.Unit Flag.(fun () -> Method.mode := Flag.Method.FairTermination), " Check fair termination";
@@ -482,7 +491,7 @@ let set_file name =
         ignore @@ Sys.command @@ Format.sprintf "%s %s -o '%s'" pp name name';
         name'
   in
-  Flag.filenames := name' :: !Flag.filenames
+  Flag.Input.(filenames := name' :: !filenames)
 
 let parse_arg_list has_head args =
   Arg.current := 0;
@@ -515,58 +524,23 @@ let copy_input_file file =
   IO.copy_file ~src:file ~dest:temp_file;
   temp_file
 
-let merge_input_files files =
-  let filename =
-    if !Flag.use_temp then
-      !!make_temp_file
-    else
-      Filename.change_extension (List.hd files) "merge.ml"
-  in
-  let cout = open_out filename in
-  let ocf = Format.formatter_of_out_channel cout in
-  let append file =
-    let cin = open_in file in
-    let s = IO.input_all cin in
-    let module_name =
-      file
-      |> Filename.basename
-      |> Filename.chop_extension_if_any
-      |> String.capitalize
-    in
-    Format.fprintf ocf "module %s = struct@." module_name;
-    Format.fprintf ocf "# 1 \"%s\"@." file;
-    output_string cout s;
-    Format.fprintf ocf "end@."
-  in
-  List.rev_iter append files;
-  filename
-
 let parse_arg () =
   Arg.parse arg_spec set_file usage;
   Flag.Log.args := Array.to_list Sys.argv;
   if not !Flag.Mode.ignore_conf then read_option_conf ()
 
-let open_input_file () =
-  let filename =
-    match !Flag.filenames with
-    | []
-    | ["-"] ->
-        let filename = if !Flag.use_temp then !!make_temp_file else "stdin.ml" in
-        Flag.filenames := [filename];
-        IO.output_file filename (IO.input_all stdin);
-        filename
-    | _ ->
-        let filename =
-          match !Flag.filenames with
-          | [] -> assert false
-          | [file] -> if !Flag.use_temp then copy_input_file file else file
-          | files -> merge_input_files files
-        in
-        Config.load_path := List.map Filename.dirname !Flag.filenames @ !Config.load_path;
-        filename
-  in
-  Flag.Method.input_cegar := List.length !Flag.filenames = 1 && String.ends_with (List.hd !Flag.filenames) ".cegar";
-  open_in filename
+let save_input_to_file filenames =
+  match filenames with
+  | []
+  | ["-"] ->
+      let filename = if !Flag.use_temp then !!make_temp_file else "stdin.ml" in
+      Flag.Input.filenames := [filename];
+      IO.output_file filename (IO.input_all stdin)
+  | _ ->
+      if !Flag.use_temp then
+        filenames
+        |> List.map copy_input_file
+        |> Ref.set Flag.Input.filenames
 
 (* called before parsing options *)
 let fpat_init1 () =
@@ -575,8 +549,8 @@ let fpat_init1 () =
 (* called after parsing options *)
 let fpat_init2 () =
   let open Fpat in
-  Global.target_filename := !!Flag.mainfile;
-  SMTProver.cvc3_command := !Flag.cvc3;
+  Global.target_filename := !!Flag.Input.main;
+  SMTProver.cvc3_command := !Flag.External.cvc3;
   SMTProver.initialize ()
 
 let check_env () =
@@ -667,7 +641,7 @@ let init_after_parse_arg () =
 
 let check_bin () =
   let open Main_loop in
-  let {args;preprocessed} = Marshal.from_file_exn !!Flag.mainfile in
+  let {args;preprocessed} = Marshal.from_file_exn !!Flag.Input.main in
   parse_arg_list true args;
   let spec = Spec.init in
   let s,r =
@@ -680,30 +654,71 @@ let check_bin () =
   set_status s;
   r
 
-let main cin =
+let parse_from_file filename =
+  let cin = open_in filename in
+  let lb = Lexing.from_channel cin in
+  lb.Lexing.lex_curr_p <-
+    {Lexing.pos_fname = Filename.basename !!Flag.Input.main;
+     Lexing.pos_lnum = 1;
+     Lexing.pos_cnum = 0;
+     Lexing.pos_bol = 0};
+  let orig = Parse.use_file lb in
+  let parsed =
+    Ref.tmp_set
+      Config.load_path
+      (List.map Filename.dirname !Flag.Input.filenames @ !Config.load_path)
+      (fun () -> Parser_wrapper.from_use_file orig)
+  in
+  close_in cin;
+  orig, parsed
+
+let parse_from_files filenames =
+  let aux acc file (_,t) =
+    let mod_var =
+      let name =
+        file
+        |> Filename.basename
+        |> Filename.chop_extension_if_any
+        |> String.capitalize
+      in
+      let ty = Type.TData name in
+      Id.new_var ~name ty
+    in
+    let decls,t' = Syntax.decomp_locals t in
+    assert Syntax.(t'.desc = End_of_definitions);
+    Term_util.Term.(let_ [mod_var, module_ decls] acc)
+  in
+  let parsed = List.map parse_from_file filenames in
+  let _,main = List.hd parsed in
+  List.map fst parsed,
+  List.fold_left2 aux main (List.tl filenames) (List.tl parsed)
+
+let wrap_input_for_fair_termination () =
+  if List.length !Flag.Input.filenames > 1 then unsupported "Multiple files for fair-termination checking";
+  let filename = Filename.change_extension !!Flag.Input.main "ft.ml" in
+  let text =
+    !!Flag.Input.main
+    |> IO.input_file
+    |> Fair_termination_util.add_event
+  in
+  IO.output_file ~filename ~text;
+  Flag.Input.filenames := [filename]
+
+let main filenames =
   set_status @@ Flag.Log.Other "Start";
-  if String.ends_with !!Flag.mainfile ".bin" then
+  if String.ends_with !!Flag.Input.main ".bin" then
     check_bin ()
   else
-    let input_string =
-      let s = IO.input_all cin in
-      if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination)
-      then Fair_termination_util.add_event s
-      else s
+    let () =
+      if Flag.Method.(!mode = FairTermination || !mode = FairNonTermination) then
+        wrap_input_for_fair_termination ()
     in
-    let lb = Lexing.from_string input_string in
-    lb.Lexing.lex_curr_p <-
-      {Lexing.pos_fname = Filename.basename !!Flag.mainfile;
-       Lexing.pos_lnum = 1;
-       Lexing.pos_cnum = 0;
-       Lexing.pos_bol = 0};
-    if !Flag.Method.input_cegar then
-      main_input_cegar lb
+    if !!Flag.Input.is_cegar then
+      main_input_cegar !!Flag.Input.main
     else
-      let orig = Parse.use_file lb in
-      let parsed = Parser_wrapper.from_use_file orig in
+      let origs,parsed = parse_from_files !Flag.Input.filenames in
+      let orig = List.hd origs in
       Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
-      if !Flag.NonTermination.randint_refinement_log then output_randint_refinement_log input_string;
       let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
       (* TODO: Refactor below *)
       let verify t =
@@ -745,9 +760,9 @@ let () =
       init_before_parse_arg ();
       parse_arg ();
       if not !!is_only_result then print_env true false;
-      let cin = open_input_file () in
+      save_input_to_file !Flag.Input.filenames;
       init_after_parse_arg ();
-      if main cin then decr Flag.Log.cegar_loop;
+      if main !Flag.Input.filenames then decr Flag.Log.cegar_loop;
       Fpat.SMTProver.finalize ();
       print_info ()
     with

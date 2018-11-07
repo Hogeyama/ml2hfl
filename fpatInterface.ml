@@ -442,6 +442,7 @@ let insert_extra_param t =
   let rec aux rfs bvs exs t =
     let desc =
       match t.S.desc with
+      | S.End_of_definitions -> S.End_of_definitions
       | S.Const c -> S.Const c
       | S.Var y -> S.Var (trans_id y)
       | S.Fun(y, t1) ->

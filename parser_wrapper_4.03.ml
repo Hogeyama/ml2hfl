@@ -942,7 +942,7 @@ let make_local' (flag,decl) t =
   match flag,decl with
   | Nonrecursive, Decl_let defs ->
       let map =
-        let fv = get_fv @@ make_tuple @@ List.map snd defs in
+        let fv = List.flatten_map (get_fv -| snd) defs in
         defs
         |> List.map fst
         |> List.filter @@ Id.mem -$- fv

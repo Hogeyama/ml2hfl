@@ -18,7 +18,7 @@ let rec check env t typ =
   match t.desc, elim_tattr t.typ with
   | _, TFuns _ -> ()
   | Label(_, t), _ -> check env t typ
-  | Const End_of_definitions, TBase TUnit -> ()
+  | End_of_definitions, TBase TUnit -> ()
   | Const Unit, TBase TUnit -> ()
   | Const CPS_result, typ when typ = typ_result -> ()
   | Const(True|False), TBase TBool -> ()

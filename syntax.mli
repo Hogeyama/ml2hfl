@@ -18,7 +18,6 @@ and attr =
   | ALoc of Location.t
 and term = {desc:desc; typ:typ; attr:attr list}
 and const = (* only base type constants *)
-  | End_of_definitions
   | Unit
   | True
   | False
@@ -32,6 +31,7 @@ and const = (* only base type constants *)
   | CPS_result
   | Rand of typ * bool (** true denotes CPS-term *)
 and desc =
+  | End_of_definitions
   | Const of const
   | Var of id
   | Fun of id * term

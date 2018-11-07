@@ -221,7 +221,6 @@ and trans_const c typ =
   | S.Nativeint n -> Nativeint n
   | S.CPS_result -> CPS_result
   | S.Rand _ -> assert false
-  | S.End_of_definitions -> assert false
 
 (** App(Temp e, t) denotes execution of App(t,Unit) after happening the event e *)
 and trans_term post xs env t =

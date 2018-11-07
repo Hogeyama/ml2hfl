@@ -50,7 +50,7 @@ let save_counter = ref 0
 let save_to_file t =
   incr save_counter;
   let ext = string_of_int !save_counter ^ ".ml" in
-  let filename = Filename.change_extension !!Flag.mainfile ext in
+  let filename = Filename.change_extension !!Flag.Input.main ext in
   let cout = open_out filename in
   let fm = Format.formatter_of_out_channel cout in
   Format.fprintf fm "%a@." Print.as_ocaml_typ t;

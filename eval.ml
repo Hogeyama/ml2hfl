@@ -226,7 +226,7 @@ let rec eval_print fm cnt limit gen t =
       Format.eprintf "@.eval_print: %a@." Print.constr t;
       assert false
 
-exception Unsound
+exception CoerceAbstraction
 
 let print fm (ce, {Problem.term=t}) =
   let cnt = ref 0 in
@@ -240,10 +240,10 @@ let print fm (ce, {Problem.term=t}) =
   in
   try
     ignore @@ eval_print fm cnt limit gen t;
-    if !Flag.use_abst <> [] then raise Unsound;
+    if !Flag.Encode.used_abst <> [] then raise CoerceAbstraction;
     assert false
   with
   | RaiseExcep _ -> Format.fprintf fm "@\nUNCAUGHT EXCEPTION OCCUR!@\n"
   | EventFail -> Format.fprintf fm "@\nFAIL!@\n"
-  | Unsound -> Format.fprintf fm "@\nThis is not a counterexample@\nDisable abstraction options@\n"
+  | CoerceAbstraction -> Format.fprintf fm "@\nThis is not a counterexample@\nDisable abstraction options@\n"
   | Unsupported s -> Format.printf "@\nUnsupported: %s@\n" s

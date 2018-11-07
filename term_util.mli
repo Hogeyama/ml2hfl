@@ -139,7 +139,6 @@ val get_opt_typ : typ -> typ
 val opt_typ : typ -> typ
 val effect_of_typ : typ -> Type.effect
 val effect_of : term -> Type.effect
-val defs_of_term : term -> (id * term) list list
 
 val is_base_var : id -> bool
 val is_fun_var : id -> bool
@@ -289,6 +288,7 @@ module Term : sig
   val none : typ -> term
   val some : term -> term
   val match_ : term -> (pattern * term * term) list -> term
+  val module_ : declaration list -> term
   val length : term -> term
   val (|->) : id -> term -> term -> term
 end

@@ -1,12 +1,20 @@
-let omega = ref Mconfig.omega
-let cvc3 = ref Mconfig.cvc3
+open Util
 
-let filenames : string list ref = ref []
-let mainfile () = List.hd !filenames
-let spec_file = ref ""
+module External = struct
+  let omega = ref Mconfig.omega
+  let cvc3 = ref Mconfig.cvc3
+end
 
-let use_abst : string list ref = ref []
-let add_use_abst s = if not @@ List.mem s !use_abst then use_abst := s :: !use_abst
+module Input = struct
+  let filenames : string list ref = ref []
+  let main () = List.hd !filenames
+  let spec = ref ""
+  let is_cegar () =
+    match !filenames with
+    | [filename] -> String.ends_with filename ".cegar"
+    | _ -> false
+end
+
 let pp : string option ref = ref None
 
 let use_temp = ref false
@@ -29,7 +37,6 @@ end
 module Method = struct
   type mode = Reachability | FileAccess | Termination | NonTermination | FairTermination | FairNonTermination | Trans
   let mode = ref Reachability
-  let input_cegar = ref false
   let nondet = ref false (* eager evaluation for branch *)
   let use_nint = ref false
   let use_part_eval = true
@@ -70,6 +77,8 @@ module Encode = struct
   let encode_list_opt = ref false
   let abst_list_eq = ref false
   let abst_literal = ref (-1)
+  let used_abst : string list ref = ref []
+  let use_abst s = if not @@ List.mem s !used_abst then used_abst := s :: !used_abst
 end
 
 module Print = struct

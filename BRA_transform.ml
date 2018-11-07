@@ -62,8 +62,8 @@ let modify_id v = if v.Id.name = "_" then "_" else Id.to_string ~plain:true v
 let modify_id_typ v = if v.Id.name = "_" then "_" else parens (Id.to_string ~plain:true v ^ place_signature (show_typ (Id.typ v)))
 let rec show_term ?(top=false) t = show_desc top t.desc
 and show_desc top = function
+  | End_of_definitions -> "()"
   | Const Unit -> "()"
-  | Const End_of_definitions -> "()"
   | Const True -> "true"
   | Const False -> "false"
   | Const (Int n) -> parens (string_of_int n)
@@ -132,7 +132,7 @@ let retyping t type_of_state  =
              |> Lexing.from_string
   in
   let () = lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename !!Flag.mainfile;
+    {Lexing.pos_fname = Filename.basename !!Flag.Input.main;
      Lexing.pos_lnum = 1;
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
@@ -208,7 +208,7 @@ let rec find_main_function = function
   | _ -> None
 
 let remove_unit_wraping = function
-  | {desc = Local(Decl_let [{Id.name="u"}, t], {desc = Const (Unit|End_of_definitions); typ = TBase TUnit})} -> t
+  | {desc = Local(Decl_let [{Id.name="u"}, t], {desc = Const Unit|End_of_definitions; typ = TBase TUnit})} -> t
   | t -> t
 
 let rec lambda_lift t =
@@ -231,7 +231,7 @@ let rec regularization e =
       let rec aux = function
 	| {desc = Local(Decl_let bindings, rest)} as t -> {t with desc = Local(Decl_let bindings, aux rest)}
 	| {desc = Const Unit} -> main_expr
-	| {desc = Const End_of_definitions} -> main_expr
+	| {desc = End_of_definitions} -> main_expr
 	| _ -> assert false
       in
       aux e

@@ -174,16 +174,16 @@ let read parser lexer =
   Id.save_counter ();
   let spec1 =
     begin
-      if !Flag.Method.use_spec && !Flag.spec_file = ""
+      if !Flag.Method.use_spec && !Flag.Input.spec = ""
       then
-        let spec = Filename.change_extension !!Flag.mainfile "spec" in
-        if Sys.file_exists spec then Flag.spec_file := spec
+        let spec = Filename.change_extension !!Flag.Input.main "spec" in
+        if Sys.file_exists spec then Flag.Input.spec := spec
     end;
-    parse parser lexer !Flag.spec_file
+    parse parser lexer !Flag.Input.spec
   in
   let spec2 =
-    if !Flag.Method.comment_spec && Sys.file_exists !!Flag.mainfile
-    then parse_comment parser lexer !!Flag.mainfile
+    if !Flag.Method.comment_spec && Sys.file_exists !!Flag.Input.main
+    then parse_comment parser lexer !!Flag.Input.main
     else init
   in
   if spec2 <> init then Flag.PredAbst.use_filter := true;

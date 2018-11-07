@@ -134,6 +134,7 @@ let rec gen_sub env t ty : sub_constr list =
         []
       else
         [env, (aty, ty)]
+  | End_of_definitions -> assert false
   | Const c ->
       let aty = const_ty c in
       if RT.equiv aty ty then
@@ -328,6 +329,6 @@ let check env t ty =
 
 let print cout env t ty =
   let hcs = gen_hcs env t ty in
-  let filename = Filename.change_extension !!Flag.mainfile "smt2" in
+  let filename = Filename.change_extension !!Flag.Input.main "smt2" in
   Fpat.HCCS.save_smtlib2 filename hcs;
   Printf.fprintf cout "%s" @@ IO.input_file filename

@@ -53,8 +53,8 @@ let rec replace_bool_const = function
 let is_valid_forall_exists xs ys cond p =
   let cond = List.map replace_bool_const cond in
   let p = replace_bool_const p in
-  let input_file = Filename.change_extension !!Flag.mainfile "oc" in
-  let result_file = Filename.change_extension !!Flag.mainfile "oc_out" in
+  let input_file = Filename.change_extension !!Flag.Input.main "oc" in
+  let result_file = Filename.change_extension !!Flag.Input.main "oc_out" in
   let vars fm xs = print_list_aux CEGAR_print.var "," false fm xs in
 
   let cout = open_out input_file in
@@ -71,7 +71,7 @@ let is_valid_forall_exists xs ys cond p =
     end);
   close_out cout;
 
-  let cmd = Format.sprintf "%s %s > %s" !Flag.omega input_file result_file in
+  let cmd = Format.sprintf "%s %s > %s" !Flag.External.omega input_file result_file in
   let _ = Sys.command cmd in
   let cin = open_in result_file in
   let result = extract_result cin in

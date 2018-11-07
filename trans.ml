@@ -323,6 +323,7 @@ let part_eval t =
   let rec aux apply t =
     let desc =
       match t.desc with
+      | End_of_definitions -> End_of_definitions
       | Const c -> Const c
       | Var x ->
           begin
@@ -462,7 +463,7 @@ let replace_typ =
             begin
               let f'' = Id.set_typ f @@ elim_tattr_all @@ Id.typ f' in
               Format.eprintf "Prog: %a@.Spec: %a@." Print.id_typ f Print.id_typ f'';
-              let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.spec_file in
+              let msg = Format.sprintf "Type of %s in %s is wrong?" (Id.name f) !Flag.Input.spec in
               fatal @@ msg ^ " (please specify monomorphic types if polymorphic types exist)"
             end;
           let xs' =
@@ -1486,10 +1487,10 @@ let replace_base_with_int =
   let tr_desc desc =
     match desc with
     | Const(Char _ | String _ | Float _ | Int32 _ | Int64 _ | Nativeint _ as c) ->
-        Flag.add_use_abst "Base with int";
+        Flag.Encode.use_abst "Base with int";
         Const (Int (hash_of_const c))
     | Const(Rand(TBase (TPrim _), b)) ->
-        Flag.add_use_abst "Base with int";
+        Flag.Encode.use_abst "Base with int";
         Const (Rand(Ty.int,b))
     | _ -> tr.tr_desc_rec desc
   in
@@ -1873,7 +1874,7 @@ let rec replace_main ?(force=false) ~main t =
   | Local(Decl_type decls, t2) ->
       make_let_type decls @@ replace_main ~force ~main t2
   | _ ->
-      assert (force || t.desc = Const End_of_definitions);
+      assert (force || t.desc = End_of_definitions);
       main
 
 let main_name = "main"
@@ -2588,7 +2589,7 @@ let extract_module =
         in
         (tr.tr_term @@ List.fold_right aux decls t).desc
     | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
-        Flag.add_use_abst "Functor";
+        Flag.Encode.use_abst "Functor";
         t.desc
     | Module _ ->
         Format.eprintf "%a@." Print.desc desc;
@@ -2705,7 +2706,7 @@ let abst_recdata =
           in
           Match(t1', pats'')
       | Constr(_,ts) when check t.typ env ->
-          Flag.add_use_abst "Data with int";
+          Flag.Encode.use_abst "Data with int";
           let ts' = List.map (tr.tr2_term (check,env)) ts in
           Term.(seqs ts' randi).desc
       | _ -> tr.tr2_desc_rec (check,env) t.desc
@@ -2722,7 +2723,7 @@ let abst_recdata =
   let tr_pat (check,env) p =
     match p.pat_desc with
     | PConstr _ when check p.pat_typ env ->
-        Flag.add_use_abst "abst_recdata";
+        Flag.Encode.use_abst "abst_recdata";
         {pat_desc=PNondet; pat_typ=Ty.int}
     | _ -> tr.tr2_pat_rec (check,env) p
   in
@@ -2982,7 +2983,7 @@ let abst_literal =
   let tr_term t =
     if is_big_literal t then
       begin
-        Flag.add_use_abst "literal";
+        Flag.Encode.use_abst "literal";
         make_rand_unit t.typ
       end
     else

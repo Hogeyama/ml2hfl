@@ -23,7 +23,7 @@ let set_print_unused () =
   config_default := {!config_default with unused=true}
 
 let is_definitions desc =
-  (snd @@ decomp_locals {desc;typ=Ty.unit;attr=[]}).desc = Const End_of_definitions
+  (snd @@ decomp_locals {desc;typ=Ty.unit;attr=[]}).desc = End_of_definitions
 
 let rec print_typ fm t = Type.print ~occur:occur_typ (print_term {!config_default with ty=false} 0) fm t
 and print_ids ?fv cfg fm xs =
@@ -90,8 +90,6 @@ and print_termlist cfg pri fm ts =
 
 and print_const cfg fm c =
   match c with
-  | End_of_definitions when cfg.as_ocaml -> fprintf fm "()"
-  | End_of_definitions -> fprintf fm "EOD"
   | Unit -> fprintf fm "()"
   | True -> fprintf fm "true"
   | False -> fprintf fm "false"
@@ -203,6 +201,8 @@ and print_if_label cfg fm attr =
 and print_desc cfg pri attr fm desc =
   let pr_t = print_term {cfg with top=false} in
   match desc with
+  | End_of_definitions when cfg.as_ocaml -> fprintf fm "()"
+  | End_of_definitions -> fprintf fm "EOD"
   | Const c -> print_const {cfg with top=false} fm c
   | Var x -> print_id fm x
   | Fun(x,t1) ->
@@ -466,6 +466,7 @@ let print_term cfg fm = print_term cfg 0 fm
 let rec print_term' pri fm t =
   fprintf fm "(@[";(
     match t.desc with
+    | End_of_definitions -> fprintf fm "EOD"
     | Const c -> print_const !config_default fm c
     | Var x when t.typ = Id.typ x -> print_id fm x
     | Var x -> print_id_typ fm x
@@ -605,7 +606,7 @@ let rec print_term' pri fm t =
 and print_declaration' fm decls = (* TODO: fix *)
   let t =
     let aux decl t0 = {desc=Local(decl,t0);typ=t0.typ;attr=[]} in
-    List.fold_right aux decls {desc=Const End_of_definitions; typ=TBase TUnit; attr=[]}
+    List.fold_right aux decls {desc=End_of_definitions; typ=TBase TUnit; attr=[]}
   in
   print_term' 0 fm t
 
@@ -662,6 +663,7 @@ let string_of_binop op = Format.asprintf "%a" print_binop op
 let string_of_typ typ = Format.asprintf "%a" print_typ typ
 let string_of_constr t =
   match t.desc with
+  | End_of_definitions -> "End_of_definitions"
   | Const _ -> "Const"
   | Var _ -> "Var"
   | Fun _ -> "Fun"
