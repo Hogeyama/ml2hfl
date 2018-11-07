@@ -151,7 +151,7 @@ let read_as_string in_channel =
 
 let rec verifyFile_aux filename =
   let default = "empty" in
-  let result_file = Filename.change_extension !Flag.mainfile "horsatp_out" in
+  let result_file = Filename.change_extension !!Flag.mainfile "horsatp_out" in
   let oc = open_out result_file in
   output_string oc default;
   close_out oc;
@@ -185,7 +185,7 @@ let check target =
     else
       "hors"
   in
-  let input = Filename.change_extension !Flag.mainfile ext in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     Debug.printf "%s." target';
     write_log input target';

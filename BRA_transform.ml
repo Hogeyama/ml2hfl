@@ -132,7 +132,7 @@ let retyping t type_of_state  =
              |> Lexing.from_string
   in
   let () = lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename !Flag.mainfile;
+    {Lexing.pos_fname = Filename.basename !!Flag.mainfile;
      Lexing.pos_lnum = 1;
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};

@@ -79,7 +79,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	CEGAR_abst_util.mli ref_type_check.mli ref_type_pred_typing.mli
 CMI = $(MLI:.mli=.cmi)
 
-CMO = revision.cmo mconfig.cmo flag.cmo debug.cmo util.cmo		\
+CMO = revision.cmo mconfig.cmo util.cmo flag.cmo debug.cmo		\
 	mochi_util.cmo menv.cmo color.cmo tree.cmo rose_tree.cmo	\
 	sexp.cmo id.cmo type.cmo syntax.cmo print.cmo term_util.cmo	\
 	CEGAR_type.cmo CEGAR_syntax.cmo CEGAR_print.cmo			\

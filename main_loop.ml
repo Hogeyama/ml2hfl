@@ -82,7 +82,7 @@ let run_preprocess ?make_pps spec problem =
 let write_annot env orig =
   env
   |> List.map (Pair.map_fst Id.name)
-  |> WriteAnnot.f !Flag.mainfile orig
+  |> WriteAnnot.f !!Flag.mainfile orig
 
 let report_safe env orig {Problem.term=t0} =
   if !Flag.PrettyPrinter.write_annot then Option.iter (write_annot env) orig;
@@ -303,7 +303,7 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
   if exparam_sol <> [] then unsupported "check_parallel";
   if spec.Spec.abst_cegar_env <> [] then unsupported "check_parallel";
   let problem i preprocessed =
-    let input = Filename.change_extension !Flag.mainfile @@ Format.sprintf "%d.bin" i in
+    let input = Filename.change_extension !!Flag.mainfile @@ Format.sprintf "%d.bin" i in
     let status = Filename.change_extension input "status" in
     let cmd = Format.sprintf "%s -s -limit %d %s" Sys.argv.(0) !Flag.Parallel.time input in
     i, (input, status, cmd, preprocessed)

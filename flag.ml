@@ -2,7 +2,7 @@ let omega = ref Mconfig.omega
 let cvc3 = ref Mconfig.cvc3
 
 let filenames : string list ref = ref []
-let mainfile : string ref = ref ""
+let mainfile () = List.hd !filenames
 let spec_file = ref ""
 
 let use_abst : string list ref = ref []

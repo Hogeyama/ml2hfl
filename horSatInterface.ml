@@ -137,7 +137,7 @@ let get_pair s =
 
 let rec verifyFile_aux cmd filename =
   let default = "empty" in
-  let result_file = Filename.change_extension !Flag.mainfile "horsat_out" in
+  let result_file = Filename.change_extension !!Flag.mainfile "horsat_out" in
   let oc = open_out result_file in
   output_string oc default;
   close_out oc;
@@ -230,7 +230,7 @@ let check_apt_aux cmd parser token target =
     else
       "hors"
   in
-  let input = Filename.change_extension !Flag.mainfile ext in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     Debug.printf "%s@." @@ string_of_parseresult_apt target';
     write_log string_of_parseresult_apt input target';
@@ -246,7 +246,7 @@ let check_aux cmd parser token target =
     else
       "hors"
   in
-  let input = Filename.change_extension !Flag.mainfile ext in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     Debug.printf "%s@." @@ string_of_parseresult target';
     write_log string_of_parseresult input target';

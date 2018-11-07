@@ -86,7 +86,7 @@ let trans_ce ce =
 
 let rec verifyFile filename =
   let p1,p2 = !Flag.TRecS.param1, !Flag.TRecS.param2 in
-  let result_file = Filename.change_extension !Flag.mainfile "trecs_out" in
+  let result_file = Filename.change_extension !!Flag.mainfile "trecs_out" in
   let oc = open_out result_file in
   let out_descr = Unix.descr_of_out_channel oc in
   let args = String.nsplit (Format.sprintf "%s -p %d %d %s" !Flag.ModelCheck.trecs p1 p2 filename) " " in
@@ -125,7 +125,7 @@ let check target =
     else
       "hors"
   in
-  let input = Filename.change_extension !Flag.mainfile ext in
+  let input = Filename.change_extension !!Flag.mainfile ext in
   try
     write_log input target';
     verifyFile input
