@@ -119,49 +119,64 @@ let get_tvars =
 
 let rename_poly_funs =
   let fld = make_fold_tr () in
-  let can_unify f (_,g) = Type.can_unify (Id.typ f) (Id.typ g) in
-  let fld_term (f,map) t =
+  let can_unify tenv f (_,g) = Type.can_unify ~tenv:(Some tenv) (Id.typ f) (Id.typ g) in
+  let fld_term (f,map,tenv) t =
+    Format.printf "RPF term: @[%a@." Print.term t;
     match t.desc with
     | Var x when Id.(x = f) ->
+        Format.printf "RPF1: %a@." Print.id_typ x;
         if is_poly_typ t.typ then
           ignore @@ inst_tvar_typ Ty.int t.typ;
-          let map',x' =
-            match List.find_option (can_unify x) map with
-            | None ->
-                let x' = Id.new_var_id x in
-                (x,x')::map, x'
-            | Some(_,x') ->
-                map, x'
-          in
-          (f,map'), make_var x'
-    | Var x -> (f,map), make_var x
-    | Fun(x, _) when Id.(x = f) -> (f,map), t
+        let map',x' =
+          match List.find_option (can_unify tenv x) map with
+          | None ->
+              let x' = Id.new_var_id x in
+              (x,x')::map, x'
+          | Some(_,x') ->
+              map, x'
+        in
+        (f,map',tenv), make_var x'
+    | Var x ->
+        Format.printf "RPF2: %a@." Print.id_typ x;
+        (f,map,tenv), make_var x
+    | Fun(x, _) when Id.(x = f) -> (f,map,tenv), t
     | Fun(x, t) ->
-        let (_,map'),t' = fld.fld_term (f,map) t in
-        (f,map'), make_fun x t'
-    | Local(Decl_let bindings, _) when List.exists (fst |- Id.(=) f) bindings -> (f,map), t
-    | App({desc=Var x; typ=typ}, ts) when Id.(x = f) ->
+        let (_,map',tenv'),t' = fld.fld_term (f,map,tenv) t in
+        (f,map',tenv'), make_fun x t'
+    | Local(Decl_let bindings, _) when List.exists (fst |- Id.(=) f) bindings -> (f,map,tenv), t
+    | App({desc=Var x; typ}, ts) when Id.(x = f) ->
+        Format.printf "RPF3: %a@." Print.id_typ x;
         let x' = Id.new_var ~name:(Id.name x) typ in
         let (_,map'),ts' =
           let aux t ((_,map),ts) =
-            let (_,map'),t' = fld.fld_term (f, map) t in
+            let (_,map',_),t' = fld.fld_term (f,map,tenv) t in
             (f,map'), t'::ts
           in
           List.fold_right aux ts ((f,map),[])
         in
         begin
-          match List.find_option (can_unify x') map' with
+          match List.find_option (can_unify tenv x') map' with
           | Some (_,x'') ->
+              Format.printf "RPF3-1: %a@." Print.typ typ;
+              Format.printf "      : %a@." Print.id_typ x;
+              Format.printf "      : %a@." Print.id_typ x';
+              Format.printf "      : %a@." Print.id_typ x'';
               unify (Id.typ x') (Id.typ x'');
-              (f,map'), make_app (make_var x'') ts'
-          | None -> (f,(x,x')::map'), make_app (make_var x') ts'
+              (f,map',tenv), make_app (make_var x'') ts'
+          | None ->
+              Format.printf "RPF3-2: %a@." Print.id_typ x;
+              (f,(x,x')::map',tenv), make_app (make_var x') ts'
         end
-    | _ -> fld.fld_term_rec (f,map) t
+    | Local(Decl_type tenv', t) ->
+        let tenv'' = tenv'@tenv in
+        let (_,map',_),t' = fld.fld_term (f,map,tenv'') t in
+        (f,map',tenv), {t with desc=Local(Decl_type tenv', t')}
+    | _ -> fld.fld_term_rec (f,map,tenv) t
   in
   fld.fld_term <- fld_term;
   fun f t ->
-    let (_,map),t' = fld.fld_term (f,[]) t in
-    map, t'
+  let (_,map,_),t' = fld.fld_term (f,[],[]) t in
+  map, t'
 
 let unify_pattern_var =
   let col = make_col () Fun.ignore2 in
@@ -1803,14 +1818,11 @@ let copy_poly_funs =
         let tvars = get_tvars (Id.typ f) in
         assert (tvars <> []);
         let map2,t2' = fld.fld_term map t2 in
-        let t2'' = (*inst_tvar TInt*) t2' in
-        let map_rename,t2''' = rename_poly_funs f t2'' in
-        Debug.printf "COPY: @[";
-        List.iter (fun (_,x) -> Debug.printf "%a;@ " Print.id_typ x) map_rename;
-        Debug.printf "@.";
+        let map_rename,t2''' = rename_poly_funs f t2' in
+        Debug.printf "COPY[%a]: %a@." Print.id_typ f Print.(list id_typ) @@ List.map snd map_rename;
         if map_rename = [] then
           let map1,t1' = fld.fld_term map2 t1 in
-          (f,f)::map1, ((*inst_tvar TInt @@*) make_let [f, t1'] t2').desc
+          (f,f)::map1, (make_let [f, t1'] t2').desc
         else
           let aux (map',t) (_,f') =
             let tvar_map = List.map (fun v -> v, ref None) tvars in
@@ -1838,7 +1850,8 @@ let copy_poly_funs =
           let map'',t' = fld.fld_term map' t in
           List.map (fun (f,_) -> f,f) defs @ map'', Local(Decl_let defs', t')
         else
-          fatal "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations."
+          let fs = String.join ", " @@ List.map (Id.to_string -| fst) defs in
+          fatal @@ Format.sprintf "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations for %s." fs
     | _ -> fld.fld_desc_rec map desc
   in
   fld.fld_desc <- fld_desc;
@@ -2832,35 +2845,26 @@ let complete_precord =
   tr.tr2_pat <- tr_pat;
   tr.tr2_term []
 
-let unify_app =
-  let col = make_col () Fun.ignore2 in
-  let set r ty =
-    match ty with
-    | TVar(r',_) when r == r' -> ()
-    | _ -> r := Some ty
-  in
-  let col_term t =
-    col.col_term_rec t;
+let instansiate_poly_fun =
+  let tr = make_trans () in
+  let tr_term t =
     match t.desc with
-    | App(t1, ts) ->
+    | App({desc=Var f;typ}, ts) when is_poly_typ typ ->
         let rec unify ty ts =
           match elim_tattr ty, ts with
-          | TFun(x,ty'), t2::ts' ->
-              begin
-                match Id.typ x with
-                | TVar({contents=None} as r,_) -> set r t2.typ
-                | _ -> ()
-              end;
-              unify ty' ts'
-          | TVar ({contents=None} as r,_), [] -> set r t.typ
+          | TFun(x,ty'), t2::ts' -> Type.unify (Id.typ x) t2.typ
           | _, [] -> ()
           | _ -> assert false
         in
-        unify t1.typ ts
-    | _ -> ()
+        let ty = Type.copy typ in
+        let f' = Id.set_typ f ty in
+        unify ty ts;
+        let ts' = List.map tr.tr_term ts in
+        Term.(var f' @ ts')
+    | _ -> tr.tr_term_rec t
   in
-  col.col_term <- col_term;
-  fun t -> col.col_term t; t
+  tr.tr_term <- tr_term;
+  tr.tr_term
 
 let inline_simple_types =
   let tr = make_trans2 () in

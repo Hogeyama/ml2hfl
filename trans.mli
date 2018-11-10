@@ -88,7 +88,7 @@ val eta_normal : term -> term
 val direct_from_CPS : term -> term
 val name_read_int : term -> term
 val complete_precord : term -> term
-val unify_app : term -> term
+val instansiate_poly_fun : term -> term
 val set_length_typ : term -> term
 
 (** {6 Simplification, Inlining, Reduction} *)

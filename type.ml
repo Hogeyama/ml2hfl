@@ -297,8 +297,8 @@ let rec can_unify ?(tenv=None) typ1 typ2 =
   | TData _, _
   | _, TData _ when tenv = None -> true
   | TData s1, TData s2 when s1 = s2 -> true
-  | TData s, _ when List.mem_assoc s @@ Option.get tenv -> can_unify ~tenv (List.assoc s @@ Option.get tenv) typ2
-  | _, TData s when List.mem_assoc s @@ Option.get tenv -> can_unify ~tenv typ1 (List.assoc s @@ Option.get tenv)
+  | TData s, _ when Option.exists (List.mem_assoc s) tenv -> can_unify ~tenv (List.assoc s @@ Option.get tenv) typ2
+  | _, TData s when Option.exists (List.mem_assoc s) tenv -> can_unify ~tenv typ1 (List.assoc s @@ Option.get tenv)
   | _ -> false
 
 

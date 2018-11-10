@@ -4,7 +4,7 @@ open Problem
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let extract_module = map Trans.extract_module
-let unify_app = map Trans.unify_app
+let instansiate_poly_fun = map Trans.instansiate_poly_fun
 let mark_fv_as_external = map Trans.mark_fv_as_external
 let alpha_rename ~whole ~set_counter = map @@ Trans.alpha_rename ~whole ~set_counter
 let elim_unused_let ~leave_last = map @@ Trans.elim_unused_let ~leave_last

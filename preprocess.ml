@@ -48,7 +48,7 @@ type preprocess_label =
   | Extract_module
   | Mark_fv_as_external
   | Alpha_rename
-  | Unify_app
+  | Instansiate_poly_fun
   | Abst_recursive_record
   | Inline_simple_types
   | Abst_polymorphic_comparison
@@ -111,7 +111,7 @@ let string_of_label = function
   | Extract_module -> "Extract module"
   | Mark_fv_as_external -> "Mark free variables as external"
   | Alpha_rename -> "Alpha renaming"
-  | Unify_app -> "Unify types for function application"
+  | Instansiate_poly_fun -> "Instansiate polymorphic types for function application"
   | Abst_recursive_record -> "Abst recursive record"
   | Inline_simple_types -> "Inline simple types"
   | Abst_polymorphic_comparison -> "Abst polymorphic comparison"
@@ -165,8 +165,8 @@ let all spec : t list =
       map_trans_list set_main;
     Extract_module,
       map_trans extract_module;
-    Unify_app,
-      map_trans unify_app;
+    Instansiate_poly_fun,
+      map_trans instansiate_poly_fun;
     Mark_fv_as_external,
       map_trans mark_fv_as_external;
     Eliminate_unused_let,
