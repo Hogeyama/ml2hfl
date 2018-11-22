@@ -8,7 +8,7 @@ type base =
   | TBool
   | TInt
   | TPrim of string
-  [@@deriving show]
+
 and 'a t =
   | TBase of base
   | TVar of 'a t option ref * int option
@@ -21,22 +21,22 @@ and 'a t =
   | TApp of constr * 'a t list
   | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
-  [@@deriving show]
+
 and mutable_flag = Immutable | Mutable
-  [@@deriving show]
+
 and constr =
   | TList
   | TRef
   | TOption
   | TArray
   | TLazy
-  [@@deriving show]
+
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
-  [@@deriving show]
+
 and effect = EVar of int | ENone | ECont | EExcep
   [@@deriving show]
 
@@ -229,7 +229,7 @@ let rec print occur print_pred fm typ =
   | TAttr(TAPred(x,ps)::preds, typ) when not !!Debug_attr.check ->
       Format.fprintf fm "@[%a@[<hov 3>[\\%a. %a]@]@]" print' (TAttr(preds,typ)) Id.print x print_preds ps
   | TAttr([TAPureFun], (TFun(x,typ))) when not !!Debug_attr.check ->
-      let pr_arg fm x = if occur x typ then Format.printf "%a:" Id.print x in
+      let pr_arg fm x = if occur x typ then Format.fprintf fm "%a:" Id.print x in
       Format.fprintf fm "(@[<hov 2>%a%a -*>@ %a@])" pr_arg x print' (Id.typ x) print' typ
   | TAttr([TAEffect e], typ) when not !!Debug_attr.check ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
@@ -575,6 +575,7 @@ module Ty = struct
   let funs tys ty = List.fold_right make_tfun tys ty
   let tuple = make_ttuple
   let pair = make_tpair
+  let ( * ) = pair
   let list = make_tlist
   let ref = make_tref
   let option = make_toption

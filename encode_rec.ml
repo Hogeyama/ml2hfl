@@ -21,7 +21,7 @@ let abst_recdata : env trans2 = make_trans2 ()
                           ; ("Node", TData "tree" * TData "tree")])
    is encoded into
      unit * (path:int list -> TTuple [ TTuple [ TTuple [bool; TTuple [int]]
-                                              ; TTuple [bool; TTuple [] ] ;
+                                              ; TTuple [bool; TTuple [] ]] ;
                                        unit (* <- for predicate *)
                                      ])
   *)
@@ -38,12 +38,11 @@ let encode_recdata_typ env s ty =
           | _ ->
               unsupported "encode_variant: non-simple recursion"
         in
-        Ty.(pair
-          (tuple (List.map (pair bool -| tuple -| List.filter_map aux -| snd) labels))
-          unit) (* for predicate *)
+        Ty.((tuple (List.map (pair bool -| tuple -| List.filter_map aux -| snd) labels))
+            * unit) (* for predicate *)
       in
-      Ty.(pair unit
-               (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, ty)))
+      Ty.(unit *
+          (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, ty)))
   | _ -> abst_recdata.tr2_typ env ty
 
 (* e.g.
@@ -56,9 +55,9 @@ let abst_recdata_typ env typ =
   | TRecord fields -> unsupported "abst_recdata_typ TRecord"
   | TVariant(false,labels) ->
       let aux (s,tys) =
-        Ty.(pair bool (tuple @@ List.map (abst_recdata.tr2_typ env) tys))
+        Ty.(bool * tuple (List.map (abst_recdata.tr2_typ env) tys))
       in
-        Ty.(pair (make_ttuple @@ List.map aux labels) unit)
+        Ty.(tuple (List.map aux labels) * unit)
   | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
   | TAttr(attr, ty) ->
       let attr' = List.filter (function TARefPred _ -> false | _ -> true) attr in
@@ -164,19 +163,17 @@ let rec abst_recdata_pat env p =
              TODO refactor
            *)
           let make_bind (acc,i,j) p (p',_,_) =
-            let i',j',t' = match () with
-              | _ when is_rec_type env p.pat_typ ->
-                Debug.printf "%a has rec type %a@." Print.pattern p Print.typ p.pat_typ;
+            let i',j',t' =
+              if is_rec_type env p.pat_typ then
+                let () = Debug.printf "%a has rec type %a@." Print.pattern p Print.typ p.pat_typ in
                 let path = Id.new_var ~name:"path" Ty.(list int) in
-                begin
-                  let t = Term.(pair unit (* extra-param *)
-                                     (fun_ path (snd (var f) @ [cons (int j) (var path)])))
-                  in
-                    Debug.printf "%a@." Print.term' t;
-                    i, j+1, t
-                end
-              | _ ->
-                Debug.printf "%a has non-rec type %a@." Print.pattern p Print.typ p.pat_typ;
+                let t = Term.(pair unit
+                                   (fun_ path (snd (var f) @ [cons (int j) (var path)])))
+                in
+                Debug.printf "%a@." Print.term' t;
+                i, j+1, t
+              else
+                let () = Debug.printf "%a has non-rec type %a@." Print.pattern p Print.typ p.pat_typ in
                 let t = Term.(proj i (snd (proj constr_ix (fst (snd (var f) @ [nil Ty.int]))))) in
                 i+1, j, t
             in
@@ -518,12 +515,7 @@ let trans_rty_rec_data (s,x,t) (ty_before: typ) (ty_after: typ) =
           ]))
       in
       let x = Ref_type.Fun(path, Ref_type.of_simple Ty.(list int), rty) in
-      Ref_type.Tuple
-        [ Id.new_var Ty.unit,
-            Ref_type.of_simple Ty.unit
-        ; Id.new_var (Ref_type.to_simple x),
-            x
-        ]
+      Ref_type.Ty.(tuple [unit(); x])
 
   | _ -> assert false
   end

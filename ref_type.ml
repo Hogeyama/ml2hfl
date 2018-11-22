@@ -394,6 +394,7 @@ let rec to_simple ?(with_pred=false) typ =
 
 let make_base ?(pred=U.true_term) base = Base(base, Id.new_var (Type.TBase base), pred)
 let make_fun ty1 ty2 = Fun(Id.new_var @@ to_simple ty1, ty1, ty2)
+let make_tuple tys = Tuple (List.map (fun ty -> Id.new_var (to_simple ty), ty) tys)
 
 let rec set_base_var x = function
   | Base(base, y, p) -> Base(base, x, U.subst_var y x p)
@@ -847,4 +848,5 @@ module Ty = struct
   let bool ?pred () = base ?pred Type.TBool
   let int ?pred () = base ?pred Type.TInt
   let fun_ = make_fun
+  let tuple = make_tuple
 end

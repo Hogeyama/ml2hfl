@@ -26,6 +26,7 @@ val top : Syntax.typ -> t
 val bottom : Syntax.typ -> t
 val make_fun : t -> t -> t
 val make_base : ?pred:Syntax.term -> Type.base -> t
+val make_tuple : t list -> t
 
 
 (** {6 Destructor} *)
@@ -93,11 +94,10 @@ module Ty : sig
   val int : ?pred:Syntax.term -> unit -> t
   val base : ?pred:Syntax.term -> Type.base -> t
   val fun_ : t -> t -> t
+  val tuple : t list -> t
 end
 
 (* ppx_deriving show *)
 val pp : Format.formatter -> t -> unit
 
 val mk_trans_rty : ?special_case:(t -> Syntax.trans -> (t -> t) -> t option) -> Syntax.trans -> t -> t
-
-

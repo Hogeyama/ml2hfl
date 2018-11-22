@@ -121,6 +121,7 @@ module Ty : sig
   val funs : 'a t list -> 'a t -> 'a t
   val tuple : 'a t list -> 'a t
   val pair : 'a t -> 'a t -> 'a t
+  val ( * ) : 'a t -> 'a t -> 'a t
   val list : 'a t -> 'a t
   val ref : 'a t -> 'a t
   val option : 'a t -> 'a t

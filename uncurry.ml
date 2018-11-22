@@ -100,11 +100,8 @@ let rec infer (env,counter) t =
       if false then Format.printf "x: %a@." Print.id x;
       unify (get_typ env t) @@ get_typ_var env x
   | App(t1, ts) ->
-Format.printf "%s@." __LOC__;
       assert (ts <> []);
-        Format.printf "App t1: %a@." Print.term t1;
-        Format.printf "App ts: %a@." Print.(list term) ts;
-        let constr = List.flatten_map (infer (env,counter)) (t1::ts) in
+      let constr = List.flatten_map (infer (env,counter)) (t1::ts) in
       let id = ref None in
       let aux t typ =
         let id' = gen counter in
@@ -115,11 +112,8 @@ Format.printf "%s@." __LOC__;
       if false then if !id <> None then Format.printf "LET: %d@." @@ Option.get !id;
       (0, Option.get !id) :: unify (get_typ env t1) typ @ constr
   | Local(Decl_let bindings, t2) ->
-Format.printf "%s@." __LOC__;
       let aux (f,t1) =
         let xs,t1 = decomp_funs t1 in
-        Format.printf "Local t1: %a@." Print.term t1;
-        Format.printf "Local t2: %a@." Print.term t2;
         List.iter (add_env_var env) (f::xs);
         let id = ref None in
         let aux x typ =
@@ -136,19 +130,14 @@ Format.printf "%s@." __LOC__;
       in
       infer (env,counter) t2 @ List.flatten_map aux bindings
   | BinOp(op, t1, t2) ->
-Format.printf "%s@." __LOC__;
       infer (env,counter) t1 @ infer (env,counter) t2
   | Not t1 ->
-Format.printf "%s@." __LOC__;
       infer (env,counter) t1
   | If(t1, t2, t3) ->
-Format.printf "%s@." __LOC__;
       infer (env,counter) t1 @ infer (env,counter) t2 @ infer (env,counter) t3
   | Tuple ts ->
-Format.printf "%s@." __LOC__;
       List.flatten_map (infer (env,counter)) ts
   | Proj(i,t) ->
-Format.printf "%s@." __LOC__;
       infer (env,counter) t
   | _ ->
       Format.eprintf "%a@." Print.term t;

@@ -6,7 +6,7 @@ open Fair_termination_type
 
 
 let print_fairness fm fairness =
-  let pr fm (a,b) = Format.printf "(%s, %s)" a b in
+  let pr fm (a,b) = Format.fprintf fm "(%s, %s)" a b in
   Format.fprintf fm "@[<hov 1>{%a}@]" (print_list pr ",@ ") fairness
 
 let print_rank_fun xs fm {coeffs;const} =

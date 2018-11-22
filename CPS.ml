@@ -452,7 +452,7 @@ let rec add_preds_cont_aux k t =
 let add_preds_cont k t =
   let t' = add_preds_cont_aux k t in
   let ks = List.filter (Id.same k) (get_fv t') in
-  Format.printf "APC: %a, %a ===> %a@." Id.print k Print.term t Print.term t';
+  Debug.printf "APC: %a, %a ===> %a@." Id.print k Print.term t Print.term t';
   if List.length ks = 0
   then (assert (t.desc = Bottom); k, t')
   else (assert (List.length ks = 1); List.hd ks, t')
