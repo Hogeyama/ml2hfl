@@ -48,6 +48,7 @@ val make_let' : term -> (id -> term) -> term
 val make_let_type : (string * typ) list -> term -> term
 val make_lets_type : (string * typ) list -> term -> term
 val make_fun : id -> term -> term
+val make_pure_fun : id -> term -> term
 val make_funs : id list -> term -> term
 val make_not : term -> term
 val make_and : term -> term -> term
@@ -182,6 +183,7 @@ val col_app_args : id -> term -> term list list
 
 val has_pnondet : pattern -> bool
 val has_safe_attr : term -> bool
+val has_pure_attr : term -> bool
 
 (** {6 Substitution} *)
 val subst : ?rename_if_captured:bool -> id -> term -> term -> term
@@ -250,6 +252,7 @@ module Term : sig
   val let_ : (id * term) list -> term -> term
   val lets : (id * term) list -> term -> term
   val fun_ : id -> term -> term
+  val pfun : id -> term -> term
   val funs : id list -> term -> term
   val not : term -> term
   val (&&) : term -> term -> term

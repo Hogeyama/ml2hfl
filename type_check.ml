@@ -13,7 +13,7 @@ let check_var x typ =
 let rec check env t typ =
   Debug.printf "CHECK: @[%a, %a@." Print.term t Print.typ typ;
   if not (Type.can_unify t.typ typ) then
-    (Format.eprintf "check: %a, %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
+    (Format.eprintf "check: @[%a,@ %a@." (Color.red Print.term') t (Color.yellow Print.typ) typ;
      assert false);
   match t.desc, elim_tattr t.typ with
   | _, TFuns _ -> ()
@@ -162,7 +162,7 @@ let rec check env t typ =
       check env {t with typ} typ
   | _, TData _ -> () (* externally defined types *)
   | _ ->
-      Format.eprintf "check': %a, %a@." Print.term' t (Color.yellow Print.typ) t.typ;
+      Format.eprintf "check': @[%a,@ %a@." Print.term' t (Color.yellow Print.typ) t.typ;
       assert false
 
 let check ?(ty=Ty.unit) t = if Flag.Debug.check_typ then check [] t ty

@@ -69,19 +69,28 @@ let rec make_app t ts =
         assert false
       end
   in
-  match t.desc, tfuns_to_tfun @@ elim_tattr t.typ, ts with
+  let ty = tfuns_to_tfun @@ elim_tattr t.typ in
+  let attr =
+    if List.mem TAPureFun @@ fst @@ decomp_tattr t.typ &&
+         List.for_all has_pure_attr (t::ts)
+    then
+      pure_attr
+    else
+      []
+  in
+  match t.desc, ty, ts with
   | _, _, [] -> t
   | App(t1,ts1), TFun(x,typ), t2::ts2 ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
+      make_app {desc=App(t1,ts1@[t2]); typ; attr} ts2
   | App(t1,ts1), typ, t2::ts2 when typ = typ_unknown || is_tvar typ ->
-      make_app {desc=App(t1,ts1@[t2]); typ; attr=[]} ts2
+      make_app {desc=App(t1,ts1@[t2]); typ; attr} ts2
   | _, TFun(x,typ), t2::ts ->
       check (Id.typ x) t2.typ;
-      make_app {desc=App(t,[t2]); typ; attr=[]} ts
+      make_app {desc=App(t,[t2]); typ; attr} ts
   | _, typ, t2::ts when typ = typ_unknown || is_tvar typ ->
-      make_app {desc=App(t,[t2]); typ; attr=[]} ts
-  | _ when not Flag.Debug.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr=[]}
+      make_app {desc=App(t,[t2]); typ; attr} ts
+  | _ when not Flag.Debug.check_typ -> {desc=App(t,ts); typ=typ_unknown; attr}
   | _ ->
       Format.eprintf "Untypable(make_app): %a@." Print.term' {desc=App(t,ts);typ=typ_unknown; attr=[]};
       assert false
@@ -96,7 +105,7 @@ let make_local decl t =
 let make_let bindings t2 =
   make_local (Decl_let bindings) t2
 let make_let_s bindings t2 =
-  let bindings' = List.filter (fun (f,_) -> List.exists (snd |- occur_in f) bindings || occur_in f t2) bindings in
+  let bindings' = List.filter (fun (f,t1) -> has_pure_attr t1 && List.exists (snd |- occur_in f) bindings || occur_in f t2) bindings in
   make_let bindings' t2
 let make_lets_s bindings t2 =
   List.fold_right (make_let_s -| List.singleton) bindings t2
@@ -107,7 +116,7 @@ let make_lets_type decls t2 =
 let make_lets bindings t2 =
   List.fold_right (make_let -| List.singleton) bindings t2
 let make_seq t1 t2 =
-  if is_value t1 then
+  if is_value t1 || has_pure_attr t1 then
     t2
   else
     make_let [Id.new_var ~name:"u" t1.typ, t1] t2
@@ -122,7 +131,8 @@ let make_fail_unit loc =
   | None -> t
   | Some loc -> add_attr (ALoc loc) t
 let make_fail ?loc typ = make_seq (make_fail_unit loc) @@ make_bottom typ
-let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=[]}
+let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=pure_attr}
+let make_pure_fun x t = {desc=Fun(x,t); typ=pureTFun(x,t.typ); attr=pure_attr}
 let make_funs = List.fold_right make_fun
 let make_not t =
   match t.desc with
@@ -619,9 +629,9 @@ let make_match t1 pats =
   | [{pat_desc=PVar x}, {desc=Const True}, t2] ->
       if Id.mem x @@ get_fv t1 then
         let x' = Id.new_var_id x in
-        make_let [x',t1] @@ subst_var x x' t2
+        make_let_s [x',t1] @@ subst_var x x' t2
       else
-        make_let [x,t1] t2
+        make_let_s [x,t1] t2
   | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
 let make_single_match ?(total=false) t1 p t2 =
   let rec is_total p =
@@ -708,7 +718,7 @@ and same_desc t1 t2 =
   | Field _, Field _ -> unsupported "same_term 3"
   | SetField _, SetField _ -> unsupported "same_term 4"
   | Nil, Nil -> true
-  | Cons _, Cons _ -> unsupported "same_term 5"
+  | Cons(t11,t12), Cons(t21,t22) -> same_term t11 t21 && same_term t12 t22
   | Constr(c1, ts1), Constr(c2, ts2) -> c1 = c2 && List.for_all2 same_term ts1 ts2
   | Match(t1,pats1), Match(t2,pats2) ->
       let eq (pat1,cond1,t1) (pat2,cond2,t2) = pat1 = pat2 && same_term cond1 cond2 && same_term t1 t2 in
@@ -1331,6 +1341,7 @@ module Term = struct
   let let_ = make_let
   let lets = make_lets
   let fun_ = make_fun
+  let pfun = make_pure_fun
   let funs = make_funs
   let not = make_not
   let (&&) = make_and

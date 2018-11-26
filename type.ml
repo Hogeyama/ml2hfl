@@ -122,9 +122,8 @@ let rec elim_tattr_all ty =
   | TModule sgn -> TModule (List.map (Pair.map_snd @@ elim_tattr_all) sgn)
 
 let rec decomp_base ty =
-  match ty with
+  match elim_tattr ty with
   | TBase b -> Some b
-  | TAttr(_, ty) -> decomp_base ty
   | _ -> None
 
 let rec decomp_tfun typ =
@@ -492,30 +491,29 @@ let rec order typ =
   | _ -> assert false
 
 let arg_var typ =
-  match typ with
+  match elim_tattr typ with
   | TFun(x,_) -> x
   | _ -> invalid_arg "arg_var"
 
 let result_typ typ =
-  match typ with
+  match elim_tattr typ with
   | TFun(_,typ') -> typ'
   | _ -> invalid_arg "result_typ"
 
 let rec decomp_ttuple typ =
-  match typ with
+  match elim_tattr typ with
   | TTuple xs -> List.map Id.typ xs
-  | TAttr(_, ty) -> decomp_ttuple ty
   | _ -> invalid_arg "decomp_ttuple"
 
 let decomp_trecord typ =
-  match typ with
+  match elim_tattr typ with
   | TRecord fields -> fields
   | _ ->
       Format.eprintf "%a@." print_init typ;
       invalid_arg "decomp_trecord"
 
 let decomp_tvariant ty =
-  match ty with
+  match elim_tattr ty with
   | TVariant(poly,labels) ->
       poly, labels
   | _ ->

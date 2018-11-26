@@ -1322,13 +1322,12 @@ let normalize_let =
 
 let inline_var =
   let tr = make_trans () in
-  let tr_term t =
-    match t.desc with
-    | Local(Decl_let [x,({desc=Var _} as t1)], t2) ->
-        subst x t1 @@ tr.tr_term t2
-    | _ -> tr.tr_term_rec t
+  let tr_desc desc =
+    match tr.tr_desc_rec desc with
+    | Local(Decl_let [x,({desc=Var _} as t1)], t2) -> (subst x t1 t2).desc
+    | desc -> desc
   in
-  tr.tr_term <- tr_term;
+  tr.tr_desc <- tr_desc;
   tr.tr_term
 
 let rec is_const t =
@@ -3199,3 +3198,112 @@ let insert_extra_param t =
   |> lift_fst_snd
   |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
   |@> Debug.printf "insert_extra_param (%d added)::@. @[%a@.@." (List.length !Fpat.RefTypInfer.params) Print.term
+
+let unify_pure_fun_app =
+  let tr = make_trans () in
+  let collect_app =
+    let union = List.Set.union ~eq:same_term in
+    let col = make_col [] union in
+    let col_term t =
+      match t.desc with
+      | App(_,ts) when has_pure_attr t ->
+          List.fold_right (col.col_term |- union) ts [t]
+      | If(t1, _, _)
+      | Match(t1, _) -> col.col_term t1
+      | Fun(x,t') ->
+          t'
+          |> col.col_term
+          |> List.filter_out (get_fv |- Id.mem x)
+      | Local(Decl_let defs, t') ->
+          t' :: List.map snd defs
+          |> List.flatten_map col.col_term
+          |> List.filter_out (get_fv |- List.exists (Id.mem_assoc -$- defs))
+      | _ -> col.col_term_rec t
+    in
+    col.col_term <- col_term;
+    col.col_term
+  in
+  let tr_desc desc =
+    let unify t =
+      let apps = collect_app t in
+      let aux app t =
+        let x = new_var_of_term app in
+        make_let [x,app] @@ subst_rev app x t
+      in
+      t
+      |> tr.tr_term
+      |> List.fold_right aux apps
+    in
+    match desc with
+    | If(t1, t2, t3) -> If(tr.tr_term t1, unify t2, unify t3)
+    | Match(t, pats) -> Match(tr.tr_term t, List.map (Triple.map_trd unify) pats)
+    | Fun(x, t) -> Fun(x, unify t)
+    | Local(Decl_let defs, t) -> Local(Decl_let (List.map (Pair.map_snd unify) defs), tr.tr_term t)
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
+let lift_assume =
+  let tr = make_trans () in
+  let collect_assume =
+    let union = List.Set.union ~eq:same_term in
+    let col = make_col [] union in
+    let col_term t =
+      match t.desc with
+      | If(t1, t2, {desc=Bottom}) ->
+          union [t1] (union (col.col_term t1) (col.col_term t2))
+      | If(t1, _, _)
+        | Match(t1, _) -> col.col_term t1
+      | Fun _ -> []
+      | Local(Decl_let defs, t') ->
+          t' :: List.map snd defs
+          |> List.map col.col_term
+          |> List.reduce union
+          |> List.filter_out (get_fv |- List.exists (Id.mem_assoc -$- defs))
+      | _ -> col.col_term_rec t
+    in
+    col.col_term <- col_term;
+    col.col_term
+  in
+  let remove_assume =
+    let tr = make_trans () in
+    let tr_desc desc =
+      match desc with
+      | If(t1, t2, {desc=Bottom}) -> tr.tr_desc t2.desc
+      | _ -> tr.tr_desc_rec desc
+    in
+    tr.tr_desc <- tr_desc;
+    tr.tr_term
+  in
+  let tr_desc desc =
+    let lift ?fs t =
+      let asms =
+        t
+        |> collect_assume
+        |> List.map remove_assume
+      in
+      let asms' =
+        match fs with
+        | None -> asms
+        | Some fs -> List.filter (get_fv |- List.exists (List.mem -$- fs)) asms
+      in
+      (*
+      Format.printf "asms: %a@." Print.(list term) asms;
+       *)
+      t
+      |> tr.tr_term
+      |> List.fold_right Term.assume asms'
+    in
+    match desc with
+    | If(t1, t2, {desc=Bottom}) -> tr.tr_desc t2.desc
+    | If(t1, t2, t3) -> If(tr.tr_term t1, lift t2, lift t3)
+    | Match(t, pats) -> Match(tr.tr_term t, List.map (Triple.map_trd lift) pats)
+    | Fun(x, t) -> Fun(x, lift t)
+    | Local(Decl_let defs, t) ->
+        let fs = List.map fst defs in
+        Local(Decl_let (List.map (Pair.map_snd tr.tr_term) defs), lift ~fs t)
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
