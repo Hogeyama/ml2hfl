@@ -94,7 +94,12 @@ let expand_enc_typ env ty =
   | _ -> ty
 
 let proj_enc pos f =
-  let t = Term.(snd (var f) @ [pos]) in
+  let t =
+    if pos.desc = Nil then
+      Term.(pair (fst (var f)) unit)
+    else
+      Term.(snd (var f) @ [pos])
+  in
   let r = Id.new_var t.typ in
   let num = List.length (decomp_ttuple Term.(fst t).typ) in
   let indices =
