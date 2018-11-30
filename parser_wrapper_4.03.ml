@@ -396,7 +396,7 @@ and from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
 
 
 
-let conv_primitive_app t ts typ =
+let conv_primitive_app t ts typ loc =
   match t.desc,ts with
   | Var {Id.name="List.length"}, [t1] -> make_length t1
   | Var {Id.name="Pervasives.@@"}, [t1;t2] -> make_app t1 [t2]
@@ -413,7 +413,7 @@ let conv_primitive_app t ts typ =
   | Var {Id.name="Pervasives.*"}, [t1;t2] -> make_mul t1 t2
   | Var {Id.name="Pervasives./"}, [t1;t2] ->
       let t2' =
-        let make_check t = make_seq (make_assert (make_neq t @@ make_int 0)) t in
+        let make_check t = make_seq (make_assert ~loc (make_neq t @@ make_int 0)) t in
         if has_no_effect t2 then
           make_check t2
         else
@@ -583,7 +583,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let pats'' =
           match totality with
           | Total -> pats'
-          | Partial -> pats' @ [make_pvar (Id.new_var_id x), true_term, make_fail typ2]
+          | Partial -> pats' @ [make_pvar (Id.new_var_id x), true_term, make_fail ~loc:exp_loc typ2]
         in
         let t =
           match pats'' with
@@ -605,14 +605,14 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         in
         let declss,ts = List.split @@ List.mapi aux es in
         decls2 @ List.flatten declss,
-        conv_primitive_app t ts typ'
+        conv_primitive_app t ts typ' exp_loc
     | Texp_match(e,pats,[],tp) ->
         let decls2,t = from_expression id_env e in
         let declss,pats' = List.split_map (from_case id_env) pats in
         let pats'' =
           match tp with
           | Total -> pats'
-          | Partial -> pats' @ [make_pvar (Id.new_var t.typ), true_term, make_fail typ']
+          | Partial -> pats' @ [make_pvar (Id.new_var t.typ), true_term, make_fail ~loc:exp_loc typ']
         in
         decls2 @ List.flatten declss,
         make_match t pats''
