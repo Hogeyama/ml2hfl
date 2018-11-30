@@ -105,7 +105,7 @@ let make_local decl t =
 let make_let bindings t2 =
   make_local (Decl_let bindings) t2
 let make_let_s bindings t2 =
-  let bindings' = List.filter (fun (f,t1) -> has_pure_attr t1 && List.exists (snd |- occur_in f) bindings || occur_in f t2) bindings in
+  let bindings' = List.filter (fun (f,t1) -> occur_in f t2 || not (has_pure_attr t1) || List.exists (snd |- occur_in f) bindings) bindings in
   make_let bindings' t2
 let make_lets_s bindings t2 =
   List.fold_right (make_let_s -| List.singleton) bindings t2
