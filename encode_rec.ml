@@ -315,14 +315,16 @@ let abst_recdata_term (env: env) t =
           in
           make_tuple @@ List.map aux labels
         in
-        make_tuple
-          [ List.combine ts xtys
-            |> List.filter_out (fun (t',_) -> typ = t'.typ)
-            |> List.map (snd |- fst |- make_var)
-            |> make_return;
-            Term.unit ]
+        List.combine ts xtys
+        |> List.filter_out (fun (t',_) -> typ = t'.typ)
+        |> List.map (snd |- fst |- make_var)
+        |> make_return
       in
-      let pat0 = make_pnil Ty.int, true_term, top in
+      let pat0 =
+        make_pnil Ty.int,
+        true_term,
+        Term.(pair top unit)
+      in
       let make_pat (i,acc) (x,ty) =
         if ty = typ then
           let path' = Id.new_var ~name:"path'" Ty.(list int) in
