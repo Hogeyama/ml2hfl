@@ -1322,12 +1322,13 @@ let normalize_let =
 
 let inline_var =
   let tr = make_trans () in
-  let tr_desc desc =
-    match tr.tr_desc_rec desc with
-    | Local(Decl_let [x,({desc=Var _} as t1)], t2) -> (subst x t1 t2).desc
-    | desc -> desc
+  let tr_term t =
+    let t' = tr.tr_term_rec t in
+    match t'.desc with
+    | Local(Decl_let [x,({desc=Var _} as t1)], t2) -> subst x t1 t2
+    | _ -> t'
   in
-  tr.tr_desc <- tr_desc;
+  tr.tr_term <- tr_term;
   tr.tr_term
 
 let rec is_const t =
