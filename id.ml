@@ -68,7 +68,7 @@ let from_string name typ =
     {id=int_of_string s2; name=s1; typ=typ; attr}
   with _ -> {id=0; name; typ; attr}
 
-let compare x y = Compare.on to_string x y
+let compare x y = Compare.on (Pair.make id name) x y
 let eq x y = compare x y = 0
 let same = eq
 
