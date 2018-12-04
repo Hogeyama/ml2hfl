@@ -36,7 +36,7 @@ let remove_id_let =
   tr.tr_term
 
 let alpha_rename ?(whole=false) ?(set_counter=false) =
-  let prefix = '#' in
+  let prefix = '#' in (* must not occur as a prefix of the name of each variable *)
   let tr = make_trans2 () in
   let tr_desc (cnt,names) desc =
     let new_id x =
@@ -50,7 +50,7 @@ let alpha_rename ?(whole=false) ?(set_counter=false) =
       if whole then
         let x' = aux @@ Id.set_id x 0 in
         names := StringSet.add (Id.to_string x') !names;
-        Id.add_name_before (String.make 1 prefix) x'
+        Id.add_name_before (String.of_char prefix) x'
       else
         Id.new_var_id x
     in

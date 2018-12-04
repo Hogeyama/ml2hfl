@@ -19,10 +19,12 @@ let tmp_counter = ref init_counter
 
 let new_int () = incr counter; !counter
 let get_counter () = !counter
-let set_counter n = counter := n
+let set_counter n =
+  Format.printf "set_counter %d@." n;
+  counter := n
 let save_counter () = tmp_counter := !counter
-let reset_counter () = counter := !tmp_counter
-let clear_counter () = counter := init_counter
+let reset_counter () = set_counter !tmp_counter
+let clear_counter () = set_counter init_counter
 
 let make id name attr typ = {id; name; attr; typ}
 let new_var ?(name="x") ?(attr=[]) typ = make (new_int()) name attr typ
