@@ -419,6 +419,7 @@ let trans_term t =
   |> replace_simple_match_with_if
   |> Trans.reconstruct
   |> Trans.inline_var
+  |> Trans.elim_singleton_tuple
   |@> pr "simplify1"
   |> Trans.unify_pure_fun_app
   |> Trans.inline_var

@@ -127,3 +127,4 @@ val split_type_decls : term -> term
 val insert_extra_param : term -> term
 val unify_pure_fun_app : term -> term
 val lift_assume : term -> term
+val elim_singleton_tuple : term -> term

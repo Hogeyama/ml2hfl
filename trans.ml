@@ -3308,3 +3308,26 @@ let lift_assume =
   in
   tr.tr_desc <- tr_desc;
   tr.tr_term
+
+let elim_singleton_tuple =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Tuple [t] -> tr.tr_desc t.desc
+    | Proj(_, t) when tuple_num t.typ = Some 1 -> tr.tr_desc t.desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  let tr_typ typ =
+    match typ with
+    | TTuple [x] -> tr.tr_typ @@ Id.typ x
+    | _ -> tr.tr_typ_rec typ
+  in
+  let tr_pat p =
+    match p.pat_desc with
+    | PTuple [p] -> tr.tr_pat p
+    | _ -> tr.tr_pat_rec p
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_typ <- tr_typ;
+  tr.tr_pat <- tr_pat;
+  tr.tr_term
