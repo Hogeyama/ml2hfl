@@ -222,9 +222,7 @@ let rec eval_print fm cnt limit gen t =
       in
       Format.fprintf fm "@]";
       r
-  | _ ->
-      Format.eprintf "@.eval_print: %a@." Print.constr t;
-      assert false
+  | _ -> unsupported (Format.asprintf "%a" Print.constr t)
 
 exception CoerceAbstraction
 
