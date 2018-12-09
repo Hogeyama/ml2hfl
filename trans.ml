@@ -2854,6 +2854,10 @@ let instansiate_poly_fun =
         unify ty ts;
         let ts' = List.map tr.tr_term ts in
         Term.(var f' @ ts')
+    | Local(Decl_let [x, {desc=Var y}], t') when is_poly_typ @@ Id.typ x ->
+        assert (is_poly_typ @@ Id.typ y);
+        unify (Id.typ x) (Id.typ y);
+        tr.tr_term_rec t
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
