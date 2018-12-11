@@ -21,6 +21,9 @@ val array : Problem.t -> Problem.t
 (** Abstract away content of reference *)
 val abst_ref : Problem.t -> Problem.t
 
+(** Encode option types as pairs *)
+val option : Problem.t -> Problem.t
+
 val all : Problem.t -> Problem.t
 
 val typ_of : (Problem.t -> Problem.t) -> typ -> typ

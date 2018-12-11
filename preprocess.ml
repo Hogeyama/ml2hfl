@@ -30,6 +30,7 @@ type preprocess_label =
   | Encode_simple_variant
   | Split_type_decls
   | Encode_recdata
+  | Encode_option
   | Replace_base_with_int
   | Replace_data_with_int
   | Inline_type_decl
@@ -76,6 +77,7 @@ let string_of_label = function
   | Inline_record_type -> "Inline record type"
   | Encode_mutable_record -> "Encode mutable record"
   | Encode_record -> "Encode record"
+  | Encode_option -> "Encode option"
   | Encode_array -> "Encode array"
   | Abst_ref -> "Abst ref"
   | Make_fun_tuple -> "Make fun tuple"
@@ -241,6 +243,8 @@ let all spec : t list =
       map_trans split_type_decls;
     Encode_recdata,
       map_trans Encode.recdata;
+    Encode_option,
+      map_trans Encode.option;
     Inline_type_decl,
       map_trans inline_type_decl;
     Abst_literal,

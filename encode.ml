@@ -325,6 +325,39 @@ let abst_poly_comp_term =
   tr.tr_term
 let abst_poly_comp = Problem.map abst_poly_comp_term
 
+
+let option_term =
+  let tr = make_trans () in
+  let tr_term t =
+    let t' = tr.tr_term_rec t in
+    match t'.desc with
+    | TNone -> make_none @@ get_opt_typ t'.typ
+    | TSome t -> make_some t
+    | _ -> t'
+  in
+  let tr_typ ty =
+    match ty with
+    | TApp(TOption, [ty']) -> opt_typ @@ tr.tr_typ ty'
+    | _ -> tr.tr_typ_rec ty
+  in
+  let tr_pat p =
+    let p' = tr.tr_pat_rec p in
+    match p'.pat_desc with
+    | PNone ->
+        let ty = option_typ p.pat_typ in
+        Pat.(tuple [const_ none_flag; __ ty])
+    | PSome p ->
+        Pat.(tuple [const_ some_flag; p])
+    | _ -> p'
+  in
+  tr.tr_term <- tr_term;
+  tr.tr_typ <- tr_typ;
+  tr.tr_pat <- tr_pat;
+  tr.tr_term
+let option = Problem.map option_term
+
+
+
 let recdata = Encode_rec.trans
 let list = Encode_list.trans
 
@@ -345,6 +378,8 @@ let all t =
   |@> pr "SIMPLE_VARIANT"
   |> recdata
   |@> pr "RECDATA"
+  |> option
+  |@> pr "OPTION"
   |> (list |- fst)
   |@> pr "LIST"
   |> array

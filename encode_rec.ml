@@ -60,7 +60,6 @@ let abst_recdata_typ env typ =
         Ty.(bool * tuple (List.map (abst_recdata.tr2_typ env) tys))
       in
         Ty.(tuple (List.map aux labels) * unit)
-  | TApp(TOption, [typ]) -> opt_typ @@ abst_recdata.tr2_typ env typ
   | TAttr(attr, ty) ->
       let attr' = List.filter (function TARefPred _ -> false | _ -> true) attr in
       _TAttr attr' @@ abst_recdata.tr2_typ_rec env ty
@@ -268,13 +267,10 @@ let rec abst_recdata_pat env p =
         in
         let ps',cond,bind = List.fold_right aux ps ([],true_term,[]) in
         PTuple ps', cond, bind
-    | PNone ->
-        let x = Id.new_var typ in
-        PVar x, make_is_none @@ make_var x, []
+    | PNone -> PNone, true_term, []
     | PSome p ->
         let p',cond,bind = abst_recdata_pat env p in
-        let x = Id.new_var typ in
-        PVar x, make_and cond (make_is_some @@ make_var x), (make_get_val @@ make_var x, p')::bind
+        PSome p', cond, bind
   in
   {pat_desc=desc; pat_typ=typ}, cond, bind
 
@@ -349,8 +345,6 @@ let abst_recdata_term (env: env) t =
       let t1' = abst_recdata.tr2_term env t1 in
       let pats' = List.map aux pats in
       make_match t1' pats'
-  | TNone -> make_none @@ abst_recdata.tr2_typ env @@ option_typ typ
-  | TSome t -> make_some @@ abst_recdata.tr2_term env t
   | Record [] -> assert false
   | Record fields ->
       if List.exists (fun (_,(f,_)) -> f = Mutable) @@ decomp_trecord typ
