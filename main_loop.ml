@@ -397,7 +397,7 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
 
 let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
   let preprocessed = run_preprocess ?make_pps spec problem in
-  if !Flag.Parallel.num > 1 then
+  if !Flag.Parallel.num > 1 && preprocessed <> [] then
     check_parallel ?fun_list ?exparam_sol spec preprocessed
   else
     try
@@ -424,15 +424,20 @@ let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
     | CEGAR.Unsafe _ -> false
     | CEGAR.Unknown _ -> false
   in
-  if results = [] then
-    begin
-      set_status Flag.Log.Safe;
-      if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
-        if !Flag.Print.result then
-          report_safe [] orig parsed
-    end;
-  let r = List.reduce (merge_result false) @@ List.map (fun r -> r.result) results in
-  set_status @@ status_of_result r;
+  let r =
+    if results = [] then
+      begin
+        set_status Flag.Log.Safe;
+        if Flag.Method.(!mode = FairTermination) => !!Verbose.check then
+          if !Flag.Print.result then
+            report_safe [] orig parsed;
+        CEGAR.Safe []
+      end
+    else
+      let r = List.reduce (merge_result false) @@ List.map (fun r -> r.result) results in
+      set_status @@ status_of_result r;
+      r
+  in
   let num = List.length results in
   if !Flag.Print.result then
     List.iteri (fun i -> report orig parsed num (Some (i+1))) results;

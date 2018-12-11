@@ -2631,7 +2631,8 @@ let inline_record_type =
   tr.tr_desc <- tr_desc;
   tr.tr_term
 
-let ignore_exn_arg t = assert false
+let ignore_exn_arg t =
+  unsupported "ignore_exn_arg"
 
 let simplify_pattern =
   let tr = make_trans () in
