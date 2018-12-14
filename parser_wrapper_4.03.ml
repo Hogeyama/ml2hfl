@@ -357,6 +357,12 @@ and from_pattern {pat_desc=desc; pat_loc=_; pat_type=typ; pat_env=env} =
         let decls1,p1' = from_pattern p1 in
         let decls2,p2' = from_pattern p2 in
         decls1@decls2, PCons(p1', p2')
+    | Tpat_construct(_, cstr_desc, ps) when typ' = Ty.bool ->
+        begin match get_constr_name cstr_desc typ env with
+        | "true" -> [], PConst {desc=Const(True);typ=typ'; attr=[]}
+        | "false" -> [], PConst {desc=Const(False);typ=typ'; attr=[]}
+        | _ -> assert false
+        end
     | Tpat_construct(_, cstr_desc, ps) ->
         add_exc_env_from_constr cstr_desc env;
         let name = get_constr_name cstr_desc typ env in
