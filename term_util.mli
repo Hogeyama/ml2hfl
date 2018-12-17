@@ -78,8 +78,8 @@ val make_tuple : term list -> term
 val make_nil : typ -> term
 val make_nil2 : typ -> term
 val make_cons : term -> term -> term
-val make_list : term list -> term
-val make_match : term -> (pattern * term * term) list -> term
+val make_list : ?typ:typ -> term list -> term
+val make_match : ?typ:typ -> term -> (pattern * term) list -> term
 val make_single_match : ?total:bool -> term -> pattern -> term -> term
 val make_seq : term -> term -> term
 val make_ignore : term -> term
@@ -111,11 +111,12 @@ val make_construct : string -> term list -> typ -> term
 val make_record : (string * term) list -> typ -> term
 val make_field : ?ty:typ -> term -> string -> term
 val make_raise : term -> typ -> term
-val make_trywith : term -> id -> (pattern * term * term) list -> term
+val make_trywith : term -> id -> (pattern * term) list -> term
 val make_trywith_simple : term -> term -> term
 val make_length_var : typ -> id
 val make_length : term -> term
 val new_var_of_term : term -> id
+val new_var_of_pattern : pattern -> id
 val make_module : declaration list -> term
 
 
@@ -208,6 +209,7 @@ val has_no_effect : term -> bool
 val same_term : term -> term -> bool
 val same_term' : term -> term -> bool
 val var_name_of_term : term -> string
+val var_name_of_pattern : pattern -> string
 val var_of_term : term -> id
 val make_term : typ -> term
 val merge_typ : typ -> typ -> typ
@@ -282,7 +284,7 @@ module Term : sig
   val proj : int -> term -> term
   val nil : term Type.t -> term
   val cons : term -> term -> term
-  val list : term list -> term
+  val list : ?typ:typ -> term list -> term
   val seq : term -> term -> term
   val seqs : term list -> term -> term
   val ignore : term -> term
@@ -290,7 +292,7 @@ module Term : sig
   val assume : term -> term -> term
   val none : typ -> term
   val some : term -> term
-  val match_ : term -> (pattern * term * term) list -> term
+  val match_ : ?typ:typ -> term -> (pattern * term) list -> term
   val module_ : declaration list -> term
   val length : term -> term
   val (|->) : id -> term -> term -> term
@@ -298,7 +300,7 @@ end
 
 module Pat : sig
   val __ : typ -> pattern
-  val const_ : term -> pattern
+  val const : term -> pattern
   val unit : pattern
   val int : int -> pattern
   val bool : bool -> pattern
@@ -310,4 +312,5 @@ module Pat : sig
   val nil : typ -> pattern
   val nil2 : typ -> pattern
   val cons : pattern -> pattern -> pattern
+  val when_ : pattern -> term -> pattern
 end

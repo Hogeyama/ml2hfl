@@ -61,6 +61,7 @@ type preprocess_label =
   | Split_assert
   | Insert_extra_param
   | Replace_complex_data_with_int
+  | Variant_args_to_tuple
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -124,6 +125,7 @@ let string_of_label = function
   | Reduce_branch -> "Reduce branch"
   | Split_assert -> "Split assert"
   | Insert_extra_param -> "Insert extra parameters"
+  | Variant_args_to_tuple -> "Replace variant arguments with tuples"
 
 let get xs =
   match xs with
@@ -224,8 +226,6 @@ let all spec : t list =
     Make_ext_funs,
       trans_if (not !Flag.Method.encode_before_make_ext_fun) @@
       map_trans make_ext_funs;
-    Encode_simple_variant,
-      map_trans Encode.simple_variant;
     Replace_base_with_int,
       trans_if (!Flag.Encode.base_to_int || !Flag.Encode.data_to_int) @@
       map_trans replace_base_with_int;
@@ -279,6 +279,8 @@ let all spec : t list =
       map_trans @@ Problem.map Effect.mark_safe_fun_arg;
     Abst_polymorphic_comparison,
       map_trans Encode.abst_poly_comp;
+    Variant_args_to_tuple,
+      map_trans variant_args_to_tuple;
     CPS,
       trans_if !Flag.Mode.trans_to_CPS @@
       Option.some -| List.singleton -| CPS.trans;

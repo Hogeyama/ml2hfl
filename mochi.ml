@@ -634,6 +634,7 @@ let init_after_parse_arg () =
   if Flag.ModelCheck.(!mc <> TRecS) then
     Flag.ModelCheck.church_encode := true;
   fpat_init2 ();
+  Fpat.Global.timeout_z3 := 60 * 60 * 1000;
   ignore @@ Unix.alarm !Flag.Limit.time;
   Sys.set_signal Sys.sigalrm (Sys.Signal_handle (fun _ -> raise TimeOut));
   Color.init ();

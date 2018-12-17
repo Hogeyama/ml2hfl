@@ -177,20 +177,25 @@ let rec eval_print fm cnt limit gen t =
               | None -> check v p2
               | Some f -> Some f
             end
+        | _, PWhen(p, cond) ->
+            begin
+              match check v p with
+              | None -> None
+              | Some f ->
+                  let v = eval_print fm cnt limit gen @@ f cond in
+                  if bool_of_term v then Some f else None
+            end
         | _ ->
             Format.eprintf "@.v: %a@." Print.term v;
             Format.eprintf "p: %a@." Print.pattern p;
             assert false
       in
       let v = eval_print fm cnt limit gen t1 in
-      let p,cond,t = pat in
+      let p,t = pat in
       begin
         match check v p with
         | None -> eval_print fm cnt limit gen @@ make_match v pats
-        | Some f ->
-            let v = eval_print fm cnt limit gen @@ f cond in
-            let t' = if bool_of_term v then f t else make_match v pats in
-            eval_print fm cnt limit gen t'
+        | Some f -> eval_print fm cnt limit gen @@ f t
       end
   | Match(t1,[]) -> assert false
   | Raise t ->

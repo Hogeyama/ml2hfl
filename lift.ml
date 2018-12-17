@@ -68,9 +68,9 @@ let get_fv'_term vars t =
       List.fold_left aux fv_t2 bindings
   | Fun(x,t) -> get_fv'.col2_term (IdSet.add x vars) t
   | Match(t,pats) ->
-      let aux acc (pat,cond,t) =
+      let aux acc (pat,t) =
         let vars' = vars @@@ set_of_list @@ get_bv_pat pat in
-        get_fv'.col2_term vars' cond @@@ get_fv'.col2_term vars' t @@@ acc
+        get_fv'.col2_term vars' t @@@ acc
       in
       List.fold_left aux (get_fv'.col2_term vars t) pats
   | _ -> get_fv'.col2_term_rec vars t
@@ -158,11 +158,10 @@ let rec lift_aux post xs t =
         List.flatten defss, Constr(c,ts')
     | Match(t,pats) ->
         let defs,t' = lift_aux post xs t in
-        let aux (pat,cond,t) (defs,pats) =
+        let aux (pat,t) (defs,pats) =
           let xs' = (set_of_list @@ get_bv_pat pat) @@@ xs in
-          let defs',cond' = lift_aux post xs' t in
-          let defs'',t' = lift_aux post xs' t in
-          defs''@defs'@defs, (pat,cond',t')::pats
+          let defs',t' = lift_aux post xs' t in
+          defs'@defs, (pat,t')::pats
         in
         let defs',pats' = List.fold_right aux pats (defs,[]) in
         defs', Match(t',pats')
@@ -267,11 +266,10 @@ let rec lift_aux' post xs t =
         List.flatten defss, Constr(c,ts')
     | Match(t,pats) ->
         let defs,t' = lift_aux' post xs t in
-        let aux (pat,cond,t) (defs,pats) =
+        let aux (pat,t) (defs,pats) =
           let xs' = (set_of_list @@ get_bv_pat pat) @@@ xs in
-          let defs',cond' = lift_aux' post xs' t in
-          let defs'',t' = lift_aux' post xs' t in
-          defs''@defs'@defs, (pat,cond',t')::pats
+          let defs',t' = lift_aux' post xs' t in
+          defs'@defs, (pat,t')::pats
         in
         let defs',pats' = List.fold_right aux pats (defs,[]) in
         defs', Match(t',pats')

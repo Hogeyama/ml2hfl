@@ -584,10 +584,9 @@ let insert_extra_param t =
       | S.Constr(s,ts) ->
          S.Constr(s, List.map (aux rfs bvs exs) ts)
       | S.Match(t1,pats) ->
-         let aux' (pat, cond, t) =
+         let aux' (pat, t) =
            (* ToDo: need to update pat!? *)
            pat,
-           aux rfs (bvs @ S.get_bv_pat pat) exs cond,
            aux rfs (bvs @ S.get_bv_pat pat) exs t
          in
          S.Match(aux rfs bvs exs t1, List.map aux' pats)

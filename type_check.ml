@@ -134,8 +134,7 @@ let rec check env t typ =
   | Constr(s,ts), TVariant(_,labels) ->
       List.iter2 (check env) ts @@ List.assoc s labels
   | Match(t,pats), typ' ->
-      let aux (p,cond,t) =
-        check env cond Ty.bool;
+      let aux (p,t) =
         check env t typ'
       in
       check env t t.typ;

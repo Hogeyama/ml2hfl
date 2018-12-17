@@ -128,3 +128,6 @@ val insert_extra_param : term -> term
 val unify_pure_fun_app : term -> term
 val lift_assume : term -> term
 val elim_singleton_tuple : term -> term
+val lift_pwhen : term -> term
+val decompose_match : term -> term
+val variant_args_to_tuple : ?do_decomp:bool -> term -> term

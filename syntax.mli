@@ -47,7 +47,7 @@ and desc =
   | Nil
   | Cons of term * term
   | Constr of string * term list
-  | Match of term * (pattern * term * term) list
+  | Match of term * (pattern * term) list (** a term diverges if no patters are matched *)
   | Raise of term
   | TryWith of term * term
   | Tuple of term list
@@ -94,6 +94,7 @@ and pat_desc =
   | PNone
   | PSome of pattern
   | POr of pattern * pattern
+  | PWhen of pattern * term
 
 type env = (id * typ) list
 

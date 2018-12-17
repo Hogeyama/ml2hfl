@@ -179,7 +179,7 @@ match_cases:
 
 /* do not support `when` for the time being */
 match_case:
-| pattern ARROW exp { (make_pat $1, true_term, $3) }
+| pattern ARROW exp { (make_pat $1, $3) }
 
 pattern:
 | UNDER_SCORE                         { PAny }

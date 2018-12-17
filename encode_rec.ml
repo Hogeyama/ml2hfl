@@ -220,8 +220,8 @@ let rec abst_recdata_pat env p =
               | PVar _ -> cond
               | _ ->
                   make_match t
-                    [pt, true_term, cond;
-                     make_pany p.pat_typ, true_term, false_term]
+                    [pt, cond;
+                     make_pany p.pat_typ, false_term]
             in
             List.map2 make_cond binds pcbs
           in
@@ -318,14 +318,13 @@ let abst_recdata_term (env: env) t =
       in
       let pat0 =
         make_pnil Ty.int,
-        true_term,
         Term.(pair top unit)
       in
       let make_pat (i,acc) (x,ty) =
         if ty = typ then
           let path' = Id.new_var ~name:"path'" Ty.(list int) in
           let t = Term.(proj_enc (var path') x) in
-          i+1, acc @ [Pat.(cons (int i) (var path')), true_term, t]
+          i+1, acc @ [Pat.(cons (int i) (var path')), t]
         else
           i, acc
       in
@@ -334,12 +333,12 @@ let abst_recdata_term (env: env) t =
       Term.(lets defs (pair top
                             (pfun path (match_ (var path) (pat0::pats)))))
   | Match(t1,pats) ->
-      let aux (p,c,t) =
-        let p',c',bind = abst_recdata_pat env p in
+      let aux (p,t) =
+        let p',c,bind = abst_recdata_pat env p in
         let t' = abst_recdata.tr2_term env t in
-        let aux (t,p) t' = Term.(match_ t [p, true_, t']) in
-        p',
-        List.fold_right aux bind Term.(c && c'),
+        let aux (t,p) t' = Term.(match_ t [p, t']) in
+        let c' = List.fold_right aux bind c in
+        Pat.when_ p' c',
         List.fold_right aux bind t'
       in
       let t1' = abst_recdata.tr2_term env t1 in
@@ -377,13 +376,18 @@ let replace_simple_match_with_if =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Match(t, pats) when List.for_all (function ({pat_desc=PAny|PVar _},_,_) -> true | _ -> false) pats ->
+    | Match(t, pats) when List.for_all (function ({pat_desc=PAny|PVar _},_) -> true | _ -> false) pats ->
         let x = new_var_of_term t in
         let t' =
-          let ty = (Triple.trd @@ List.hd pats).typ in
-          let aux (p,cond,t1) t2 =
+          let ty = (snd @@ List.hd pats).typ in
+          let aux (p,t1) t2 =
+            let p',cond =
+              match p.pat_desc with
+              | PWhen(p',c) -> p', c
+              | _ -> p, Term.true_
+            in
             let t' = Term.(if_ cond t1 t2) in
-            match p.pat_desc with
+            match p'.pat_desc with
             | PAny -> t'
             | PVar y -> subst_var y x t'
             | _ -> assert false
@@ -447,12 +451,11 @@ let trans_pred =
   let tr = make_trans2 () in
   let term (x, sym_env) t =
     match t.desc with
-    | Match({desc=Var(y)}, pts) when Id.(x=y) ->
+    | Match({desc=Var y}, pats) when Id.(x=y) ->
         let labels = List.map fst sym_env in
         let preds =
-          snd @@ List.Labels.fold_right pts ~init:(labels,[]) ~f:(
-            fun (p, cond, t) (remain, arms) ->
-              assert (cond = true_term);
+          snd @@ List.Labels.fold_right pats ~init:(labels,[]) ~f:(
+            fun (p, t) (remain, arms) ->
               match p.pat_desc with
               | PConstr(c, ps) when not (List.mem c remain) ->
                   (* already matched (would it be better to raise an error?) *)

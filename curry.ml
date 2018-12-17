@@ -322,6 +322,8 @@ let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind; info} =
   let t' =
     t
     |@> pr "INPUT"
+    |> Trans.null_tuple_to_unit
+    |@> pr "null_tuple_to_unit"
     |> remove_pair
     |@> pr "remove_pair"
     |@check&> Type_check.check ~ty:typ_result

@@ -30,7 +30,7 @@ let mk_env t: env =
 
 let trans_term =
   let tr = make_trans2 () in
-  let type_pat env pat_ty (pat,cond,ret) =
+  let type_pat env pat_ty (pat,ret) =
     match pat.pat_desc with
     | PConstr(l,ps) ->
         let (tys, ty) =
@@ -70,11 +70,9 @@ let trans_term =
         in
         let env' = { env with binds = binds' } in
         {pat_desc = PConstr(l,ps'); pat_typ = pat_ty},
-        tr.tr2_term env' cond,
         tr.tr2_term env' ret
     | _ ->
         {pat with pat_typ = pat_ty},
-        tr.tr2_term env cond,
         tr.tr2_term env ret
   in
   let tr_term env t = match t.desc with
@@ -92,7 +90,7 @@ let trans_term =
         let t1' = tr.tr2_term env t1 in
         let match_sty = t1'.typ in
         let cases' = List.map (type_pat env match_sty) cases in
-        let whole_ty = typ @@ Triple.trd @@ List.hd cases' in
+        let whole_ty = typ @@ snd @@ List.hd cases' in
         {t with desc = Match(t1',cases');
                 typ  = whole_ty}
     | _ -> tr.tr2_term_rec env t

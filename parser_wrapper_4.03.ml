@@ -552,11 +552,11 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
           from_expression id_env' e
         in
         decls1 @ decls2,
-        make_match t1 [p, true_term, t2]
+        make_match t1 [p, t2]
     | Texp_function(_,[case],Total) when is_var_case case ->
         begin
           match from_case id_env case with
-          | decls, ({pat_desc=PVar x}, _, e) -> decls, make_fun x e
+          | decls, ({pat_desc=PVar x}, e) -> decls, make_fun x e
           | _ -> assert false
         end
     | Texp_function(_,pats,totality) ->
@@ -589,13 +589,13 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let pats'' =
           match totality with
           | Total -> pats'
-          | Partial -> pats' @ [make_pvar (Id.new_var_id x), true_term, make_fail ~loc:exp_loc typ2]
+          | Partial -> pats' @ [make_pvar (Id.new_var_id x), make_fail ~loc:exp_loc typ2]
         in
         let t =
           match pats'' with
-          | [{pat_desc=PAny},{desc=Const True},t'] -> make_fun x t'
-          | [{pat_desc=PVar y},{desc=Const True},t'] -> make_fun x @@ subst_var y x t'
-          | [{pat_desc=PConst{desc=Const Unit}},{desc=Const True},t'] -> make_fun x t'
+          | [{pat_desc=PAny},t'] -> make_fun x t'
+          | [{pat_desc=PVar y},t'] -> make_fun x @@ subst_var y x t'
+          | [{pat_desc=PConst{desc=Const Unit}},t'] -> make_fun x t'
           | _ -> make_fun x @@ make_match (make_var x) pats''
         in
         decls2 @ List.flatten declss, t
@@ -618,7 +618,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let pats'' =
           match tp with
           | Total -> pats'
-          | Partial -> pats' @ [make_pvar (Id.new_var t.typ), true_term, make_fail ~loc:exp_loc typ']
+          | Partial -> pats' @ [make_pvar (Id.new_var t.typ), make_fail ~loc:exp_loc typ']
         in
         decls2 @ List.flatten declss,
         make_match t pats''
@@ -627,7 +627,7 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
         let typ_excep = TData "exn" in
         let x = Id.new_var ~name:"e" typ_excep in
         let declss,pats' = List.split_map (from_case id_env) pats in
-        let pats'' = pats' @ [make_pany typ_excep, true_term, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
+        let pats'' = pats' @ [make_pany typ_excep, {desc=Raise(make_var x); typ=typ'; attr=[]}] in
         let decls2,t = from_expression id_env e in
         decls2 @ List.flatten declss,
         {desc=TryWith(t, make_fun x (make_match (make_var x) pats'')); typ=typ'; attr=[]}
@@ -802,16 +802,18 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
 
 and from_case id_env {c_lhs;c_guard;c_rhs} =
   let decls,p = from_pattern c_lhs in
-  let decls1,cond =
-    match c_guard with
-    | None -> [], true_term
-    | Some e -> from_expression id_env e
-  in
-  let decls2,t =
+  let decls1,t =
     let id_env' = get_bv_pat p @ id_env in
     from_expression id_env' c_rhs
   in
-  decls1@decls2, (p, cond, t)
+  let decls2,p' =
+    match c_guard with
+    | None -> [], p
+    | Some e ->
+        let decls,t = from_expression id_env e in
+        decls, Pat.when_ p t
+  in
+  decls1@decls2, (p', t)
 
 
 let from_exception_declaration decls = List.map from_type_expr decls
@@ -823,12 +825,12 @@ let rec from_module_binding id_env tenv mb
   let m = from_ident mb.mb_id mdl.typ in
   id_env', [Nonrecursive, Decl_let [m,mdl]]
 
-and from_module_type mty =
-  match mty with
+and from_module_type env mty =
+  match Mtype.scrape env mty with
   | Mty_ident path -> TData (Path.name path)
   | Mty_signature sgn -> TModule []
   | Mty_functor(id, None, mty2) -> unsupported "Mty_functor"
-  | Mty_functor(id, Some mty1, mty2) -> TFun(from_ident id @@ from_module_type mty1, from_module_type mty2)
+  | Mty_functor(id, Some mty1, mty2) -> TFun(from_ident id @@ from_module_type env mty1, from_module_type env mty2)
   | Mty_alias path -> TData (Path.name path)
 
 and from_module_expr id_env mb_expr =
@@ -849,7 +851,7 @@ and from_module_expr id_env mb_expr =
       in
       id_env'', mdl
   | Tmod_ident(path,loc) ->
-      let ty = from_module_type mb_expr.mod_type in
+      let ty = from_module_type mb_expr.mod_env mb_expr.mod_type in
       id_env, make_var @@ Id.make 0 (Path.name path) [] ty
   | Tmod_functor(id, loc, mty, expr) ->
       let ty =

@@ -322,40 +322,39 @@ and print_desc cfg pri attr fm desc =
       then pp_print_string fm s
       else fprintf fm "%s@[%s(%a)@]%s" s1 s (print_list (pr_t 20) ",") ts s2
   | Match(t,pats) ->
+      let pats' =
+        if cfg.as_ocaml then
+          match (fst (List.last pats)).pat_desc with
+          | PAny
+          | PVar _ -> pats
+          | _ -> pats @ [{pat_desc=PAny;pat_typ=typ_unknown}, {desc=Bottom; typ=typ_unknown; attr=[]}]
+        else
+          pats
+      in
       let p = 10 in
       let s1,s2 = paren pri p in
       let first = ref true in
-      let aux (pat,cond,t) =
-        let print_cond fm =
-          match cond.desc with
-          | Const True -> ()
-          | _ -> fprintf fm "when@ @[<hov 2>%a@]@ " (pr_t p) cond
-        in
+      let aux (pat,t) =
         fprintf fm "@ @[<hov 4>";
         if !first then pp_print_if_newline fm ();
         first := false;
         pp_print_string fm "| ";
-        fprintf fm "@[<hov 2>%a %t->@ %a@]@]" print_pattern pat print_cond (pr_t p) t
+        fprintf fm "@[<hov 2>%a ->@ %a@]@]" (print_pattern cfg) pat (pr_t p) t
       in
       fprintf fm "%s@[<hv>@[@[<hov 2>match@ %a@]@ with@]" s1 (pr_t p) t;
-      List.iter aux pats;
+      List.iter aux pats';
       fprintf fm "@]%s" s2
   | Raise t ->
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[raise@ %a@]%s" s1 (pr_t p) t s2
   | TryWith(t1,{desc=Fun(e,{desc=Match({desc=Var e'},pats)})})
-       when Id.(e = e') && (function ({pat_desc=PAny},{desc=Const True},{desc=Raise {desc=Var e''}}) -> Id.same e e'' | _ -> false) @@ List.last pats ->
+       when Id.(e = e') && (function ({pat_desc=PAny},{desc=Raise {desc=Var e''}}) -> Id.same e e'' | _ -> false) @@ List.last pats ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      let aux (pat,cond,t) =
-        let print_cond fm =
-          match cond.desc with
-          | Const True -> ()
-          | _ -> fprintf fm "when@ @[<hov 2>%a@]@ " (pr_t p) cond
-        in
+      let aux (pat,t) =
         let bar = if List.length pats = 2 then "" else "| " in
-        fprintf fm "@ @[<hov 4>%s@[<hov 2>%a %t->@]@ %a@]" bar print_pattern pat print_cond (pr_t p) t
+        fprintf fm "@ @[<hov 4>%s@[<hov 2>%a ->@]@ %a@]" bar (print_pattern cfg) pat (pr_t p) t
       in
       fprintf fm "%s@[@[<hov 2>try@ %a@]@ @[<hv 2>with" s1 (pr_t p) t1;
       List.iter aux @@ fst @@ List.decomp_snoc pats;
@@ -427,40 +426,42 @@ and print_info fm info =
 
 
 
-and print_pattern fm pat =
+and print_pattern cfg fm pat =
+  let pr_p = print_pattern cfg in
   match pat.pat_desc with
   | PAny -> pp_print_string fm "_"
   | PNondet -> pp_print_string fm "*"
   | PVar x -> print_id fm x
-  | PAlias(p,x) -> fprintf fm "(%a as %a)" print_pattern p print_id x
-  | PConst c -> print_term !config_default 1 fm c
+  | PAlias(p,x) -> fprintf fm "(%a as %a)" pr_p p print_id x
+  | PConst c -> print_term cfg 1 fm c
   | PConstr(c,pats) ->
       let aux' = function
           [] -> ()
-        | [pat] -> fprintf fm "(%a)" print_pattern pat
+        | [pat] -> fprintf fm "(%a)" pr_p pat
         | pat::pats ->
-            fprintf fm "(%a" print_pattern pat;
-            List.iter (fun pat -> fprintf fm ",%a" print_pattern pat) pats;
+            fprintf fm "(%a" pr_p pat;
+            List.iter (fun pat -> fprintf fm ",%a" pr_p pat) pats;
             pp_print_string fm ")"
       in
       pp_print_string fm c;
       aux' pats
   | PNil -> fprintf fm "[]"
-  | PCons(p1,p2) -> fprintf fm "%a::%a" print_pattern p1 print_pattern p2
+  | PCons(p1,p2) -> fprintf fm "%a::%a" pr_p p1 pr_p p2
   | PRecord pats ->
       let aux' = function
           [] -> ()
-        | [_,pat] -> fprintf fm "{%a}" print_pattern pat
+        | [_,pat] -> fprintf fm "{%a}" pr_p pat
         | (_,pat)::pats ->
-            fprintf fm "{%a" print_pattern pat;
-            List.iter (fun (_,pat) -> fprintf fm ",%a" print_pattern pat) pats;
+            fprintf fm "{%a" pr_p pat;
+            List.iter (fun (_,pat) -> fprintf fm ",%a" pr_p pat) pats;
             pp_print_string fm "}"
       in
       aux' pats
-  | POr(pat1,pat2) -> fprintf fm "(%a | %a)" print_pattern pat1 print_pattern pat2
-  | PTuple pats -> fprintf fm "(%a)" (print_list print_pattern ", ") pats
+  | POr(pat1,pat2) -> fprintf fm "(%a | %a)" pr_p pat1 pr_p pat2
+  | PTuple pats -> fprintf fm "(%a)" (print_list pr_p ", ") pats
   | PNone -> fprintf fm "None"
-  | PSome p -> fprintf fm "(Some %a)" print_pattern p
+  | PSome p -> fprintf fm "(Some %a)" pr_p p
+  | PWhen(p,cond) -> fprintf fm "%a when@ @[<hov 2>%a@]" pr_p p (print_term cfg 1) cond
 let print_term cfg fm = print_term cfg 0 fm
 
 let rec print_term' pri fm t =
@@ -547,11 +548,7 @@ let rec print_term' pri fm t =
     | Match(t,pats) ->
         let p = 1 in
         let s1,s2 = paren pri (p+1) in
-        let aux = function
-            (pat,{desc=Const True},t) -> fprintf fm "%a -> %a@ " print_pattern' pat (print_term' p) t
-          | (pat,cond,t) -> fprintf fm "%a when %a -> %a@ "
-                                    print_pattern' pat (print_term' p) cond (print_term' p) t
-        in
+        let aux (pat,t) = fprintf fm "%a -> %a@ " print_pattern' pat (print_term' p) t in
         fprintf fm "%s@[match %a with@ " s1 (print_term' p) t;
         List.iter aux pats;
         fprintf fm "@]%s" s2
@@ -645,6 +642,7 @@ and print_pattern' fm pat =
     | PTuple pats -> fprintf fm "(%a)" (print_list aux ", ") pats
     | PNone -> fprintf fm "None"
     | PSome p -> fprintf fm "(Some %a)" aux p
+    | PWhen(p,cond) -> fprintf fm "%a when@ @[<hov 2>%a@]@ " aux p (print_term' 1) cond
   in
   fprintf fm "| %a" aux pat
 
@@ -697,7 +695,7 @@ let string_of_constr t =
 let typ = print_typ
 let id = print_id
 let id_typ = print_id_typ
-let pattern = print_pattern
+let pattern = print_pattern !config_default
 let const fm = print_const !config_default fm
 let desc fm = print_desc !config_default 0 [] fm
 let term fm = print_term !config_default fm

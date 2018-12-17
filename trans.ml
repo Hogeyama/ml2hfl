@@ -64,10 +64,9 @@ let alpha_rename ?(whole=false) ?(set_counter=false) =
         let x' = new_id x in
         Fun(x', subst_var_without_typ x x' t1)
     | Match(t1,pats) ->
-        let aux (p,cond,t2) =
+        let aux (p,t2) =
           let map = List.map (Pair.add_right new_id) @@ List.unique ~eq:Id.eq @@ get_bv_pat p in
           rename_pat map p,
-          subst_var_map_without_typ map cond,
           subst_var_map_without_typ map t2
         in
         Match(t1, List.map aux pats)
@@ -174,10 +173,10 @@ let unify_pattern_var =
   let col_term t =
     match t.desc with
     | Match(t, pats) ->
-        let aux1 (pat,t1,t2) =
+        let aux1 (pat,t') =
           let aux2 x =
             let ty = Id.typ x in
-            get_fv t1 @@@ get_fv t2
+            get_fv t'
             |> List.filter (Id.same x)
             |> List.iter (unify ty -| Id.typ)
           in
@@ -240,7 +239,7 @@ let rec define_rand ?(name="") (env, defs as ed) typ =
         let (env'',defs'),itss,_ = List.fold_right aux1 labels ((env',defs),[],n) in
         let aux (s,typs) (i,ts) =
           let p = if i < n-1 then make_pconst (make_int i) else make_pany Ty.int in
-          p, true_term, {desc=Constr(s,ts); typ=typ; attr=[]}
+          p, {desc=Constr(s,ts); typ=typ; attr=[]}
         in
         let (env'',defs'),t = (env'', defs'), make_match randint_unit_term (List.map2 aux labels itss) in
         (env'', (f,make_fun u t)::defs'), make_app (make_var f) [unit_term]
@@ -391,7 +390,7 @@ let part_eval t =
       | Cons(t1,t2) -> Cons(aux apply t1, aux apply t2)
       | Constr(c,ts) -> Constr(c, List.map (aux apply) ts)
       | Match(t,pats) ->
-          let aux' (pat,cond,t) = pat, aux apply cond, aux apply t in
+          let aux' (pat,t) = pat, aux apply t in
           Match(aux apply t, List.map aux' pats)
       | Proj _ -> assert false
       | Tuple _ -> assert false
@@ -828,7 +827,7 @@ let rec inlined_f inlined fs t =
     | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)
     | Constr(s,ts) -> Constr(s, List.map (inlined_f inlined fs) ts)
     | Match(t1,pats) ->
-        let aux (pat,cond,t1) = pat, inlined_f inlined fs cond, inlined_f inlined fs t1 in
+        let aux (pat,t1) = pat, inlined_f inlined fs t1 in
         Match(inlined_f inlined fs t1, List.map aux pats)
     | Raise t -> Raise (inlined_f inlined fs t)
     | TryWith(t1,t2) -> TryWith(inlined_f inlined fs t1, inlined_f inlined fs t2)
@@ -905,28 +904,25 @@ let simplify_match =
   let tr_term t =
     let is_var = function {pat_desc=PVar _} -> true | _ -> false in
     match t.desc with
-    | Match(t1, ({pat_desc=PTuple ps}, t2, t3)::pats) when t2 = true_term && List.for_all is_var ps ->
+    | Match(t1, ({pat_desc=PTuple ps}, t2)::pats) when List.for_all is_var ps ->
         let xs = List.map (function {pat_desc=PVar x} -> x | _ -> assert false) ps in
         let x = new_var_of_term t1 in
-        make_lets ((x,t1) :: List.mapi (fun i y -> y, make_proj i @@ make_var x) xs) @@ tr.tr_term t3
+        make_lets ((x,t1) :: List.mapi (fun i y -> y, make_proj i @@ make_var x) xs) @@ tr.tr_term t2
     | Match(t1, pats) ->
-        let aux (pat,cond,t1) = pat, tr.tr_term cond, tr.tr_term t1 in
+        let aux (pat,t1) = pat, tr.tr_term t1 in
         let pats' = List.map aux pats in
         let rec elim_unused = function
           | [] -> []
-          | (({pat_desc=PAny|PVar _}, cond, t) as pct)::_ when cond = true_term -> [pct]
+          | (({pat_desc=PAny|PVar _}, t) as pct)::_ -> [pct]
           | pct::pats -> pct :: elim_unused pats
         in
         let pats'' = elim_unused pats' in
         begin
           match pats'' with
           | [] -> assert false
-          | [{pat_desc=PAny}, cond, t] when cond = true_term ->
-              make_seq t1 t
-          | [{pat_desc=PConst {desc=Const Unit}}, cond, t] when cond = true_term ->
-              make_seq t1 t
-          | [{pat_desc=PVar x}, cond, t] when cond = true_term ->
-              make_let [x, t1] t
+          | [{pat_desc=PAny}, t] -> make_seq t1 t
+          | [{pat_desc=PConst {desc=Const Unit}}, t] -> make_seq t1 t
+          | [{pat_desc=PVar x}, t] -> make_let [x, t1] t
           | _ -> make_match (tr.tr_term t1) pats''
         end
     | _ -> tr.tr_term_rec t
@@ -1445,11 +1441,11 @@ let subst_with_rename =
         let t2' = tr.tr2_term (x,t) t2 in
         Local(Decl_let bindings', t2')
     | Match(t1,pats) ->
-        let aux (pat,cond,t1) =
+        let aux (pat,t1) =
           let xs = get_bv_pat pat in
           if List.exists (Id.same x) xs
-          then pat, cond, t1
-          else pat, tr.tr2_term (x,t) cond, tr.tr2_term (x,t) t1
+          then pat, t1
+          else pat, tr.tr2_term (x,t) t1
         in
         Match(tr.tr2_term (x,t) t1, List.map aux pats)
     | _ -> tr.tr2_desc_rec (x,t) desc
@@ -1520,15 +1516,14 @@ let remove_top_por =
   let tr_term t =
     match t.desc with
     | Match(t, pats) ->
-        let aux (p,t1,t2) =
+        let aux (p,t2) =
           let rec flatten p =
             match p.pat_desc with
             | POr(p1,p2) -> flatten p1 @ flatten p2
             | _ -> [p]
           in
-          let t1' = alpha_rename @@ tr.tr_term t1 in
           let t2' = alpha_rename @@ tr.tr_term t2 in
-          List.map (fun p -> p, t1', t2') @@ flatten p
+          List.map (fun p -> p, t2') @@ flatten p
         in
         let t' = tr.tr_term t in
         make_match t' @@ List.flatten_map aux pats
@@ -2195,7 +2190,7 @@ let decomp_var_match_tuple =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Match({desc=Var x}, [{pat_desc=PTuple pats}, {desc=Const True}, t]) ->
+    | Match({desc=Var x}, [{pat_desc=PTuple pats}, t]) ->
         begin
           try
             let aux i pat =
@@ -2652,14 +2647,14 @@ let remove_pnondet =
     match desc, tr.tr_desc_rec desc with
     | Match(_,pats), Match(t',pats') ->
         let pats'' =
-          let aux (p,_,_) (p',cond',t') =
-            let cond'' =
+          let aux (p,_) (p',t') =
+            let p'' =
               if has_pnondet p then
-                Term.(randb && cond')
+                Pat.when_ p' Term.randb
               else
-                cond'
+                p'
             in
-            p', cond'', t'
+            p'', t'
           in
           List.map2 aux pats pats'
         in
@@ -2694,7 +2689,7 @@ let abst_recdata =
             | _ -> assert false
           in
           let pats'' =
-            let aux (p1,_,_) (p2,cond,t) =
+            let aux (p1,_) (p2,t) =
               let make x =
                 let ty = tr.tr2_typ (s,check,env) @@ Id.typ x in
                 Id.set_typ x ty, make_rand_unit ty
@@ -2705,7 +2700,7 @@ let abst_recdata =
                 |> List.Set.diff ~eq:Id.eq -$- (get_bv_pat p2)
                 |> List.map make
               in
-              p2, make_lets_s bindings cond, make_lets_s bindings t
+              p2, make_lets_s bindings t
             in
             List.map2 aux pats pats'
           in
@@ -2801,9 +2796,9 @@ let mark_fv_as_external =
         tr.tr2_desc_rec (x::bv) desc
     | Match(t1, pats) ->
         let t1' = tr.tr2_term_rec bv t1 in
-        let aux (p,cond,t) =
+        let aux (p,t) =
           let bv' = get_bv_pat p @ bv in
-          p, tr.tr2_term bv' cond, tr.tr2_term bv' t
+          p, tr.tr2_term bv' t
         in
         Match(t1', List.map aux pats)
     | _ -> tr.tr2_desc_rec bv desc
@@ -3242,7 +3237,7 @@ let unify_pure_fun_app =
     in
     match desc with
     | If(t1, t2, t3) -> If(tr.tr_term t1, unify t2, unify t3)
-    | Match(t, pats) -> Match(tr.tr_term t, List.map (Triple.map_trd unify) pats)
+    | Match(t, pats) -> Match(tr.tr_term t, List.map (Pair.map_snd unify) pats)
     | Fun(x, t) -> Fun(x, unify t)
     | Local(Decl_let defs, t) -> Local(Decl_let (List.map (Pair.map_snd unify) defs), tr.tr_term t)
     | _ -> tr.tr_desc_rec desc
@@ -3304,7 +3299,7 @@ let lift_assume =
     match desc with
     | If(t1, t2, {desc=Bottom}) -> tr.tr_desc t2.desc
     | If(t1, t2, t3) -> If(tr.tr_term t1, lift t2, lift t3)
-    | Match(t, pats) -> Match(tr.tr_term t, List.map (Triple.map_trd lift) pats)
+    | Match(t, pats) -> Match(tr.tr_term t, List.map (Pair.map_snd lift) pats)
     | Fun(x, t) -> Fun(x, lift t)
     | Local(Decl_let defs, t) ->
         let fs = List.map fst defs in
@@ -3336,3 +3331,197 @@ let elim_singleton_tuple =
   tr.tr_typ <- tr_typ;
   tr.tr_pat <- tr_pat;
   tr.tr_term
+
+let lift_pwhen =
+  let collect_side_cond =
+    let col = make_col Term.true_ Term.(&&) in
+    let col_pat p =
+      match p.pat_desc with
+      | PWhen(p,c) -> Term.(col.col_pat p && c)
+      | _ -> col.col_pat_rec p
+    in
+    col.col_pat <- col_pat;
+    col.col_pat
+  in
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Match(t1, pats) ->
+        let t1' = tr.tr_term t1 in
+        let pats' =
+          let aux (p,t) =
+            let cond = collect_side_cond p in
+            let cond' = tr.tr_term cond in
+            let p' = tr.tr_pat p in
+            Pat.(when_ p' cond'), tr.tr_term t
+          in
+          List.map aux pats
+        in
+        Match(t1', pats')
+    | _ -> tr.tr_desc_rec desc
+  in
+  let tr_pat p =
+    match p.pat_desc with
+    | PWhen(p, _) -> tr.tr_pat p
+    | _ -> tr.tr_pat_rec p
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_pat <- tr_pat;
+  tr.tr_term
+
+
+(* Output: the direct ancestors of patters for constructors must be PAny or PVar wrapped with PWhen *)
+let decompose_match =
+  let tr = make_trans () in
+  let rec tr_pat_list ps =
+    let aux p =
+      match p.pat_desc with
+      | PVar _ -> p, Fun.id
+      | _ ->
+          let x = new_var_of_pattern p in
+          let p',bind = tr_pat p in
+          let cond = Term.(match_ (var x) [p', true_; Pat.(__ p'.pat_typ), false_]) in
+          let bind' t = Term.(match_ (var x) [p', bind t]) in
+          Pat.(when_ (var x) cond), bind'
+    in
+    let ps',binds = List.split_map aux ps in
+    ps', List.fold_left (-|) Fun.id binds
+  and tr_pat p =
+    match p.pat_desc with
+    | PAny -> p, Fun.id
+    | PNondet -> assert false
+    | PVar x -> p, Fun.id
+    | PAlias(p1,x) ->
+        let p1',bind = tr_pat p1 in
+        let pat_desc = PAlias(p1', x) in
+        {p with pat_desc}, bind
+    | PConst c ->
+        let x = new_var_of_term c in
+        let c' = tr.tr_term c in
+        Pat.(when_ (var x) Term.(var x = c')), Fun.id
+    | PConstr(c,ps) ->
+        let ps',bind = tr_pat_list ps in
+        let pat_desc = PConstr(c,ps') in
+        {p with pat_desc}, bind
+    | PNil -> p, Fun.id
+    | PCons(p1,p2) ->
+        let p1',p2',bind =
+          match tr_pat_list [p1;p2] with
+          | [p1';p2'], bind -> p1',p2',bind
+          | _ -> assert false
+        in
+        let pat_desc = PCons(p1', p2') in
+        {p with pat_desc}, bind
+    | PTuple ps ->
+        let ps',bind = tr_pat_list ps in
+        let pat_desc = PTuple ps' in
+        {p with pat_desc}, bind
+    | PRecord sps ->
+        let ss,ps = List.split sps in
+        let ps',bind = tr_pat_list ps in
+        let sps' = List.combine ss ps' in
+        let pat_desc = PRecord sps' in
+        {p with pat_desc}, bind
+    | PNone -> p, Fun.id
+    | PSome p1 ->
+        let p1',bind = tr_pat p1 in
+        let pat_desc = PSome p1' in
+        {p with pat_desc}, bind
+    | POr(p1,p2) ->
+        let p1',bind1 = tr_pat p1 in
+        let p2',bind2 = tr_pat p2 in
+        let pat_desc = PCons(p1', p2') in
+        {p with pat_desc}, bind1 -| bind2
+    | PWhen(p1,cond) ->
+        let p1',bind = tr_pat p1 in
+        let cond' = tr.tr_term cond in
+        Pat.(when_ p1' cond'), bind
+  in
+  let tr_desc desc =
+    match desc with
+    | Match(t1, pats) ->
+        let x = new_var_of_term t1 in
+        let pats' =
+          let aux (p,t) =
+            let p',bind = tr_pat p in
+            let t' = tr.tr_term t in
+            p', bind t'
+          in
+          List.map aux pats
+        in
+        let t1' = tr.tr_term t1 in
+        let t' = Term.(match_ t1' pats') in
+        if Id.mem x @@ get_fv t' then
+          Term.(let_ [x,t1'] (match_ (var x) pats')).desc
+        else
+          t'.desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
+let variant_args_to_tuple =
+  let tr = make_fold_tr () in
+  let tr_desc _ desc =
+    match desc with
+    | Constr(s,ts) ->
+        let _,ts' = List.split_map (tr.fld_term []) ts in
+        [], Constr(s, [Term.tuple ts'])
+    | Match(t1, pats) ->
+        let _,t1' = tr.fld_term [] t1 in
+        let pats' =
+          let aux (p,t) =
+            let bind,p' = tr.fld_pat [] p in
+            let _,t' = tr.fld_term [] t in
+            p', make_lets_s bind t'
+          in
+          List.map aux pats
+        in
+        [], Match(t1', pats')
+    | _ -> tr.fld_desc_rec [] desc
+  in
+  let tr_pat bind p =
+    match p.pat_desc with
+    | PConstr(s,ps) ->
+        let _,pat_typ = tr.fld_typ [] p.pat_typ in
+        let binds,ps' = List.split_map (tr.fld_pat []) ps in
+        let x =
+          match pat_typ with
+          | TVariant(_,styss) -> Id.new_var @@ List.get @@ List.assoc s styss
+          | _ -> assert false
+        in
+        let bind =
+          let aux i p =
+            match p.pat_desc with
+            | PVar y -> y, Term.(proj i (var x))
+            | _ -> invalid_arg "Trans.variant_args_to_tuple"
+          in
+          List.mapi aux ps
+        in
+        let pat_desc = PConstr(s, [Pat.(var x)]) in
+        bind @ List.flatten binds, {pat_desc; pat_typ}
+    | PWhen(p,cond) ->
+        let bind,p' = tr.fld_pat [] p in
+        let cond' = make_let_s bind cond in
+        bind, Pat.(when_ p' cond')
+    | _ -> tr.fld_pat_rec bind p
+  in
+  let tr_typ _ ty =
+    match ty with
+    | TVariant(b,styss) ->
+        let tr = snd -| tr.fld_typ [] in
+        let styss' = List.map (Pair.map_snd (List.singleton -| Ty.tuple -| List.map tr)) styss in
+        [], TVariant(b, styss')
+    | _ -> tr.fld_typ_rec [] ty
+  in
+  tr.fld_desc <- tr_desc;
+  tr.fld_pat <- tr_pat;
+  tr.fld_typ <- tr_typ;
+  fun ?(do_decomp=true) t ->
+    let t' =
+      if do_decomp then
+        decompose_match t
+      else
+        t
+    in
+    snd @@ tr.fld_term [] t'

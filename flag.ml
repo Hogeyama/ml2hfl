@@ -79,6 +79,9 @@ module Encode = struct
   let abst_literal = ref (-1)
   let used_abst : string list ref = ref []
   let use_abst s = if not @@ List.mem s !used_abst then used_abst := s :: !used_abst
+
+  type recdata = Tuple | Variant
+  let recdata = ref Tuple
 end
 
 module Print = struct

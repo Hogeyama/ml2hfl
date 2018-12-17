@@ -55,12 +55,10 @@ let _TAttr attr typ =
     | TAttr(attr', typ') -> TAttr(attr@attr', typ')
     | _ -> TAttr(attr, typ)
 
-let pureTFun(x,typ) = TAttr([TAPureFun], TFun(x,typ))
-
 let typ_unknown = TData "???"
 
 
-let var_name_of typ =
+let rec var_name_of typ =
   match typ with
   | TBase TUnit -> "u"
   | TBase TBool -> "b"
@@ -68,18 +66,23 @@ let var_name_of typ =
   | TFun _ -> "f"
   | TTuple _ -> "p"
   | TApp(TList,_) -> "xs"
+  | TAttr(_,ty) -> var_name_of ty
   | _ -> "x"
 
-let new_var typ = Id.new_var ~name:(var_name_of typ) typ
+let new_var ?name typ =
+  let name =
+    match name with
+    | None -> (var_name_of typ)
+    | Some name -> name
+  in
+  Id.new_var ~name typ
 
-let make_tfun typ1 typ2 =
-  TFun(new_var typ1, typ2)
+let pureTFun(x,typ) = TAttr([TAPureFun], TFun(x,typ))
 
-let make_ttuple typs =
-  TTuple (List.map new_var typs)
-
+let make_tfun ?name typ1 typ2 = TFun(new_var ?name typ1, typ2)
+let make_ptfun ?name typ1 typ2 = TAttr([TAPureFun], make_tfun ?name typ1 typ2)
+let make_ttuple typs = TTuple (List.map new_var typs)
 let make_tpair typ1 typ2 = make_ttuple [typ1; typ2]
-
 let make_tlist typ = TApp(TList, [typ])
 let make_tref typ = TApp(TRef, [typ])
 let make_toption typ = TApp(TOption, [typ])
@@ -571,6 +574,7 @@ module Ty = struct
   let prim s = TBase (TPrim s)
   let fun_ = make_tfun
   let funs tys ty = List.fold_right make_tfun tys ty
+  let pfun = make_ptfun
   let tuple = make_ttuple
   let pair = make_tpair
   let ( * ) = pair

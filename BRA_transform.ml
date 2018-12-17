@@ -30,7 +30,7 @@ let rec everywhere_expr f {desc = desc; typ = typ} =
 	| BinOp (op, e1, e2) -> BinOp (op, ev e1, ev e2)
 	| Not e -> Not (ev e)
 	| Fun (f, body) -> Fun (f, ev body)
-	| Match (e, mclauses) -> Match (ev e, List.map (fun (p, t1, t2) -> (p, ev t1, ev t2)) mclauses)
+	| Match (e, mclauses) -> Match (ev e, List.map (fun (p, t2) -> (p, ev t2)) mclauses)
 	| e -> e
     end
   in f { desc = expr

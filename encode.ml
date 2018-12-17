@@ -269,7 +269,7 @@ let abst_rec_record_term =
           | _ -> assert false
         in
         let pats'' =
-          let aux (p1,_,_) (p2,cond,t) =
+          let aux (p1,_) (p2,t) =
             let make x =
               let ty = tr.tr2_typ recs @@ Id.typ x in
               Id.set_typ x ty, make_rand_unit ty
@@ -281,7 +281,7 @@ let abst_rec_record_term =
               |> List.map make
               |> make_lets -$- t
             in
-            p2, cond, t'
+            p2, t'
           in
           List.map2 aux pats pats'
         in
@@ -345,9 +345,9 @@ let option_term =
     match p'.pat_desc with
     | PNone ->
         let ty = option_typ p.pat_typ in
-        Pat.(tuple [const_ none_flag; __ ty])
+        Pat.(tuple [const none_flag; __ ty])
     | PSome p ->
-        Pat.(tuple [const_ some_flag; p])
+        Pat.(tuple [const some_flag; p])
     | _ -> p'
   in
   tr.tr_term <- tr_term;
@@ -358,7 +358,11 @@ let option = Problem.map option_term
 
 
 
-let recdata = Encode_rec.trans
+let recdata p =
+  let open Flag.Encode in
+  match !recdata with
+  | Tuple -> Encode_rec.trans p
+  | Variant -> Encode_rec_variant.trans p
 let list = Encode_list.trans
 
 
@@ -374,8 +378,8 @@ let all t =
   |@> pr "RECORD"
   |&!Flag.Method.ignore_exn_arg&> Trans_problem.ignore_exn_arg
   |@!Flag.Method.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
-  |> simple_variant
-  |@> pr "SIMPLE_VARIANT"
+  |*> simple_variant
+  |*@> pr "SIMPLE_VARIANT"
   |> recdata
   |@> pr "RECDATA"
   |> option

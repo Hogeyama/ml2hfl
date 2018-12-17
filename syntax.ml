@@ -45,14 +45,14 @@ and desc =
   | Local of declaration * term
   | BinOp of binop * term * term
   | Not of term
-  | Event of string * bool
+  | Event of string * bool (** true denotes CPS-term *)
   | Record of (string * term) list
   | Field of term * string
   | SetField of term * string * term
   | Nil
   | Cons of term * term
   | Constr of string * term list
-  | Match of term * (pattern * term * term) list
+  | Match of term * (pattern * term) list (** a term diverges if no patters are matched *)
   | Raise of term
   | TryWith of term * term
   | Tuple of term list
@@ -83,14 +83,13 @@ and type_kind =
   | KVariant of (string * typ list) list
   | KRecord of (string * (mutable_flag * typ)) list
   | KOpen
-  [@@deriving show]
 
 and pred = desc
 
 and pattern = {pat_desc:pat_desc; pat_typ:typ}
 and pat_desc =
   | PAny
-  | PNondet (* match non-deterministically *)
+  | PNondet (* match non-deterministically: can be replaced with PWhen *)
   | PVar of id
   | PAlias of pattern * id
   | PConst of term
@@ -102,6 +101,7 @@ and pat_desc =
   | PNone
   | PSome of pattern
   | POr of pattern * pattern
+  | PWhen of pattern * term
   [@@deriving show]
 
 type env = (id * typ) list
@@ -204,6 +204,7 @@ let trans_pat trans p =
     | POr(p1,p2) -> POr(trans.tr_pat p1, trans.tr_pat p2)
     | PNone -> PNone
     | PSome p -> PSome (trans.tr_pat p)
+    | PWhen(p,cond) -> PWhen(trans.tr_pat p, trans.tr_term cond)
   in
   {pat_desc=desc; pat_typ=typ}
 
@@ -251,7 +252,7 @@ let trans_desc trans = function
   | Nil -> Nil
   | Cons(t1,t2) -> Cons(trans.tr_term t1, trans.tr_term t2)
   | Constr(s,ts) -> Constr(s, List.map trans.tr_term ts)
-  | Match(t1,pats) -> Match(trans.tr_term t1, List.map (Triple.map trans.tr_pat trans.tr_term trans.tr_term) pats)
+  | Match(t1,pats) -> Match(trans.tr_term t1, List.map (Pair.map trans.tr_pat trans.tr_term) pats)
   | Raise t -> Raise (trans.tr_term t)
   | TryWith(t1,t2) -> TryWith(trans.tr_term t1, trans.tr_term t2)
   | Tuple ts -> Tuple (List.map trans.tr_term ts)
@@ -375,6 +376,7 @@ let trans2_gen_pat tr env p =
     | POr(p1,p2) -> POr(tr.tr2_pat env p1, tr.tr2_pat env p2)
     | PNone -> PNone
     | PSome p -> PSome (tr.tr2_pat env p)
+    | PWhen(p,cond) -> PWhen(tr.tr2_pat env p, tr.tr2_term env cond)
   in
   {pat_desc=desc; pat_typ=typ}
 
@@ -424,8 +426,7 @@ let trans2_gen_desc tr env desc =
   | Cons(t1,t2) -> Cons(tr.tr2_term env t1, tr.tr2_term env t2)
   | Constr(s,ts) -> Constr(s, List.map (tr.tr2_term env) ts)
   | Match(t1,pats) ->
-      let aux (pat,cond,t1) = tr.tr2_pat env pat, tr.tr2_term env cond, tr.tr2_term env t1 in
-      Match(tr.tr2_term env t1, List.map aux pats)
+      Match(tr.tr2_term env t1, List.map (Pair.map (tr.tr2_pat env) (tr.tr2_term env)) pats)
   | Raise t -> Raise (tr.tr2_term env t)
   | TryWith(t1,t2) -> TryWith(tr.tr2_term env t1, tr.tr2_term env t2)
   | Tuple ts -> Tuple (List.map (tr.tr2_term env) ts)
@@ -511,12 +512,12 @@ let col_list col ?(init=col.col_empty) f xs =
   List.fold_left (fun acc typ -> col.col_app acc @@ f typ) init xs
 
 let col_typ col typ =
-  let (-@-) = col.col_app in
+  let (++) = col.col_app in
   match typ with
   | TBase _ -> col.col_empty
   | TVar({contents=None},_) -> col.col_empty
   | TVar({contents=Some typ},_) -> col.col_typ typ
-  | TFun(x,typ) -> col.col_typ (Id.typ x) -@- col.col_typ typ
+  | TFun(x,typ) -> col.col_typ (Id.typ x) ++ col.col_typ typ
   | TFuns(xs,typ) -> col_list col ~init:(col.col_typ typ) col.col_var xs
   | TApp(_, typs) -> col_list col col.col_typ typs
   | TTuple xs -> col_list col col.col_var xs
@@ -525,9 +526,9 @@ let col_typ col typ =
       let aux acc a =
         match a with
         | TAPred(x,ps) ->
-            let acc' = col.col_var x -@- acc in
-            List.fold_left (fun acc p -> acc -@- col.col_term p) acc' ps
-        | TARefPred(x,p) -> col.col_var x -@- col.col_term p -@- acc
+            let acc' = col.col_var x ++ acc in
+            List.fold_left (fun acc p -> acc ++ col.col_term p) acc' ps
+        | TARefPred(x,p) -> col.col_var x ++ col.col_term p ++ acc
         | TAPureFun -> acc
         | TAEffect e -> acc
       in
@@ -555,6 +556,7 @@ let col_pat col p =
     | POr(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
     | PNone -> col.col_empty
     | PSome p -> col.col_pat p
+    | PWhen(p,cond) -> col.col_app (col.col_pat p) (col.col_term cond)
   in
   col.col_app r1 r2
 
@@ -581,40 +583,37 @@ let col_decl col decl =
       List.fold_left aux col.col_empty defs
   | Decl_type decls -> col_list col (snd |- col.col_typ) decls
 
-let col_desc col = function
+let col_desc col desc =
+  let (++) = col.col_app in
+  match desc with
   | End_of_definitions -> col.col_empty
   | Const c -> col.col_const c
   | Var y -> col.col_var y
-  | Fun(y, t) -> col.col_app (col.col_var y) (col.col_term t)
+  | Fun(y, t) -> col.col_var y ++ col.col_term t
   | App(t1, ts) -> col_list col col.col_term ~init:(col.col_term t1) ts
-  | If(t1, t2, t3) -> col.col_app (col.col_term t1) @@ col.col_app (col.col_term t2) (col.col_term t3)
-  | Local(decl, t2) -> col.col_app (col.col_term t2) (col.col_decl decl)
-  | BinOp(op, t1, t2) -> col.col_app (col.col_term t1) (col.col_term t2)
+  | If(t1, t2, t3) -> col.col_term t1 ++ col.col_term t2 ++ col.col_term t3
+  | Local(decl, t2) -> col.col_term t2 ++ col.col_decl decl
+  | BinOp(op, t1, t2) -> col.col_term t1 ++ col.col_term t2
   | Not t1 -> col.col_term t1
   | Event(s,b) -> col.col_empty
   | Record fields -> col_list col (snd |- col.col_term) fields
   | Field(t1,s) -> col.col_term t1
-  | SetField(t1,_,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
+  | SetField(t1,_,t2) -> col.col_term t1 ++ col.col_term t2
   | Nil -> col.col_empty
-  | Cons(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
+  | Cons(t1,t2) -> col.col_term t1 ++ col.col_term t2
   | Constr(s,ts) -> col_list col col.col_term ts
   | Match(t1,pats) ->
-      let aux acc (pat,cond,t1) =
-        col.col_app acc @@
-        col.col_app (col.col_pat pat) @@
-        col.col_app (col.col_term cond) @@
-        col.col_term t1
-      in
+      let aux acc (pat,t1) = acc ++ col.col_pat pat ++ col.col_term t1 in
       List.fold_left aux (col.col_term t1) pats
   | Raise t -> col.col_term t
-  | TryWith(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
+  | TryWith(t1,t2) -> col.col_term t1 ++ col.col_term t2
   | Tuple ts -> col_list col col.col_term ts
   | Proj(i,t) -> col.col_term t
   | Bottom -> col.col_empty
-  | Label(info, t) -> col.col_app (col.col_info info) (col.col_term t)
+  | Label(info, t) -> col.col_info info ++ col.col_term t
   | Ref t -> col.col_term t
   | Deref t -> col.col_term t
-  | SetRef(t1,t2) -> col.col_app (col.col_term t1) (col.col_term t2)
+  | SetRef(t1,t2) -> col.col_term t1 ++ col.col_term t2
   | TNone -> col.col_empty
   | TSome t -> col.col_term t
   | Module decls -> col_list col col.col_decl decls
@@ -693,12 +692,12 @@ let col2_list col ?(init=col.col2_empty) f xs =
   List.fold_left (fun acc typ -> col.col2_app acc @@ f typ) init xs
 
 let col2_typ col env typ =
-  let (-@-) = col.col2_app in
+  let (++) = col.col2_app in
   match typ with
   | TBase _ -> col.col2_empty
   | TVar({contents=None},_) -> col.col2_empty
   | TVar({contents=Some typ},_) -> col.col2_typ env typ
-  | TFun(x,typ) -> col.col2_var env x -@- col.col2_typ env typ
+  | TFun(x,typ) -> col.col2_var env x ++ col.col2_typ env typ
   | TFuns(xs,typ) -> col2_list col (col.col2_var env) ~init:(col.col2_typ env typ) xs
   | TApp(_,typs) -> col2_list col (col.col2_typ env) typs
   | TTuple xs -> col2_list col (col.col2_var env) xs
@@ -707,37 +706,39 @@ let col2_typ col env typ =
       let aux acc a =
         match a with
         | TAPred(x,ps) ->
-            let init = col.col2_var env x -@- acc in
+            let init = col.col2_var env x ++ acc in
             col2_list col (col.col2_term env) ~init ps
         | TARefPred(x,p) ->
-            col.col2_var env x -@- col.col2_term env p -@- acc
+            col.col2_var env x ++ col.col2_term env p ++ acc
         | TAPureFun -> acc
         | TAEffect _ -> acc
       in
       List.fold_left aux (col.col2_typ env typ) attr
   | TVariant(_,labels) -> List.fold_left (fun init (_,typs) -> col2_list col (col.col2_typ env) ~init typs) col.col2_empty labels
-  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc -@- col.col2_typ env typ) col.col2_empty fields
-  | TModule sgn -> List.fold_left (fun acc (_,typ) -> acc -@- col.col2_typ env typ) col.col2_empty sgn
+  | TRecord fields -> List.fold_left (fun acc (_,(_,typ)) -> acc ++ col.col2_typ env typ) col.col2_empty fields
+  | TModule sgn -> List.fold_left (fun acc (_,typ) -> acc ++ col.col2_typ env typ) col.col2_empty sgn
 
 let col2_var col env x = col.col2_typ env (Id.typ x)
 
 let col2_pat col env p =
+  let (++) = col.col2_app in
   let r1 = col.col2_typ env p.pat_typ in
   let r2 =
     match p.pat_desc with
     | PAny -> col.col2_empty
     | PNondet -> col.col2_empty
     | PVar x -> col.col2_var env x
-    | PAlias(p,x) -> col.col2_app (col.col2_pat env p) (col.col2_var env x)
+    | PAlias(p,x) -> col.col2_pat env p ++ col.col2_var env x
     | PConst t -> col.col2_term env t
-    | PConstr(s,ps) -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
+    | PConstr(s,ps) -> List.fold_left (fun acc p -> acc ++ col.col2_pat env p) col.col2_empty ps
     | PNil -> col.col2_empty
-    | PCons(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
-    | PTuple ps -> List.fold_left (fun acc p -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty ps
-    | PRecord pats -> List.fold_left (fun acc (s,p) -> col.col2_app acc @@ col.col2_pat env p) col.col2_empty pats
-    | POr(p1,p2) -> col.col2_app (col.col2_pat env p1) (col.col2_pat env p2)
+    | PCons(p1,p2) -> col.col2_pat env p1 ++ col.col2_pat env p2
+    | PTuple ps -> List.fold_left (fun acc p -> acc ++ col.col2_pat env p) col.col2_empty ps
+    | PRecord pats -> List.fold_left (fun acc (s,p) -> acc ++ col.col2_pat env p) col.col2_empty pats
+    | POr(p1,p2) -> col.col2_pat env p1 ++ col.col2_pat env p2
     | PNone -> col.col2_empty
     | PSome p -> col.col2_pat env p
+    | PWhen(p,cond) -> col.col2_pat env p ++ col.col2_term env cond
   in
   col.col2_app r1 r2
 
@@ -764,49 +765,48 @@ let col2_decl col env decl =
   | Decl_type decls -> col2_list col (snd |- col.col2_typ env) decls
 
 let col2_desc col env desc =
-  let (-@-) = col.col2_app in
+  let (++) = col.col2_app in
   match desc with
   | End_of_definitions -> col.col2_empty
   | Const c -> col.col2_const env c
   | Var y -> col.col2_var env y
-  | Fun(y, t) -> col.col2_var env y -@- col.col2_term env t
-  | App(t1, ts) -> List.fold_left (fun acc t -> acc -@- col.col2_term env t) (col.col2_term env t1) ts
-  | If(t1, t2, t3) -> col.col2_term env t1 -@- col.col2_term env t2 -@- col.col2_term env t3
-  | Local(decl, t2) -> col.col2_term env t2 -@- col.col2_decl env decl
-  | BinOp(op, t1, t2) -> col.col2_term env t1 -@- col.col2_term env t2
+  | Fun(y, t) -> col.col2_var env y ++ col.col2_term env t
+  | App(t1, ts) -> List.fold_left (fun acc t -> acc ++ col.col2_term env t) (col.col2_term env t1) ts
+  | If(t1, t2, t3) -> col.col2_term env t1 ++ col.col2_term env t2 ++ col.col2_term env t3
+  | Local(decl, t2) -> col.col2_term env t2 ++ col.col2_decl env decl
+  | BinOp(op, t1, t2) -> col.col2_term env t1 ++ col.col2_term env t2
   | Not t1 -> col.col2_term env t1
   | Event(s,b) -> col.col2_empty
-  | Record fields -> List.fold_left (fun acc (_,t1) -> acc -@- col.col2_term env t1) col.col2_empty fields
+  | Record fields -> List.fold_left (fun acc (_,t1) -> acc ++ col.col2_term env t1) col.col2_empty fields
   | Field(t1,s) -> col.col2_term env t1
-  | SetField(t1,s,t2) -> col.col2_term env t1 -@- col.col2_term env t2
+  | SetField(t1,s,t2) -> col.col2_term env t1 ++ col.col2_term env t2
   | Nil -> col.col2_empty
-  | Cons(t1,t2) -> col.col2_term env t1 -@- col.col2_term env t2
-  | Constr(s,ts) -> List.fold_left (fun acc t -> acc -@- col.col2_term env t) col.col2_empty ts
+  | Cons(t1,t2) -> col.col2_term env t1 ++ col.col2_term env t2
+  | Constr(s,ts) -> List.fold_left (fun acc t -> acc ++ col.col2_term env t) col.col2_empty ts
   | Match(t1,pats) ->
-      let aux acc (pat,cond,t1) =
-        acc -@-
-        col.col2_pat env pat -@-
-        col.col2_term env cond -@-
+      let aux acc (pat,t1) =
+        acc ++
+        col.col2_pat env pat ++
         col.col2_term env t1
       in
       List.fold_left aux (col.col2_term env t1) pats
   | Raise t -> col.col2_term env t
-  | TryWith(t1,t2) -> col.col2_term env t1 -@- col.col2_term env t2
-  | Tuple ts -> List.fold_left (fun acc t -> acc -@- col.col2_term env t) col.col2_empty ts
+  | TryWith(t1,t2) -> col.col2_term env t1 ++ col.col2_term env t2
+  | Tuple ts -> List.fold_left (fun acc t -> acc ++ col.col2_term env t) col.col2_empty ts
   | Proj(i,t) -> col.col2_term env t
   | Bottom -> col.col2_empty
-  | Label(info, t) -> col.col2_info env info -@- col.col2_term env t
+  | Label(info, t) -> col.col2_info env info ++ col.col2_term env t
   | Ref t -> col.col2_term env t
   | Deref t -> col.col2_term env t
-  | SetRef(t1,t2) -> col.col2_term env t1 -@- col.col2_term env t2
+  | SetRef(t1,t2) -> col.col2_term env t1 ++ col.col2_term env t2
   | TNone -> col.col2_empty
   | TSome t -> col.col2_term env t
-  | Module decls -> List.fold_left (fun acc decl -> acc -@- col.col2_decl env decl) col.col2_empty decls
+  | Module decls -> List.fold_left (fun acc decl -> acc ++ col.col2_decl env decl) col.col2_empty decls
 
 let col2_term col env t = col.col2_app (col.col2_desc env t.desc) (col.col2_typ env t.typ)
 
 
-let make_col2 empty app =
+let make_col2  : 'a -> ('a -> 'a -> 'a) -> ('a,'b) col2 = fun (empty:'a) app ->
   let f _ _ = empty in
   let col =
     {col2_term = f;
@@ -947,6 +947,7 @@ let tr_col2_var tc env x =
   acc, Id.set_typ x typ'
 
 let tr_col2_pat tc env p =
+  let (++) = tc.tr_col2_app in
   let acc1,typ = tc.tr_col2_typ env p.pat_typ in
   let acc2,desc =
     match p.pat_desc with
@@ -958,7 +959,7 @@ let tr_col2_pat tc env p =
     | PAlias(p,x) ->
         let acc1,p' = tc.tr_col2_pat env p in
         let acc2,x' = tc.tr_col2_var env x in
-        tc.tr_col2_app acc1 acc2, PAlias(p,x')
+        acc1 ++ acc2, PAlias(p,x')
     | PConst t ->
         let acc,t' = tc.tr_col2_term env t in
         acc, PConst t'
@@ -969,7 +970,7 @@ let tr_col2_pat tc env p =
     | PCons(p1,p2) ->
         let acc1,p1' = tc.tr_col2_pat env p1 in
         let acc2,p2' = tc.tr_col2_pat env p2 in
-        tc.tr_col2_app acc1 acc2, PCons(p1', p2')
+        acc1 ++ acc2, PCons(p1', p2')
     | PTuple ps ->
         let acc,ps' = tr_col2_list tc tc.tr_col2_pat env ps in
         acc, PTuple ps'
@@ -983,13 +984,17 @@ let tr_col2_pat tc env p =
     | POr(p1,p2) ->
         let acc1,p1' = tc.tr_col2_pat env p1 in
         let acc2,p2' = tc.tr_col2_pat env p2 in
-        tc.tr_col2_app acc1 acc2, POr(p1', p2')
+        acc1 ++ acc2, POr(p1', p2')
     | PNone -> tc.tr_col2_empty, PNone
     | PSome p ->
         let acc,p' = tc.tr_col2_pat env p in
         acc, PSome p'
+    | PWhen(p,cond) ->
+        let acc1,p' = tc.tr_col2_pat env p in
+        let acc2,cond' = tc.tr_col2_term env cond in
+        acc1 ++ acc2, PWhen(p', cond')
   in
-  tc.tr_col2_app acc1 acc2, {pat_desc=desc; pat_typ=typ}
+  acc1 ++ acc2, {pat_desc=desc; pat_typ=typ}
 
 let tr_col2_info tc env = function
   | InfoInt n -> tc.tr_col2_empty, InfoInt n
@@ -1031,6 +1036,7 @@ let tr_col2_decl tc env decl =
       acc, Decl_type decls'
 
 let tr_col2_desc tc env desc =
+  let (++) = tc.tr_col2_app in
   match desc with
   | End_of_definitions -> tc.tr_col2_empty, End_of_definitions
   | Const c ->
@@ -1042,7 +1048,7 @@ let tr_col2_desc tc env desc =
   | Fun(y, t) ->
       let acc1,y' = tc.tr_col2_var env y in
       let acc2,t' = tc.tr_col2_term env t in
-      tc.tr_col2_app acc1 acc2, Fun(y',t')
+      acc1 ++ acc2, Fun(y',t')
   | App(t1, ts) ->
       let acc,t1' = tc.tr_col2_term env t1 in
       let acc',ts' = tr_col2_list tc tc.tr_col2_term ~init:acc env ts in
@@ -1055,11 +1061,11 @@ let tr_col2_desc tc env desc =
   | Local(decl, t2) ->
       let acc1,decl' = tc.tr_col2_decl env decl in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, Local(decl',t2')
+      acc1 ++ acc2, Local(decl',t2')
   | BinOp(op, t1, t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, BinOp(op,t1',t2')
+      acc1 ++ acc2, BinOp(op,t1',t2')
   | Not t1 ->
       let acc,t1' = tc.tr_col2_term env t1 in
       acc, Not t1'
@@ -1077,21 +1083,20 @@ let tr_col2_desc tc env desc =
   | SetField(t1,s,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, SetField(t1',s,t2')
+      acc1 ++ acc2, SetField(t1',s,t2')
   | Nil -> tc.tr_col2_empty, Nil
   | Cons(t1,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, Cons(t1',t2')
+      acc1 ++ acc2, Cons(t1',t2')
   | Constr(s,ts) ->
       let acc,ts' = tr_col2_list tc tc.tr_col2_term env ts in
       acc, Constr(s,ts')
   | Match(t1,pats) ->
-      let aux env (pat,cond,t1) =
+      let aux env (pat,t1) =
         let acc1,pat' = tc.tr_col2_pat env pat in
-        let acc2,cond' = tc.tr_col2_term env cond in
-        let acc3,t1' = tc.tr_col2_term env t1 in
-        tc.tr_col2_app acc1 @@ tc.tr_col2_app acc2 acc3, (pat',cond',t1')
+        let acc2,t1' = tc.tr_col2_term env t1 in
+        acc1 ++ acc2, (pat',t1')
       in
       let acc,t1' = tc.tr_col2_term env t1 in
       let acc',pats' = tr_col2_list tc aux ~init:acc env pats in
@@ -1102,7 +1107,7 @@ let tr_col2_desc tc env desc =
   | TryWith(t1,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, TryWith(t1',t2')
+      acc1 ++ acc2, TryWith(t1',t2')
   | Tuple ts ->
       let acc,ts' = tr_col2_list tc tc.tr_col2_term env ts in
       acc, Tuple ts'
@@ -1113,7 +1118,7 @@ let tr_col2_desc tc env desc =
   | Label(info, t) ->
       let acc1,t' = tc.tr_col2_term env t in
       let acc2,info' = tc.tr_col2_info env info in
-      tc.tr_col2_app acc1 acc2, Label(info',t')
+      acc1 ++ acc2, Label(info',t')
   | Ref t ->
       let acc,t' = tc.tr_col2_term env t in
       acc, Ref t'
@@ -1123,7 +1128,7 @@ let tr_col2_desc tc env desc =
   | SetRef(t1,t2) ->
       let acc1,t1' = tc.tr_col2_term env t1 in
       let acc2,t2' = tc.tr_col2_term env t2 in
-      tc.tr_col2_app acc1 acc2, SetRef(t1',t2')
+      acc1 ++ acc2, SetRef(t1',t2')
   | TNone -> tc.tr_col2_empty, TNone
   | TSome t ->
       let acc,t' = tc.tr_col2_term env t in
@@ -1321,6 +1326,10 @@ let fold_tr_pat fld env p =
     | PSome p ->
         let env'',p' = fld.fld_pat env' p in
         env'', PSome p'
+    | PWhen(p,cond) ->
+        let env'',p' = fld.fld_pat env' p in
+        let env''',cond' = fld.fld_term env'' cond in
+        env''', PWhen(p', cond')
   in
   env'', {pat_desc=desc; pat_typ=typ}
 
@@ -1419,11 +1428,10 @@ let fold_tr_desc fld env = function
       let env',ts' = fold_tr_list fld.fld_term env ts in
       env', Constr(s,ts')
   | Match(t1,pats) ->
-      let aux env (pat,cond,t1) =
+      let aux env (pat,t1) =
         let env',pat' = fld.fld_pat env pat in
-        let env'',cond' = fld.fld_term env' cond in
-        let env''',t1' = fld.fld_term env'' t1 in
-        env''', (pat',cond',t1')
+        let env'',t1' = fld.fld_term env' t1 in
+        env'', (pat',t1')
       in
       let env',t1' = fld.fld_term env t1 in
       let env'',pats' = fold_tr_list aux env' pats in
@@ -1545,9 +1553,9 @@ let get_fv =
         List.fold_left aux fv_t2 bindings
     | Fun(x,t) -> col.col2_term (x::bv) t
     | Match(t,pats) ->
-        let aux acc (pat,cond,t) =
+        let aux acc (pat,t) =
           let bv' = get_bv_pat pat @@@ bv in
-          col.col2_term bv' cond @@@ col.col2_term bv' t @@@ acc
+          col.col2_term bv' t @@@ acc
         in
         List.fold_left aux (col.col2_term bv t) pats
     | _ -> col.col2_desc_rec bv desc

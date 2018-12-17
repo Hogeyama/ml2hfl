@@ -87,7 +87,8 @@ val _TAttr : 'a attr list -> 'a t -> 'a t
 val pureTFun : ('a t Id.t * 'a t) -> 'a t
 val make_ttuple : 'a t list -> 'a t
 val make_tpair : 'a t -> 'a t -> 'a t
-val make_tfun : 'a t -> 'a t -> 'a t
+val make_tfun : ?name:string -> 'a t -> 'a t -> 'a t
+val make_ptfun : ?name:string -> 'a t -> 'a t -> 'a t
 val make_tlist : 'a t -> 'a t
 val make_tref : 'a t -> 'a t
 val make_toption : 'a t -> 'a t
@@ -117,8 +118,9 @@ module Ty : sig
   val bool : 'a t
   val int : 'a t
   val prim : string -> 'a t
-  val fun_ : 'a t -> 'a t -> 'a t
+  val fun_ : ?name:string -> 'a t -> 'a t -> 'a t
   val funs : 'a t list -> 'a t -> 'a t
+  val pfun : ?name:string -> 'a t -> 'a t -> 'a t
   val tuple : 'a t list -> 'a t
   val pair : 'a t -> 'a t -> 'a t
   val ( * ) : 'a t -> 'a t -> 'a t

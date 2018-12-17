@@ -53,7 +53,7 @@ let cps_result = {desc=Const CPS_result; typ=typ_result; attr=const_attr}
 let fail_term = {desc=Event("fail",false); typ=typ_event; attr=[]}
 let fail_term_cps = {desc=Event("fail",true); typ=typ_event_cps; attr=[]}
 let make_bool b = if b then true_term else false_term
-let make_bottom typ = {desc=Bottom; typ=typ; attr=[]}
+let make_bottom typ = {desc=Bottom; typ; attr=[]}
 let make_event s = {desc=Event(s,false); typ=typ_event; attr=[]}
 let make_event_cps s = {desc=Event(s,true); typ=typ_event_cps; attr=[]}
 let make_var x = {desc=Var x; typ=Id.typ x; attr=pure_attr}
@@ -205,7 +205,7 @@ let make_if_ t1 t2 t3 =
             then warning @@ Format.asprintf " @[<hv 2>if-branches have different types@ %a and@ %a@]" Print.typ t2.typ Print.typ t3.typ;
             t2.typ
       in
-      {desc=If(t1, t2, t3); typ=typ; attr=make_attr[t1;t2;t3]}
+      {desc=If(t1, t2, t3); typ; attr=make_attr[t1;t2;t3]}
 let make_eq t1 t2 =
   assert (Flag.Debug.check_typ => Type.can_unify t1.typ t2.typ);
   match t1.desc, t2.desc with
@@ -249,16 +249,17 @@ let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=t.attr}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=t.attr}
 let make_pair t1 t2 = make_tuple [t1;t2]
 let make_nil typ = {desc=Nil; typ=TApp(TList, [typ]); attr=const_attr}
-let make_nil2 typ = {desc=Nil; typ=typ; attr=const_attr}
+let make_nil2 typ = {desc=Nil; typ; attr=const_attr}
 let make_cons t1 t2 =
   assert (Flag.Debug.check_typ => Type.can_unify (TApp(TList, [t1.typ])) t2.typ);
   let attr = make_attr [t1;t2] in
   {desc=Cons(t1,t2); typ=t2.typ; attr}
-let rec make_list ts =
-  match ts with
-  | [] -> make_nil typ_unknown
-  | [t1] -> make_cons t1 @@ make_nil t1.typ
-  | t1::ts' -> make_cons t1 @@ make_list ts'
+let rec make_list ?typ ts =
+  match ts, typ with
+  | [], None -> make_nil typ_unknown
+  | [], Some ty -> make_nil ty
+  | [t1], _ -> make_cons t1 @@ make_nil t1.typ
+  | t1::ts', _ -> make_cons t1 @@ make_list ts'
 let make_pany typ = {pat_desc=PAny; pat_typ=typ}
 let make_pvar x = {pat_desc=PVar x; pat_typ=Id.typ x}
 let make_pconst t = {pat_desc=PConst t; pat_typ=t.typ}
@@ -267,6 +268,15 @@ let make_ptuple ps = {pat_desc=PTuple ps; pat_typ=make_ttuple @@ List.map (fun p
 let make_pnil typ = {pat_desc=PNil; pat_typ=make_tlist typ}
 let make_pnil2 typ = {pat_desc=PNil; pat_typ=typ}
 let make_pcons p1 p2 = {pat_desc=PCons(p1,p2); pat_typ=p2.pat_typ}
+let make_pwhen p t =
+  if t.desc = Const True then
+    p
+  else
+    match p.pat_desc with
+    | PWhen(p', t') ->
+        let cond = make_and t t' in
+        {pat_desc=PWhen(p,cond); pat_typ=p.pat_typ}
+    | _ -> {pat_desc=PWhen(p,t); pat_typ=p.pat_typ}
 let make_label_aux info t = {desc=Label(info,t); typ=t.typ; attr=[]}
 let make_label ?(label="") info t =
   t
@@ -494,7 +504,6 @@ let rec get_argtyps ty =
 let arg_num typ = List.length (get_args typ)
 
 
-
 let is_poly_typ = make_col false (||)
 
 let is_poly_typ_typ typ =
@@ -505,6 +514,17 @@ let is_poly_typ_typ typ =
 let () = is_poly_typ.col_typ <- is_poly_typ_typ
 let is_poly_typ = is_poly_typ.col_typ
 
+
+let rename,rename_pat =
+  let tr = make_trans2 () in
+  let tr_var map x =
+    match Id.assoc_option x map with
+    | None -> x
+    | Some y -> Id.set_typ y @@ Id.typ x
+  in
+  tr.tr2_var <- tr_var;
+  tr.tr2_typ <- Fun.snd;
+  tr.tr2_term, tr.tr2_pat
 
 
 let subst = make_trans2 ()
@@ -531,14 +551,29 @@ let subst_term (x,t,fv as arg) t' =
       let desc = subst.tr2_desc_rec arg @@ Local(Decl_let bindings', t2') in
       {t' with desc}
   | Match(t1,pats), _ ->
-      let aux (pat,cond,t1) =
-        let xs = get_bv_pat pat in
-        if Option.exists (fun fv -> not @@ List.Set.disjoint ~eq:Id.eq xs fv) fv then unsupported "subst";
-        if List.exists (Id.same x) xs
-        then pat, cond, t1
-        else pat, subst.tr2_term arg cond, subst.tr2_term arg t1
+      let pats_renamed =
+        let aux (p,t) =
+          let bv = get_bv_pat p in
+          match fv with
+          | None -> p, t
+          | Some fv ->
+              let bv' = List.Set.inter ~eq:Id.eq bv fv in
+              let map = List.map (Pair.add_right Id.new_var_id) bv' in
+              rename_pat map p, rename map t
+        in
+        List.map aux pats
       in
-      let desc = Match(subst.tr2_term arg t1, List.map aux pats) in
+      let aux (p,t1) =
+        let xs = get_bv_pat p in
+        let t1' =
+          if List.exists (Id.same x) xs then
+            t1
+          else
+            subst.tr2_term arg t1
+        in
+        p, t1'
+      in
+      let desc = Match(subst.tr2_term arg t1, List.map aux pats_renamed) in
       {t' with desc}
   | _ -> subst.tr2_term_rec arg t'
 
@@ -570,7 +605,7 @@ let subst_map_term map t =
       let t2' = subst_map.tr2_term map' t2 in
       make_let bindings' t2'
   | Match(t1,pats) -> (* TODO: fix *)
-      let aux (pat,cond,t1) = pat, cond, subst_map.tr2_term map t1 in
+      let aux (pat,t1) = pat, subst_map.tr2_term map t1 in
       {desc=Match(subst_map.tr2_term map t1, List.map aux pats); typ=t.typ; attr=[]}
   | _ -> subst_map.tr2_term_rec map t
 
@@ -608,11 +643,11 @@ let subst_var_without_typ =
         let t2' = tr.tr2_term (x,y) t2 in
         Local(Decl_let bindings', t2')
     | Match(t1,pats) ->
-        let aux (pat,cond,t1) =
+        let aux (pat,t1) =
           let xs = get_bv_pat pat in
           if List.exists (Id.same x) xs
-          then pat, cond, t1
-          else pat, tr.tr2_term (x,y) cond, tr.tr2_term (x,y) t1
+          then pat, t1
+          else pat, tr.tr2_term (x,y) t1
         in
         Match(tr.tr2_term (x,y) t1, List.map aux pats)
     | _ -> tr.tr2_desc_rec (x,y) desc
@@ -623,16 +658,40 @@ let subst_var_map_without_typ map t =
   List.fold_right (Fun.uncurry subst_var_without_typ) map t
 
 
-let make_match t1 pats =
+let make_match ?typ t1 pats =
   match pats with
-  | [{pat_desc=PAny}, {desc=Const True}, t2] -> make_seq t1 t2
-  | [{pat_desc=PVar x}, {desc=Const True}, t2] ->
-      if Id.mem x @@ get_fv t1 then
-        let x' = Id.new_var_id x in
-        make_let_s [x',t1] @@ subst_var x x' t2
-      else
-        make_let_s [x,t1] t2
-  | _ -> {desc=Match(t1,pats); typ=Syntax.typ@@Triple.trd@@List.hd pats; attr=[]}
+  | [] ->
+      begin
+        match typ with
+        | None -> invalid_arg "Term_util.make_match"
+        | Some ty -> make_bottom ty
+      end
+  | (_,t)::_ ->
+      let pats' =
+        let rec match_any p =
+          match p.pat_desc with
+          | PAny -> true
+          | PVar _ -> true
+          | PAlias(p1,_) -> match_any p1
+          | PConst {desc=Const Unit} -> true
+          | POr(p1,p2) -> match_any p1 || match_any p2
+          | PWhen(p,c) -> match_any p && c.desc = Const True
+          | _ -> false
+        in
+        let aux (p,t) acc =
+          (p,t) :: (if match_any p then [] else acc)
+        in
+        List.fold_right aux pats []
+      in
+      match pats' with
+      | [{pat_desc=PAny}, t2] -> make_seq t1 t2
+      | [{pat_desc=PVar x}, t2] ->
+          if Id.mem x @@ get_fv t1 then
+            let x' = Id.new_var_id x in
+            make_let_s [x',t1] @@ subst_var x x' t2
+          else
+            make_let_s [x,t1] t2
+      | _ -> {desc=Match(t1,pats'); typ=t.typ; attr=[]}
 let make_single_match ?(total=false) t1 p t2 =
   let rec is_total p =
     match p.pat_desc with
@@ -644,8 +703,8 @@ let make_single_match ?(total=false) t1 p t2 =
     | _ -> false
   in
   if total || is_total p
-  then make_match t1 [p, true_term, t2]
-  else make_match t1 [p, true_term, t2; make_pany p.pat_typ, true_term, make_fail t2.typ]
+  then make_match t1 [p, t2]
+  else make_match t1 [p, t2; make_pany p.pat_typ, make_fail t2.typ]
 let make_trywith t x pats =
   if has_safe_attr t then
     t
@@ -683,7 +742,7 @@ let max_pat_num_term t =
   match t.desc with
   | Match(t,pats) ->
       let m = max (List.length pats) (max_pat_num.col_term t) in
-      let aux acc (_,cond,t) = max acc (max (max_pat_num.col_term t) (max_pat_num.col_term cond)) in
+      let aux acc (_,t) = max acc (max_pat_num.col_term t)  in
       List.fold_left aux m pats
   | _ -> max_pat_num.col_term_rec t
 
@@ -721,7 +780,7 @@ and same_desc t1 t2 =
   | Cons(t11,t12), Cons(t21,t22) -> same_term t11 t21 && same_term t12 t22
   | Constr(c1, ts1), Constr(c2, ts2) -> c1 = c2 && List.for_all2 same_term ts1 ts2
   | Match(t1,pats1), Match(t2,pats2) ->
-      let eq (pat1,cond1,t1) (pat2,cond2,t2) = pat1 = pat2 && same_term cond1 cond2 && same_term t1 t2 in
+      let eq (pat1,t1) (pat2,t2) = pat1 = pat2 && same_term t1 t2 in
       same_term t1 t2 && List.eq ~eq pats1 pats2
   | Raise t1, Raise t2 -> same_term t1 t2
   | TryWith(t11,t12), TryWith(t21,t22) -> same_term t11 t21 && same_term t12 t22
@@ -830,6 +889,7 @@ let make_if t1 t2 t3 =
   | Const True -> t2
   | Const False -> t3
   | _ when has_safe_attr t2 && same_term' t2 t3 -> t2
+  | _ when t2.desc = Const True && t3.desc = Const False -> t1
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
 let make_assert ?loc t = make_if t unit_term (make_fail_unit loc)
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
@@ -855,8 +915,8 @@ let get_top_rec_funs = get_top_rec_funs []
 
 let has_no_effect =
   let col = make_col true (&&) in
-  let col_term t =
-    match t.desc with
+  let col_desc desc =
+    match desc with
     | Const _ -> true
     | Var _ -> true
     | Fun _ -> true
@@ -869,9 +929,9 @@ let has_no_effect =
     | Ref _ -> false
     | Deref _ -> false
     | SetRef _ -> false
-    | _ -> col.col_term_rec t
+    | _ -> col.col_desc_rec desc
   in
-  col.col_term <- col_term;
+  col.col_desc <- col_desc;
   col.col_term
 
 
@@ -923,6 +983,17 @@ let rec var_name_of_term t =
 
 let new_var_of_term t = Id.new_var ~name:(var_name_of_term t) t.typ
 
+
+let rec var_name_of_pattern p =
+  match p.pat_desc with
+  | PAny -> "u"
+  | PVar x -> Id.name x
+  | PTuple [] -> "nil"
+  | PTuple ps -> String.join "__" @@ List.map var_name_of_pattern ps
+  | PNil -> "nil"
+  | _ -> Type.var_name_of p.pat_typ
+
+let new_var_of_pattern p = Id.new_var ~name:(var_name_of_pattern p) p.pat_typ
 
 
 let make_let' t1 make_t2 =
@@ -1256,17 +1327,6 @@ let trans_if =
   tr.tr2_term <- trans_if_term;
   tr.tr2_term
 
-let rename,rename_pat =
-  let tr = make_trans2 () in
-  let tr_var map x =
-    match Id.assoc_option x map with
-    | None -> x
-    | Some y -> Id.set_typ y @@ Id.typ x
-  in
-  tr.tr2_var <- tr_var;
-  tr.tr2_typ <- Fun.snd;
-  tr.tr2_term, tr.tr2_pat
-
 let get_max_var_id =
   let col = make_col (-1) max in
   let col_id_term t =
@@ -1386,10 +1446,10 @@ end
 
 module Pat = struct
   let __ = make_pany
-  let const_ = make_pconst
-  let unit = const_ unit_term
-  let int = const_ -| make_int
-  let bool = const_ -| make_bool
+  let const = make_pconst
+  let unit = const unit_term
+  let int = const -| make_int
+  let bool = const -| make_bool
   let true_ = bool true
   let false_ = bool false
   let var = make_pvar
@@ -1398,4 +1458,5 @@ module Pat = struct
   let nil = make_pnil
   let nil2 = make_pnil2
   let cons = make_pcons
+  let when_ = make_pwhen
 end

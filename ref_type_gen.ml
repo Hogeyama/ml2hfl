@@ -86,10 +86,10 @@ let rec generate_check typ_exn make_fail genv cenv x typ =
             genv', cenv', U.true_term
           else
             let t_body =
-              let pat_nil = U.make_pnil styp, U.true_term, U.true_term in
+              let pat_nil = U.make_pnil styp, U.true_term in
               let pat_cons =
                 let t_b2 = U.make_app (U.make_var f) [U.make_var zs'] in
-                U.make_pcons (U.make_pvar z) (U.make_pvar zs'), U.true_term, U.make_and t_b1 t_b2
+                U.make_pcons (U.make_pvar z) (U.make_pvar zs'), U.make_and t_b1 t_b2
               in
               U.make_match (U.make_var zs) [pat_nil; pat_cons]
             in
@@ -159,9 +159,8 @@ and generate typ_exn make_fail genv cenv typ =
           | Const _ -> assert false
           | Match({desc=Var y}, ps) when Id.(x = y) ->
               let bindings =
-                let aux (p,cond,t) =
+                let aux (p,t) =
                   let s', xs =
-                    if cond.desc <> Const True then uns();
                     match p.pat_desc with
                     | PConstr(s, ps) ->
                         let aux' p =
@@ -309,7 +308,7 @@ and generate typ_exn make_fail genv cenv typ =
             let genv', cenv', tb = generate_check typ_exn make_fail genv cenv x typ1 in
             let tb' =
               let e = Id.new_var ~name:"e" @@ Option.default U.typ_exn typ_exn in
-              U.make_trywith tb e [U.make_pany @@ Id.typ e, U.true_term, U.false_term]
+              U.make_trywith tb e [U.make_pany @@ Id.typ e, U.false_term]
               |> U.make_or U.randbool_unit_term
               |*> comment @@ Format.asprintf "GEN INTER: beta(%a)" print typ1
             in
