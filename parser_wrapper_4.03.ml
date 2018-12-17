@@ -823,12 +823,12 @@ let rec from_module_binding id_env tenv mb
   let m = from_ident mb.mb_id mdl.typ in
   id_env', [Nonrecursive, Decl_let [m,mdl]]
 
-and from_module_type mty =
-  match mty with
+and from_module_type env mty =
+  match Mtype.scrape env mty with
   | Mty_ident path -> TData (Path.name path)
   | Mty_signature sgn -> TModule []
   | Mty_functor(id, None, mty2) -> unsupported "Mty_functor"
-  | Mty_functor(id, Some mty1, mty2) -> TFun(from_ident id @@ from_module_type mty1, from_module_type mty2)
+  | Mty_functor(id, Some mty1, mty2) -> TFun(from_ident id @@ from_module_type env mty1, from_module_type env mty2)
   | Mty_alias path -> TData (Path.name path)
 
 and from_module_expr id_env mb_expr =
@@ -849,7 +849,7 @@ and from_module_expr id_env mb_expr =
       in
       id_env'', mdl
   | Tmod_ident(path,loc) ->
-      let ty = from_module_type mb_expr.mod_type in
+      let ty = from_module_type mb_expr.mod_env mb_expr.mod_type in
       id_env, make_var @@ Id.make 0 (Path.name path) [] ty
   | Tmod_functor(id, loc, mty, expr) ->
       let ty =
