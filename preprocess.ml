@@ -226,6 +226,8 @@ let all spec : t list =
     Make_ext_funs,
       trans_if (not !Flag.Method.encode_before_make_ext_fun) @@
       map_trans make_ext_funs;
+    Encode_simple_variant,
+      map_trans Encode.simple_variant;
     Replace_base_with_int,
       trans_if (!Flag.Encode.base_to_int || !Flag.Encode.data_to_int) @@
       map_trans replace_base_with_int;
