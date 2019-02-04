@@ -378,8 +378,8 @@ let all t =
   |@> pr "RECORD"
   |&!Flag.Method.ignore_exn_arg&> Trans_problem.ignore_exn_arg
   |@!Flag.Method.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
-  |*> simple_variant
-  |*@> pr "SIMPLE_VARIANT"
+  |&Flag.Encode.(!recdata <> Variant)&> simple_variant
+  |@Flag.Encode.(!recdata <> Variant)&> pr "SIMPLE_VARIANT"
   |> recdata
   |@> pr "RECDATA"
   |> option

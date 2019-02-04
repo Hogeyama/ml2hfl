@@ -400,7 +400,7 @@ let replace_simple_match_with_if =
   tr.tr_desc <- tr_desc;
   tr.tr_term
 
-let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term_typ t
+let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
 let trans_typ = abst_recdata.tr2_typ []
 let trans_term t =
@@ -409,7 +409,7 @@ let trans_term t =
   |@> pr "input"
   |> Trans.abst_ext_recdata
   |@> pr "abst_ext_rec"
-  |@> Type_check.check ~ty
+  |@> Type_check.check ~ty:t.typ
   |> abst_recdata.tr2_term []
   |@> pr "abst_rec"
   |@> Type_check.check ~ty
