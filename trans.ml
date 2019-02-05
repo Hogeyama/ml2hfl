@@ -3432,7 +3432,7 @@ let decompose_match =
     | POr(p1,p2) ->
         let p1',bind1 = tr_pat p1 in
         let p2',bind2 = tr_pat p2 in
-        let pat_desc = PCons(p1', p2') in
+        let pat_desc = POr(p1', p2') in
         {p with pat_desc}, bind1 -| bind2
     | PWhen(p1,cond) ->
         let p1',bind = tr_pat p1 in
