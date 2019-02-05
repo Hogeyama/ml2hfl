@@ -3426,9 +3426,10 @@ let decompose_match =
         let ps',bind1 = tr_pat_list ps in
         let xs,conds = List.split_map (Option.get -| decomp_var) ps' in
         let x = new_var_of_pattern p in
-        let bind2 = List.mapi (fun i y -> Term.(let_ [y, proj i (var x)])) xs in
-        let bind = List.fold_right (-|) bind2 bind1 in
-        Pat.(when_ (var x) Term.(bind (ands conds))), bind
+        let bind2 = List.mapi (fun i y -> Term.(let_s [y, proj i (var x)])) xs in
+        let bind = List.fold_right (-|) bind2 Fun.id in
+        let bind' = bind -| bind1 in
+        Pat.(when_ (var x) Term.(bind (ands conds))), bind'
     | PRecord sps ->
         let ss,ps = List.split sps in
         let ps',bind = tr_pat_list ps in
@@ -3446,7 +3447,7 @@ let decompose_match =
         begin
           match decomp_var p1', decomp_var p2' with
           | Some(x1, cond1), Some(x2, cond2) ->
-              let bind = Term.(let_ [x2, var x1]) -| bind1 -| bind2 in
+              let bind = Term.(let_s [x2, var x1]) -| bind1 -| bind2 in
               Pat.(when_ (var x1) Term.(bind (cond1 || cond2))), bind
           | _ ->
               let pat_desc = POr(p1', p2') in

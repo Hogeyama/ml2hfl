@@ -1399,6 +1399,7 @@ module Term = struct
   let (@) = make_app
   let (@@) = make_app
   let let_ = make_let
+  let let_s = make_let_s
   let lets = make_lets
   let fun_ = make_fun
   let pfun = make_pure_fun

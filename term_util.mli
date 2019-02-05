@@ -252,6 +252,7 @@ module Term : sig
   val (@) : term -> term list -> term
   val (@@) : term -> term list -> term
   val let_ : (id * term) list -> term -> term
+  val let_s : (id * term) list -> term -> term
   val lets : (id * term) list -> term -> term
   val fun_ : id -> term -> term
   val pfun : id -> term -> term
