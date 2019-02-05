@@ -271,6 +271,9 @@ let rec abst_recdata_pat env p =
     | PSome p ->
         let p',cond,bind = abst_recdata_pat env p in
         PSome p', cond, bind
+    | PWhen(p,c) ->
+        let p',cond,bind = abst_recdata_pat env p in
+        p'.pat_desc, Term.(c && cond), bind
   in
   {pat_desc=desc; pat_typ=typ}, cond, bind
 
