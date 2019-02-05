@@ -3413,9 +3413,11 @@ let decompose_match =
         let pat_desc = PCons(p1', p2') in
         {p with pat_desc}, bind
     | PTuple ps ->
-        let ps',bind = tr_pat_list ps in
-        let pat_desc = PTuple ps' in
-        {p with pat_desc}, bind
+        let ps',bind1 = tr_pat_list ps in
+        let xs = List.map (function {pat_desc=PVar x} -> x | _ -> assert false) ps' in
+        let x = new_var_of_pattern p in
+        let bind2 = List.mapi (fun i y -> Term.(let_ [y, proj i (var x)])) xs in
+        Pat.(var x), List.fold_right (-|) bind2 bind1
     | PRecord sps ->
         let ss,ps = List.split sps in
         let ps',bind = tr_pat_list ps in
