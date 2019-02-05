@@ -375,34 +375,6 @@ let () =
   abst_recdata.tr2_term <- abst_recdata_term;
   abst_recdata.tr2_typ <- abst_recdata_typ
 
-let replace_simple_match_with_if =
-  let tr = make_trans () in
-  let tr_desc desc =
-    match desc with
-    | Match(t, pats) when List.for_all (function ({pat_desc=PAny|PVar _},_) -> true | _ -> false) pats ->
-        let x = new_var_of_term t in
-        let t' =
-          let ty = (snd @@ List.hd pats).typ in
-          let aux (p,t1) t2 =
-            let p',cond =
-              match p.pat_desc with
-              | PWhen(p',c) -> p', c
-              | _ -> p, Term.true_
-            in
-            let t' = Term.(if_ cond t1 t2) in
-            match p'.pat_desc with
-            | PAny -> t'
-            | PVar y -> subst_var y x t'
-            | _ -> assert false
-          in
-          List.fold_right aux pats Term.(bot ty)
-        in
-        Local(Decl_let [x,t], t')
-    | _ -> tr.tr_desc_rec desc
-  in
-  tr.tr_desc <- tr_desc;
-  tr.tr_term
-
 let pr s t = Debug.printf "##[encode_rec] %a:@.%a@.@." Color.s_red s Print.term' t
 
 let trans_typ = abst_recdata.tr2_typ []
@@ -417,7 +389,6 @@ let trans_term t =
   |@> pr "abst_rec"
   |@> Type_check.check ~ty
   |> Trans.simplify_match
-  |> replace_simple_match_with_if
   |> Trans.reconstruct
   |> Trans.inline_var
   |> Trans.elim_singleton_tuple

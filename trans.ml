@@ -3338,6 +3338,10 @@ let lift_pwhen =
     let col_pat p =
       match p.pat_desc with
       | PWhen(p,c) -> Term.(col.col_pat p && c)
+      | POr(p1,p2) ->
+          assert ((col.col_pat p1).desc = Const True);
+          assert ((col.col_pat p2).desc = Const True);
+          Term.true_
       | _ -> col.col_pat_rec p
     in
     col.col_pat <- col_pat;
@@ -3373,6 +3377,12 @@ let lift_pwhen =
 (* Output: the direct ancestors of patters for constructors must be PAny or PVar wrapped with PWhen *)
 let decompose_match =
   let tr = make_trans () in
+  let decomp_var p =
+    match p.pat_desc with
+    | PVar x -> Some(x, Term.true_)
+    | PWhen({pat_desc=PVar x}, cond) -> Some(x, cond)
+    | _ -> None
+  in
   let rec tr_pat_list ps =
     let aux p =
       match p.pat_desc with
@@ -3414,10 +3424,11 @@ let decompose_match =
         {p with pat_desc}, bind
     | PTuple ps ->
         let ps',bind1 = tr_pat_list ps in
-        let xs = List.map (function {pat_desc=PVar x} -> x | _ -> assert false) ps' in
+        let xs,conds = List.split_map (Option.get -| decomp_var) ps' in
         let x = new_var_of_pattern p in
         let bind2 = List.mapi (fun i y -> Term.(let_ [y, proj i (var x)])) xs in
-        Pat.(var x), List.fold_right (-|) bind2 bind1
+        let bind = List.fold_right (-|) bind2 bind1 in
+        Pat.(when_ (var x) Term.(bind (ands conds))), bind
     | PRecord sps ->
         let ss,ps = List.split sps in
         let ps',bind = tr_pat_list ps in
@@ -3432,8 +3443,15 @@ let decompose_match =
     | POr(p1,p2) ->
         let p1',bind1 = tr_pat p1 in
         let p2',bind2 = tr_pat p2 in
-        let pat_desc = POr(p1', p2') in
-        {p with pat_desc}, bind1 -| bind2
+        begin
+          match decomp_var p1', decomp_var p2' with
+          | Some(x1, cond1), Some(x2, cond2) ->
+              let bind = Term.(let_ [x2, var x1]) -| bind1 -| bind2 in
+              Pat.(when_ (var x1) Term.(bind (cond1 || cond2))), bind
+          | _ ->
+              let pat_desc = POr(p1', p2') in
+              {p with pat_desc}, bind1 -| bind2
+        end
     | PWhen(p1,cond) ->
         let p1',bind = tr_pat p1 in
         let cond' = tr.tr_term cond in
