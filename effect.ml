@@ -386,7 +386,7 @@ let mark =
         let ty2' = tr.tr_typ ty2 in
         let x' = tr.tr_var x in
         let x'' =
-          if can_have_pred ty2' then
+          if ENone = effect_of_typ ty2 && can_have_pred ty2' then
             mark_id x'
           else
             x'
