@@ -552,6 +552,8 @@ let trans_term t =
   |@> pr "trans" -| fst
   |> Pair.map_fst Trans.eta_tuple
   |@> pr "eta_tuple" -| fst
+  |> Pair.map_fst Trans.inline_var
+  |@> pr "inline_var" -| fst
 
 let trans_var x =
   if !Flag.Encode.encode_list_opt then
