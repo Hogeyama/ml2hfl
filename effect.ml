@@ -362,41 +362,37 @@ let mark =
     Id.set_typ x ty'
   in
   let tr_typ ty =
-    let ty'  =
-      match ty with
-      | _ when is_base_typ ty -> ty
-      | TTuple xs ->
-          let xs' = List.map tr.tr_var xs in
-          let xs'' =
-            let mark x acc =
-              let x' =
-                if can_have_pred (TTuple acc) then
-                  mark_id x
-                else
-                  x
-              in
-              x'::acc
+    match ty with
+    | _ when is_base_typ ty -> ty
+    | TTuple xs ->
+        let xs' = List.map tr.tr_var xs in
+        let xs'' =
+          let mark x acc =
+            let x' =
+              if can_have_pred (TTuple acc) then
+                mark_id x
+              else
+                x
             in
-            List.fold_right mark xs' []
+            x'::acc
           in
-          TTuple xs''
-      | TAttr(attr, TFun(x,ty2)) when List.mem TAPureFun attr ->
-          let x' = mark_id @@ tr.tr_var x in
-          TAttr(attr, TFun(x', tr.tr_typ ty2))
-      | TFun(x,ty2) ->
-          let ty2' = tr.tr_typ ty2 in
-          let x' = tr.tr_var x in
-          let x'' =
-            if can_have_pred ty2' then
-              mark_id x'
-            else
-              x'
-          in
-          TFun(x'', ty2')
-      | _ -> tr.tr_typ_rec ty
-    in
-    let pr fm ty = Format.fprintf fm "%a" Print.typ (Trans.remove_effect_attribute Term.(bot ty)).typ in
-    Format.printf "@[%a =>@ @[%a@.@." pr ty pr ty';ty'
+          List.fold_right mark xs' []
+        in
+        TTuple xs''
+    | TAttr(attr, TFun(x,ty2)) when List.mem TAPureFun attr ->
+        let x' = mark_id @@ tr.tr_var x in
+        TAttr(attr, TFun(x', tr.tr_typ ty2))
+    | TFun(x,ty2) ->
+        let ty2' = tr.tr_typ ty2 in
+        let x' = tr.tr_var x in
+        let x'' =
+          if can_have_pred ty2' then
+            mark_id x'
+          else
+            x'
+        in
+        TFun(x'', ty2')
+    | _ -> tr.tr_typ_rec ty
   in
   tr.tr_typ <- tr_typ;
   tr.tr_term
