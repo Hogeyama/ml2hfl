@@ -223,6 +223,7 @@ let rec gen_constr env tenv t =
       let typ = make_template env t.typ in
       let e = effect_of_typ typ in
       env.constraints <- (effect_of t1', e) :: env.constraints;
+      flatten_sub env (Type.proj_typ i t1'.typ) typ;
       set_effect e @@ {desc=Proj(i,t1'); typ; attr=t.attr}
   | Tuple ts ->
       let ts' = List.map (gen_constr env tenv) ts in
