@@ -303,7 +303,7 @@ let encode_list_term post t =
       let x = Id.new_var ~name:"i" Ty.int in
       let n = List.length ts in
       let _,t =
-        let t0 = Term.(snd t2 @ [int n]) in
+        let t0 = Term.(snd t2 @ [var x - int n]) in
         let aux y (i,t) =
           i-1, Term.(if_ (var x = int i) (var y) t)
         in
