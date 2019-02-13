@@ -1316,49 +1316,23 @@ let exists_let_desc desc =
 let () = exists_let.col_desc <- exists_let_desc
 let exists_let = exists_let.col_term
 
-(*
-let inline_affine = make_trans2 ()
-
-let inline_affine_term (vars,env) t =
-  let t' =
-    match t.desc with
-    | App({desc=Var f}, ts) ->
-        begin
-          try
-            let xs,t = Id.assoc f env in
-            let ts' = List.map (inline_affine.tr2_term (vars,env)) ts in
-            if List.length xs = List.length ts
-            then List.fold_right2 (Trans.subst_with_rename ~check:true) xs ts' t
-            else raise Not_found
-          with Not_found -> inline_affine.tr2_term_rec (vars,env) t
-        end
-    | Let(bindings, t1) ->
-        let not_rand_int t =
-          match t.desc with
-          | App({desc=Const(Rand(TInt,_)); attr}, _) -> not @@ List.mem AAbst_under attr
-          | _ -> true
-        in
-        let affine f xs t =
-          let fv = get_fv ~cmp:(fun _ _ -> false) t in
-          fv = List.unique fv && List.Set.subset ~eq:Id.eq fv (xs@vars) && not @@ exists_let t
-        in
-        let check f xs t1 = not_rand_int t1 && affine f xs t1 && not @@ List.mem ADoNotInline t.attr in
-        let vars' = List.map Triple.fst bindings @ vars in
-        let env' = List.filter_map (fun (f,xs,t) -> if check f xs t then Some (f,(xs,t)) else None) bindings @ env in
-        let bindings' = List.map (fun (f,xs,t) -> f, xs, inline_affine.tr2_term (xs@vars',env') t) bindings in
-        make_let bindings' @@ inline_affine.tr2_term (vars',env') t1
-    | Fun(x, t) -> make_fun x @@ inline_affine.tr2_term (x::vars,env) t
-    | _ -> inline_affine.tr2_term_rec (vars,env) t
+let reduce_fail =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | App({desc=Event("fail",true)}, [t1;t2]) ->
+        assert (t1.desc = Const Unit);
+        let r = Id.new_var Ty.unit in
+        App(fail_term_cps, [Term.unit; Term.fun_ r cps_result])
+    | Event("fail",_) -> assert false
+    | _ -> tr.tr_desc_rec desc
   in
-  {t' with attr=t.attr}
-
-let () = inline_affine.tr2_term <- inline_affine_term
-let inline_affine t =
-  t
-  |> inline_affine.tr2_term ([],[])
-  |> Trans.elim_unused_let
-  |> Trans.inline_var_const
- *)
+  tr.tr_desc <- tr_desc;
+  fun t ->
+    if Flag.Method.(!mode <> Reachability) then
+      t
+    else
+      tr.tr_term t
 
 let has_typ_result =
   let col = make_col false (||) in
@@ -1466,6 +1440,8 @@ let trans {Problem.term=t; env=rtenv; attr; kind; info} =
     t
     |@> pr "CPS"
     |@> Type_check.check ~ty:typ_result
+    |> reduce_fail
+    |@> pr "reduce fail"
     |> Trans.propagate_typ_arg
     |@> pr2 "propagate_typ_arg" Print.term
     |@> Type_check.check ~ty:typ_result
