@@ -185,7 +185,7 @@ module PredAbst = struct
   let no_simplification = ref false
   let cartesian = ref true
   let shift_pred = ref false
-  let bool_init_empty = ref false
+  let bool_init_empty = ref true
 end
 
 module Refine = struct

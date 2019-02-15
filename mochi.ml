@@ -436,7 +436,9 @@ let rec arg_spec () =
     "Options for predicate discovery",
     ["-fpat", Arg.String FpatInterface.parse_arg, "<option>  Pass <option> to FPAT";
      "-bool-init-empty", Arg.Set Flag.PredAbst.bool_init_empty,
-     " Use an empty set as the initial sets of predicates for booleans";
+       " Use an empty set as the initial sets of predicates for booleans";
+     "-bool-init-self", Arg.Clear Flag.PredAbst.bool_init_empty,
+       " Use predicates of themselves as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
      "-rec-chc", Arg.Set Flag.Refine.use_rec_chc_solver, " Use recursive CHC solver";
