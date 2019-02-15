@@ -62,6 +62,8 @@ type preprocess_label =
   | Insert_extra_param
   | Replace_complex_data_with_int
   | Variant_args_to_tuple
+  | Unify_pure_fun_app
+
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
 type tr = Problem.t -> tr_result list option
@@ -126,6 +128,7 @@ let string_of_label = function
   | Split_assert -> "Split assert"
   | Insert_extra_param -> "Insert extra parameters"
   | Variant_args_to_tuple -> "Replace variant arguments with tuples"
+  | Unify_pure_fun_app -> "Unify applications of pure functions"
 
 let get xs =
   match xs with
@@ -253,6 +256,8 @@ let all spec : t list =
       map_trans abst_literal;
     Encode_list,
       Option.some -| List.singleton -| Encode.list;
+    Unify_pure_fun_app,
+      map_trans unify_pure_fun_app;
     Ret_fun,
       trans_if !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Ret_fun.trans;

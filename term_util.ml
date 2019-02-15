@@ -764,7 +764,7 @@ and same_desc t1 t2 =
   match t1,t2 with
   | Const c1, Const c2 -> same_const c1 c2
   | Var x, Var y -> Id.(x = y)
-  | Fun(x,t1), Fun(y,t2) -> Id.(x = y) && same_term t1 t2
+  | Fun(x,t1), Fun(y,t2) -> same_term t1 @@ subst_var y x t2
   | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
   | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
   | Local(Decl_let bindings1,t1), Local(Decl_let bindings2,t2) ->

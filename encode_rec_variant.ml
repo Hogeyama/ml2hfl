@@ -341,7 +341,6 @@ let trans_term t =
   |> Trans.inline_var
   |> Trans.elim_singleton_tuple
   |@> pr "simplify1"
-  |> Trans.unify_pure_fun_app
   |> Trans.inline_var
   |@> pr "simplify3"
   |> Trans.inst_randval
