@@ -773,14 +773,16 @@ end
 
 module Arg = struct
   include Arg
+  let separator = '_'
   let align args =
-    let aux (s,f,desc) =
+    let aux i (s,f,desc) =
       if s = "" then
+        let nr = if i <> 0 then "\n  " else "" in
         let s' =
           desc
           |> String.trim
-          |> String.map (function '_' -> ' ' | c -> c)
-          |> Format.sprintf "\n  (*** %s ***)"
+          |> String.map (fun c -> if c = separator then ' ' else c)
+          |> Format.sprintf "%s(*** %s ***)" nr
         in
         s', f, " "
       else
@@ -800,7 +802,7 @@ module Arg = struct
     args
     |> List.map (fun (s,f,desc) -> if s = "" then s,f," "^desc else s,f,desc)
     |> align
-    |> List.map aux
+    |> List.mapi aux
 
   let filter_out_desc args =
     List.filter_out (fun (s,_,_) -> s.[0] = '\n') args
