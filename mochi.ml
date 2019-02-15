@@ -291,7 +291,7 @@ let rec arg_spec () =
        Arg.String Flag.(fun s -> Method.(mode := Trans);
                                  Trans.set_trans s;
                                  set_only_result ()),
-       Format.asprintf "<desc>  Translate the input to <dest> which must be one of the following:\n%s"
+       Format.asprintf "<dest>  Translate the input to <dest> which must be one of the following:\n%s"
          !!Flag.Trans.string_of_destinations;
      "-p", Arg.Set_int Flag.Parallel.num, "<n>  Numbers of jobs to run simultaneously";
      "-s", Arg.Unit set_silent, " Do not print any information"]
@@ -343,7 +343,24 @@ let rec arg_spec () =
      "-data-to-int", Arg.Set Flag.Encode.data_to_int, " Replace data types with int";
      "-bool-to-int", Arg.Set Flag.Encode.bool_to_int, " Encode booleans into integers";
      "-encode-before-make-ext-fun", Arg.Set Flag.Method.encode_before_make_ext_fun, " Encode before make external functions";
-     "-make-ext-fun-before-encode", Arg.Clear Flag.Method.encode_before_make_ext_fun, " Make external functions before encode"]
+     "-make-ext-fun-before-encode", Arg.Clear Flag.Method.encode_before_make_ext_fun, " Make external functions before encode";
+     "-recdata",
+       Arg.Int (fun n ->
+           let open Flag.Encode.RecData in
+           match n with
+           | 1 -> dest := Tuple; additional := Nothing
+           | 2 -> dest := Tuple; additional := Top
+           | 3 -> dest := Variant; additional := Nothing
+           | 4 -> dest := Variant; additional := Top
+           | 5 -> dest := Variant; additional := Nothing
+           | _ -> raise (Arg.Bad "Unknown option for -recdata")),
+       Format.asprintf "<n>  Encoding of recursive data types. Examples for int-labeled binary trees: \n%s" @@
+         String.join "\n" @@ List.map (fun (n,s) -> Format.sprintf "%d: %s" n s)
+                               [1, "int list -> (bool * ()) * (bool * (int))";
+                                2, "ty * (int list -> ty) where ty = (bool * ()) * (bool * (int))";
+                                3, "int list -> Leaf | Node of int";
+                                4, "ty * (int list -> ty) whene ty = Leaf | Node of int";
+                                5, "unit * ty * (int list -> ty) whene ty = Leaf | Node of int"]]
   in
   let verification =
      "Options for verification",
