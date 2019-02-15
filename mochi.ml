@@ -347,13 +347,17 @@ let rec arg_spec () =
      "-recdata",
        Arg.Int (fun n ->
            let open Flag.Encode.RecData in
-           match n with
-           | 1 -> dest := Tuple; additional := Nothing
-           | 2 -> dest := Tuple; additional := Top
-           | 3 -> dest := Variant; additional := Nothing
-           | 4 -> dest := Variant; additional := Top
-           | 5 -> dest := Variant; additional := Nothing
-           | _ -> raise (Arg.Bad "Unknown option for -recdata")),
+           let d,a =
+             match n with
+             | 1 -> Tuple, Nothing
+             | 2 -> Tuple, Top
+             | 3 -> Variant, Nothing
+             | 4 -> Variant, Top
+             | 5 -> Variant, Unit_top
+             | _ -> raise (Arg.Bad "Unknown option for -recdata")
+           in
+           dest := d;
+           additional := a),
        Format.asprintf "<n>  Encoding of recursive data types. Examples for int-labeled binary trees: \n%s" @@
          String.join "\n" @@ List.map (fun (n,s) -> Format.sprintf "%d: %s" n s)
                                [1, "int list -> (bool * ()) * (bool * (int))";
