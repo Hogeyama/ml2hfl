@@ -359,8 +359,8 @@ let option = Problem.map option_term
 
 
 let recdata p =
-  let open Flag.Encode in
-  match !recdata with
+  let open Flag.Encode.RecData in
+  match !dest with
   | Tuple -> Encode_rec.trans p
   | Variant -> Encode_rec_variant.trans p
 let list = Encode_list.trans
@@ -378,8 +378,8 @@ let all t =
   |@> pr "RECORD"
   |&!Flag.Method.ignore_exn_arg&> Trans_problem.ignore_exn_arg
   |@!Flag.Method.ignore_exn_arg&> pr "IGNORE_EXN_ARG"
-  |&Flag.Encode.(!recdata <> Variant)&> simple_variant
-  |@Flag.Encode.(!recdata <> Variant)&> pr "SIMPLE_VARIANT"
+  |&Flag.Encode.RecData.(!dest <> Variant)&> simple_variant
+  |@Flag.Encode.RecData.(!dest <> Variant)&> pr "SIMPLE_VARIANT"
   |> recdata
   |@> pr "RECDATA"
   |> option

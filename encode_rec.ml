@@ -13,19 +13,59 @@ type env = (string * (typ * bool * typ)) list
    *)
 let abst_recdata : env trans2 = make_trans2 ()
 
-(* Example:
+let make_ty ty_top ty_f =
+  let open Flag.Encode.RecData in
+  match !additional with
+  | Nothing -> ty_f
+  | Top -> Ty.(ty_top * ty_f)
+  | Unit_top -> unsupported "Flag.Encode.RecData.Unit_top"
+let make_term top t_f =
+  let open Flag.Encode.RecData in
+  match !additional with
+  | Nothing -> t_f
+  | Top -> Term.(pair top t_f)
+  | Unit_top -> unsupported "Flag.Encode.RecData.Unit_top"
+let get_elem_ty ty =
+  let open Flag.Encode.RecData in
+  match !additional with
+  | Nothing -> ty
+  | Top -> Type.fst_typ ty
+  | Unit_top -> unsupported "Flag.Encode.RecData.Unit_top"
+let get_elem pos f =
+  let t =
+    let open Flag.Encode.RecData in
+    match !additional, pos.desc with
+    | Nothing, _ -> Term.(var f @ [pos])
+    | Top, Nil -> Term.(fst (var f))
+    | Top, _ -> Term.(snd (var f) @ [pos])
+    | Unit_top, _ -> unsupported "Flag.Encode.RecData.Unit_top"
+  in
+  let r = new_var_of_term t in
+  let num = List.length (decomp_ttuple @@ get_elem_ty t.typ) in
+  let proj' i = Term.(fst (proj i (var r))) in
+  let cond1 =
+    let indices =
+      Combination.product (List.fromto 0 num) (List.fromto 0 num)
+      |> List.filter (Fun.uncurry (<))
+    in
+    Term.ands @@ List.map Term.(fun (i,j) -> not (proj' i && proj' j)) indices
+  in
+  let cond2 = Term.ors @@ List.map proj' @@ List.fromto 0 num in
+  Term.(let_ [r, t]
+       (assume (cond1 && cond2)
+       (var r)))
+
+
+(* Example for Flag.Encode.RecData.Top:
      type tree = Leaf of int | Node of tree * tree
    i.e.,
      s = "tree",
      ty = TVariant(false, [ ("Leaf", int)
                           ; ("Node", TData "tree" * TData "tree")])
    is encoded into
-     ty_elem * (path:int list -> TTuple [ ty_elem ;
-                                          unit (* <- for predicate *)
-                                        ])
+     ty_elem * (path:int list -> ty_elem)
    where
-     ty_elem = TTuple [ TTuple [bool; TTuple [int]]
-                      ; TTuple [bool; TTuple [] ]]
+     ty_elem = TTuple [bool; TTuple [int]]
   *)
 let encode_recdata_typ env s ty =
   match ty with
@@ -33,24 +73,19 @@ let encode_recdata_typ env s ty =
       let ty_elem =
         let aux ty =
           match ty with
-          | TData s' when s' = s ->
-              None
-          | _ when get_tdata ty = [] ->
-              Some (abst_recdata.tr2_typ env ty)
-          | _ ->
-              unsupported "encode_variant: non-simple recursion"
+          | TData s' when s' = s -> None
+          | _ when get_tdata ty = [] -> Some (abst_recdata.tr2_typ env ty)
+          | _ -> unsupported "encode_variant: non-simple recursion"
         in
         Ty.(tuple (List.map (pair bool -| tuple -| List.filter_map aux -| snd) labels))
       in
-      let ty = Ty.(ty_elem * unit) (* for predicate *) in
-      Ty.(ty_elem * (* for top constructor *)
-          (pureTFun(Id.new_var ~name:"path" @@ list Ty.int, ty)))
+      make_ty ty_elem Ty.(pfun ~name:"path" (list int) ty_elem)
   | _ -> abst_recdata.tr2_typ env ty
 
 (* e.g.
      type foo = Foo of int | Bar of bool * string
-       => (bool * (int)) * (bool * (bool * string)) * unit
-                  ^^^^^ single element tuple          ^^^^ for predicate
+       => (bool * (int)) * (bool * (bool * string))
+                  ^^^^^ single element tuple
 *)
 let abst_recdata_typ env typ =
   match typ with
@@ -59,7 +94,7 @@ let abst_recdata_typ env typ =
       let aux (s,tys) =
         Ty.(bool * tuple (List.map (abst_recdata.tr2_typ env) tys))
       in
-        Ty.(tuple (List.map aux labels) * unit)
+      Ty.(tuple (List.map aux labels))
   | TAttr(attr, ty) ->
       let attr' = List.filter (function TARefPred _ -> false | _ -> true) attr in
       _TAttr attr' @@ abst_recdata.tr2_typ_rec env ty
@@ -91,26 +126,6 @@ let expand_enc_typ env ty =
         with Not_found -> assert false
       end
   | _ -> ty
-
-let proj_enc pos f =
-  let t =
-    if pos.desc = Nil then
-      Term.(pair (fst (var f)) unit)
-    else
-      Term.(snd (var f) @ [pos])
-  in
-  let r = Id.new_var t.typ in
-  let num = List.length (decomp_ttuple Term.(fst t).typ) in
-  let indices =
-    Combination.product (List.fromto 0 num) (List.fromto 0 num)
-    |> List.filter (Fun.uncurry (<))
-  in
-  let proj' i x = Term.(fst (proj i (fst (var x)))) in
-  let cond1 = make_ands @@ List.map Term.(fun (i,j) -> not (proj' i r && proj' j r)) indices in
-  let cond2 = make_ors @@ List.map (proj' -$- r) @@ List.fromto 0 num in
-  Term.(let_ [r, t]
-       (assume (cond1 && cond2)
-       (var r)))
 
 let rec abst_recdata_pat env p =
   let typ =
@@ -154,7 +169,7 @@ let rec abst_recdata_pat env p =
           if poly then unsupported "encode_rec: polymorphic variant";
           List.map aux decls
         in
-        PTuple Pat.([tuple ps'; __ Ty.unit]), true_term, []
+        PTuple ps', true_term, []
     | PConstr(c,ps) ->
         let f = Id.new_var typ in
         (* [c] is [constr_ix]th constructor of type TData s *)
@@ -188,15 +203,13 @@ let rec abst_recdata_pat env p =
               if is_rec_type env p.pat_typ then
                 let () = Debug.printf "%a has rec type %a@." Print.pattern p Print.typ p.pat_typ in
                 let path = Id.new_var ~name:"path" Ty.(list int) in
-                let top = Term.(fst (proj_enc (cons (int j) (nil Ty.int)) f)) in
-                let t = Term.(pair top
-                                   (pfun path (proj_enc (cons (int j) (var path)) f)))
-                in
+                let top = Term.(get_elem (cons (int j) (nil Ty.int)) f) in
+                let t = make_term top Term.(pfun path (get_elem (cons (int j) (var path)) f)) in
                 Debug.printf "%a@." Print.term' t;
                 i, j+1, t
               else
                 let () = Debug.printf "%a has non-rec type %a@." Print.pattern p Print.typ p.pat_typ in
-                let t = Term.(proj i (snd (proj constr_ix (fst (proj_enc (nil Ty.int) f))))) in
+                let t = Term.(proj i (snd (proj constr_ix (get_elem (nil Ty.int) f)))) in
                 i+1, j, t
             in
               List.snoc acc (t', p'), i', j'
@@ -210,9 +223,7 @@ let rec abst_recdata_pat env p =
           ))
           binds;
         let cond =
-          let cond0 =
-            Term.(fst (proj constr_ix (fst (proj_enc (nil Ty.int) f))))
-          in
+          let cond0 = Term.(fst (proj constr_ix (get_elem (nil Ty.int) f))) in
           let conds' =
             let make_cond (t,pt) (p,cond,_) =
               match pt.pat_desc with
@@ -295,7 +306,7 @@ let abst_recdata_term (env: env) t =
           Term.(pair false_ (rand ty))
       in
       let ts' = List.map aux @@ snd @@ decomp_tvariant @@ expand_typ env typ in
-      Term.(tuple [tuple ts'; unit])
+      Term.tuple ts'
   | Constr(c,ts) ->
       let ts' = List.map (abst_recdata.tr2_term env) ts in
       let xtys = List.map2 (fun t' t -> Id.new_var @@ expand_enc_typ env t'.typ, t.typ) ts' ts in
@@ -319,22 +330,18 @@ let abst_recdata_term (env: env) t =
         |> List.map (snd |- fst |- make_var)
         |> make_return
       in
-      let pat0 =
-        make_pnil Ty.int,
-        Term.(pair top unit)
-      in
+      let pat0 = make_pnil Ty.int, top in
       let make_pat (i,acc) (x,ty) =
         if ty = typ then
           let path' = Id.new_var ~name:"path'" Ty.(list int) in
-          let t = Term.(proj_enc (var path') x) in
+          let t = Term.(get_elem (var path') x) in
           i+1, acc @ [Pat.(cons (int i) (var path')), t]
         else
           i, acc
       in
       let _,pats = List.fold_left make_pat (0,[]) xtys in
       let defs = List.map2 (fun (x,_) t -> x, t) xtys ts' in
-      Term.(lets defs (pair top
-                            (pfun path (match_ (var path) (pat0::pats)))))
+      Term.(lets defs (make_term top (pfun path (match_ (var path) (pat0::pats)))))
   | Match(t1,pats) ->
       let aux (p,t) =
         let p',c,bind = abst_recdata_pat env p in

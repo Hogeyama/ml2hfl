@@ -13,34 +13,35 @@ type env = (string * (typ * bool * typ)) list
    *)
 let abst_recdata : env trans2 = make_trans2 ()
 
-type mode = Only_fun | Top_fun | Unit_top_fun
-let mode = Unit_top_fun
-
 let make_ty ty_top ty_f =
-  match mode with
-  | Only_fun -> ty_f
-  | Top_fun -> Ty.(ty_top * ty_f)
-  | Unit_top_fun -> Ty.(tuple [unit; ty_top; ty_f])
+  let open Flag.Encode.RecData in
+  match !additional with
+  | Nothing -> ty_f
+  | Top -> Ty.(ty_top * ty_f)
+  | Unit_top -> Ty.(tuple [unit; ty_top; ty_f])
 let make_term top t_f =
-  match mode with
-  | Only_fun -> t_f
-  | Top_fun -> Term.(pair top t_f)
-  | Unit_top_fun -> Term.(tuple [unit; top; t_f])
+  let open Flag.Encode.RecData in
+  match !additional with
+  | Nothing -> t_f
+  | Top -> Term.(pair top t_f)
+  | Unit_top -> Term.(tuple [unit; top; t_f])
 let get_top_ty ty =
-  match mode with
-  | Only_fun -> ty
-  | Top_fun -> Type.fst_typ ty
-  | Unit_top_fun -> Type.proj_typ 1 ty
+  let open Flag.Encode.RecData in
+  match !additional with
+  | Nothing -> ty
+  | Top -> Type.fst_typ ty
+  | Unit_top -> Type.proj_typ 1 ty
 let get_element pos t_f =
-  match mode with
-  | Only_fun ->
+  let open Flag.Encode.RecData in
+  match !additional with
+  | Nothing ->
       Term.(t_f @ [pos])
-  | Top_fun ->
+  | Top ->
       if pos.desc = Nil then
         Term.(fst t_f)
       else
         Term.(snd t_f @ [pos])
-  | Unit_top_fun ->
+  | Unit_top ->
       if pos.desc = Nil then
         Term.(proj 1 t_f)
       else

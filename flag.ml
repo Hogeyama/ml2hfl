@@ -80,8 +80,12 @@ module Encode = struct
   let used_abst : string list ref = ref []
   let use_abst s = if not @@ List.mem s !used_abst then used_abst := s :: !used_abst
 
-  type recdata = Tuple | Variant
-  let recdata = ref Tuple
+  module RecData = struct
+    type dest = Tuple | Variant
+    let dest = ref Tuple
+    type additional = Nothing | Top | Unit_top
+    let additional = ref Top
+  end
 end
 
 module Print = struct
