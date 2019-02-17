@@ -783,7 +783,11 @@ let rec from_expression id_env {exp_desc; exp_loc; exp_type=typ; exp_env=env} : 
     | Texp_instvar _ -> unsupported "expression (instvar)"
     | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
     | Texp_override _ -> unsupported "expression (override)"
-    | Texp_letmodule _ -> unsupported "expression (module)"
+    | Texp_letmodule(m, loc, mb_expr, e) ->
+        let _,mdl = from_module_expr id_env mb_expr in
+        let m = Id.add_attr Id.Module @@ from_ident m mdl.typ in
+        let decls,t = from_expression id_env e in
+        decls, Term.(let_ [m,mdl] t)
     | Texp_assert e ->
         let decls,t = from_expression id_env e in
         let t' =
@@ -816,13 +820,13 @@ and from_case id_env {c_lhs;c_guard;c_rhs} =
   decls1@decls2, (p', t)
 
 
-let from_exception_declaration decls = List.map from_type_expr decls
+and from_exception_declaration decls = List.map from_type_expr decls
 
 
-let rec from_module_binding id_env tenv mb
+and from_module_binding id_env tenv mb
         : id list * (Asttypes.rec_flag * Syntax.declaration) list =
   let id_env',mdl = from_module_expr id_env mb.mb_expr in
-  let m = from_ident mb.mb_id mdl.typ in
+  let m = Id.add_attr Id.Module @@ from_ident mb.mb_id mdl.typ in
   id_env', [Nonrecursive, Decl_let [m,mdl]]
 
 and from_module_type env mty =
@@ -852,7 +856,7 @@ and from_module_expr id_env mb_expr =
       id_env'', mdl
   | Tmod_ident(path,loc) ->
       let ty = from_module_type mb_expr.mod_env mb_expr.mod_type in
-      id_env, make_var @@ Id.make 0 (Path.name path) [] ty
+      id_env, make_var @@ Id.make 0 (Path.name path) [Module] ty
   | Tmod_functor(id, loc, mty, expr) ->
       let ty =
         match mty with

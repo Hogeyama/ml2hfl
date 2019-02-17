@@ -47,6 +47,7 @@ type preprocess_label =
   | Eliminate_same_arguments
   | Insert_unit_param
   | Extract_module
+  | Inline_module_var
   | Mark_fv_as_external
   | Alpha_rename
   | Instansiate_poly_fun
@@ -114,6 +115,7 @@ let string_of_label = function
   | Eliminate_same_arguments -> "Eliminate same arguments"
   | Insert_unit_param -> "Insert unit param"
   | Extract_module -> "Extract module"
+  | Inline_module_var -> "Inline module variables"
   | Mark_fv_as_external -> "Mark free variables as external"
   | Alpha_rename -> "Alpha renaming"
   | Instansiate_poly_fun -> "Instansiate polymorphic types for function application"
@@ -172,6 +174,8 @@ let all spec : t list =
       map_trans_list set_main;
     Extract_module,
       map_trans extract_module;
+    Inline_module_var,
+      map_trans inline_module_var;
     Instansiate_poly_fun,
       map_trans instansiate_poly_fun;
     Mark_fv_as_external,

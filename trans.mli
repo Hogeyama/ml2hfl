@@ -70,6 +70,7 @@ val remove_tattr : term -> term
 val reduce_rand : term -> term
 val reduce_ignore : term -> term
 val reduce_branch : term -> term
+val rename_module : id -> id -> term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc
@@ -102,6 +103,7 @@ val inline_var_const : term -> term
 val inline_simple_exp : term -> term
 val inline_next_redex : term -> term
 val inline_specified : (id * id list * term) -> term -> term
+val inline_module_var : term -> term
 val beta_no_effect_tuple : term -> term
 val beta_var_tuple : term -> term
 val beta_reduce_trivial : term -> term

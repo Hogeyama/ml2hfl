@@ -5,12 +5,12 @@ type 'a t =
    name : string;
    typ : 'a;
    attr : attr list}
-  [@@deriving show]
 
 and attr =
   | External
   | Coefficient
   | Predicate
+  | Module
   [@@deriving show]
 
 let init_counter = 0
@@ -38,6 +38,7 @@ let attr x = x.attr
 let is_external x = List.mem External x.attr
 let is_coefficient x = List.mem Coefficient x.attr
 let is_predicate x = List.mem Predicate x.attr
+let is_module x = List.mem Module x.attr
 
 let to_string ?(plain=true) x =
   let s =
@@ -109,6 +110,13 @@ let print fm x =
 let prefix_for_module m = name m ^ "."
 let add_module_prefix_to_string m s = prefix_for_module m ^ s
 let add_module_prefix x ~m = add_name_before (prefix_for_module m) x
+let is_in_module x m = String.starts_with (name x) (name m)
+let rename_module x y =
+  name x
+  |> String.lchop ~n:(String.length @@ prefix_for_module y)
+  |> add_module_prefix_to_string y
+  |> set_name x
+
 
 let (=) = same
 let (<>) x y = not (same x y)

@@ -2570,6 +2570,41 @@ let assign_id_to_tvar =
   fld.fld_typ <- fld_typ;
   snd -| fld.fld_term 0
 
+let rename_module =
+  let tr = make_trans2 () in
+  let tr_var (x,y) z =
+    if Id.(x = z) then
+      y
+    else
+      if String.starts_with (Id.name z) (Id.name x) then
+        let name =
+          Id.name z
+          |> String.lchop ~n:(String.length @@ Id.prefix_for_module x)
+          |> Id.add_module_prefix_to_string y
+        in
+        Id.set_name z name
+      else
+        z
+  in
+  let tr_typ (x,y) ty =
+    match ty with
+    | TData s ->
+        if String.starts_with s (Id.name x) then
+          TData s
+        else
+          TData (Id.add_module_prefix_to_string x s)
+    | _ -> tr.tr2_typ_rec (x,y) ty
+  in
+  let tr_desc (x,y) desc =
+    match desc with
+    | Local(Decl_let bindings, _) when List.exists (fst |- Id.(=) x) bindings -> desc
+    | _ -> tr.tr2_desc_rec (x,y) desc
+  in
+  tr.tr2_var <- tr_var;
+  tr.tr2_typ <- tr_typ;
+  tr.tr2_desc <- tr_desc;
+  fun x y t -> tr.tr2_term (x,y) t
+
 let extract_module =
   let tr = make_trans () in
   let tr_desc desc =
@@ -2597,6 +2632,18 @@ let extract_module =
   in
   tr.tr_desc <- tr_desc;
   tr.tr_term
+
+let inline_module_var =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Local(Decl_let [x, {desc=Var y}], t) when Id.is_module x ->
+        (rename_module x y @@ tr.tr_term t).desc
+    | _ -> tr.tr_desc_rec desc
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_term
+
 
 let inline_record_type =
   let tr = make_trans () in

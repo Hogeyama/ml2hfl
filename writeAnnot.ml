@@ -114,7 +114,7 @@ and process_expression env e =
   | Pexp_override(ies) ->
       Util.List.concat_map (fun (_, e) -> process_expression env e) ies
   | Pexp_letmodule(_, _, e) ->
-      Util.unsupported "Not implemented: writeAnnot"
+      []
   | Pexp_assert(e) ->
       process_expression env e
   | Pexp_lazy(e) ->
