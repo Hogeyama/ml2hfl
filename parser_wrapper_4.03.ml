@@ -218,7 +218,7 @@ let rec from_type_declaration env decl =
     | Ttype_abstract ->
         begin
           match decl.typ_manifest with
-          | None -> unsupported "Ttype_abstract"
+          | None -> [], TData "_abst"
           | Some ty -> from_type_expr env ty.ctyp_type
         end
     | Ttype_variant constrs ->

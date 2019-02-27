@@ -2625,6 +2625,9 @@ let extract_module =
     | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
         Flag.Encode.use_abst "Functor";
         t.desc
+    | Local(Decl_let[_f,{desc=Fun(_, {desc=Module _})}], t) ->
+        Flag.Encode.use_abst "Functor";
+        t.desc
     | Module _ ->
         Format.eprintf "%a@." Print.desc desc;
         unsupported "extract_module"
