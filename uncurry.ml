@@ -31,6 +31,7 @@ let rec from_type typ =
   | Type.TTuple typs -> TTuple (List.map (from_type -| Id.typ) typs)
   | Type.TApp _
   | Type.TData _
+  | Type.TVarLazy _
   | Type.TVar _
   | Type.TAttr _
   | Type.TFuns _

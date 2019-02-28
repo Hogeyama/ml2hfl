@@ -907,7 +907,7 @@ let simplify_match =
     | Match(t1, ({pat_desc=PTuple ps}, t2)::pats) when List.for_all is_var ps ->
         let xs = List.map (function {pat_desc=PVar x} -> x | _ -> assert false) ps in
         let x = new_var_of_term t1 in
-        make_lets ((x,t1) :: List.mapi (fun i y -> y, make_proj i @@ make_var x) xs) @@ tr.tr_term t2
+        make_lets ((x,t1) :: List.mapi (fun i y -> y, Term.(proj i (var x))) xs) @@ tr.tr_term t2
     | Match(t1, pats) ->
         let aux (pat,t1) = pat, tr.tr_term t1 in
         let pats' = List.map aux pats in
@@ -1116,7 +1116,10 @@ let make_ext_funs ?(fvs=[]) env t =
     List.fold_right aux env ([],[],[])
   in
   let defs = List.map snd (genv @ cenv) @ defs2 in
-  lift_type_decl @@ remove_ext_attr @@ remove_id_let @@ make_lets defs @@ make_lets defs1 t''
+  make_lets defs (make_lets defs1 t'')
+  |> remove_id_let
+  |> remove_ext_attr
+  |> lift_type_decl
 
 let assoc_typ =
   let col = make_col2 [] (@@@) in
@@ -2908,8 +2911,7 @@ let instansiate_poly_types =
         unify ty ts;
         let ts' = List.map tr.tr_term ts in
         Term.(var f' @ ts')
-    | Local(Decl_let [x, {desc=Var y}], t') when is_poly_typ @@ Id.typ x ->
-        assert (is_poly_typ @@ Id.typ y);
+    | Local(Decl_let [x, {desc=Var y}], t') ->
         unify (Id.typ x) (Id.typ y);
         tr.tr_term_rec t
     | _ -> tr.tr_term_rec t

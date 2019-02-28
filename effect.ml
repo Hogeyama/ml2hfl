@@ -26,6 +26,7 @@ let rec make_template env ty =
   let ty', is_attr =
     match ty with
     | TBase _ -> ty, false
+    | TVarLazy _ -> assert false
     | TVar _ -> unsupported __MODULE__
     | TFun(x, ty2) ->
         let x' = Id.map_typ (make_template env) x in
@@ -75,6 +76,7 @@ let rec force_cont ty =
     | TBase _ -> ty
     | TFun(x, ty2) -> TFun(Id.map_typ force_cont x, force_cont ty2)
     | TTuple xs -> TTuple (List.map (Id.map_typ force_cont) xs)
+    | TVarLazy _ -> assert false
     | TVar _ -> unsupported __MODULE__
     | TFuns _ -> unsupported __MODULE__
     | TData _ -> unsupported __MODULE__
@@ -91,6 +93,7 @@ let rec flatten_sub ?(ignore_top=false) env ty1 ty2 =
     env.constraints <- (effect_of_typ ty1, effect_of_typ ty2) :: env.constraints;
   match elim_tattr ty1, elim_tattr ty2 with
   | TBase _, _ -> ()
+  | TVarLazy _, _ -> assert false
   | TVar _, _ -> unsupported __MODULE__
   | TFun(x1,ty12), TFun(x2,ty22) ->
       flatten_sub ~ignore_top:true env (Id.typ x2) (Id.typ x1);

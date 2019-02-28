@@ -616,6 +616,11 @@ let subst_map_term map t =
   | _ -> subst_map.tr2_term_rec map t
 
 let () = subst_map.tr2_term <- subst_map_term
+let subst_decl_map map decl =
+  if map = [] then
+    decl
+  else
+    subst_map.tr2_decl map decl
 let subst_map map t =
   if map = [] then
     t
@@ -626,6 +631,7 @@ let subst_map map t =
 let () = subst.tr2_term <- subst_term
 let subst_type x t typ = subst.tr2_typ (x,t,None) typ
 let subst_type_var x y typ = subst_type x (make_var y) typ
+let subst_decl x t decl = subst.tr2_decl (x,t,None) decl
 let subst ?(rename_if_captured=false) x t1 t2 =
   let fv = if rename_if_captured then Some (get_fv t1) else None in
   subst.tr2_term (x,t1,fv) t2
@@ -854,6 +860,8 @@ let rec merge_typ typ1 typ2 =
   | _, TVar({contents=None},_) -> typ1
   | _ when typ1 = typ_unknown -> typ2
   | _ when typ2 = typ_unknown -> typ1
+  | TVarLazy _, _
+  | _, TVarLazy _ -> typ1
   | TBase b1, TBase b2 when b1 = b2 -> TBase b1
   | TAttr(attr1,typ1), TAttr(attr2,typ2) ->
       _TAttr (merge_tattrs attr1 attr2) (merge_typ typ1 typ2)
@@ -1135,6 +1143,50 @@ let subst_tdata_map,subst_tdata_typ_map =
   tr.tr2_typ <- tr_typ;
   tr.tr2_term, tr.tr2_typ
 
+let alpha_rename_pred_share =
+  let fld = make_fold_tr () in
+  let find x env =
+    if List.mem_assoc x env then
+      env, List.assoc x env
+    else
+      let y = Id.new_int() in
+      (x,y)::env, y
+  in
+  let fld_typ env ty =
+    match ty with
+    | TAttr(attr,ty1) ->
+        let env,ty1' = fld.fld_typ env ty1 in
+        let env, attr' =
+          let aux a (env,acc) =
+            let env',a' =
+              match a with
+              | TAId x ->
+                  let env',y = find x env in
+                  env', TAId y
+              | TAPredShare x ->
+                  let env',y = find x env in
+                  env', TAPredShare y
+              | _ -> env, a
+            in
+            env', a'::acc
+          in
+          List.fold_right aux attr (env,[])
+        in
+        env, _TAttr attr' ty1'
+    | _ -> fld.fld_typ_rec env ty
+  in
+  fld.fld_typ <- fld_typ;
+  fld.fld_typ [] |- snd
+
+let subst_tdata_with_copy =
+  let tr = make_trans2 () in
+  let tr_typ (s,ty1) ty2 =
+    match ty2 with
+    | TData s' when s = s' -> alpha_rename_pred_share ty1
+    | _ -> tr.tr2_typ_rec (s,ty1) ty2
+  in
+  tr.tr2_typ <- tr_typ;
+  fun s ty' t -> tr.tr2_term (s,ty') t
 
 let rec get_last_definition prefix env def t =
   match t.desc with
@@ -1397,6 +1449,7 @@ let rec copy_for_pred_share n m ty =
         | Some m -> [TAId n; TAPredShare m], [TAId m; TAPredShare n]
       in
       _TAttr attr1 ty, _TAttr attr2 ty
+  | TVarLazy _ -> assert false
   | TVar _ -> unsupported "copy_for_pred_share TVar"
   | TFun(x,ty') ->
       let x1,x2 = copy_var x in
@@ -1418,6 +1471,7 @@ let copy_for_pred_share bidir ty =
   copy_for_pred_share !!Id.new_int (if bidir then Some !!Id.new_int else None) ty
 
 let get_pred_share ty =
+  Format.printf "ty: %a@." Print.typ ty;
   let col ty =
     let (++) env1 env2 =
       List.fold_left (fun env (x,paths2) -> List.modify_opt x (fun paths1 -> Some (paths2 @ Option.default [] paths1)) env) env1 env2
@@ -1426,6 +1480,7 @@ let get_pred_share ty =
     let rec aux path ty =
       match ty with
       | TBase _ -> [], []
+      | TVarLazy _ -> assert false
       | TVar _ -> unsupported "get_pred_share TVar"
       | TFun(x,ty') ->
           let ips1,pps1 = aux (path@[0]) (Id.typ x) in
@@ -1547,6 +1602,7 @@ module Term = struct
   let ref = make_ref
   let match_ = make_match
   let module_ = make_module
+  let local = make_local
   let length = make_length
   let (|->) = subst ~rename_if_captured:false
 end

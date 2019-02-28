@@ -182,12 +182,15 @@ val subst_int : int -> term -> term -> term
 val subst_map : (id * term) list -> term -> term
 val subst_type : id -> term -> typ -> typ
 val subst_type_var : id -> id -> typ -> typ
+val subst_decl : id -> term -> declaration -> declaration
+val subst_decl_map : (id * term) list -> declaration -> declaration
 val subst_var : id -> id -> term -> term
 val subst_var_map : (id * id) list -> term -> term
 val subst_tdata : string -> typ -> term -> term
 val subst_tdata_typ : string -> typ -> typ -> typ
 val subst_tdata_map : (string * typ) list -> term -> term
 val subst_tdata_typ_map : (string * typ) list -> typ -> typ
+val subst_tdata_with_copy : string -> typ -> term -> term
 val subst_var_without_typ : id -> id -> term -> term
 val subst_var_map_without_typ : (id * id) list -> term -> term
 
@@ -299,6 +302,7 @@ module Term : sig
   val some : term -> term
   val ref : term -> term
   val match_ : ?typ:typ -> term -> (pattern * term) list -> term
+  val local : declaration -> term -> term
   val module_ : declaration list -> term
   val length : term -> term
   val (|->) : id -> term -> term -> term

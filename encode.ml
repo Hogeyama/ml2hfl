@@ -72,7 +72,7 @@ let abst_ref_term =
     let t' = tr.tr_term_rec t in
     match t'.desc with
     | Ref t1 ->
-        make_ignore t1
+        Term.ignore t1
     | Deref t1 ->
         Flag.Encode.use_abst "References";
         Term.(seq t1 (rand t'.typ))

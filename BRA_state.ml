@@ -15,6 +15,7 @@ and default_val' =
     | TData _ -> invalid_arg "default_val: not yet implemented syntax(TData)"
     | TApp _ -> invalid_arg "default_val: not yet implemented syntax(TApp)"
     | TTuple _ -> invalid_arg "default_val: not yet implemented syntax(TTuple)"
+    | TVarLazy _ -> assert false
     | TVar(t,_) ->
       begin
         match !t with

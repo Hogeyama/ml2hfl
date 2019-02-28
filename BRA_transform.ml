@@ -137,8 +137,8 @@ let retyping t type_of_state  =
      Lexing.pos_cnum = 0;
      Lexing.pos_bol = 0};
   in
-  let orig = Parse.use_file lb in
-  let parsed = Parser_wrapper.from_use_file orig in
+  let _,orig,_,decls = Parser_wrapper.parse_lexbuf lb in
+  let parsed = List.fold_right Term.local decls Term.eod in
   Debug.printf "parsed from show_term t: @[%a@." Print.term parsed;
   let parsed = restore_ids parsed in
   Verbose.printf "transformed::@. @[%a@.@." Print.term parsed;

@@ -344,7 +344,7 @@ let abst_recdata_term (env: env) t =
       let make_pat (i,acc) (x,ty) =
         if ty = typ then
           let path' = Id.new_var ~name:"path'" Ty.(list int) in
-          let t = Term.(get_elem (var path') x) in
+          let t = get_elem (Term.var path') x in
           i+1, acc @ [Pat.(cons (int i) (var path')), t]
         else
           i, acc
@@ -382,7 +382,7 @@ let abst_recdata_term (env: env) t =
       (* TODO subst_tdataは最初にまとめてやる *)
       let ty' = encode_recdata_typ env s ty in
       let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
-      subst_tdata s ty' @@ abst_recdata.tr2_term env' t
+      subst_tdata_with_copy s ty' @@ abst_recdata.tr2_term env' t
   | Local(Decl_type decls, t) ->
       (* TODO *)
       unsupported "encode_rec: Decl_type"
@@ -414,6 +414,7 @@ let trans_term t =
   |> Trans.lift_assume
   |> Trans.elim_unused_let
   |@> pr "simplify3"
+  |> Trans.remove_obstacle_type_attribute_for_pred_share
   |@> Type_check.check ~ty
 
 (******************************************************************************

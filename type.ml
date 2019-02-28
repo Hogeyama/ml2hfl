@@ -11,6 +11,7 @@ type base =
 
 and 'a t =
   | TBase of base
+  | TVarLazy of (unit -> 'a t) (* only for Parser_wrapper *)
   | TVar of 'a t option ref * int option
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination. TODO: Refactor *)
@@ -114,6 +115,7 @@ let tfuns_to_tfun = function
 let rec elim_tattr_all ty =
   match ty with
   | TBase b -> TBase b
+  | TVarLazy _ -> assert false
   | TVar({contents=Some typ},_) -> elim_tattr_all typ
   | TVar(r,id) -> TVar(r,id)
   | TFun(x, typ) -> TFun(Id.map_typ elim_tattr_all x, elim_tattr_all typ)
@@ -194,9 +196,10 @@ let rec print occur print_pred fm typ =
   let print_preds ps = print_list print_pred "; " ps in
   match typ with
   | TBase TUnit -> Format.fprintf fm "unit"
-  | TBase TBool -> Format.fprintf fm "bool"
+    | TBase TBool -> Format.fprintf fm "bool"
   | TBase TInt -> Format.fprintf fm "int"
   | TBase (TPrim s) -> Format.fprintf fm "%s" s
+  | TVarLazy _ -> Format.fprintf fm "???"
   | TVar({contents=Some typ},_) -> print' fm typ
   | TVar({contents=None}, None) -> Format.fprintf fm "!!!"
   | TVar({contents=None}, Some n) -> print_tvar fm n
@@ -294,6 +297,8 @@ let rec can_unify ?(tenv=None) typ1 typ2 =
   | TFun _, TData "event" -> true
   | TVar({contents=None},_), _ -> true
   | _, TVar({contents=None},_) -> true
+  | TVarLazy _, _ -> true
+  | _, TVarLazy _ -> true
   | TVariant(poly1,labels1), TVariant(poly2,labels2) ->
       poly1 = poly2 &&
       (poly1 || List.for_all2 (fun (s1,typs1) (s2,typs2) -> s1 = s2 && List.for_all2 (can_unify ~tenv) typs1 typs2) labels1 labels2)
@@ -317,6 +322,7 @@ let rec flatten typ =
 let rec occurs r typ =
   match flatten typ with
   | TBase _ -> false
+  | TVarLazy _ -> assert false
   | TVar({contents=None} as r',_) -> r == r'
   | TVar({contents=Some typ},_) -> assert false
   | TFun(x,typ) -> occurs r (Id.typ x) || occurs r typ
@@ -332,6 +338,7 @@ let rec occurs r typ =
 let rec data_occurs s typ =
   match flatten typ with
   | TBase _ -> false
+  | TVarLazy _ -> assert false
   | TVar(r,_) -> Option.exists (data_occurs s) !r
   | TFun(x,typ) -> data_occurs s (Id.typ x) || data_occurs s typ
   | TApp(_, typs) -> List.exists (data_occurs s) typs
@@ -447,6 +454,7 @@ let array_typ typ =
 
 let rec has_pred = function
   | TBase _ -> false
+  | TVarLazy _ -> assert false
   | TVar({contents=None},_) -> false
   | TVar({contents=Some typ},_) -> has_pred typ
   | TFun(x,typ) -> has_pred (Id.typ x) || has_pred typ
@@ -465,6 +473,7 @@ let rec to_id_string = function
   | TBase TBool -> "bool"
   | TBase TInt -> "int"
   | TBase (TPrim s) -> s
+  | TVarLazy _ -> assert false
   | TVar({contents=None},_) -> "abst"
   | TVar({contents=Some typ},_) -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ

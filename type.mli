@@ -5,6 +5,7 @@ type base =
   | TPrim of string
 and 'a t =
   | TBase of base
+  | TVarLazy of (unit -> 'a t) (* only for Parser_wrapper *)
   | TVar of 'a t option ref * int option
   | TFun of 'a t Id.t * 'a t
   | TFuns of 'a t Id.t list * 'a t (* Just for fair-termination *)

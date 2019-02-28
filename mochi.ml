@@ -256,13 +256,16 @@ let just_run_other_command cmd =
 let usage =
   "MoCHi: Model Checker for Higher-Order Problems\n\n" ^
     "Usage: " ^ Sys.executable_name ^ " [options] file\noptions are:"
-let rec arg_spec () =
+let rec arg_spec for_completion =
   let align_spec specs =
     let add_desc (desc,spec) =
       let sep = String.of_char Arg.separator in
       if String.exists sep desc then unsupported "add_desc";
       let _,s = String.replace ~sub:sep ~by:" " ~str:desc in
-      ("", Arg.Unit ignore, s)::spec
+      if for_completion then
+        spec
+      else
+        ("", Arg.Unit ignore, s)::spec
     in
     specs
     |> List.flatten_map add_desc
@@ -548,12 +551,12 @@ let rec arg_spec () =
      fair_non_termination]
 
 and print_option_and_exit () =
-  !!arg_spec
+  arg_spec true
   |> Arg.filter_out_desc
   |> List.map Triple.fst
   |> List.iter @@ Format.printf "%s@.";
   exit 0
-let arg_spec = arg_spec ()
+let arg_spec = arg_spec false
 
 let set_file name =
   let name' =
@@ -731,45 +734,6 @@ let check_bin filename =
   set_status s;
   r
 
-let parse_from_file filename =
-  let cin = open_in filename in
-  let lb = Lexing.from_channel cin in
-  lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename !!Flag.Input.main;
-     Lexing.pos_lnum = 1;
-     Lexing.pos_cnum = 0;
-     Lexing.pos_bol = 0};
-  let orig = Parse.use_file lb in
-  let parsed =
-    Ref.tmp_set
-      Config.load_path
-      (List.map Filename.dirname !Flag.Input.filenames @ !Config.load_path)
-      (fun () -> Parser_wrapper.from_use_file orig)
-  in
-  close_in cin;
-  orig, parsed
-
-let parse_from_files filenames =
-  let aux acc file (_,t) =
-    let mod_var =
-      let name =
-        file
-        |> Filename.basename
-        |> Filename.chop_extension_if_any
-        |> String.capitalize
-      in
-      let ty = Type.TData name in
-      Id.new_var ~name ty
-    in
-    let decls,t' = Syntax.decomp_locals t in
-    assert Syntax.(t'.desc = End_of_definitions);
-    Term_util.Term.(let_ [mod_var, module_ decls] acc)
-  in
-  let parsed = List.map parse_from_file filenames in
-  let _,main = List.hd parsed in
-  List.map fst parsed,
-  List.fold_left2 aux main (List.tl filenames) (List.tl parsed)
-
 let wrap_input_for_fair_termination () =
   if List.length !Flag.Input.filenames > 1 then unsupported "Multiple files for fair-termination checking";
   let filename = Filename.change_extension !!Flag.Input.main "ft.ml" in
@@ -792,7 +756,7 @@ let main filenames =
     if !!Flag.Input.is_cegar then
       main_input_cegar !!Flag.Input.main
     else
-      let origs,parsed = parse_from_files !Flag.Input.filenames in
+      let origs,parsed = Parser_wrapper.parse_files !Flag.Input.filenames in
       let orig = List.hd origs in
       Verbose.printf "%a:@. @[%a@.@." Color.s_red "parsed" Print.term_typ parsed;
       let spec = Spec.read Spec_parser.spec Spec_lexer.token |@> Verbose.printf "%a@." Spec.print in
