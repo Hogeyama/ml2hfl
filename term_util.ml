@@ -101,7 +101,13 @@ let make_local decl t =
   if decl = Decl_type [] || decl = Decl_let [] then
     t
   else
-    {desc=Local(decl,t); typ=t.typ; attr=[]}
+    let ts =
+      match decl with
+      | Decl_let defs -> List.map snd defs
+      | Decl_type _ -> []
+    in
+    let attr = make_attr (t :: ts) in
+    {desc=Local(decl,t); typ=t.typ; attr}
 let make_let bindings t2 =
   make_local (Decl_let bindings) t2
 let make_let_s bindings t2 =

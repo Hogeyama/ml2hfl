@@ -396,7 +396,6 @@ let trans_term t =
   |@> pr "abst_rec"
   |@> Type_check.check ~ty
   |> Trans.simplify_match
-  |> Trans.reconstruct
   |> Trans.inline_var
   |> Trans.elim_singleton_tuple
   |@> pr "simplify1"
