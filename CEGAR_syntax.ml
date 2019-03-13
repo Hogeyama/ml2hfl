@@ -84,9 +84,17 @@ and info =
    non_rec : (var * t) list;
    orig_fun_list : var list;
    inlined : var list;
+   pred_share : (var * int list * int list list * var * int list) list;
    fairness : Fair_termination_type.fairness option}
 
-let init_info = {attr=[]; exparam_orig=None; non_rec=[]; orig_fun_list=[]; inlined=[]; fairness=None}
+let init_info =
+  {attr = [];
+   exparam_orig = None;
+   non_rec = [];
+   orig_fun_list = [];
+   inlined = [];
+   pred_share = [];
+   fairness = None}
 
 let coeff_suffix = "_COEF"
 let is_extra_coeff_name s = Str.string_match (Str.regexp @@ Format.sprintf ".*%s.*" coeff_suffix) s 0

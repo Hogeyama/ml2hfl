@@ -49,25 +49,6 @@ let add_nag_preds_renv env =
 let add_preds map prog =
   {prog with env = add_preds_env map prog.env}
 
-
-let rec add_to_path path typ1 typ2 =
-  match path,typ2 with
-  | [],_ -> merge_typ typ1 typ2
-  | 0::path',TFun(typ21,typ22) -> TFun(add_to_path path' typ1 typ21, typ22)
-  | 1::path',TFun(typ21,typ22) -> TFun(typ21, add_to_path path' typ1 -| typ22)
-  | _ -> Format.eprintf "%a@." CEGAR_print.typ typ2; assert false
-
-let rec add_pred n path typ =
-  match typ with
-  | TBase _ -> assert false
-  | TFun(typ1,typ2) when n=0 ->
-      TFun(typ1, add_to_path (List.tl path) typ1 -| typ2)
-  | TFun(typ1,typ2) ->
-      assert (List.hd path = 1);
-      TFun(typ1, add_pred (n-1) (List.tl path) -| typ2)
-  | TConstr _ -> assert false
-  | TApp _ -> assert false
-
 let rec col_fix_pred path env_rev acc ty =
   match ty with
   | TBase _ -> acc
@@ -91,6 +72,78 @@ let fix_pred_of f ty =
   |> col_fix_pred [] [] []
   |@> Debug.printf "[fix_pred_of] OUTPUT %s : %a@." f Print.(list (triple (list int) __ CEGAR_print.term))
   |> List.map (fun (path,env,p) -> (FpatInterface.conv_var f,path), (env,p))
+
+let dummy = "dummy"
+
+let rec proj_prefix path ty =
+  match path, ty with
+  | [], _ -> ty
+  | 0::path', TFun(ty1,_) -> proj_prefix path' ty1
+  | 1::path', TFun(_,ty2) -> proj_prefix path' @@ ty2 (Var dummy)
+  | _ -> assert false
+
+let rec proj_paths acc_xs_rev acc_path_rev paths ty =
+  if paths = [] then
+    []
+  else
+    match ty with
+    | TBase(b,ps) when List.exists ((=) []) paths ->
+        let x = new_id "x" in
+        let ps' =
+          ps (Var x)
+          |> List.filter_out (List.mem dummy -| get_fv)
+        in
+        let ty = TBase(b, fun t -> List.map (subst x t) ps') in
+        [List.rev acc_xs_rev, List.rev acc_path_rev, ty]
+    | TFun(ty1,ty2) ->
+        let paths' = List.filter ((<>) []) paths in
+        let paths1,paths2 = List.partition (List.hd |- (=) 0) paths' in
+        let paths1' = List.map List.tl paths1 in
+        let paths2' = List.map List.tl paths2 in
+        let x = new_id "x" in
+        proj_paths acc_xs_rev (0::acc_path_rev) paths1' ty1 @
+        proj_paths (x::acc_xs_rev) (1::acc_path_rev) paths2' @@ ty2 (Var x)
+    | _ -> invalid_arg "proj_paths"
+let proj_paths = proj_paths [] []
+
+let rec merge_to_path (xs,path,ty1) ty2 =
+  match xs,path,ty2 with
+  | [],     [],       _               -> merge_typ ty1 ty2
+  | _,      0::path', TFun(ty21,ty22) -> TFun(merge_to_path (xs,path',ty1) ty21, ty22)
+  | x::xs', 1::path', TFun(ty21,ty22) ->
+      let ty22' = merge_to_path (xs',path',ty1) @@ ty22 (Var x) in
+      let ty22'' t = subst_typ x t ty22' in
+      TFun(ty21, ty22'')
+  | _ ->
+      Format.eprintf "xs: %a@." Print.(list string) xs;
+      Format.eprintf "path: %a@." Print.(list int) path;
+      Format.eprintf "ty2: %a@." CEGAR_print.typ ty2;
+      assert false
+
+let rec map_path f path ty =
+  match path, ty with
+  | [], _ -> f ty
+  | 0::path', TFun(ty1,ty2) -> TFun(map_path f path' ty1, ty2)
+  | 1::path', TFun(ty1,ty2) ->
+      let x = new_id "mp" in
+      let ty2' = map_path f path' (ty2 (Var x)) in
+      TFun(ty1, fun t -> subst_typ x t ty2')
+  | _ -> assert false
+
+(* TODO: support all combinations of paths *)
+let add_share_predicates env pred_share =
+  let aux env (x1,prefix1,paths,x2,prefix2) =
+    let ty1 = List.assoc x1 env in
+    let ty2 = List.assoc x2 env in
+    let ty =
+      ty1
+      |> proj_prefix prefix1
+      |> proj_paths paths
+      |> List.fold_left (fun ty path -> map_path (merge_to_path path) prefix2 ty) ty2
+    in
+    (x2,ty) :: List.remove_assoc x2 env
+  in
+  List.fold_left aux env pred_share
 
 let instansiate_pred_by_env env c =
   Debug.printf "env: %a@." CEGAR_print.env env;
@@ -162,11 +215,12 @@ let refine labeled is_cp prefix ces ext_ces prog =
       in
       FpatInterface.infer solver labeled is_cp ces ext_ces prog
     in
+    let map' = add_share_predicates map prog.info.pred_share in
     let env =
       if !Flag.Refine.disable_predicate_accumulation then
-        map
+        map'
       else
-        add_preds_env map prog.env
+        add_preds_env map' prog.env
     in
     Verbose.printf "DONE!@.@.";
     refine_post tmp;
