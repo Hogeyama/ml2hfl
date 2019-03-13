@@ -20,7 +20,7 @@ let new_id x =
   x ^ "_" ^ string_of_int !counter
 
 let rec occur_arg_pred x = function
-  | TBase(_,ps) -> List.mem x @@ List.rev_flatten_map get_fv @@ ps (Const Unit)
+  | TBase(_,ps) -> List.exists (List.mem x -| get_fv) @@ ps (Const Unit)
   | TConstr _ -> false
   | TFun(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x @@ typ2 (Const Unit)
   | TApp(typ1,typ2) -> occur_arg_pred x typ1 || occur_arg_pred x typ2
@@ -84,7 +84,7 @@ and print_env fm env =
   let add_rand_info f = match decomp_randint_name f with
     | None -> f
     | Some(n) -> f ^ "[" ^ !randint_ID_map n ^ "]" in
-  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) (add_rand_info f) print_typ typ in
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@\n" (Color.yellow print_var) (add_rand_info f) print_typ typ in
   List.iter pr env
 
 and print_const fm = function
@@ -176,13 +176,13 @@ and print_attr fm = function
 and print_attr_list fm = List.print print_attr fm
 
 and print_prog fm prog =
-  Format.fprintf fm "@[Main: %a@\n  @[%a@]@."
+  Format.fprintf fm "@[Main: %a@\n  @[%a@]@]@\n"
                  print_var prog.main
                  (print_list print_fun_def "@\n") prog.defs
 
 and print_prog_typ fm prog =
   print_prog fm prog;
-  Format.fprintf fm "Types:@.@[%a@]@?" print_env prog.env
+  Format.fprintf fm "@[Types:@\n@[%a@]@]" print_env prog.env
 
 
 
@@ -349,13 +349,13 @@ and print_term_ML fm = function
 
 and print_fun_def_ML fm (f,xs,t1,_,t2) =
   if t1 = Const True
-  then Format.fprintf fm "and %a = %a@." (print_list print_var " ") (f::xs) print_term_ML t2
-  else Format.fprintf fm "%a when %a = %a@." (print_list print_var " ") (f::xs) print_term_ML t1 print_term_ML t2
+  then Format.fprintf fm "and %a = %a@\n" (print_list print_var " ") (f::xs) print_term_ML t2
+  else Format.fprintf fm "%a when %a = %a@\n" (print_list print_var " ") (f::xs) print_term_ML t1 print_term_ML t2
 
 and print_prog_ML fm (env,defs,s) =
-  Format.fprintf fm "let rec f x = f x@.";
+  Format.fprintf fm "let rec f x = f x@\n";
   List.iter (print_fun_def_ML fm) defs;
-  if env <> [] then Format.fprintf fm "Types:\n%a@." print_env env
+  if env <> [] then Format.fprintf fm "Types:\n%a@\n" print_env env
 
 let prog_ML fm {defs;env;main} = print_prog_ML fm (env,defs,main)
 
@@ -526,7 +526,7 @@ let rec print_env_diff fm env =
   let add_rand_info f = match decomp_randint_name f with
     | None -> f
     | Some(n) -> f ^ "[" ^ !randint_ID_map n ^ "]" in
-  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@." (Color.yellow print_var) (add_rand_info f) print_typ typ in
+  let pr (f,typ) = Format.fprintf fm "  %a : @[%a@]@\n" (Color.yellow print_var) (add_rand_info f) print_typ typ in
   List.iter pr (List.filter (Pair.map_snd has_preds |- snd) env)
 
 
