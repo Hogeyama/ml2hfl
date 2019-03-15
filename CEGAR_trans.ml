@@ -171,6 +171,8 @@ and trans_typ ty =
       TFun(typ1, subst_typ (trans_var x) -$- typ2)
   | Type.TData s -> TBase(TAbst s, nil_pred)
   | Type.TAttr([], typ) -> trans_typ typ
+  | Type.TAttr(Type.TAId _::attrs, typ) -> trans_typ @@ Type.TAttr(attrs, typ)
+  | Type.TAttr(Type.TAPredShare _::attrs, typ) -> trans_typ @@ Type.TAttr(attrs, typ)
   | Type.TAttr(Type.TARefPred(x,p)::attrs, typ) ->
       let p' y = subst (trans_var x) y @@ snd @@ trans_term "" [] [] p in
       TApp(TConstr (TFixPred p'), trans_typ @@ Type.TAttr(attrs,typ))
@@ -597,15 +599,13 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
   let pr p s t = Debug.printf "##[trans_prog] %s:@.%a@.@." s p t in
   let pr1 = pr Print.term' in
   let pr2 = pr CEGAR_print.prog_typ in
-  let _ext_env = List.map (Pair.map trans_var trans_typ) @@ Trans.make_ext_env t in
-  pr1 "BEFORE" t;
-  let t = Trans.trans_let t in
-  pr1 "AFTER" t;
   let main = new_id "main" in
-  let (defs,t_main),get_rtyp = Lift.lift t in
-  Debug.printf "LIFTED:@.";
-  List.iter  (fun (f,(xs,t)) -> Debug.printf "  @[<hov 4>%a %a ->@ @[%a@." Id.print f (List.print Id.print) xs Print.term t) defs;
-  Debug.printf "@.";
+  let (defs,t_main),get_rtyp =
+    t
+    |> Trans.trans_let
+    |> Trans.remove_obstacle_type_attribute_for_pred_share
+    |> Lift.lift
+  in
   let defs_t,t_main' = trans_term t_main in
   let is_cps = List.mem Problem.ACPS attr in
   let defs' =
@@ -614,11 +614,23 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
   in
   let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
   let env' = uniq_env env in
-  let attr = if is_cps then [ACPS] else [] in
+  let info =
+    let attr = if is_cps then [ACPS] else [] in
+    let pred_share =
+      let aux (f,_) =
+        let f' = trans_var f in
+        Id.typ f
+        |> Term_util.get_pred_share
+        |> List.map (fun (prefix1,paths,prefix2) -> f', prefix1, paths, f', prefix2)
+      in
+      List.flatten_map aux defs
+    in
+    {init_info with attr; pred_share}
+  in
   let max_id = List.fold_left (fun m x -> max m @@ snd @@ decomp_id x) 0 @@ List.flatten_map (fun (f,xs,_,_,_) -> f::xs) defs'' in
   Id.set_counter max_id;
   let prog,map,rmap =
-    {env=env'; defs=defs''; main; info={init_info with attr}}
+    {env=env'; defs=defs''; main; info}
     |@> pr2 "PROG_A"
     |> event_of_temp
     |@> pr2 "PROG_B"
@@ -630,8 +642,6 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
     |@> pr2 "PROG_E"
     |> remove_id_event
     |@> pr2 "PROG_F"
-    |*> elim_same_arg (** BUGGY *)
-    |*@> pr2 "PROG_G"
     |> id_prog
   in
   let rrmap = List.map Pair.swap rmap in
@@ -647,9 +657,19 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
   prog, map, rmap, make_get_rtyp
 
 let add_env spec prog =
-  let spec' = List.map (Pair.map trans_var trans_typ) spec in
-  let aux (f,typ) = try f, merge_typ typ @@ List.assoc f spec' with Not_found -> f,typ in
-  let env = uniq_env @@ List.map aux prog.env in
+  let env =
+    let spec' = List.map (Pair.map trans_var trans_typ) spec in
+    let aux (f,typ) =
+      let ty =
+        try
+          merge_typ typ @@ List.assoc f spec'
+        with
+          Not_found -> typ
+      in
+      f, ty
+    in
+    uniq_env @@ List.map aux prog.env
+  in
   {prog with env}
 
 

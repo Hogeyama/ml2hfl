@@ -816,7 +816,7 @@ let merge_tattrs attr1 attr2 =
       | TARefPred _, TARefPred _ -> true
       | _ -> false
     in
-    List.classify ~eq (attr1 @ attr2)
+    List.classify ~eq (List.Set.union attr1 attr2)
   in
   let merge a1 a2 =
     match a1, a2 with
@@ -856,9 +856,9 @@ let rec merge_typ typ1 typ2 =
   | _ when typ2 = typ_unknown -> typ1
   | TBase b1, TBase b2 when b1 = b2 -> TBase b1
   | TAttr(attr1,typ1), TAttr(attr2,typ2) ->
-      TAttr(merge_tattrs attr1 attr2, merge_typ typ1 typ2)
+      _TAttr (merge_tattrs attr1 attr2) (merge_typ typ1 typ2)
   | TAttr(attr, typ'), typ
-  | typ, TAttr(attr, typ') -> TAttr(attr, merge_typ typ typ')
+  | typ, TAttr(attr, typ') -> _TAttr attr (merge_typ typ typ')
   | TFuns(xs1,typ1), TFuns(xs2,typ2) ->
       let xs = List.map2 (fun x1 x2 -> Id.new_var ~name:(Id.name x1) @@ merge_typ (Id.typ x1) (Id.typ x2)) xs1 xs2 in
       TFuns(xs, merge_typ typ1 typ2)
@@ -1381,6 +1381,99 @@ let has_pnondet =
   in
   col.col_pat <- col_pat;
   col.col_pat
+
+let rec copy_for_pred_share n ty =
+  let copy_var x =
+    Id.typ x
+    |> copy_for_pred_share n
+    |> Pair.map_same (Id.set_typ x)
+  in
+  match ty with
+  | TBase _
+  | TTuple [] -> _TAttr [TAId n] ty, _TAttr [TAPredShare n] ty
+  | TVar _ -> unsupported "copy_for_pred_share TVar"
+  | TFun(x,ty') ->
+      let x1,x2 = copy_var x in
+      let ty1,ty2 = copy_for_pred_share n ty' in
+      TFun(x1,ty1), TFun(x2,ty2)
+  | TFuns _ -> unsupported "copy_for_pred_share TFuns"
+  | TTuple xs ->
+      let xs1,xs2 = List.split_map copy_var xs in
+      TTuple xs1, TTuple xs2
+  | TData _ -> unsupported "copy_for_pred_share TData"
+  | TVariant _ -> unsupported "copy_for_pred_share TVariant"
+  | TRecord _ -> unsupported "copy_for_pred_share TRecord"
+  | TApp _ -> unsupported "copy_for_pred_share TApp"
+  | TAttr(attr,ty') ->
+      let ty1,ty2 = copy_for_pred_share n ty' in
+      _TAttr attr ty1, _TAttr attr ty2
+  | TModule _ -> unsupported "copy_for_pred_share TModule"
+let copy_for_pred_share ty = copy_for_pred_share !!Id.new_int ty
+
+let get_pred_share ty =
+  let col ty =
+    let (++) env1 env2 =
+      List.fold_left (fun env (x,paths2) -> List.modify_opt x (fun paths1 -> Some (paths2 @ Option.default [] paths1)) env) env1 env2
+    in
+    let insert x path env = [x,[path]] ++ env in
+    let rec aux path ty =
+      match ty with
+      | TBase _ -> [], []
+      | TVar _ -> unsupported "get_pred_share TVar"
+      | TFun(x,ty') ->
+          let ips1,pps1 = aux (path@[0]) (Id.typ x) in
+          let ips2,pps2 = aux (path@[1]) ty' in
+          ips1++ips2, pps1++pps2
+      | TFuns _ -> unsupported "get_pred_share TFuns"
+      | TTuple xs -> unsupported "get_pred_share TTuple"
+      | TData _ -> [], []
+      | TVariant _ -> unsupported "get_pred_share TVariant"
+      | TRecord _ -> unsupported "get_pred_share TRecord"
+      | TApp _ -> unsupported "get_pred_share TApp"
+      | TAttr(attr,ty') ->
+          let ips,pps = aux path ty' in
+          let aux' f acc =
+            let aux'' a acc =
+              match f a with
+              | None -> acc
+              | Some n -> insert n path acc
+            in
+            List.fold_right aux'' attr acc
+          in
+          aux' (function TAId n -> Some n | _ -> None) ips,
+          aux' (function TAPredShare n -> Some n | _ -> None) pps
+      | TModule _ -> unsupported "get_pred_share TModule"
+    in
+    aux [] ty
+  in
+  let id_paths,pred_paths = col ty in
+  let rec longest_common_prefix paths =
+    if paths = [] || List.mem [] paths then
+      [], paths
+    else
+      let x = List.hd @@ List.hd paths in
+      if List.for_all (List.hd |- (=) x) paths then
+        let paths' = List.map List.tl paths in
+        let lcp,paths'' = longest_common_prefix paths' in
+        x::lcp, paths''
+      else
+        [], paths
+  in
+  let rec aux n =
+    let paths1 = List.assoc n id_paths in
+    let paths2 = List.assoc_option n pred_paths in
+    match paths2 with
+    | None -> None
+    | Some paths2 ->
+        let prefix1,paths1' = longest_common_prefix paths1 in
+        let prefix2,paths2' = longest_common_prefix paths2 in
+        let pr = Print.(list (list int)) in
+        assert (List.Set.subset paths2' paths1');
+        Some (prefix1, paths2', prefix2)
+  in
+  List.map fst id_paths
+  |> List.unique
+  |> List.filter_map aux
 
 let set_id_counter_to_max =
   Id.set_counter -| succ -| get_max_var_id

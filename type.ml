@@ -33,9 +33,11 @@ and constr =
 
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
+  | TAPredShare of int
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
+  | TAId of int (* used only for TAPredShare currently *)
 
 and effect = EVar of int | ENone | ECont | EExcep
   [@@deriving show]
@@ -46,14 +48,14 @@ let print_as_ocaml = ref false
 let set_print_as_ocaml () = print_as_ocaml := true
 let tmp_set_print_as_ocaml f = Ref.tmp_set print_as_ocaml true f
 
-let _TFun x typ = TFun(x, typ)
-let _TAttr attr typ =
+let _TFun x ty = TFun(x, ty)
+let _TAttr attr ty =
   if attr = [] then
-    typ
+    ty
   else
-    match typ with
-    | TAttr(attr', typ') -> TAttr(attr@attr', typ')
-    | _ -> TAttr(attr, typ)
+    match ty with
+    | TAttr(attr', ty') -> TAttr(List.Set.union attr attr', ty')
+    | _ -> TAttr(attr, ty)
 
 let typ_unknown = TData "???"
 
@@ -172,6 +174,8 @@ let print_attr fm a =
   | TARefPred _ -> Format.fprintf fm "TARefPred"
   | TAPureFun -> Format.fprintf fm "TAPureFun"
   | TAEffect e -> Format.fprintf fm "TAEffect %a" print_effect e
+  | TAPredShare x -> Format.fprintf fm "TAPredShare %d" x
+  | TAId x -> Format.fprintf fm "TAId %d" x
 
 let print_tvar fm n =
   let c = char_of_int @@ int_of_char 'a' + n mod 26 in
@@ -523,14 +527,11 @@ let decomp_tvariant ty =
       Format.eprintf "%a@." print_init ty;
       invalid_arg "decomp_tvariant"
 
-
-
 let rec is_mutable_record typ =
   match typ with
   | TRecord fields ->
       List.exists (fun (_,(f,_)) -> f = Mutable) fields
   | _ -> invalid_arg "is_mutable_record"
-
 
 let prim_base_types =
   ["char";
@@ -544,13 +545,11 @@ let prim_base_types =
    "Format.format";
    "Format.formatter"]
 
-
 let rec remove_arg_at i typ =
   match typ with
   | TFun(x, typ) when i = 0 -> typ
   | TFun(x, typ) -> TFun(x, remove_arg_at (i-1) typ)
   | _ -> assert false
-
 
 let decomp_tattr ty =
   match ty with
@@ -564,7 +563,7 @@ let is_tvar ty =
 
 let add_tattr attr ty =
   match ty with
-  | TAttr(attrs, ty') -> TAttr(attr::attrs, ty')
+  | TAttr(attrs, ty') when not (List.mem attr attrs) -> TAttr(attr::attrs, ty')
   | _ -> TAttr([attr], ty)
 
 module Ty = struct

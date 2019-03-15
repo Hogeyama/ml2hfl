@@ -885,7 +885,7 @@ let rec transform sol typ_excep k_post {t_orig; t_cps=t; typ_cps=typ; effect=e} 
     | BinOpCPS(op, t1, t2), ENone ->
         let t1' = transform sol typ_excep k_post t1 in
         let t2' = transform sol typ_excep k_post t2 in
-        make_binop op  t1' t2'
+        Term.(t1' <|op|> t2')
     | BinOpCPS(op, t1, t2), ECont ->
         let r = Id.new_var ~name:"r" (trans_typ sol typ_excep typ_orig typ) in
         let k = Id.new_var ~name:("k" ^ k_post) (TFun(r,typ_result)) in

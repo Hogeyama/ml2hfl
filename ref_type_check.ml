@@ -178,10 +178,10 @@ let rec gen_sub env t ty : sub_constr list =
       sub @ List.flatten @@ List.map2 aux bindings tys
   | BinOp(op,t1,t2) when is_simple_expr t1 ->
       let x2 = new_var_of_term t2 in
-      gen_sub env Term.(let_ [x2,t2] (make_binop op t1 (var x2))) ty
+      gen_sub env Term.(let_ [x2,t2] (t1 <|op|> var x2)) ty
   | BinOp(op,t1,t2) ->
       let x1 = new_var_of_term t1 in
-      gen_sub env Term.(let_ [x1,t1] (make_binop op (var x1) t2)) ty
+      gen_sub env Term.(let_ [x1,t1] (var x1 <|op|> t2)) ty
   | Not t1 ->
       let x = new_var_of_term t1 in
       gen_sub env Term.(let_ [x,t1] (not (var x))) ty

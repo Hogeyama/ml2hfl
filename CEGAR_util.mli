@@ -45,7 +45,7 @@ val conv_path : ('a * bool list list) list -> ('a * ext_path_part list list) lis
 val merge_similar_paths : ('a * 'b * 'c * ('d * ext_path_part list list) list) list -> ('a * 'b * 'c * ('d * ext_path_part list list) list) list
 val group_by_same_branching : ('a * 'b * 'c * 'd) list -> ('a * 'b * 'c * 'd) list list
 val inlined_functions : prog -> var list
-val elim_same_arg : prog -> prog
+val elim_same_arg : prog -> prog (* BUGGY *)
 val rename_fun_arg : prog -> prog
 
 module Term : sig

@@ -179,6 +179,8 @@ let trans_typ trans = function
         | TARefPred(x,p) -> TARefPred(trans.tr_var x, trans.tr_term p)
         | TAPureFun -> TAPureFun
         | TAEffect e -> TAEffect e
+        | TAPredShare x -> TAPredShare x
+        | TAId n -> TAId n
       in
       TAttr(List.map tr attr, trans.tr_typ typ)
   | TVariant(poly,labels) -> TVariant(poly, List.map (Pair.map_snd @@ List.map trans.tr_typ) labels)
@@ -350,6 +352,8 @@ let trans2_gen_typ tr env = function
         | TARefPred(x,p) -> TARefPred(tr.tr2_var env x, tr.tr2_term env p)
         | TAPureFun -> TAPureFun
         | TAEffect e -> TAEffect e
+        | TAPredShare x -> TAPredShare x
+        | TAId n -> TAId n
       in
       TAttr(List.map aux attr, tr.tr2_typ env typ)
   | TVariant(poly,labels) -> TVariant(poly, List.map (Pair.map_snd @@ List.map @@ tr.tr2_typ env) labels)
@@ -530,7 +534,9 @@ let col_typ col typ =
             List.fold_left (fun acc p -> acc ++ col.col_term p) acc' ps
         | TARefPred(x,p) -> col.col_var x ++ col.col_term p ++ acc
         | TAPureFun -> acc
-        | TAEffect e -> acc
+        | TAEffect _ -> acc
+        | TAPredShare _ -> acc
+        | TAId _ -> acc
       in
       List.fold_left aux (col.col_typ typ) attr
   | TVariant(_,labels) -> List.fold_left (fun init (_,typs) -> col_list col col.col_typ ~init typs) col.col_empty labels
@@ -712,6 +718,8 @@ let col2_typ col env typ =
             col.col2_var env x ++ col.col2_term env p ++ acc
         | TAPureFun -> acc
         | TAEffect _ -> acc
+        | TAPredShare _ -> acc
+        | TAId _ -> acc
       in
       List.fold_left aux (col.col2_typ env typ) attr
   | TVariant(_,labels) -> List.fold_left (fun init (_,typs) -> col2_list col (col.col2_typ env) ~init typs) col.col2_empty labels
@@ -910,6 +918,8 @@ let tr_col2_typ tc env = function
             acc', TARefPred(x',p')
         | TAPureFun -> tc.tr_col2_empty, TAPureFun
         | TAEffect e -> tc.tr_col2_empty, TAEffect e
+        | TAPredShare x -> tc.tr_col2_empty, TAPredShare x
+        | TAId n -> tc.tr_col2_empty, TAId n
       in
       let acc,typ' = tc.tr_col2_typ env typ in
       let acc',attr' = tr_col2_list tc aux ~init:acc env attr in
@@ -1247,6 +1257,8 @@ let fold_tr_typ fld env ty =
             env'', TARefPred(x',p')
         | TAPureFun -> env, TAPureFun
         | TAEffect e -> env, TAEffect e
+        | TAPredShare x -> env, TAPredShare x
+        | TAId x -> env, TAId x
       in
       let env',attr' = fold_tr_list aux env attr in
       let env'',typ' = fld.fld_typ env' typ in

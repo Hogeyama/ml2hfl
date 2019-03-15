@@ -2,16 +2,16 @@ open Syntax
 open Term_util
 open Type
 open Util
-open Rose_tree
 
+module Tree = Rose_tree
 module RT = Ref_type
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-let leaf x = leaf (Some x)
-let node tys = Node(None, tys)
-let root x = Option.get @@ root x
-let flatten x = List.filter_map Fun.id @@ flatten x
-let map f x = map (fun path label -> Option.map (f path) label) x
+let leaf x = Tree.leaf (Some x)
+let node tys = Tree.Node(None, tys)
+let root x = Option.get @@ Tree.root x
+let flatten x = List.filter_map Fun.id @@ Tree.flatten x
+let map f x = Tree.map (fun path label -> Option.map (f path) label) x
 
 let rec element_num typ =
   match elim_tattr typ with
@@ -149,14 +149,16 @@ let rec remove_pair_typ ty =
   match ty with
   | TBase _ -> leaf ty
   | TVar _ -> assert false
-  | TFun _ as typ ->
-      let xs,typ' = decomp_tfun typ in
+  | TFun _ ->
+      (* ty' must be the result type *)
+      let xs,ty' = decomp_tfun ty in
       let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
-      leaf (List.fold_right (fun x typ -> TFun(x,typ)) xs' typ')
-  | TTuple xs -> Node (None, List.map (remove_pair_typ -| Id.typ) xs)
+      leaf @@ List.fold_right _TFun xs' ty'
+  | TTuple xs ->
+      node @@ List.map (remove_pair_typ -| Id.typ) xs
   | TData s -> leaf (TData s)
-  | TAttr(_, TTuple[x; {Id.typ}]) as typ0 when get_tapred typ0 <> None ->
-      let y,ps = Option.get @@ get_tapred typ0 in
+  | TAttr(_, TTuple[x; {Id.typ}]) when get_tapred ty <> None ->
+      let y,ps = Option.get @@ get_tapred ty in
       begin
         match typ with
         | TFun _ -> (* Function types cannot have predicates *)
@@ -171,45 +173,56 @@ let rec remove_pair_typ ty =
             let typ' = add_tapred y' ps' typ in
             remove_pair_typ @@ TTuple [x; Id.new_var typ']
       end
-  | TAttr(_, typ) as typ0 when get_tapred typ0 <> None ->
-      let x,ps = Option.get @@ get_tapred typ0 in
+  | TAttr(_, typ) when get_tapred ty <> None ->
+      let x,ps = Option.get @@ get_tapred ty in
       let ps' = List.map remove_pair ps in
       let typ' =
         match remove_pair_typ (Id.typ x) with
-        | Node(Some typ, []) -> typ
-        | Node _ -> fatal "Not implemented CPS.remove_pair_typ(TPred)"
+        | Tree.Node(Some typ, []) -> typ
+        | Tree.Node _ -> fatal "Not implemented CPS.remove_pair_typ(TPred)"
       in
       leaf (add_tapred x ps' typ')
   | TAttr(attr, typ) ->
-      leaf @@ TAttr(attr, root @@ remove_pair_typ typ)
+      typ
+      |> remove_pair_typ
+      |> root
+      |> _TAttr attr
+      |> leaf
   | typ ->
       Format.eprintf "remove_pair_typ: %a@." Print.typ typ;
       assert false
 
 and remove_pair_var x =
-  let to_string path = List.fold_left (fun acc i -> acc ^ string_of_int i) "" path in
-  let aux path typ = Id.set_typ (Id.add_name_after (to_string path) x) typ in
-  map aux @@ remove_pair_typ (Id.typ x)
+  let aux path typ =
+    let s = String.join "" @@ List.map string_of_int path in
+    Id.set_typ (Id.add_name_after s x) typ
+  in
+  Id.typ x
+  |> remove_pair_typ
+  |> map aux
 
-and remove_pair_aux t typ_opt =
-  let typ = match typ_opt with None -> t.typ | Some typ -> typ in
-  let typs = remove_pair_typ typ in
+and remove_pair_aux ?typ t =
+  let typs =
+    typ
+    |> Option.default t.typ
+    |> remove_pair_typ
+  in
   match t.desc with
   | Const _
-  | Event _ -> leaf t
+    | Event _ -> leaf t
   | Bottom -> map (Fun.const make_bottom) typs
   | Var x -> map (Fun.const make_var) (remove_pair_var x)
   | Fun(x, t) ->
       let xs = flatten @@ remove_pair_var x in
       let t' = remove_pair t in
-      leaf @@ make_funs xs t'
+      leaf Term.(funs xs t')
   | App(t1, ts) ->
       let typs = get_argtyps t1.typ in
       assert (List.length typs >= List.length ts);
       let typs' = List.take (List.length ts) typs in
       let t' = remove_pair t1 in
-      let ts' = List.flatten (List.map2 (fun t typ -> flatten @@ remove_pair_aux t (Some typ)) ts typs') in
-      leaf @@ make_app t' ts'
+      let ts' = List.flatten (List.map2 (fun t typ -> flatten @@ remove_pair_aux ~typ t) ts typs') in
+      leaf Term.(t' @ ts')
   | If(t1, t2, t3) ->
       let t1' = remove_pair t1 in
       let t2' = remove_pair t2 in
@@ -218,12 +231,12 @@ and remove_pair_aux t typ_opt =
   | Local(Decl_let bindings, t) ->
       let aux (f,t) =
         let f' = root @@ remove_pair_var f in
-        let t' = root @@ remove_pair_aux t None in
+        let t' = root @@ remove_pair_aux t in
         f', t'
       in
       let bindings' = List.map aux bindings in
       let t' = remove_pair t in
-      leaf @@ make_let bindings' t'
+      leaf Term.(let_ bindings' t')
   | BinOp(op, t1, t2) ->
       begin
         match op, elim_tattr t1.typ with
@@ -237,10 +250,10 @@ and remove_pair_aux t typ_opt =
       end;
       let t1' = remove_pair t1 in
       let t2' = remove_pair t2 in
-      leaf @@ make_binop op t1' t2'
+      leaf Term.(t1' <|op|> t2')
   | Not t1 ->
       let t1' = remove_pair t1 in
-      leaf @@ make_not t1'
+      leaf Term.(not t1')
   | Record fields -> assert false
   | Field(s,t1) -> assert false
   | SetField(s,t1,t2) -> assert false
@@ -249,16 +262,16 @@ and remove_pair_aux t typ_opt =
   | Constr(s,ts) -> assert false
   | Match(t1,pats) -> assert false
   | TryWith(t1,t2) -> assert false
-  | Tuple ts -> Node(None, List.map (remove_pair_aux -$- None) ts)
+  | Tuple ts -> node @@ List.map remove_pair_aux ts
   | Proj(i, {desc=Var x}) when x = abst_var -> leaf (make_var x) (* for predicates *)
   | Proj(i,t) ->
-      let Node(_, ts) = remove_pair_aux t None in
+      let Tree.Node(_, ts) = remove_pair_aux t in
       List.nth ts i
   | _ ->
       Format.eprintf "%a@." Print.term t;
       assert false
 
-and remove_pair t = {(root (remove_pair_aux t None)) with attr=t.attr}
+and remove_pair t = {(root (remove_pair_aux t)) with attr=t.attr}
 
 
 let rec remove_pair_arg x ty =
@@ -294,6 +307,7 @@ and remove_pair_ref_typ ty =
   | _ ->
       Format.eprintf "remove_pair_typ: %a@." Ref_type.print ty;
       assert false
+
 let remove_pair_ref_typ (x,t) =
   let rec aux results =
     match results with
@@ -316,7 +330,7 @@ let remove_pair_ref_typ (x,t) =
   |> aux
 
 
-let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind; info} =
+let remove_pair ?(check=true) {Problem.term=t; env; attr; kind; info} =
   assert (check => List.mem Problem.ACPS attr);
   let pr s = Debug.printf "##[remove_pair] %s: %a@." s Print.term in
   let t' =
@@ -332,8 +346,8 @@ let remove_pair ?(check=true) {Problem.term=t; env=rtenv; attr; kind; info} =
     |> Trans.beta_size1
     |@> pr "beta_size1"
   in
-  let rtenv = List.flatten_map remove_pair_ref_typ rtenv in
-  {Problem.term=t'; env=rtenv; attr; kind; info}, uncurry_rtyp t
+  let env = List.flatten_map remove_pair_ref_typ env in
+  {Problem.term=t'; env; attr; kind; info}, uncurry_rtyp t
 
 let remove_pair_direct t =
   t

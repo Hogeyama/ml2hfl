@@ -3596,3 +3596,32 @@ let variant_args_to_tuple =
         t
     in
     snd @@ tr.fld_term [] t'
+
+let remove_obstacle_type_attribute_for_pred_share =
+  let tr = make_trans () in
+  let tr_desc desc =
+    match desc with
+    | Local(decl, t) ->
+        let decl' =
+          match decl with
+          | Decl_let defs ->
+              let aux (f,t) =
+                let f' = if is_fun_var f then f else tr.tr_var f in
+                f', tr.tr_term t
+              in
+              Decl_let (List.map aux defs)
+          | Decl_type _ -> decl
+        in
+        Local(decl', tr.tr_term t)
+    | _ -> tr.tr_desc_rec desc
+  in
+  let tr_typ ty =
+    match ty with
+    | TAttr(attr, ty') ->
+        let attr' = List.filter (function TAId _ | TAPredShare _ -> false | _ -> true) attr in
+        _TAttr attr' @@ tr.tr_typ ty'
+    | _ -> tr.tr_typ_rec ty
+  in
+  tr.tr_desc <- tr_desc;
+  tr.tr_typ <- tr_typ;
+  tr.tr_term

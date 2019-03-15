@@ -71,6 +71,7 @@ val reduce_rand : term -> term
 val reduce_ignore : term -> term
 val reduce_branch : term -> term
 val rename_module : id -> id -> term -> term
+val remove_obstacle_type_attribute_for_pred_share : term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc

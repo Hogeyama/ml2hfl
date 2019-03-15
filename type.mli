@@ -24,9 +24,11 @@ and constr =
   | TLazy
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list
+  | TAPredShare of int
   | TARefPred of 'a t Id.t * 'a
   | TAPureFun
   | TAEffect of effect
+  | TAId of int
 and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
@@ -100,7 +102,8 @@ val add_tattr: 'a attr -> 'a t -> 'a t
 
 val print :
   ?occur:('a t Id.t -> 'a t -> bool) ->
-  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
+  (Format.formatter -> 'a -> unit) ->
+  Format.formatter -> 'a t -> unit
 val print_init : Format.formatter -> 'a t -> unit
 val print_base : Format.formatter -> base -> unit
 val print_effect : Format.formatter -> effect -> unit

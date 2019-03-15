@@ -784,6 +784,7 @@ let rec col_app t =
   | Fun _ -> unsupported "col_app"
 
 
+(* BUGGY *)
 (* only remove trivially the same arguments *)
 let elim_same_arg prog =
   let find_same_arg defs =

@@ -856,7 +856,7 @@ and from_module_expr id_env mb_expr =
       id_env'', mdl
   | Tmod_ident(path,loc) ->
       let ty = from_module_type mb_expr.mod_env mb_expr.mod_type in
-      id_env, make_var @@ Id.make 0 (Path.name path) [Module] ty
+      id_env, make_var @@ Id.make 0 (Path.name path) [Id.Module] ty
   | Tmod_functor(id, loc, mty, expr) ->
       let ty =
         match mty with

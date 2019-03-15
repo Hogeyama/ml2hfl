@@ -17,7 +17,16 @@ let make_ty ty_top ty_f =
   let open Flag.Encode.RecData in
   match !additional with
   | Nothing -> ty_f
-  | Top -> Ty.(ty_top * ty_f)
+  | Top ->
+      let ty_top1,ty_top2 = copy_for_pred_share ty_top in
+      let ty_f' =
+        match ty_f with
+        | TAttr([TAPureFun], TFun(path, ty_top')) ->
+            assert (ty_top = ty_top');
+            TAttr([TAPureFun], TFun(path, ty_top2))
+        | _ -> assert false
+      in
+      Ty.tuple [ty_top1; ty_f']
   | Unit_top -> unsupported "Flag.Encode.RecData.Unit_top"
 let make_term top t_f =
   let open Flag.Encode.RecData in
@@ -205,7 +214,8 @@ let rec abst_recdata_pat env p =
                 let path = Id.new_var ~name:"path" Ty.(list int) in
                 let top = Term.(get_elem (cons (int j) (nil Ty.int)) f) in
                 let t = make_term top Term.(pfun path (get_elem (cons (int j) (var path)) f)) in
-                Debug.printf "%a@." Print.term' t;
+                Debug.printf "make_bind top: @[%a@." Print.term' top;
+                Debug.printf "make_bind t: @[%a@." Print.term' t;
                 i, j+1, t
               else
                 let () = Debug.printf "%a has non-rec type %a@." Print.pattern p Print.typ p.pat_typ in

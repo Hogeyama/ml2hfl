@@ -137,9 +137,6 @@ val bool_of_term : term -> bool
 val pair_of_term : term -> term * term
 val tuple_of_term : term -> term list
 val list_of_term : term -> term list
-val get_opt_typ : typ -> typ
-val opt_typ : typ -> typ
-val effect_of_typ : typ -> Type.effect
 val effect_of : term -> Type.effect
 
 val is_base_var : id -> bool
@@ -156,14 +153,10 @@ val is_app : term -> bool
 val is_value : term -> bool
 val is_simple_aexp : term -> bool
 val is_simple_bexp : term -> bool
-val is_poly_typ : typ -> bool
 val is_id_unique : term -> bool
 val is_bottom_def : id -> Syntax.term -> bool
 
 val get_int : term -> int list
-val get_args : typ -> id list
-val get_argvars : typ -> id list
-val get_argtyps : typ -> typ list
 val get_top_funs : term -> id list
 val get_top_rec_funs : term -> id list
 val get_fv : ?eq:(id -> id -> bool) -> term -> id list
@@ -172,10 +165,7 @@ val get_id_option : term -> int option
 val get_id_map : term -> (int, term) Hashtbl.t
 val get_last_definition : term -> (id * term) list
 val get_body : term -> term
-val get_tdata : typ -> string list
-val get_tapred : typ -> (id * term list) option
 val get_max_var_id : term -> int
-val arg_num : typ -> int
 val col_same_term : term -> term -> term list
 val col_info_id : term -> id list
 val col_id : term -> int list
@@ -201,6 +191,22 @@ val subst_tdata_typ_map : (string * typ) list -> typ -> typ
 val subst_var_without_typ : id -> id -> term -> term
 val subst_var_map_without_typ : (id * id) list -> term -> term
 
+(** {6 Utilities for Types} *)
+val merge_typ : typ -> typ -> typ
+val add_tapred : id -> term list -> typ -> typ
+val arg_num : typ -> int
+val is_poly_typ : typ -> bool
+val get_tdata : typ -> string list
+val get_tapred : typ -> (id * term list) option
+val get_args : typ -> id list
+val get_argvars : typ -> id list
+val get_argtyps : typ -> typ list
+val get_opt_typ : typ -> typ
+val opt_typ : typ -> typ
+val effect_of_typ : typ -> Type.effect
+val copy_for_pred_share : typ -> typ * typ
+val get_pred_share : typ -> (int list * int list list * int list) list
+
 (** {6 Misc} *)
 val subst_rev : term -> id -> term -> term
 val replace_term : term -> term -> term -> term
@@ -212,7 +218,6 @@ val var_name_of_term : term -> string
 val var_name_of_pattern : pattern -> string
 val var_of_term : term -> id
 val make_term : typ -> term
-val merge_typ : typ -> typ -> typ
 val occur_in : id -> term -> bool
 val count_occurrence : id -> term -> int
 val add_attr : attr -> term -> term
@@ -224,7 +229,6 @@ val remove_attr : attr -> term -> term
 val from_fpat_term : Fpat.Term.t -> term
 val from_fpat_formula : Fpat.Formula.t -> term
 val find_exn_typ : term -> typ option
-val add_tapred : id -> term list -> typ -> typ
 val find_fixed_args : id -> id list -> term -> id list
 val trans_if : (term -> term option) -> term -> term
 val rename : (id * id) list -> term -> term
