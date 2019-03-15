@@ -1382,19 +1382,25 @@ let has_pnondet =
   col.col_pat <- col_pat;
   col.col_pat
 
-let rec copy_for_pred_share n ty =
+let rec copy_for_pred_share n m ty =
   let copy_var x =
     Id.typ x
-    |> copy_for_pred_share n
+    |> copy_for_pred_share n m
     |> Pair.map_same (Id.set_typ x)
   in
   match ty with
   | TBase _
-  | TTuple [] -> _TAttr [TAId n] ty, _TAttr [TAPredShare n] ty
+  | TTuple [] ->
+      let attr1,attr2 =
+        match m with
+        | None -> [TAId n], [TAPredShare n]
+        | Some m -> [TAId n; TAPredShare m], [TAId m; TAPredShare n]
+      in
+      _TAttr attr1 ty, _TAttr attr2 ty
   | TVar _ -> unsupported "copy_for_pred_share TVar"
   | TFun(x,ty') ->
       let x1,x2 = copy_var x in
-      let ty1,ty2 = copy_for_pred_share n ty' in
+      let ty1,ty2 = copy_for_pred_share n m ty' in
       TFun(x1,ty1), TFun(x2,ty2)
   | TFuns _ -> unsupported "copy_for_pred_share TFuns"
   | TTuple xs ->
@@ -1405,10 +1411,11 @@ let rec copy_for_pred_share n ty =
   | TRecord _ -> unsupported "copy_for_pred_share TRecord"
   | TApp _ -> unsupported "copy_for_pred_share TApp"
   | TAttr(attr,ty') ->
-      let ty1,ty2 = copy_for_pred_share n ty' in
+      let ty1,ty2 = copy_for_pred_share n m ty' in
       _TAttr attr ty1, _TAttr attr ty2
   | TModule _ -> unsupported "copy_for_pred_share TModule"
-let copy_for_pred_share ty = copy_for_pred_share !!Id.new_int ty
+let copy_for_pred_share bidir ty =
+  copy_for_pred_share !!Id.new_int (if bidir then Some !!Id.new_int else None) ty
 
 let get_pred_share ty =
   let col ty =

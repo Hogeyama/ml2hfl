@@ -18,7 +18,7 @@ let make_ty ty_top ty_f =
   match !additional with
   | Nothing -> ty_f
   | Top ->
-      let ty_top1,ty_top2 = copy_for_pred_share ty_top in
+      let ty_top1,ty_top2 = copy_for_pred_share true ty_top in
       let ty_f' =
         match ty_f with
         | TAttr([TAPureFun], TFun(path, ty_top')) ->

@@ -204,7 +204,7 @@ val get_argtyps : typ -> typ list
 val get_opt_typ : typ -> typ
 val opt_typ : typ -> typ
 val effect_of_typ : typ -> Type.effect
-val copy_for_pred_share : typ -> typ * typ
+val copy_for_pred_share : bool -> typ -> typ * typ
 val get_pred_share : typ -> (int list * int list list * int list) list
 
 (** {6 Misc} *)
