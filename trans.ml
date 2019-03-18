@@ -2891,7 +2891,9 @@ let instansiate_poly_fun =
     | App({desc=Var f;typ}, ts) when is_poly_typ typ ->
         let rec unify ty ts =
           match elim_tattr ty, ts with
-          | TFun(x,ty'), t2::ts' -> Type.unify (Id.typ x) t2.typ
+          | TFun(x,ty'), t2::ts' ->
+              Type.unify (Id.typ x) t2.typ;
+              unify ty' ts'
           | _, [] -> ()
           | _ -> assert false
         in
