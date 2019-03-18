@@ -105,24 +105,21 @@ let array_term =
           |> List.map tr.tr_term
         in
         let n = List.length ts in
-        let len = make_int n in
         let i = Id.new_var ~name:"i" Ty.int in
         let ti = make_var i in
-        let typ' = tr.tr_typ @@ list_typ t1.typ in
+        let ty = tr.tr_typ @@ list_typ t1.typ in
         let its = List.mapi Pair.pair ts in
-        let t' =
-          make_ref @@
-            make_pair len @@
-              make_fun i @@
-                make_seq (make_assert @@ make_and (make_leq (make_int 0) ti) (make_lt ti len)) @@
-                  List.fold_right (fun (j,x) t -> make_if (make_eq ti (make_int j)) x t) its (make_bottom typ')
-        in
-        t'.desc
+        let r = List.fold_right (fun (j,x) t -> Term.(if_ (ti = int j) x t)) its (Term.bot ty) in
+        Term.(ref (pair (int n)
+                     (fun_ i
+                        (seq (assert_ (int 0 <= ti && ti < int n)) r)))).desc
     | _ -> tr.tr_desc_rec desc
   in
   let tr_typ typ =
     match typ with
-    | TApp(TArray, [typ]) -> Ty.(ref @@ pair int (fun_ int (tr.tr_typ typ)))
+    | TApp(TArray, [ty]) ->
+        let ty' = tr.tr_typ ty in
+        Ty.(ref (int * (fun_ int ty')))
     | _ -> tr.tr_typ_rec typ
   in
   tr.tr_desc <- tr_desc;

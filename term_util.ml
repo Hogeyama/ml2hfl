@@ -1474,7 +1474,6 @@ let get_pred_share ty =
     | Some paths2 ->
         let prefix1,paths1' = longest_common_prefix paths1 in
         let prefix2,paths2' = longest_common_prefix paths2 in
-        let pr = Print.(list (list int)) in
         assert (List.Set.subset paths2' paths1');
         Some (prefix1, paths2', prefix2)
   in
@@ -1545,6 +1544,7 @@ module Term = struct
   let assume = make_assume
   let none = make_none
   let some = make_some
+  let ref = make_ref
   let match_ = make_match
   let module_ = make_module
   let length = make_length

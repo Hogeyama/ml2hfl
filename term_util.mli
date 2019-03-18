@@ -297,6 +297,7 @@ module Term : sig
   val assume : term -> term -> term
   val none : typ -> term
   val some : term -> term
+  val ref : term -> term
   val match_ : ?typ:typ -> term -> (pattern * term) list -> term
   val module_ : declaration list -> term
   val length : term -> term
