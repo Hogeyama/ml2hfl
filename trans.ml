@@ -2884,10 +2884,16 @@ let complete_precord =
   tr.tr2_pat <- tr_pat;
   tr.tr2_term []
 
-let instansiate_poly_fun =
+let instansiate_poly_types =
   let tr = make_trans () in
   let tr_term t =
     match t.desc with
+    | Deref t' ->
+        Type.unify (Ty.ref t.typ) t'.typ;
+        tr.tr_term_rec t
+    | SetRef(t1,t2) ->
+        Type.unify (Ty.ref t2.typ) t1.typ;
+        tr.tr_term_rec t
     | App({desc=Var f;typ}, ts) when is_poly_typ typ ->
         let rec unify ty ts =
           match elim_tattr ty, ts with
