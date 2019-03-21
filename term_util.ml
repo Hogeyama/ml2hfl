@@ -1471,7 +1471,6 @@ let copy_for_pred_share bidir ty =
   copy_for_pred_share !!Id.new_int (if bidir then Some !!Id.new_int else None) ty
 
 let get_pred_share ty =
-  Format.printf "ty: %a@." Print.typ ty;
   let col ty =
     let (++) env1 env2 =
       List.fold_left (fun env (x,paths2) -> List.modify_opt x (fun paths1 -> Some (paths2 @ Option.default [] paths1)) env) env1 env2
