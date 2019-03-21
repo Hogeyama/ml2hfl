@@ -690,19 +690,27 @@ module Filename = struct
     chop_extension_if_any filename ^ "." ^ ext
 end
 
+module Exception = struct
+  let not_raise f x =
+    try
+      ignore @@ f x; true
+    with _ -> false
+  let finally = BatPervasives.finally
+end
+
 module IO = struct
   module CPS = struct
     let open_in file k =
       let cin = open_in file in
-      let r = k cin in
-      close_in cin;
-      r
+      Exception.finally
+        (fun () -> close_in cin)
+        k cin
 
     let open_out file k =
       let cout = open_out file in
-      let r = k cout in
-      close_out cout;
-      r
+      Exception.finally
+        (fun () -> close_out cout)
+        k cout
   end
 
   let input_all = BatPervasives.input_all
@@ -712,14 +720,6 @@ module IO = struct
     let text = input_file src in
     output_file ~filename:dest ~text
   let empty_file file = output_file file ""
-end
-
-module Exception = struct
-  let not_raise f x =
-    try
-      ignore @@ f x; true
-    with _ -> false
-  let finally = BatPervasives.finally
 end
 
 

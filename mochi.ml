@@ -128,19 +128,17 @@ let print_env cmd json =
 
 let main_input_cegar filename =
   let open CEGAR_syntax in
-  let cin = open_in filename in
-  let lb = Lexing.from_channel cin in
-  lb.Lexing.lex_curr_p <-
-    {Lexing.pos_fname = Filename.basename filename;
-     Lexing.pos_lnum = 1;
-     Lexing.pos_cnum = 0;
-     Lexing.pos_bol = 0};
-  let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
-  let prog' = Typing.infer {prog with env=[]} in
-  let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
-  Exception.finally
-    (fun () -> close_in cin)
-    Main_loop.run_cegar {prog with env}
+  IO.CPS.open_in filename (fun cin ->
+    let lb = Lexing.from_channel cin in
+    lb.Lexing.lex_curr_p <-
+      {Lexing.pos_fname = Filename.basename filename;
+       Lexing.pos_lnum = 1;
+       Lexing.pos_cnum = 0;
+       Lexing.pos_bol = 0};
+    let prog = CEGAR_parser.prog CEGAR_lexer.token lb in
+    let prog' = Typing.infer {prog with env=[]} in
+    let env = List.filter_out (fun (f,_) -> List.mem_assoc f prog.env) prog'.env @ prog.env in
+    Main_loop.run_cegar {prog with env})
 
 let main_termination parsed =
   let open BRA_util in
