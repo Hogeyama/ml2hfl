@@ -977,10 +977,6 @@ let rename_decls fdecls =
   in
   List.rev @@ snd @@ List.fold_left aux ([],[]) fdecls
 
-  (*
-  |> subst_tdata "exn" !!exc_typ
-   *)
-
 let parse_lexbuf ?tenv ?env lb =
   let tenv =
     match tenv with
@@ -1059,3 +1055,4 @@ let parse_files filenames =
   cont Term.eod
   |> make_tdecl env.ty_decl_ext
   |> remove_TVarLazy
+  |> subst_tdata "exn" !!exc_typ
