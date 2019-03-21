@@ -962,17 +962,31 @@ let rename_decls fdecls =
     List.flatten_map aux fdecls
   in
   let rec aux (map,acc_rev) (flag,decl) =
-    match flag, decl with
-    | Recursive, Decl_let defs ->
+    match decl with
+    | Decl_let defs ->
         let fs = List.map fst defs in
         let new_map =
-          fs
-          |> List.filter_map (fun f -> if Id.mem f shadowed then Some f else None)
-          |> List.map (Pair.add_right Id.new_var_id)
+          if flag = Recursive then
+            fs
+            |> List.filter (Id.mem -$- shadowed)
+            |> List.map (Pair.add_right Id.new_var_id)
+          else
+            []
         in
-        let map' = new_map @ List.filter_out (fun (f,_) -> Id.mem f fs) map in
-        let defs' = List.map (Pair.map_snd @@ subst_var_map map') defs in
-        map', Decl_let defs'::acc_rev
+        let map' = new_map @ map in
+        let defs' =
+          let aux (x,t) =
+            List.assoc_default ~eq:Id.eq x x new_map, subst_var_map map' t
+          in
+          List.map aux defs
+        in
+        let map'' =
+          if flag = Recursive then
+            map'
+          else
+            List.combine fs fs @ map'
+        in
+        map'', Decl_let defs'::acc_rev
     | _ -> map, decl::acc_rev
   in
   List.rev @@ snd @@ List.fold_left aux ([],[]) fdecls
