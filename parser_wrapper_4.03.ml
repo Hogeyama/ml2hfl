@@ -975,7 +975,7 @@ let alpha_rename_decls fdecls =
           let aux (x,t) =
             let x' =
               if Id.mem x shadowed then
-                Id.set_typ (Id.assoc x map) (Id.typ x)
+                Id.set_typ (Id.assoc x map_new) (Id.typ x)
               else
                 x
             in
