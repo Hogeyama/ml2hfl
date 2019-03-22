@@ -642,6 +642,7 @@ let subst_var_map map t =
   else
     subst_map (List.map (Pair.map_snd make_var) map) t
 
+(* TODO: subst_var_without_typ must be a derivative of subst_var_map_without_typ *)
 let subst_var_without_typ =
   let tr = make_trans2 () in
   let tr_desc (x,y) desc =
@@ -665,7 +666,7 @@ let subst_var_without_typ =
     | _ -> tr.tr2_desc_rec (x,y) desc
   in
   tr.tr2_desc <- tr_desc;
-  fun x y t -> tr.tr2_term (x,y) t
+  Fun.curry tr.tr2_term
 let subst_var_map_without_typ map t =
   List.fold_right (Fun.uncurry subst_var_without_typ) map t
 

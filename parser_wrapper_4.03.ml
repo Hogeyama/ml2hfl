@@ -949,7 +949,7 @@ let from_top_level_phrase (tenv,(env,decls)) ptop : Env.t * (env * (Asttypes.rec
       let env,decls' = from_structure env struc' in
       tenv', (env, decls @ decls')
 
-let rename_decls fdecls =
+let alpha_rename_decls fdecls =
   let shadowed =
     let aux (flag,decl) =
       match flag, decl with
@@ -962,31 +962,28 @@ let rename_decls fdecls =
     List.flatten_map aux fdecls
   in
   let rec aux (map,acc_rev) (flag,decl) =
-    match decl with
-    | Decl_let defs ->
+    match flag, decl with
+    | Nonrecursive, Decl_let defs ->
         let fs = List.map fst defs in
-        let new_map =
-          if flag = Recursive then
-            fs
-            |> List.filter (Id.mem -$- shadowed)
-            |> List.map (Pair.add_right Id.new_var_id)
-          else
-            []
+        let map_new =
+          fs
+          |> List.filter (Id.mem -$- shadowed)
+          |> List.map (Pair.add_right Id.new_var_id)
         in
-        let map' = new_map @ map in
+        let map' = map_new @ map in
         let defs' =
           let aux (x,t) =
-            List.assoc_default ~eq:Id.eq x x new_map, subst_var_map map' t
+            let x' =
+              if Id.mem x shadowed then
+                Id.set_typ (Id.assoc x map) (Id.typ x)
+              else
+                x
+            in
+            x', subst_var_map_without_typ map t
           in
           List.map aux defs
         in
-        let map'' =
-          if flag = Recursive then
-            map'
-          else
-            List.combine fs fs @ map'
-        in
-        map'', Decl_let defs'::acc_rev
+        map', Decl_let defs'::acc_rev
     | _ -> map, decl::acc_rev
   in
   List.rev @@ snd @@ List.fold_left aux ([],[]) fdecls
@@ -1003,7 +1000,7 @@ let parse_lexbuf ?tenv ?env lb =
   let orig = Parse.use_file lb in
   let env = Option.default init_env env in
   let _,(env,fdecls) = List.fold_left from_top_level_phrase (tenv,(env,[])) orig in
-  tenv, orig, env, rename_decls fdecls
+  tenv, orig, env, alpha_rename_decls fdecls
 
 let parse_file ?tenv ?env filename =
   IO.CPS.open_in filename (fun cin ->
