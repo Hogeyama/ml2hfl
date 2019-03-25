@@ -167,7 +167,7 @@ let replace_simple_match_with_if =
   let rec get_subst t p =
     match p.pat_desc with
     | PAny -> Some Fun.id
-    | PVar x -> Some (subst x t)
+    | PVar x -> Some (subst ~rename_if_captured:true x t)
     | PTuple ps ->
         let sbsts = List.mapi (fun i p -> get_subst Term.(proj i t) p) ps in
         List.fold_right Option.(fun sbst acc -> sbst >>= (fun x -> lift ((-|) x) acc)) sbsts (Some Fun.id)
@@ -315,7 +315,7 @@ let encode_list_term post t =
       let aux (p,t) =
         let p',bind = encode_list_pat p in
         let t' = encode_list.tr2_term post t in
-        p', make_lets_s bind t'
+        p', make_nonrec_lets_s bind t'
       in
       let pats' = List.map aux pats in
       Term.(match_ t1' pats')
@@ -503,8 +503,7 @@ let encode_list_opt_term t =
       let x = Id.new_var ~name:"xs" (encode_list_opt.tr_typ t1.typ) in
       let aux (p,t) t' =
         let bind,cond = get_match_bind_cond_opt (make_var x) p in
-        let add_bind t = List.fold_left (fun t' (x,t) -> make_let [x, t] t') t bind in
-        make_if cond (add_bind (encode_list_opt.tr_term t)) t'
+        make_if cond (add_bind bind (encode_list_opt.tr_term t)) t'
       in
       let t_pats = List.fold_right aux pats (make_bottom typ') in
       make_let [x, encode_list_opt.tr_term t1] t_pats
