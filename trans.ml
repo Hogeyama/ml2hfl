@@ -3260,40 +3260,42 @@ let insert_extra_param t =
   |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
   |@> Debug.printf "insert_extra_param (%d added)::@. @[%a@.@." (List.length !Fpat.RefTypInfer.params) Print.term
 
+(* input must be the whole program *)
 let unify_pure_fun_app =
   let tr = make_trans () in
+  let rec trans_apps ts =
+    match ts with
+    | [] -> []
+    | t::ts' ->
+        let ts1,ts2 = List.partition (same_term t) ts' in
+        (List.length ts1 + 1, t)::trans_apps ts2
+  in
+  let trans_apps ts =
+    Format.printf "apps: %a@." Print.(list term) ts;
+    trans_apps ts in
   let collect_app =
-    let union = List.Set.union ~eq:same_term in
-    let col = make_col [] union in
+    let col = make_col [] (@@@) in
     let col_term t =
       match t.desc with
-      | App(_,ts) when has_pure_attr t ->
-          List.fold_right (col.col_term |- union) ts [t]
-      | If(t1, _, _)
-      | Match(t1, _) -> col.col_term t1
-      | Fun(x,t') ->
-          t'
-          |> col.col_term
-          |> List.filter_out (get_fv |- Id.mem x)
-      | Local(Decl_let defs, t') ->
-          t' :: List.map snd defs
-          |> List.flatten_map col.col_term
-          |> List.filter_out (get_fv |- List.exists (Id.mem_assoc -$- defs))
+      | App(_,ts) when has_pure_attr t -> t :: List.flatten_map col.col_term ts
       | _ -> col.col_term_rec t
     in
     col.col_term <- col_term;
-    col.col_term
+    col.col_term |- trans_apps
   in
   let tr_desc desc =
     let unify t =
-      let apps = collect_app t in
-      let aux app t =
-        let x = new_var_of_term app in
-        make_let [x,app] @@ subst_rev app x t
+      let t' = tr.tr_term t in
+      let apps = collect_app t' in
+      Format.printf "apps: %a@." Print.(list (int * term)) apps;
+      let aux (n,app) t =
+        if n >= 2 then
+          let x = new_var_of_term app in
+          make_let [x,app] @@ subst_rev app x t
+        else
+          t
       in
-      t
-      |> tr.tr_term
-      |> List.fold_right aux apps
+      List.fold_right aux apps t'
     in
     match desc with
     | If(t1, t2, t3) -> If(tr.tr_term t1, unify t2, unify t3)
@@ -3303,7 +3305,7 @@ let unify_pure_fun_app =
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
-  tr.tr_term
+  tr.tr_term -| alpha_rename ~whole:true
 
 let lift_assume =
   let tr = make_trans () in
