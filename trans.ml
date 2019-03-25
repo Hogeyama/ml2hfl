@@ -3270,9 +3270,6 @@ let unify_pure_fun_app =
         let ts1,ts2 = List.partition (same_term t) ts' in
         (List.length ts1 + 1, t)::trans_apps ts2
   in
-  let trans_apps ts =
-    Format.printf "apps: %a@." Print.(list term) ts;
-    trans_apps ts in
   let collect_app =
     let col = make_col [] (@@@) in
     let col_term t =
@@ -3287,7 +3284,6 @@ let unify_pure_fun_app =
     let unify t =
       let t' = tr.tr_term t in
       let apps = collect_app t' in
-      Format.printf "apps: %a@." Print.(list (int * term)) apps;
       let aux (n,app) t =
         if n >= 2 then
           let x = new_var_of_term app in
