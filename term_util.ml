@@ -110,6 +110,8 @@ let make_local decl t =
     {desc=Local(decl,t); typ=t.typ; attr}
 let make_let bindings t2 =
   make_local (Decl_let bindings) t2
+(* remove unused bindings without changing semantics *)
+(* DO NOT USE FOR MUTUAL RECURSIONS *)
 let make_let_s bindings t2 =
   let bindings' = List.filter (fun (f,t1) -> occur_in f t2 || not (has_pure_attr t1) || List.exists (snd |- occur_in f) bindings) bindings in
   make_let bindings' t2
@@ -670,6 +672,18 @@ let subst_var_without_typ =
 let subst_var_map_without_typ map t =
   List.fold_right (Fun.uncurry subst_var_without_typ) map t
 
+
+let make_nonrec_let_s bindings t2 =
+  let map =
+    bindings
+    |> List.filter (fun (f,t) -> Id.mem f @@ get_fv t)
+    |> List.map fst
+    |> List.map (Pair.add_right Id.new_var_id)
+  in
+  let bindings' = List.map (Pair.map_fst (fun x -> List.assoc_default x x map)) bindings in
+  make_let_s bindings' @@ subst_var_map map t2
+let make_nonrec_lets_s bindings t2 =
+  List.fold_right (make_nonrec_let_s -| List.singleton) bindings t2
 
 let make_match ?typ t1 pats =
   match pats with

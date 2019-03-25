@@ -47,6 +47,8 @@ val make_lets_s : (id * term) list -> term -> term
 val make_let' : term -> (id -> term) -> term
 val make_let_type : (string * typ) list -> term -> term
 val make_lets_type : (string * typ) list -> term -> term
+val make_nonrec_let_s : (id * term) list -> term -> term
+val make_nonrec_lets_s : (id * term) list -> term -> term
 val make_fun : id -> term -> term
 val make_pure_fun : id -> term -> term
 val make_funs : id list -> term -> term
