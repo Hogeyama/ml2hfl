@@ -3273,7 +3273,7 @@ let unify_pure_fun_app =
   let collect_app =
     let col = make_col [] (@@@) in
     let filter bv apps =
-      List.filter_out (get_fv |- List.Set.inter ~eq:Id.eq bv |- List.is_empty) apps
+      List.filter (get_fv |- List.Set.inter ~eq:Id.eq bv |- List.is_empty) apps
     in
     let col_term t =
       match t.desc with
