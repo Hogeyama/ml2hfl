@@ -18,15 +18,18 @@ let make_ty ty_top ty_f =
   match !additional with
   | Nothing -> ty_f
   | Top ->
-      let ty_top1,ty_top2 = copy_for_pred_share true ty_top in
-      let ty_f' =
-        match ty_f with
-        | TAttr([TAPureFun], TFun(path, ty_top')) ->
-            assert (ty_top = ty_top');
-            TAttr([TAPureFun], TFun(path, ty_top2))
-        | _ -> assert false
-      in
-      Ty.tuple [ty_top1; ty_f']
+      if !share_predicate then
+        let ty_top1,ty_top2 = copy_for_pred_share true ty_top in
+        let ty_f' =
+          match ty_f with
+          | TAttr([TAPureFun], TFun(path, ty_top')) ->
+              assert (ty_top = ty_top');
+              TAttr([TAPureFun], TFun(path, ty_top2))
+          | _ -> assert false
+        in
+        Ty.tuple [ty_top1; ty_f']
+      else
+        Ty.tuple [ty_top; ty_f]
   | Unit_top -> unsupported "Flag.Encode.RecData.Unit_top"
 let make_term top t_f =
   let open Flag.Encode.RecData in

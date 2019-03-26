@@ -85,6 +85,7 @@ module Encode = struct
     let dest = ref Tuple
     type additional = Nothing | Top | Unit_top
     let additional = ref Top
+    let share_predicate = ref true
   end
 end
 
