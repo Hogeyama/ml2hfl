@@ -3272,9 +3272,16 @@ let unify_pure_fun_app =
   in
   let collect_app =
     let col = make_col [] (@@@) in
+    let filter bv apps =
+      List.filter_out (get_fv |- List.Set.inter ~eq:Id.eq bv |- List.is_empty) apps
+    in
     let col_term t =
       match t.desc with
       | App(_,ts) when has_pure_attr t -> t :: List.flatten_map col.col_term ts
+      | Fun(x,t1) -> filter [x] @@ col.col_term t1
+      | Match(t1,pats) ->
+          let aux (p,t) = filter (get_bv_pat p) (col.col_pat p @@@ col.col_term t) in
+          col.col_term t1 @@@ List.flatten_map aux pats
       | _ -> col.col_term_rec t
     in
     col.col_term <- col_term;
@@ -3301,7 +3308,7 @@ let unify_pure_fun_app =
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
-  tr.tr_term -| alpha_rename ~whole:true
+  tr.tr_term
 
 let lift_assume =
   let tr = make_trans () in

@@ -213,7 +213,7 @@ val copy_for_pred_share : bool -> typ -> typ * typ
 val get_pred_share : typ -> (int list * int list list * int list) list
 
 (** {6 Misc} *)
-val subst_rev : term -> id -> term -> term
+val subst_rev : ?check_capture:bool -> term -> id -> term -> term
 val replace_term : term -> term -> term -> term
 val max_pat_num : term -> int
 val has_no_effect : term -> bool

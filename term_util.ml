@@ -1053,16 +1053,24 @@ let col_info_id = col_info_id.col_term
 
 
 
-let subst_rev = make_trans2 ()
-
 (* [t1 |-> x] *)
-let subst_rev_term (t1,x) t2 =
-  if same_term' t1 t2 || t1 = t2
-  then make_var x
-  else subst_rev.tr2_term_rec (t1,x) t2
-
-let () = subst_rev.tr2_term <- subst_rev_term
-let subst_rev t1 x t2 = subst_rev.tr2_term (t1,x) t2
+let subst_rev =
+  let tr = make_trans2 () in
+  let tr_term (t1,fv,x) t2 =
+    if same_term' t1 t2 || t1 = t2 then
+      make_var x
+    else
+      match t2.desc with
+      | Fun(x, _) when Id.mem x fv -> t2
+      | Match(t1,pats) when List.exists (fst |- get_bv_pat |- List.Set.inter ~eq:Id.eq fv |- List.is_empty |- not) pats ->
+          let desc = Match(tr.tr2_term_rec (t1,fv,x) t2, pats) in
+          {t2 with desc}
+      | _ -> tr.tr2_term_rec (t1,fv,x) t2
+  in
+  tr.tr2_term <- tr_term;
+  fun ?(check_capture=false) t1 x t2 ->
+    let fv = if check_capture then get_fv t1 else [] in
+    tr.tr2_term (t1,fv,x) t2
 
 
 (* replace t1 with t2 in t3 *)
