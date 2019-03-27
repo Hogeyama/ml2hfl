@@ -146,7 +146,7 @@ let abstract orig_fun_list force ?(top_funs=[]) prog =
          in
          Debug.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
          if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
-         labeled, abst)
+         labeled, abst) ()
   in
   let abst',_,_ = CEGAR_trans.rename_prog abst in
   if !incr_wp_max && !prev_abst_defs = abst'.defs

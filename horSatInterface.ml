@@ -199,7 +199,7 @@ let rec verifyFile cmd parser token filename =
               | QC.HighestCoverage -> "-highest-coverage"
             in
             let cmd = Format.sprintf "%s %s %d %s" !QC.command filename !Flag.Experiment.HORS_quickcheck.num option in
-            let r = Time.measure_and_add Flag.Log.Time.hors_quickcheck (fun () -> Unix.CPS.open_process_in cmd IO.input_all) in
+            let r = Time.measure_and_add Flag.Log.Time.hors_quickcheck (Unix.CPS.open_process_in cmd) IO.input_all in
             let ce =
               r
               |> String.trim

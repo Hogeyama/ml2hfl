@@ -77,7 +77,7 @@ let refine_init_env prog =
     match candidates with
     | [] -> prog, ce_set
     | (f,typ)::candidates' ->
-        let r = Time.measure_and_add time_check (fun () -> Modular_check.check prog f typ 1) in
+        let r = Time.measure_and_add time_check (Modular_check.check prog f typ) 1 in
         let prog', ce_set'  =
           match r with
           | Modular_check.Typable env -> {prog with fun_typ_env=merge_tenv prog.fun_typ_env env}, ce_set
@@ -103,12 +103,12 @@ let non_terminating_typ typ =
 let check prog f typ depth =
   Time.measure_and_add
     time_check
-    (fun () -> Modular_check.check prog f typ depth)
+    (Modular_check.check prog f typ) depth
 
 let infer prog f typ ce_set2 depth =
   Time.measure_and_add
     time_synthesize
-    (fun () -> Modular_infer.infer prog f typ ce_set2 depth !Flag.Modular.infer_merge)
+    (Modular_infer.infer prog f typ ce_set2 depth) !Flag.Modular.infer_merge
 
 let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
   let space = String.make (8*List.length history) ' ' in
@@ -220,7 +220,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
         pr "%a :? %a" Id.print f Ref_type.print typ;
         incr num_tycheck;
         let prog' = {prog with fun_typ_env=env} in
-        let r = Time.measure_and_add time_check (fun () -> Modular_check.check prog' f typ depth) in
+        let r = Time.measure_and_add time_check (Modular_check.check prog' f typ) depth in
         match r with
         | Modular_check.Typable env' ->
             pr "TYPABLE: %a :@ %a@." Id.print f Ref_type.print typ;

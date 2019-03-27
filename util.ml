@@ -884,10 +884,10 @@ module Time = struct
     let r = !!f in
     !!get -. tmp, r
 
-  let measure_and_add t f =
+  let measure_and_add t f x =
     let tmp = !!get in
     let fend () = t := !t +. (!!get -. tmp) in
-    Exception.finally fend f ()
+    Exception.finally fend f x
 
   let string_of_tm {Unix.tm_sec;tm_min;tm_hour;tm_mday;tm_mon;tm_year;tm_wday;tm_yday;tm_isdst} =
     Format.sprintf "%04d/%02d/%02d %02d:%02d:%02d" (tm_year+1900) (tm_mon+1) tm_mday tm_hour tm_min tm_sec

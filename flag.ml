@@ -115,6 +115,7 @@ end
 
 module Log = struct
   module Time = struct
+    let preprocess = ref 0.
     let abstraction = ref 0.
     let mc = ref 0.
     let cegar = ref 0.

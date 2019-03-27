@@ -152,7 +152,7 @@ let rec remove_pair_typ ty =
   | TFun _ ->
       (* ty' must be the result type *)
       let xs,ty' = decomp_tfun ty in
-      let xs' = List.flatten_map (fun y -> flatten (remove_pair_var y)) xs in
+      let xs' = List.flatten_map (flatten -| remove_pair_var) xs in
       leaf @@ List.fold_right _TFun xs' ty'
   | TTuple xs ->
       node @@ List.map (remove_pair_typ -| Id.typ) xs
@@ -209,7 +209,7 @@ and remove_pair_aux ?typ t =
   in
   match t.desc with
   | Const _
-    | Event _ -> leaf t
+  | Event _ -> leaf t
   | Bottom -> map (Fun.const make_bottom) typs
   | Var x -> map (Fun.const make_var) (remove_pair_var x)
   | Fun(x, t) ->
@@ -230,9 +230,8 @@ and remove_pair_aux ?typ t =
       leaf (add_attrs t.attr @@ make_if t1' t2' t3')
   | Local(Decl_let bindings, t) ->
       let aux (f,t) =
-        let f' = root @@ remove_pair_var f in
-        let t' = root @@ remove_pair_aux t in
-        f', t'
+        root @@ remove_pair_var f,
+        root @@ remove_pair_aux t
       in
       let bindings' = List.map aux bindings in
       let t' = remove_pair t in

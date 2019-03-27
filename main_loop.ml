@@ -396,7 +396,11 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
   List.map result_of problems
 
 let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
-  let preprocessed = run_preprocess ?make_pps spec problem in
+  let preprocessed =
+    Time.measure_and_add
+      Flag.Log.Time.preprocess
+      (run_preprocess ?make_pps spec) problem
+  in
   if !Flag.Parallel.num > 1 && preprocessed <> [] then
     check_parallel ?fun_list ?exparam_sol spec preprocessed
   else

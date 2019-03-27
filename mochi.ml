@@ -18,6 +18,7 @@ let print_info_default () =
     Format.printf "cycles: %d@." !Flag.FairTermination.loop_count;
   Format.printf "CEGAR-cycles: %d@." !Flag.Log.cegar_loop;
   Format.printf "total: %.3f sec@." !!Time.get;
+  Format.printf "  pre: %.3f sec@." !Flag.Log.Time.preprocess;
   Format.printf "  abst: %.3f sec@." !Flag.Log.Time.abstraction;
   Format.printf "  mc: %.3f sec@." !Flag.Log.Time.mc;
   if Flag.Experiment.HORS_quickcheck.(!use <> None) then
@@ -34,6 +35,7 @@ let output_json () =
      "result", `String (Flag.Log.string_of_result false);
      "cycles", `Int !Flag.Log.cegar_loop;
      "total", `Float !!Time.get;
+     "pre", `Float !Flag.Log.Time.preprocess;
      "abst", `Float !Flag.Log.Time.abstraction;
      "mc", `Float !Flag.Log.Time.mc;
      "refine", `Float !Flag.Log.Time.cegar]
