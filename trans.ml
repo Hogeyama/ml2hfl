@@ -3643,3 +3643,33 @@ let remove_obstacle_type_attribute_for_pred_share =
   tr.tr_desc <- tr_desc;
   tr.tr_typ <- tr_typ;
   tr.tr_term
+
+let alpha_rename_if =
+  let tr = make_trans2 () in
+  let tr_desc check desc =
+    let new_id x =
+      if check x then
+        Id.new_var_id x
+      else
+        x
+    in
+    let desc' = tr.tr2_desc_rec check desc in
+    match desc' with
+    | Local(Decl_let bindings, t1) ->
+        let map = List.map (fun (f,_) -> f, new_id f) bindings in
+        let bindings' = List.map2 (fun (f,t) (_,f') -> f', subst_var_map_without_typ map t) bindings map in
+        Local(Decl_let bindings', subst_var_map_without_typ map t1)
+    | Fun(x, t1)->
+        let x' = new_id x in
+        Fun(x', subst_var_without_typ x x' t1)
+    | Match(t1,pats) ->
+        let aux (p,t2) =
+          let map = List.map (Pair.add_right new_id) @@ List.unique ~eq:Id.eq @@ get_bv_pat p in
+          rename_pat map p,
+          subst_var_map_without_typ map t2
+        in
+        Match(t1, List.map aux pats)
+    | _ -> desc'
+  in
+  tr.tr2_desc <- tr_desc;
+  tr.tr2_term

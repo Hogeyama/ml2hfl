@@ -271,6 +271,23 @@ and remove_pair_aux ?typ t =
       assert false
 
 and remove_pair t = {(root (remove_pair_aux t)) with attr=t.attr}
+let remove_pair t =
+  let xs = get_vars t in
+  let collided =
+    let collides x y =
+      try
+        let s_x = Id.to_string x in
+        let s_y = Id.to_string y in
+        let a,b = String.split ~by:s_x s_y in
+        ignore (int_of_string b);
+        a = ""
+      with Not_found | Failure "int_of_string" -> false
+    in
+    List.filter (fun x -> List.exists (collides x) xs) xs
+  in
+  t
+  |> Trans.alpha_rename_if (Id.mem -$- collided)
+  |> remove_pair
 
 
 let rec remove_pair_arg x ty =

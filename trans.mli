@@ -31,6 +31,7 @@ val assoc_typ : id -> term -> typ
 val diff_terms : term -> term -> (term * term) list
 val remove_label : ?label:string -> term -> term
 val alpha_rename : ?whole:bool -> ?set_counter:bool -> term -> term
+val alpha_rename_if : (id -> bool) -> term -> term
 val replace_base_with_int : term -> term
 val replace_data_with_int : term -> term
 val replace_complex_data_with_int : term -> term

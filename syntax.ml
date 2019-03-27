@@ -1539,6 +1539,11 @@ let make_fold_tr () =
 
 
 
+let get_vars =
+  let col = make_col [] (@@@) in
+  col.col_var <- List.singleton;
+  col.col_term
+
 let get_bv,get_bv_pat =
   let col = make_col [] (@@@) in
   let col_desc desc =
