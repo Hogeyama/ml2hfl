@@ -133,6 +133,7 @@ val decomp_var : term -> id option
 val decomp_bexp : term -> term list
 val decomp_prog : term -> (id * term) list list * term
 val decomp_list : term -> term list option
+val decomp_type_decls : term -> ((string * typ) list) list * term
 val var_of_term : term -> id
 val int_of_term : term -> int
 val bool_of_term : term -> bool

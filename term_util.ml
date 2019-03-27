@@ -1259,6 +1259,13 @@ let get_id_map t =
 
 
 
+let rec decomp_type_decls t =
+  match t.desc with
+  | Local(Decl_type tys, t1) ->
+      let decls,t1' = decomp_type_decls t1 in
+      tys::decls, t1'
+  | _ -> [], t
+
 let rec decomp_prog t =
   match t.desc with
   | Local(Decl_let bindings, t') ->

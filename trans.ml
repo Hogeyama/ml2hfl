@@ -265,6 +265,7 @@ let rec define_rand ?(name="") (env, defs as ed) typ =
         assert false
 let define_rand ed typ = define_rand ~name:"" ed typ
 
+(* INPUT: type declarations must be on top *)
 let inst_randval =
   let fld = make_fold_tr () in
   let fld_term ed t =
@@ -289,7 +290,9 @@ let inst_randval =
       let cmp = Compare.topological ~eq:Id.eq ~dom:(List.map fst defs) edges in
       List.sort (Compare.on ~cmp fst) defs
     in
-    make_lets defs' t'
+    let tdecls,t'' = decomp_type_decls t' in
+    make_lets defs' t''
+    |> List.fold_right make_let_type tdecls
 
 let part_eval t =
   let is_apply t =
