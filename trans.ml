@@ -1893,7 +1893,7 @@ let get_set_main t =
   | Some (_, (x, t)) when Id.name x = main_name -> Some x
   | _ -> None
 
-let ref_to_assert ?(make_fail=make_fail ?loc:None) ?typ_exn ref_env t =
+let ref_to_assert ?(make_fail=make_fail ?loc:None ~force:true) ?typ_exn ref_env t =
   let typ_exn =
     match typ_exn with
     | None -> find_exn_typ t

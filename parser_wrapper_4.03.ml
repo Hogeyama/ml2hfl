@@ -492,7 +492,26 @@ let is_var_case case =
   | {c_lhs={pat_desc=Tpat_alias({pat_desc=Tpat_any},_,_)}; c_guard=None} -> true
   | _ -> false
 
-let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv} : env * term =
+(* TODO: fix to return attribute? *)
+let from_attribute (loc,payload) =
+  if loc.txt = "mochi" then
+    let open Parsetree in
+    match payload with
+    | Parsetree.PStr [{pstr_desc=Pstr_eval({pexp_desc=Pexp_ident x},t)}] ->
+        begin
+          match Longident.flatten x.txt with
+          | ["target"] -> Some ()
+          | _ -> None
+        end
+    | Parsetree.PStr _ -> None
+    | Parsetree.PSig _ -> None
+    | Parsetree.PTyp _ -> None
+    | Parsetree.PPat _ -> None
+  else
+    None
+let from_attributes = List.filter_map from_attribute
+
+let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attributes} : env * term =
   let env,typ = from_type_expr env tenv exp_type in
   let env,t =
     match exp_desc with
@@ -786,11 +805,12 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv} : env * 
         let env,t = from_expression env e in
         env, Term.(let_ [m',mdl] t)
     | Texp_assert e ->
+        let force = [] <> from_attributes exp_attributes in
         let env,t = from_expression env e in
         let t' =
           if t.desc = Const False
-          then make_fail ~loc:exp_loc typ
-          else make_assert ~loc:exp_loc t
+          then make_fail ~force ~loc:exp_loc typ
+          else make_assert ~force ~loc:exp_loc t
         in
         env, t'
     | Texp_lazy e -> assert false

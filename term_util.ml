@@ -138,7 +138,12 @@ let make_fail_unit loc =
   match loc with
   | None -> t
   | Some loc -> add_attr (ALoc loc) t
-let make_fail ?loc typ = make_seq (make_fail_unit loc) @@ make_bottom typ
+let make_fail ?loc ?(force=false) typ =
+  let t2 = make_bottom typ in
+  if !Flag.Method.only_specified && not force then
+    t2
+  else
+    make_seq (make_fail_unit loc) t2
 let make_fun x t = {desc=Fun(x,t); typ=TFun(x,t.typ); attr=pure_attr}
 let make_pure_fun x t = {desc=Fun(x,t); typ=pureTFun(x,t.typ); attr=pure_attr}
 let make_funs = List.fold_right make_fun
@@ -920,7 +925,11 @@ let make_if t1 t2 t3 =
   | _ when has_safe_attr t2 && same_term' t2 t3 -> t2
   | _ when t2.desc = Const True && t3.desc = Const False -> t1
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
-let make_assert ?loc t = make_if t unit_term (make_fail_unit loc)
+let make_assert ?loc ?(force=false) t =
+  if !Flag.Method.only_specified && not force then
+    unit_term
+  else
+    make_if t unit_term (make_fail_unit loc)
 let make_assume t1 t2 = make_if t1 t2 (make_bottom t2.typ)
 let make_br t2 t3 = make_if randbool_unit_term t2 t3
 let make_brs ts =

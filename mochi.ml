@@ -390,7 +390,8 @@ let rec arg_spec for_completion =
      "-use-spec", Arg.Set Flag.Method.use_spec, " use XYZ.spec for verifying XYZ.ml if exists\n(This option is ignored if -spec is used)";
      "-disable-comment-spec", Arg.Clear Flag.Method.comment_spec, " disable {SPEC} on comments";
      "-module-verification", Arg.Set Flag.Mode.module_mode, " Check input as library";
-     "-quickcheck", Arg.Set Flag.Method.quick_check, " Disprove safety via QuickCheck (other method options will be ignored)"]
+     "-quickcheck", Arg.Set Flag.Method.quick_check, " Disprove safety via QuickCheck (other method options will be ignored)";
+     "-only-specified", Arg.Set Flag.Method.only_specified, " Verify only specified targets"]
   in
   let modular =
      "Options for Modular Verification",

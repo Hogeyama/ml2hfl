@@ -117,7 +117,6 @@ and print_attr fm = function
   | ADeterministic -> fprintf fm "ADeterministic"
   | AComment s -> fprintf fm "AComment %S" s
   | AId n -> fprintf fm "AId %d" n
-  | AMark -> fprintf fm "AMark"
   | ADoNotInline -> fprintf fm "ADoNotInline"
   | AEffect e -> print_effect fm e
   | ALoc l -> Location.print_compact fm l

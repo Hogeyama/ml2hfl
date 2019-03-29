@@ -29,7 +29,6 @@ and attr =
   | ADeterministic
   | AComment of string
   | AId of int
-  | AMark
   | ADoNotInline
   | AEffect of Type.effect
   | ALoc of (Location.t [@printer Location.print])

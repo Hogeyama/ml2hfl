@@ -38,7 +38,7 @@ val make_rand_cps : typ -> term
 val make_randint_cps : bool -> term
 val make_app : term -> term list -> term
 val make_app_raw : term -> term list -> term (** Does not merge arguments *)
-val make_fail : ?loc:Location.t -> typ -> term
+val make_fail : ?loc:Location.t -> ?force:bool -> typ -> term
 val make_local : declaration -> term -> term
 val make_let : (id * term) list -> term -> term
 val make_let_s : (id * term) list -> term -> term
@@ -85,7 +85,7 @@ val make_match : ?typ:typ -> term -> (pattern * term) list -> term
 val make_single_match : ?total:bool -> term -> pattern -> term -> term
 val make_seq : term -> term -> term
 val make_ignore : term -> term
-val make_assert : ?loc:Location.t -> term -> term
+val make_assert : ?loc:Location.t -> ?force:bool -> term -> term
 val make_assume : term -> term -> term
 val make_label : ?label:string -> Syntax.info -> Syntax.term -> Syntax.term
 val make_pany : typ -> pattern
@@ -299,7 +299,7 @@ module Term : sig
   val seq : term -> term -> term
   val seqs : term list -> term -> term
   val ignore : term -> term
-  val assert_ : ?loc:Location.t -> term -> term
+  val assert_ : ?loc:Location.t -> ?force:bool -> term -> term
   val assume : term -> term -> term
   val none : typ -> term
   val some : term -> term
