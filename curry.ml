@@ -285,10 +285,14 @@ let remove_pair t =
         a = ""
       with Not_found -> false
     in
-    List.filter (fun x -> List.exists (collides x) xs) xs
+    xs
+    |> List.filter (is_tuple_typ -| Id.typ)
+    |> List.filter (fun x -> List.exists (collides x) xs)
   in
   t
+  |*@> Format.printf "INPUT: @[%a@." Print.term
   |> Trans.alpha_rename_if (Id.mem -$- collided)
+  |*@> Format.printf "OUTPUT: @[%a@." Print.term
   |> remove_pair
 
 

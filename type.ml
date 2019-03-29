@@ -108,6 +108,11 @@ let rec is_base_typ = function
   | TAttr(_,typ) -> is_base_typ typ
   | _ -> false
 
+let is_tuple_typ ty =
+  match elim_tattr ty with
+  | TTuple _ -> true
+  | _ -> false
+
 let tfuns_to_tfun = function
   | TFuns(xs,typ) -> List.fold_right _TFun xs typ
   | typ -> typ
