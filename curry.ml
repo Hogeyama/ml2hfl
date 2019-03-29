@@ -279,9 +279,11 @@ let remove_pair t =
         let s_x = Id.to_string x in
         let s_y = Id.to_string y in
         let a,b = String.split ~by:s_x s_y in
-        ignore (int_of_string b);
+        s_x = Id.name x &&
+        s_y = Id.name y &&
+        (try ignore (int_of_string b); true with Failure _ -> false) &&
         a = ""
-      with Not_found | Failure "int_of_string" -> false
+      with Not_found -> false
     in
     List.filter (fun x -> List.exists (collides x) xs) xs
   in
