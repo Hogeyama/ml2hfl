@@ -5,12 +5,14 @@ type config =
      as_ocaml : bool; (** print terms in OCaml syntax *)
      for_dmochi : bool; (** print terms for dmochi when as_ocaml=true *)
      top : bool; (** print let/type as in top-level *)
-     unused : bool} (** print unused arguments *)
+     unused : bool; (** print unused arguments *)
+     depth : int} (** max depth of printing terms *)
 
 val config_default : config ref
 
-val set_print_as_ocaml : unit -> unit
-val set_print_unused : unit -> unit
+val set_as_ocaml : unit -> unit
+val set_unused : unit -> unit
+val set_depth : int -> unit
 
 val typ : Format.formatter -> typ -> unit
 val id : Format.formatter -> id -> unit

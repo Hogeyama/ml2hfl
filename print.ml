@@ -12,15 +12,18 @@ type config =
      (** Unimplemented *)
      for_dmochi : bool; (** print terms for dmochi when as_ocaml=true *)
      top : bool; (** print let/type as in top-level *)
-     unused : bool} (** print unused arguments *)
-let config_default = ref {ty=false; as_ocaml=false; for_dmochi=false; top=false; unused=false}
+     unused : bool; (** print unused arguments *)
+     depth : int} (** max depth of printing terms *)
+let config_default = ref {ty=false; as_ocaml=false; for_dmochi=false; top=false; unused=false; depth=(-1)}
 
-let set_print_as_ocaml () =
+let set_as_ocaml () =
   Id.set_print_as_ocaml ();
   Type.set_print_as_ocaml ();
   config_default := {!config_default with as_ocaml=true}
-let set_print_unused () =
+let set_unused () =
   config_default := {!config_default with unused=true}
+let set_depth depth =
+  config_default := {!config_default with depth}
 
 let is_definitions desc =
   (snd @@ decomp_locals {desc;typ=Ty.unit;attr=[]}).desc = End_of_definitions
@@ -140,16 +143,20 @@ and filter_attr_list attr =
     |&!Flag.Print.only_if_id&> List.filter (function AId _ -> false | _ -> true)
 
 and print_term cfg pri fm t =
-  let pr attr fm desc =
-    let comments = List.filter_map decomp_comment t.attr in
-    if comments = [] || !!Debug_attr.check
-    then fprintf fm "@[%a@]" (print_desc cfg pri attr) desc
-    else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc cfg pri attr) desc
-  in
-  let attr = filter_attr_list t.attr in
-  if attr = [] || cfg.as_ocaml
-  then pr t.attr fm t.desc
-  else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list attr
+  if cfg.depth = 0 then
+    fprintf fm "..."
+  else
+    let cfg' = {cfg with depth=cfg.depth-1} in
+    let pr attr fm desc =
+      let comments = List.filter_map decomp_comment t.attr in
+      if comments = [] || !!Debug_attr.check
+      then fprintf fm "@[%a@]" (print_desc cfg' pri attr) desc
+      else fprintf fm "(@[(* @[%a@] *)@ %a@])" (print_list pp_print_string ", ") comments (print_desc cfg' pri attr) desc
+    in
+    let attr = filter_attr_list t.attr in
+    if attr = [] || cfg.as_ocaml
+    then pr t.attr fm t.desc
+    else fprintf fm "(@[%a@ #@ %a@])" (pr t.attr) t.desc print_attr_list attr
 
 and print_let_decls cfg bang fm bindings =
   let first = ref true in
@@ -199,6 +206,11 @@ and print_if_label cfg fm attr =
 
 and print_desc cfg pri attr fm desc =
   let pr_t = print_term {cfg with top=false} in
+  let pr_t' pri fm t =
+    match t.desc with
+    | Local _ -> print_term {cfg with top=false; depth=cfg.depth+1} pri fm t
+    | _ -> pr_t pri fm t
+  in
   match desc with
   | End_of_definitions when cfg.as_ocaml -> fprintf fm "()"
   | End_of_definitions -> fprintf fm "EOD"
@@ -259,12 +271,12 @@ and print_desc cfg pri attr fm desc =
   | Local(Decl_let [u,t1], t2) when not !!Debug.check && Id.typ u = TBase TUnit && not @@ Id.mem u @@ get_fv t2 ->
       let p = 9 in
       let s1,s2 = paren pri p in
-      fprintf fm "%s@[%a;@ %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
+      fprintf fm "%s@[%a;@ %a@]%s" s1 (pr_t p) t1 (pr_t' p) t2 s2
   | Local(decl, t2) ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
       let bang = List.mem ADoNotInline attr && not cfg.as_ocaml in
-      fprintf fm "%s@[<v>@[<hv>%a@]@ in@ @[<hov>%a@]@]%s" s1 (print_decl {cfg with top=false} bang) decl (pr_t p) t2 s2
+      fprintf fm "%s@[<v>@[<hv>%a@]@ in@ @[<hov>%a@]@]%s" s1 (print_decl {cfg with top=false} bang) decl (pr_t' p) t2 s2
   | Not{desc = BinOp(Eq, t1, t2)} ->
       let p = 50 in
       let s1,s2 = paren pri p in
@@ -325,7 +337,7 @@ and print_desc cfg pri attr fm desc =
         if cfg.as_ocaml then
           match (fst (List.last pats)).pat_desc with
           | PAny
-          | PVar _ -> pats
+            | PVar _ -> pats
           | _ -> pats @ [{pat_desc=PAny;pat_typ=typ_unknown}, {desc=Bottom; typ=typ_unknown; attr=[]}]
         else
           pats

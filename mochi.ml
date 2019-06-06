@@ -324,10 +324,11 @@ let rec arg_spec for_completion =
     "Options for printing",
     ["-print-abst-types", Arg.Set Flag.Print.abst_typ, " Print abstraction types when the program is safe";
      "-print-non-CPS-abst", Arg.Unit Flag.(fun () -> Mode.just_print_non_CPS_abst := true; Flag.Mode.trans_to_CPS := false), " Print non-CPS abstracted program (and exit)";
-     "-print-as-ocaml", Arg.Unit Print.set_print_as_ocaml, " Print terms in OCaml syntax";
+     "-print-as-ocaml", Arg.Unit Print.set_as_ocaml, " Print terms in OCaml syntax";
      "-print-progress", Arg.Set Flag.Print.progress, " Print progress (use after -modular/-imodular)";
-     "-print-unused-arg", Arg.Unit Print.set_print_unused, " Print unused arguments";
-     "-print-cert", Arg.Set Flag.Print.certificate, " Print certificates even if the model checker does not support certificates (need TRecS)"]
+     "-print-unused-arg", Arg.Unit Print.set_unused, " Print unused arguments";
+     "-print-cert", Arg.Set Flag.Print.certificate, " Print certificates even if the model checker does not support certificates (need TRecS)";
+     "-print-depth", Arg.Int Print.set_depth, " Print depth of terms"]
   in
   let preprocessing =
     "Options for preprocessing",
