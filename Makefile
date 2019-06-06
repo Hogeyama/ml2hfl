@@ -109,7 +109,7 @@ CMO = revision.cmo mconfig.cmo util.cmo flag.cmo debug.cmo		\
 	preprocess.cmo main_loop.cmo modular_common.cmo comp_tree.cmo	\
 	horn_clause.cmo modular_infer.cmo modular_check.cmo		\
 	modular.cmo termination_loop.cmo fair_termination.cmo		\
-	verify_ref_typ.cmo verify_module.cmo mochi.cmo
+	verify_ref_typ.cmo verify_module.cmo cmd.cmo mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =
