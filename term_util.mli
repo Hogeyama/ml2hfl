@@ -180,14 +180,14 @@ val has_safe_attr : term -> bool
 val has_pure_attr : term -> bool
 
 (** {6 Substitution} *)
-val subst : ?rename_if_captured:bool -> id -> term -> term -> term
+val subst : ?rename_if_captured:bool -> ?fast:bool -> id -> term -> term -> term
 val subst_int : int -> term -> term -> term
 val subst_map : (id * term) list -> term -> term
-val subst_type : id -> term -> typ -> typ
+val subst_type : ?fast:bool -> id -> term -> typ -> typ
 val subst_type_var : id -> id -> typ -> typ
-val subst_decl : id -> term -> declaration -> declaration
+val subst_decl : ?fast:bool -> id -> term -> declaration -> declaration
 val subst_decl_map : (id * term) list -> declaration -> declaration
-val subst_var : id -> id -> term -> term
+val subst_var : ?fast:bool -> id -> id -> term -> term
 val subst_var_map : (id * id) list -> term -> term
 val subst_tdata : string -> typ -> term -> term
 val subst_tdata_typ : string -> typ -> typ -> typ

@@ -243,6 +243,7 @@ end
 
 module List = struct
   include BatList
+  module L = Labels
 
   let singleton x = [x]
   let cons x xs = x::xs

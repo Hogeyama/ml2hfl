@@ -185,8 +185,8 @@ let refine labeled is_cp prefix ces ext_ces prog =
   let tmp = Time.get () in
   try
     Verbose.printf
-      "%a(%d-4) Discovering predicates (infeasible case) ...%t @."
-      Color.set Color.Green !Flag.Log.cegar_loop Color.reset;
+      "%a(%d-4)[%.3f] Discovering predicates (infeasible case) ...%t @."
+      Color.set Color.Green !Flag.Log.cegar_loop !!Time.get Color.reset;
     set_status @@ Flag.Log.Other (Format.sprintf "(%d-4) Predicate discovery" !Flag.Log.cegar_loop);
     if Flag.Refine.use_prefix_trace then
       fatal "Not implemented: Flag.use_prefix_trace";
@@ -235,8 +235,8 @@ let refine_with_ext labeled is_cp prefix ces ext_ces prog =
     if !Flag.Print.progress then
       Color.printf
         Color.Green
-        "(%d-4) Discovering predicates (feasible case) ... @."
-        !Flag.Log.cegar_loop;
+        "(%d-4)[%.3f] Discovering predicates (feasible case) ... @."
+        !Flag.Log.cegar_loop !!Time.get;
     set_status @@ Flag.Log.Other (Format.sprintf "(%d-4) Predicate discovery" !Flag.Log.cegar_loop);
     if Flag.Refine.use_prefix_trace then
       raise (Fatal "Not implemented: Flag.use_prefix_trace");
@@ -272,7 +272,7 @@ let refine_rank_fun ce ex_ce prog =
   try
     (*Format.printf "(%d)[refine_rank_fun] %a @." !Flag.cegar_loop print_list ce;
       Format.printf "    %a@." (print_prog_typ' [] []) { env=env; defs=defs; main=main };*)
-    if !Flag.Print.progress then Format.printf "(%d-4) Discovering ranking function ... @." !Flag.Log.cegar_loop;
+    if !Flag.Print.progress then Format.printf "(%d-4)[%.3f] Discovering ranking function ... @." !Flag.Log.cegar_loop !!Time.get;
     set_status @@ Flag.Log.Other (Format.sprintf "(%d-4) Ranking function discovery" !Flag.Log.cegar_loop);
     let env, spc =
       Format.printf "@[<v>";

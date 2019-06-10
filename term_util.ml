@@ -238,22 +238,19 @@ let make_leq t1 t2 =
   {desc=BinOp(Leq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_geq t1 t2 =
   {desc=BinOp(Geq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
-let make_binop op t1 t2 =
-  let f =
-    match op with
-    | Eq -> make_eq
-    | Lt -> make_lt
-    | Gt -> make_gt
-    | Leq -> make_leq
-    | Geq -> make_geq
-    | And -> make_and
-    | Or -> make_or
-    | Add -> make_add
-    | Sub -> make_sub
-    | Mult -> make_mul
-    | Div -> make_div
-  in
-  f t1 t2
+let make_binop op =
+  match op with
+  | Eq -> make_eq
+  | Lt -> make_lt
+  | Gt -> make_gt
+  | Leq -> make_leq
+  | Geq -> make_geq
+  | And -> make_and
+  | Or -> make_or
+  | Add -> make_add
+  | Sub -> make_sub
+  | Mult -> make_mul
+  | Div -> make_div
 let make_proj i t = {desc=Proj(i,t); typ=proj_typ i t.typ; attr=make_attr[t]}
 let make_tuple ts =
   let attr = make_attr ts in
@@ -543,17 +540,19 @@ let rename,rename_pat =
 let subst = make_trans2 ()
 
 (* [x |-> t], [t/x] *)
-let subst_term (x,t,fv as arg) t' =
-  let rename map t = List.fold_left (fun t (y,y') -> subst.tr2_term_rec (y, make_var y', None) t) t map in
+let subst_term (x,t,fv,fast as arg) t' =
+  let rename map t = List.fold_left (fun t (y,y') -> subst.tr2_term_rec (y, make_var y', None, fast) t) t map in
   match t'.desc, fv with
   | Var y, _ when Id.(x = y) -> t
+  | Fun _, _ when fast -> subst.tr2_term_rec arg t'
   | Fun(y, t1), _ when Id.(x = y) -> t'
   | Fun(y, t1), Some fv when Id.mem y fv ->
       let y' = Id.new_var_id y in
       let desc = subst.tr2_desc_rec arg @@ Fun(y', rename [y,y'] t1) in
       {t' with desc}
+  | Local _, _ when fast -> subst.tr2_term_rec arg t'
   | Local(Decl_let bindings, t2), _ when List.exists (fst |- Id.same x) bindings -> t'
-  | Local(Decl_let bindings, t2), Some fv when List.exists (fun (y,_) -> Id.mem y fv) bindings ->
+  | Local(Decl_let bindings, t2), Some fv when List.exists (Id.mem_assoc -$- bindings) fv ->
       let map =
         bindings
         |> List.filter_map (fun (y,_) -> if Id.mem y fv then Some y else None)
@@ -563,6 +562,7 @@ let subst_term (x,t,fv as arg) t' =
       let t2' = rename map t2 in
       let desc = subst.tr2_desc_rec arg @@ Local(Decl_let bindings', t2') in
       {t' with desc}
+  | Match _, _ when fast -> subst.tr2_term_rec arg t'
   | Match(t1,pats), _ ->
       let pats_renamed =
         let aux (p,t) =
@@ -636,13 +636,13 @@ let subst_map map t =
 
 
 let () = subst.tr2_term <- subst_term
-let subst_type x t typ = subst.tr2_typ (x,t,None) typ
+let subst_type ?(fast=false) x t typ = subst.tr2_typ (x,t,None,fast) typ
 let subst_type_var x y typ = subst_type x (make_var y) typ
-let subst_decl x t decl = subst.tr2_decl (x,t,None) decl
-let subst ?(rename_if_captured=false) x t1 t2 =
+let subst_decl ?(fast=false) x t decl = subst.tr2_decl (x,t,None,fast) decl
+let subst ?(rename_if_captured=false) ?(fast=false) x t1 t2 =
   let fv = if rename_if_captured then Some (get_fv t1) else None in
-  subst.tr2_term (x,t1,fv) t2
-let subst_var x y t = subst x (make_var y) t
+  subst.tr2_term (x,t1,fv,fast) t2
+let subst_var ?(fast=false) x y t = subst ~fast x (make_var y) t
 let subst_var_map map t =
   if map = [] then
     t
@@ -1642,7 +1642,7 @@ module Term = struct
   let module_ = make_module
   let local = make_local
   let length = make_length
-  let (|->) = subst ~rename_if_captured:false
+  let (|->) = subst ~rename_if_captured:false ~fast:false
 end
 
 module Pat = struct

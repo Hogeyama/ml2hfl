@@ -315,7 +315,7 @@ let all spec : t list =
   ]
 
 let pr () = if !!Debug_ty.check then Problem.print_debug else Problem.print
-let print desc problem = Verbose.printf "### %a:@. @[%a@.@." Color.s_red desc !!pr problem
+let print desc problem = Verbose.printf "###[%.3f] %a:@. @[%a@.@." !!Time.get Color.s_red desc !!pr problem
 
 let rec trans_and_print
           (tr : tr)
