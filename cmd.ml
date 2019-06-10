@@ -216,6 +216,7 @@ let rec arg_spec for_completion =
      "-neg-pred-off", Arg.Set Flag.PredAbst.never_use_neg_pred, " Never use negative predicates for abstraction";
      "-decomp-pred", Arg.Set Flag.PredAbst.decomp_pred, " Decompose abstraction predicates (e.g., [P1 && P2] ==> [P1, P2])";
      "-decomp-eq-pred", Arg.Set Flag.PredAbst.decomp_eq_pred, " Decompose abstraction predicates on equalities (e.g., [t1 = t2] ==> [t1 <= t2, t1 >= t2])";
+     "-no-shift-pred", Arg.Clear Flag.PredAbst.shift_pred, " Set predicates true for safe function arguments";
      "-shift-pred", Arg.Set Flag.PredAbst.shift_pred, " Set predicates true for safe function arguments";
      "-non-cartesian", Arg.Clear Flag.PredAbst.cartesian, " Do non-cartesian abstraction"]
   in
@@ -245,6 +246,7 @@ let rec arg_spec for_completion =
        " Use predicates of themselves as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
+     "-no-chc", Arg.Clear Flag.Refine.use_rec_chc_solver, " Use recursive CHC solver";
      "-rec-chc", Arg.Set Flag.Refine.use_rec_chc_solver, " Use recursive CHC solver";
      "-rec-chc-limit", Arg.Set_int Flag.Refine.solver_timelimit, " Set time limit for recursive CHC solver (seconds)";
      "-hoice", Arg.Unit Flag.(fun () -> Refine.(solver := Hoice)), " Use HoICE as the recursive horn-clause solver";

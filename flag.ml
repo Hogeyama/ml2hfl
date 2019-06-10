@@ -187,7 +187,7 @@ module PredAbst = struct
   let decomp_eq_pred = ref false
   let no_simplification = ref false
   let cartesian = ref true
-  let shift_pred = ref false
+  let shift_pred = ref true
   let bool_init_empty = ref true
 end
 
@@ -196,7 +196,7 @@ module Refine = struct
   let merge_counterexample = ref false
   let use_multiple_paths = ref false
   let disable_predicate_accumulation = ref false
-  let use_rec_chc_solver = ref false
+  let use_rec_chc_solver = ref true
   type solver = Hoice | Z3 | Z3_spacer
   let solver = ref Hoice
   let solver_timelimit = ref 5 (* seconds *)
