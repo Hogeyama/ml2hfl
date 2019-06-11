@@ -64,6 +64,7 @@ type preprocess_label =
   | Replace_complex_data_with_int
   | Variant_args_to_tuple
   | Unify_pure_fun_app
+  | Add_occurence_param
 
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
@@ -131,6 +132,7 @@ let string_of_label = function
   | Insert_extra_param -> "Insert extra parameters"
   | Variant_args_to_tuple -> "Replace variant arguments with tuples"
   | Unify_pure_fun_app -> "Unify applications of pure functions"
+  | Add_occurence_param -> "Add occurence parameters"
 
 let get xs =
   match xs with
@@ -298,6 +300,9 @@ let all spec : t list =
     Remove_pair,
       trans_if !Flag.Mode.trans_to_CPS @@
       Option.some -| List.singleton -| Curry.remove_pair;
+    Add_occurence_param,
+      trans_if !Flag.Method.occurence_param @@
+      map_trans add_occurence_param;
     Replace_bottom_def,
        map_trans replace_bottom_def;
     Add_preds,

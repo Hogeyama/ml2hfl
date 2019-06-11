@@ -68,6 +68,7 @@ module Method = struct
   let abst_for_loop = ref true
   let encode_before_make_ext_fun = ref true
   let only_specified = ref false
+  let occurence_param = ref false
 end
 
 module Encode = struct

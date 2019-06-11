@@ -232,6 +232,7 @@ type 'a fold_tr =
    mutable fld_const:     'a -> const       -> 'a * const;
    mutable fld_const_rec: 'a -> const       -> 'a * const;
    mutable fld_attr:      'a -> attr list   -> 'a * attr list}
+val fold_tr_list : ('a -> 'b -> 'a * 'c) -> 'a -> 'b list -> 'a * 'c list
 
 
 val typ : term -> typ

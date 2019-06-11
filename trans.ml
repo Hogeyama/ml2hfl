@@ -3673,3 +3673,53 @@ let alpha_rename_if =
   in
   tr.tr2_desc <- tr_desc;
   tr.tr2_term
+
+(** The input must be in CPS *)
+let add_occurence_param =
+  let fld = make_fold_tr () in
+  let gen x env =
+    try
+      List.assoc_map ~eq:Id.eq x succ env
+    with Not_found -> 0, (x,1)::env
+  in
+  let fld_term env t0 =
+    match t0.desc with
+    | Fun _ ->
+        let xs,t' = decomp_funs t0 in
+        let env,xs' = fold_tr_list fld.fld_var env xs in
+        let env,t'' = fld.fld_term env t' in
+        let y = Id.new_var Ty.int in
+        env, Term.funs (y::xs') t''
+    | App({desc=Const (Rand(ty,b))}, [{desc=Const Unit}; {desc=Var k}]) ->
+        let env,ty' = fld.fld_typ env ty in
+        let x,env = gen k env in
+        env, Term.(make_rand_cps ty' @ [unit; var k @ [int x]])
+    | App({desc=Const (Rand(ty,b))}, [{desc=Const Unit}; {desc=Fun(x,t)}]) ->
+        let env, ty' = fld.fld_typ env ty in
+        let env, t' = fld.fld_term env t in
+        env, Term.(make_rand_cps ty' @ [unit; fun_ x t'])
+    | App({desc=Const (Rand _)}, _) -> assert false
+    | App({desc=Event(s,b)}, [{desc=Const Unit}; {desc=Fun(x,t)}]) ->
+        let env, t' = fld.fld_term env t in
+        env, Term.(make_event_cps s @ [unit; fun_ x t'])
+    | App({desc=Event _}, _) -> assert false
+    | App({desc=Var f}, ts) ->
+        let env,f' = fld.fld_var env f in
+        let x,env = gen f env in
+        let env,ts' = fold_tr_list fld.fld_term env ts in
+        env, Term.(var f' @ int x::ts')
+    | _ -> fld.fld_term_rec env t0
+  in
+  let fld_typ env ty =
+    match ty with
+    | TFun _ ->
+        let xs,ty' = decomp_tfun ty in
+        let env,xs' = fold_tr_list fld.fld_var env xs in
+        let x = Id.new_var Ty.int in
+        let env,ty'' = fld.fld_typ env ty' in
+        env, List.fold_right _TFun (x::xs') ty''
+    | ty -> fld.fld_typ_rec env ty
+  in
+  fld.fld_term <- fld_term;
+  fld.fld_typ <- fld_typ;
+  snd -| fld.fld_term []

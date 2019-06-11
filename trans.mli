@@ -1,5 +1,6 @@
 open Syntax
 
+(** {6 Transformation} *)
 val flatten_tvar : term -> term
 val flatten_tvar_typ : typ -> typ
 val inst_tvar : typ -> term -> term
@@ -73,6 +74,7 @@ val reduce_ignore : term -> term
 val reduce_branch : term -> term
 val rename_module : id -> id -> term -> term
 val remove_obstacle_type_attribute_for_pred_share : term -> term
+val add_occurence_param : term -> term
 
 (** {6 Normalization} *)
 val normalize_binop_exp : binop -> term -> term -> desc

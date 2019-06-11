@@ -246,9 +246,10 @@ let rec arg_spec for_completion =
        " Use predicates of themselves as the initial sets of predicates for booleans";
      "-mp", Arg.Set Flag.Refine.use_multiple_paths, " Use multiple infeasible error paths for predicate discovery";
      "-no-simplification", Arg.Set Flag.PredAbst.no_simplification, " Do not simplify abstracted programs";
-     "-no-chc", Arg.Clear Flag.Refine.use_rec_chc_solver, " Use recursive CHC solver";
+     "-no-rec-chc", Arg.Clear Flag.Refine.use_rec_chc_solver, " Do not use recursive CHC solver";
      "-rec-chc", Arg.Set Flag.Refine.use_rec_chc_solver, " Use recursive CHC solver";
      "-rec-chc-limit", Arg.Set_int Flag.Refine.solver_timelimit, " Set time limit for recursive CHC solver (seconds)";
+     "-rec-chc-app-id", Arg.Set Flag.Method.occurence_param, " Add extra parameter for application ID";
      "-hoice", Arg.Unit Flag.(fun () -> Refine.(solver := Hoice)), " Use HoICE as the recursive horn-clause solver";
      "-hoice-bin", Arg.Set_string Flag.Refine.hoice,
                    Format.sprintf "<cmd>  Change hoice command to <cmd> (default: \"%s\")" !Flag.Refine.hoice;
