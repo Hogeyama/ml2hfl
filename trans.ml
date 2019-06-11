@@ -2314,6 +2314,7 @@ let replace_fail_with =
   tr.tr2_desc <- tr_desc;
   tr.tr2_term
 
+(** eta_normal does not see the existence of side-effects *)
 let eta_normal =
   let tr = make_trans () in
   let map_arg t =
@@ -3675,12 +3676,14 @@ let alpha_rename_if =
   tr.tr2_term
 
 (** The input must be in CPS *)
+(* TODO: refactor *)
 let add_occurence_param =
   let fld = make_fold_tr () in
   let gen x env =
     try
       List.assoc_map ~eq:Id.eq x succ env
-    with Not_found -> 0, (x,1)::env
+      |> Pair.swap
+    with Not_found -> (x,1)::env, 0
   in
   let fld_term env t0 =
     match t0.desc with
@@ -3692,22 +3695,29 @@ let add_occurence_param =
         env, Term.funs (y::xs') t''
     | App({desc=Const (Rand(ty,b))}, [{desc=Const Unit}; {desc=Var k}]) ->
         let env,ty' = fld.fld_typ env ty in
-        let x,env = gen k env in
-        env, Term.(make_rand_cps ty' @ [unit; var k @ [int x]])
+        let env,x = gen k env in
+        let env,k' = fld.fld_var env k in
+        env, Term.(make_rand_cps ty' @ [unit; var k' @ [int x]])
     | App({desc=Const (Rand(ty,b))}, [{desc=Const Unit}; {desc=Fun(x,t)}]) ->
         let env, ty' = fld.fld_typ env ty in
         let env, t' = fld.fld_term env t in
-        env, Term.(make_rand_cps ty' @ [unit; fun_ x t'])
+        let env, x' = fld.fld_var env x in
+        env, Term.(make_rand_cps ty' @ [unit; fun_ x' t'])
     | App({desc=Const (Rand _)}, _) -> assert false
     | App({desc=Event(s,b)}, [{desc=Const Unit}; {desc=Fun(x,t)}]) ->
         let env, t' = fld.fld_term env t in
-        env, Term.(make_event_cps s @ [unit; fun_ x t'])
+        let env, x' = fld.fld_var env x in
+        env, Term.(make_event_cps s @ [unit; fun_ x' t'])
     | App({desc=Event _}, _) -> assert false
     | App({desc=Var f}, ts) ->
         let env,f' = fld.fld_var env f in
-        let x,env = gen f env in
+        let env,x = gen f env in
         let env,ts' = fold_tr_list fld.fld_term env ts in
         env, Term.(var f' @ int x::ts')
+    | App({desc=Fun _} as t1, ts) ->
+        let env,t1' = fld.fld_term env t1 in
+        let env,ts' = fold_tr_list fld.fld_term env ts in
+        env, Term.(t1' @ int 0::ts')
     | _ -> fld.fld_term_rec env t0
   in
   let fld_typ env ty =
@@ -3722,4 +3732,4 @@ let add_occurence_param =
   in
   fld.fld_term <- fld_term;
   fld.fld_typ <- fld_typ;
-  snd -| fld.fld_term []
+  snd -| fld.fld_term [] -| eta_normal
