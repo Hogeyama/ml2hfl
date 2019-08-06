@@ -24,9 +24,9 @@ and constr =
   | TArray
   | TLazy
 and 'a attr =
-  | TAPred of 'a t Id.t * 'a list
+  | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
   | TAPredShare of int
-  | TARefPred of 'a t Id.t * 'a
+  | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
   | TAId of int

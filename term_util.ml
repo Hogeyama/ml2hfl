@@ -840,37 +840,38 @@ let merge_tattrs attr1 attr2 =
       | TAPred _, TAPred _ -> true
       | TAPureFun,  TAPureFun -> true
       | TARefPred _, TARefPred _ -> true
+      | TAId _, TAId _ -> true
       | _ -> false
     in
     List.classify ~eq (List.Set.union attr1 attr2)
   in
   let merge a1 a2 =
-    match a1, a2 with
-    | TAPred(x1,ps1), TAPred(x2,ps2) ->
-        let merge_preds ps1 ps2 =
-          let aux p ps =
-            if List.exists (same_term p) ps
-            then ps
-            else p::ps
-          in
-          List.fold_right aux ps1 ps2
-        in
-        let ps2' = List.map (subst_var x2 x1) ps2 in
-        TAPred(x1, merge_preds ps1 ps2')
-    | TARefPred(x1,p1), TARefPred(x2,p2) ->
-        let p2' = subst_var x2 x1 p2 in
-        let p = if same_term p1 p2' then p1 else make_and p1 p2' in
-        TARefPred(x1, p)
-    | TAPureFun, TAPureFun -> TAPureFun
-    | _ -> assert false
+    match a1 with
+    | None -> Some a2
+    | Some a1 ->
+        match a1, a2 with
+        | TAPred(x1,ps1), TAPred(x2,ps2) ->
+            let merge_preds ps1 ps2 =
+              let aux p ps =
+                if List.exists (same_term p) ps
+                then ps
+                else p::ps
+              in
+              List.fold_right aux ps1 ps2
+            in
+            let ps2' = List.map (subst_var x2 x1) ps2 in
+            Some (TAPred(x1, merge_preds ps1 ps2'))
+        | TARefPred(x1,p1), TARefPred(x2,p2) ->
+            let p2' = subst_var x2 x1 p2 in
+            let p = if same_term p1 p2' then p1 else make_and p1 p2' in
+            Some (TARefPred(x1, p))
+        | TAPureFun, TAPureFun -> Some TAPureFun
+        | TAId x, TAId _ ->
+            warning "merge TAId";
+            None
+        | _ -> assert false
   in
-  let aux attr =
-    match attr with
-    | [] -> assert false
-    | [a] -> a
-    | a::attr' -> List.fold_left merge a attr'
-  in
-  List.map aux attrs
+  List.filter_map (List.fold_left merge None) attrs
 
 let rec merge_typ typ1 typ2 =
   match typ1,typ2 with
@@ -1364,11 +1365,14 @@ let col_typ_var t =
 
 
 
-let col_id = make_col [] (@)
-let col_id_term t =
-  List.filter_map (function AId n -> Some n | _ -> None) t.attr @ col_id.col_term_rec t
-let () = col_id.col_term <- col_id_term
-let col_id t = List.unique @@ col_id.col_term t
+let col_id =
+  let col = make_col [] (@@@) in
+  let col_attr attr =
+    List.filter_map (function AId n -> Some n | _ -> None) attr
+  in
+  col.col_attr <- col_attr;
+  col.col_typ <- Fun.const [];
+  List.unique -| col.col_term
 
 
 let rec is_fail t =
@@ -1426,12 +1430,12 @@ let trans_if =
 
 let get_max_var_id =
   let col = make_col (-1) max in
-  let col_id_term t =
+  let col_term t =
     match t.desc with
     | Var x -> max (Id.id x) (Id.id @@ Id.from_string (Id.name x) typ_unknown)
     | _ -> col.col_term_rec t
   in
-  col.col_term <- col_id_term;
+  col.col_term <- col_term;
   col.col_term
 
 let rec effect_of_typ ty =

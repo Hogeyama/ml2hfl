@@ -20,7 +20,7 @@ and 'a t =
   | TVariant of bool * (string * 'a t list) list (** true means polymorphic variant *)
   | TRecord of (string * (mutable_flag * 'a t)) list
   | TApp of constr * 'a t list
-  | TAttr of 'a attr list * 'a t
+ | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
 
 and mutable_flag = Immutable | Mutable
@@ -38,7 +38,7 @@ and 'a attr =
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
-  | TAId of int (* used only for TAPredShare currently *)
+  | TAId of int
 
 and effect = EVar of int | ENone | ECont | EExcep
   [@@deriving show]
@@ -245,11 +245,21 @@ let rec print occur print_pred fm typ =
   | TAttr([TAPureFun], (TFun(x,typ))) when not !!Debug_attr.check ->
       let pr_arg fm x = if occur x typ then Format.fprintf fm "%a:" Id.print x in
       Format.fprintf fm "(@[<hov 2>%a%a -*>@ %a@])" pr_arg x print' (Id.typ x) print' typ
+  | TAttr(TAPureFun::attrs, ty) when not !!Debug_attr.check ->
+      print' fm (TAttr(attrs@[TAPureFun],ty))
   | TAttr([TAEffect e], typ) when not !!Debug_attr.check ->
       Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
   | TAttr(TARefPred(x,p)::attrs, ty) ->
       let ty' = TAttr(attrs,ty) in
       Format.fprintf fm "@[{%a:%a|%a}@]" Id.print x print' ty' print_pred p
+  | TAttr(TAId x::attrs, ty) ->
+      let ty' = TAttr(attrs,ty) in
+      let s1,s2 =
+        match ty with
+        | TFun _ -> "(", ")"
+        | _ -> "", ""
+      in
+      Format.fprintf fm "@[%s%a%s^%d@]" s1 print' ty' s2 x
   | TAttr(attrs, ty) -> Format.fprintf fm "(%a @@ %a)" print' ty (List.print print_attr) attrs
   | TVariant(poly,labels) ->
       let pr fm (s, typs) =

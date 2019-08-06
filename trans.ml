@@ -2223,8 +2223,26 @@ let map_attr =
   tr.tr2_term <- tr_term;
   tr.tr2_term
 
-
 let filter_attr f t = map_attr (List.filter f) t
+
+
+let map_tattr =
+  let tr = make_trans2 () in
+  let tr_typ f ty =
+    match ty with
+    | TAttr(attr, ty') ->
+        let attr' = f attr in
+        let ty'' = tr.tr2_typ f ty' in
+        if attr' = [] then
+          ty''
+        else
+          TAttr(attr', ty'')
+    | _ -> tr.tr2_typ_rec f ty
+  in
+  tr.tr2_typ <- tr_typ;
+  tr.tr2_term
+
+let filter_tattr f t = map_tattr (List.filter f) t
 
 
 let tfuns_to_tfun =
@@ -2303,6 +2321,7 @@ let add_id_if =
 let add_id t = add_id_if (Fun.const true) t
 
 let remove_id t = filter_attr (function AId _ -> false | _ -> true) t
+let remove_tid t = filter_tattr (function TAId _ -> false | _ -> true) t
 
 let replace_fail_with =
   let tr = make_trans2 () in

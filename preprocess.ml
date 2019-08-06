@@ -65,6 +65,7 @@ type preprocess_label =
   | Variant_args_to_tuple
   | Unify_pure_fun_app
   | Add_occurence_param
+  | Slice
 
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
@@ -133,6 +134,7 @@ let string_of_label = function
   | Variant_args_to_tuple -> "Replace variant arguments with tuples"
   | Unify_pure_fun_app -> "Unify applications of pure functions"
   | Add_occurence_param -> "Add occurence parameters"
+  | Slice -> "Slice"
 
 let get xs =
   match xs with
@@ -146,7 +148,7 @@ let take_result l (acc:result list) = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
 
-let trans_if b (tr:tr) x : tr_result list option = if b then tr x else None
+let if_ b (tr:tr) x : tr_result list option = if b then tr x else None
 let map_trans_list (tr:Problem.t->Problem.t list) r : tr_result list option = Some (List.map (Pair.pair -$- get_rtyp_id) @@ tr r)
 let map_trans tr = map_trans_list (tr |- List.singleton)
 
@@ -185,13 +187,13 @@ let all spec : t list =
     Eliminate_unused_let,
       map_trans @@ elim_unused_let ~leave_last:true;
     Insert_extra_param,
-      trans_if !Flag.Method.relative_complete @@
+      if_ !Flag.Method.relative_complete @@
       map_trans insert_extra_param;
     Encode_bool_as_int,
-      trans_if !Flag.Encode.bool_to_int @@
+      if_ !Flag.Encode.bool_to_int @@
       map_trans encode_bool_as_int;
     Replace_const,
-      trans_if !Flag.Method.replace_const @@
+      if_ !Flag.Method.replace_const @@
       map_trans CFA.replace_const;
     Lift_type_decl,
       map_trans lift_type_decl;
@@ -212,41 +214,41 @@ let all spec : t list =
     Abst_ref,
       map_trans Encode.abst_ref;
     Make_fun_tuple,
-      trans_if !Flag.Method.tupling @@
+      if_ !Flag.Method.tupling @@
       map_trans @@ Problem.map Ref_trans.make_fun_tuple;
     Ignore_non_termination,
-      trans_if !Flag.Method.ignore_non_termination @@
+      if_ !Flag.Method.ignore_non_termination @@
       map_trans ignore_non_termination;
     Beta_reduce_trivial,
       map_trans beta_reduce_trivial;
     Eliminate_redundant_arguments,
-      trans_if !Flag.Method.elim_redundant_arg @@
+      if_ !Flag.Method.elim_redundant_arg @@
       map_trans elim_redundant_arg;
     Recover_const_attr,
       map_trans recover_const_attr;
     Decomp_pair_eq,
       map_trans decomp_pair_eq;
     Add_preds,
-      trans_if (spec.Spec.abst_env <> [])
+      if_ (spec.Spec.abst_env <> [])
       (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
     Ignore_excep_arg,
-      trans_if !Flag.Method.ignore_exn_arg @@
+      if_ !Flag.Method.ignore_exn_arg @@
       map_trans ignore_exn_arg;
     Make_ext_funs,
-      trans_if (not !Flag.Method.encode_before_make_ext_fun) @@
+      if_ (not !Flag.Method.encode_before_make_ext_fun) @@
       map_trans make_ext_funs;
     Encode_simple_variant,
       map_trans Encode.simple_variant;
     Replace_base_with_int,
-      trans_if (!Flag.Encode.base_to_int || !Flag.Encode.data_to_int) @@
+      if_ (!Flag.Encode.base_to_int || !Flag.Encode.data_to_int) @@
       map_trans replace_base_with_int;
     Inline_simple_types,
       map_trans inline_simple_types;
     Replace_complex_data_with_int,
-      trans_if !Flag.Encode.complex_data_to_int @@
+      if_ !Flag.Encode.complex_data_to_int @@
       map_trans replace_complex_data_with_int;
     Replace_data_with_int,
-      trans_if !Flag.Encode.data_to_int @@
+      if_ !Flag.Encode.data_to_int @@
       map_trans replace_data_with_int;
     Inline_simple_types,
       map_trans inline_simple_types;
@@ -265,18 +267,18 @@ let all spec : t list =
     Unify_pure_fun_app,
       map_trans unify_pure_fun_app;
     Ret_fun,
-      trans_if !Flag.Method.tupling @@
+      if_ !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Ret_fun.trans;
     Ref_trans,
-      trans_if !Flag.Method.tupling @@
+      if_ !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Ref_trans.trans;
     Tupling,
-      trans_if !Flag.Method.tupling @@
+      if_ !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Tupling.trans;
     Inline,
       (fun prog -> Some [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog, get_rtyp_id]);
     Make_ext_funs,
-      trans_if !Flag.Method.encode_before_make_ext_fun @@
+      if_ !Flag.Method.encode_before_make_ext_fun @@
       map_trans make_ext_funs;
     Reduce_rand,
       map_trans reduce_rand;
@@ -285,37 +287,40 @@ let all spec : t list =
     Reduce_branch,
       map_trans reduce_branch;
     Split_assert,
-      trans_if !Flag.Method.split_assert @@
+      if_ !Flag.Method.split_assert @@
       map_trans_list split_assert;
     Mark_safe_fun_arg,
-      trans_if !Flag.PredAbst.shift_pred @@
+      if_ !Flag.PredAbst.shift_pred @@
       map_trans @@ Problem.map Effect.mark_safe_fun_arg;
     Abst_polymorphic_comparison,
       map_trans Encode.abst_poly_comp;
     Variant_args_to_tuple,
       map_trans variant_args_to_tuple;
+    Slice,
+      if_ !Flag.Method.slice @@
+      map_trans slice;
     CPS,
-      trans_if !Flag.Mode.trans_to_CPS @@
+      if_ !Flag.Mode.trans_to_CPS @@
       Option.some -| List.singleton -| CPS.trans;
     Remove_pair,
-      trans_if !Flag.Mode.trans_to_CPS @@
+      if_ !Flag.Mode.trans_to_CPS @@
       Option.some -| List.singleton -| Curry.remove_pair;
     Add_occurence_param,
-      trans_if !Flag.Method.occurence_param @@
+      if_ !Flag.Method.occurence_param @@
       map_trans add_occurence_param;
     Replace_bottom_def,
-       map_trans replace_bottom_def;
+      map_trans replace_bottom_def;
     Add_preds,
-      trans_if (spec.Spec.abst_cps_env <> [])
+      if_ (spec.Spec.abst_cps_env <> [])
       (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
     Eliminate_same_arguments,
-      trans_if !Flag.Method.elim_same_arg @@
+      if_ !Flag.Method.elim_same_arg @@
       map_trans @@ Problem.map Elim_same_arg.trans;
     Insert_unit_param,
-      trans_if !Flag.Method.insert_param_funarg @@
+      if_ !Flag.Method.insert_param_funarg @@
       map_trans insert_param_funarg;
     Alpha_rename,
-      trans_if Flag.Method.(!mode <> Termination) @@
+      if_ Flag.Method.(!mode <> Termination) @@
       Option.some -| List.singleton -| alpha_rename;
   ]
 

@@ -626,7 +626,9 @@ let col_desc col desc =
   | TSome t -> col.col_term t
   | Module decls -> col_list col col.col_decl decls
 
-let col_term col t = col.col_app (col.col_desc t.desc) (col.col_typ t.typ)
+let col_term col t =
+  let (@@) = col.col_app in
+  col.col_desc t.desc @@ col.col_typ t.typ @@ col.col_attr t.attr
 
 
 let make_col empty app =
