@@ -2937,6 +2937,10 @@ let instansiate_poly_types =
     | Local(Decl_let [x, {desc=Var y}], t') ->
         unify (Id.typ x) (Id.typ y);
         tr.tr_term_rec t
+    | Local(Decl_let defs, t1) -> (* the order of the transformations matters *)
+        let defs' = List.map (Pair.map tr.tr_var tr.tr_term) defs in
+        let t1' = tr.tr_term t1 in
+        {t with desc=Local(Decl_let defs', t1')}
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
