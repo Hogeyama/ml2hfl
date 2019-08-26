@@ -1843,7 +1843,7 @@ let copy_poly_funs =
           List.map (fun (f,_) -> f,f) defs @ map'', Local(Decl_let defs', t')
         else
           let fs = String.join ", " @@ List.map (Id.to_string -| fst) defs in
-          fatal @@ Format.sprintf "Not implemented: let [rec] ... and ... with polymorphic types.\nPlease use type annotations for %s." fs
+          unsupported @@ Format.sprintf "let [rec] ... and ... with polymorphic types.\nPlease use type annotations for %s." fs
     | _ -> fld.fld_desc_rec map desc
   in
   fld.fld_desc <- fld_desc;

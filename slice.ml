@@ -206,6 +206,12 @@ let rec gen_constr env l t ty =
           |> flatten_sub t2'.typ ty
           |> flatten_sub t3'.typ ty
         in
+        let env =
+          if not (has_safe_attr t2) || not (has_safe_attr t3) then
+            {env with constr=(l',0)::env.constr}
+          else
+            env
+        in
         env, {desc=If(t1', t2', t3'); typ=ty; attr=t.attr}
     | Local(Decl_let bindings, t1) ->
         let tenv = env.tenv in
@@ -338,7 +344,7 @@ let rec can_remove sol t =
   let ty = t.typ in
   is_base_typ ty &&
   sol (get_id ty) &&
-  List.Set.subset [ATerminate;ANotFail] t.attr
+  has_safe_attr t
 
 let slice =
   let tr = make_trans2 () in
