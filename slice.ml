@@ -385,5 +385,5 @@ let slice t =
   |@> Debug.printf "INFERRED: %a@." Print.term' -| snd
   |> slice
   |@> Debug.printf "SLICED: %a@." Print.term
-  |> Trans.remove_tid
+  |> Trans.remove_tid label
   |> Trans.reconstruct

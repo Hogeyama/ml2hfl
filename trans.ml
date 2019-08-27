@@ -2327,7 +2327,7 @@ let add_id_if =
 let add_id t = add_id_if (Fun.const true) t
 
 let remove_id t = filter_attr (function AId _ -> false | _ -> true) t
-let remove_tid t = filter_tattr (function TAId _ -> false | _ -> true) t
+let remove_tid label t = filter_tattr (function TAId(s,_) when s = label -> false | _ -> true) t
 
 let replace_fail_with =
   let tr = make_trans2 () in

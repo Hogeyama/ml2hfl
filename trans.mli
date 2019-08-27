@@ -51,7 +51,7 @@ val split_assert_and : term -> term
 val add_id : term -> int * term
 val add_id_if : (term -> bool) -> term -> int * term
 val remove_id : term -> term
-val remove_tid : term -> term
+val remove_tid : string -> term -> term
 val replace_fail_with : desc -> term -> term
 val remove_defs : id list -> term -> term
 val subst_let_xy : term -> term
