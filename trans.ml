@@ -1391,7 +1391,7 @@ let decomp_pair_eq =
 let elim_unused_let =
   let tr = make_trans2 () in
   let tr_term (leave,cbv) t =
-    let has_no_effect' t = has_no_effect t || List.mem ANotFail t.attr && List.mem ATerminate t.attr in
+    let has_no_effect' t = has_no_effect t || has_safe_attr t in
     let t' = tr.tr2_term_rec (leave,cbv) t in
     let flag = List.mem ADoNotInline t.attr in
     if flag then
@@ -1400,10 +1400,16 @@ let elim_unused_let =
       let desc =
         match t'.desc with
         | Local(Decl_let bindings, t1) ->
-            let leave' = get_fv t1 @ leave in
+            let fv = get_fv t1 in
+            let dummy = Id.new_var Ty.int in
+            let deps =
+              let deps1 = List.map (fun x -> dummy, x) fv in
+              let deps2 = List.flatten_map (fun (f,t) -> List.map (fun x -> f, x) @@ get_fv t) bindings in
+              transitive_closure ~eq:Id.eq (deps1@deps2)
+            in
             let used (f,t) =
-              Id.mem f leave' ||
-              List.exists (fun (g,t2) -> Id.(f <> g) && Id.mem f @@ get_fv t2) bindings || (* TODO: fix *)
+              Id.mem f leave ||
+              List.exists Id.(fun (x,y) -> x = dummy && y = f) deps ||
               cbv && not @@ has_no_effect' t
             in
             let bindings' = List.filter used bindings in
