@@ -8,14 +8,15 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 type env =
   {constr: (int * int) list;
    counter: int;
-   tenv: (id * typ) list}
+   tenv: (id * typ) list;
+   fv: id list}
 
 (* id 0 represents "CARE"*)
-let initial_env =
+let initial_env fv =
   let counter = 1 in
   let constr = [] in
   let tenv = [] in
-  {counter; constr; tenv}
+  {counter; constr; tenv; fv}
 
 let new_id env =
   let counter = env.counter + 1 in
@@ -36,6 +37,11 @@ let get_id ty =
   |> decomp_tattr
   |> fst
   |> get_id_attr
+
+let set_id id ty =
+  let attr,ty' = decomp_tattr ty in
+  let attr' = List.map (function TAId _ -> TAId id | a -> a) attr in
+  TAttr(attr', ty')
 
 let rec make_template env ty =
   match ty with
@@ -125,8 +131,8 @@ let rec gen_constr env l t ty =
     match t.desc with
     | Const (Rand(_, true)) -> unsupported __MODULE__
     | Const (Rand(_, false))
-      | Const _
-      | Bottom ->
+    | Const _
+    | Bottom ->
         let env,typ = make_template env t.typ in
         let env = flatten_sub typ ty env in
         let env =
@@ -135,6 +141,17 @@ let rec gen_constr env l t ty =
           {env with constr}
         in
         env, {t with typ}
+    | Var x when Id.mem x env.fv ->
+        let env,typ = make_template env t.typ in
+        let typ' = set_id 0 ty in
+        let x' = Id.set_typ x typ' in
+        let env = flatten_sub typ' ty env in
+        let env =
+          let l = get_id ty in
+          let constr = (l_t,l)::env.constr in
+          {env with constr}
+        in
+        env, {desc=Var x'; typ; attr=t.attr}
     | Var x ->
         let typ =
 	  try
@@ -328,9 +345,8 @@ let solve env t =
 
 let infer t =
   assert (is_base_typ t.typ);
-  let env = initial_env in
   let fv = get_fv t in
-  if fv <> [] then unsupported "Slice: Only support closed terms";
+  let env = initial_env fv in
   let env,ty = make_template env t.typ in
   let env,t' = gen_constr env 0 t ty in
   Debug.printf "Add evar: %a@." Print.term' t';
