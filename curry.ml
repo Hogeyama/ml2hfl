@@ -274,20 +274,18 @@ and remove_pair t = {(root (remove_pair_aux t)) with attr=t.attr}
 let remove_pair t =
   let xs = get_vars t in
   let collided =
-    let collides x y =
-      try
-        let s_x = Id.to_string x in
-        let s_y = Id.to_string y in
-        let a,b = String.split ~by:s_x s_y in
-        s_x = Id.name x &&
-        s_y = Id.name y &&
-        (try ignore (int_of_string b); true with Failure _ -> false) &&
-        a = ""
-      with Not_found -> false
+    let vars = List.map (fun x -> x, Id.to_string x) xs in
+    let collides (x,s_x) (y,s_y) =
+      String.starts_with s_y s_x &&
+      let a,b = String.split ~by:s_x s_y in
+      a = "" &&
+      Exception.not_raise int_of_string b
     in
-    xs
-    |> List.filter (is_tuple_typ -| Id.typ)
-    |> List.filter (fun x -> List.exists (collides x) xs)
+    vars
+    |> List.filter (is_tuple_typ -| Id.typ -| fst)
+    |> List.filter (fun (x,s) -> s = Id.name x)
+    |> List.filter (fun x -> List.exists (collides x) vars)
+    |> List.map fst
   in
   t
   |*@> Format.printf "INPUT: @[%a@." Print.term
