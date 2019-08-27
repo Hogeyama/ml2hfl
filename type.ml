@@ -38,12 +38,14 @@ and 'a attr =
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
-  | TAId of int
+  | TAId of string * int
 
 and effect = EVar of int | ENone | ECont | EExcep
   [@@deriving show]
 
 exception CannotUnify
+
+let label_pred_share = "pred_share" (* for TAId *)
 
 let print_as_ocaml = ref false
 let set_print_as_ocaml () = print_as_ocaml := true
@@ -59,7 +61,6 @@ let _TAttr attr ty =
     | _ -> TAttr(attr, ty)
 
 let typ_unknown = TData "???"
-
 
 let rec var_name_of typ =
   match typ with
@@ -182,7 +183,7 @@ let print_attr fm a =
   | TAPureFun -> Format.fprintf fm "TAPureFun"
   | TAEffect e -> Format.fprintf fm "TAEffect %a" print_effect e
   | TAPredShare x -> Format.fprintf fm "TAPredShare %d" x
-  | TAId x -> Format.fprintf fm "TAId %d" x
+  | TAId(s,x) -> Format.fprintf fm "TAId(%s,%d)" s x
 
 let print_tvar fm n =
   let c = char_of_int @@ int_of_char 'a' + n mod 26 in
@@ -252,7 +253,7 @@ let rec print occur print_pred fm typ =
   | TAttr(TARefPred(x,p)::attrs, ty) ->
       let ty' = TAttr(attrs,ty) in
       Format.fprintf fm "@[{%a:%a|%a}@]" Id.print x print' ty' print_pred p
-  | TAttr(TAId x::attrs, ty) ->
+  | TAttr(TAId(_,x)::attrs, ty) when not !!Debug_attr.check ->
       let ty' = TAttr(attrs,ty) in
       let s1,s2 =
         match ty with

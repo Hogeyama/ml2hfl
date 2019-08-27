@@ -3660,7 +3660,7 @@ let remove_obstacle_type_attribute_for_pred_share =
   let tr_typ ty =
     match ty with
     | TAttr(attr, ty') ->
-        let attr' = List.filter (function TAId _ | TAPredShare _ -> false | _ -> true) attr in
+        let attr' = List.filter (function TAId(s,_) when s = label_pred_share -> false | TAPredShare _ -> false | _ -> true) attr in
         _TAttr attr' @@ tr.tr_typ ty'
     | _ -> tr.tr_typ_rec ty
   in

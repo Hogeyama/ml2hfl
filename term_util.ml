@@ -840,7 +840,7 @@ let merge_tattrs attr1 attr2 =
       | TAPred _, TAPred _ -> true
       | TAPureFun,  TAPureFun -> true
       | TARefPred _, TARefPred _ -> true
-      | TAId _, TAId _ -> true
+      | TAId(s1,_), TAId(s2,_) -> s1 = s2
       | _ -> false
     in
     List.classify ~eq (List.Set.union attr1 attr2)
@@ -866,7 +866,7 @@ let merge_tattrs attr1 attr2 =
             let p = if same_term p1 p2' then p1 else make_and p1 p2' in
             Some (TARefPred(x1, p))
         | TAPureFun, TAPureFun -> Some TAPureFun
-        | TAId x, TAId _ ->
+        | TAId _, TAId _ ->
             warning "merge TAId";
             None
         | _ -> assert false
@@ -1193,9 +1193,9 @@ let alpha_rename_pred_share =
           let aux a (env,acc) =
             let env',a' =
               match a with
-              | TAId x ->
+              | TAId(s,x) when s = label_pred_share ->
                   let env',y = find x env in
-                  env', TAId y
+                  env', TAId(s,y)
               | TAPredShare x ->
                   let env',y = find x env in
                   env', TAPredShare y
@@ -1488,8 +1488,8 @@ let rec copy_for_pred_share n m ty =
   | TTuple [] ->
       let attr1,attr2 =
         match m with
-        | None -> [TAId n], [TAPredShare n]
-        | Some m -> [TAId n; TAPredShare m], [TAId m; TAPredShare n]
+        | None -> [TAId(label_pred_share,n)], [TAPredShare n]
+        | Some m -> [TAId(label_pred_share,n); TAPredShare m], [TAId(label_pred_share,m); TAPredShare n]
       in
       _TAttr attr1 ty, _TAttr attr2 ty
   | TVarLazy _ -> assert false
@@ -1544,7 +1544,7 @@ let get_pred_share ty =
             in
             List.fold_right aux'' attr acc
           in
-          aux' (function TAId n -> Some n | _ -> None) ips,
+          aux' (function TAId(s,n) when s = label_pred_share -> Some n | _ -> None) ips,
           aux' (function TAPredShare n -> Some n | _ -> None) pps
       | TModule _ -> unsupported "get_pred_share TModule"
     in

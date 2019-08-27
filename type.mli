@@ -29,10 +29,12 @@ and 'a attr =
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
   | TAEffect of effect
-  | TAId of int
+  | TAId of string * int
 and effect = EVar of int | ENone | ECont | EExcep
 
 exception CannotUnify
+
+val label_pred_share : string
 
 val prim_base_types : string list
 

@@ -22,15 +22,18 @@ let new_id env =
   let counter = env.counter + 1 in
   {env with counter}, counter
 
+let label = "slice"
+let _TAId id = TAId(label,id)
+
 let add_id id ty =
-  _TAttr [TAId id] ty
+  _TAttr [_TAId id] ty
 
 let add_new_id env ty =
   let env', id = new_id env in
   env', add_id id ty
 
 let get_id_attr attrs =
-  List.get @@ List.filter_map (function TAId x -> Some x | _ -> None) attrs
+  List.get @@ List.filter_map (function TAId(s,x) when s = label -> Some x | _ -> None) attrs
 
 let get_id ty =
   ty
@@ -40,7 +43,7 @@ let get_id ty =
 
 let set_id id ty =
   let attr,ty' = decomp_tattr ty in
-  let attr' = List.map (function TAId _ -> TAId id | a -> a) attr in
+  let attr' = List.map (function TAId(s,_) when s = label -> TAId(label,id) | a -> a) attr in
   TAttr(attr', ty')
 
 let rec make_template env ty =
@@ -58,7 +61,7 @@ let rec make_template env ty =
         let constr = (l',l)::env.constr in
         {env with constr}
       in
-      env, _TAttr [TAId l] @@ TFun(x', ty2')
+      env, _TAttr [TAId(label,l)] @@ TFun(x', ty2')
   | TTuple xs ->
       let env,l = new_id env in
       let env,xs' =
@@ -74,7 +77,7 @@ let rec make_template env ty =
         in
         List.fold_left aux (env,[]) xs
       in
-      env, _TAttr [TAId l] @@ TTuple xs'
+      env, _TAttr [_TAId l] @@ TTuple xs'
   | TAttr(attr, ty1) ->
       let env,ty1' = make_template env ty1 in
       env, _TAttr attr ty1'
@@ -115,9 +118,7 @@ let rec flatten_sub ty1 ty2 constr =
   | TRecord _, _ -> unsupported __MODULE__
   | TApp _, _ -> unsupported __MODULE__
   | TAttr(attr,ty1'), ty2'
-  | ty1', TAttr(attr, ty2') ->
-      List.iter (function TAId _ -> assert false | _ -> ()) attr;
-      flatten_sub ty1' ty2' constr
+  | ty1', TAttr(attr, ty2') -> flatten_sub ty1' ty2' constr
   | TModule _, _ -> unsupported __MODULE__
 let flatten_sub ty1 ty2 constr =
   Debug.printf "FLATTEN: @[@[%a@] <:@ @[%a@." Print.typ ty1 Print.typ ty2;
