@@ -410,7 +410,7 @@ let rec normalize_bool_term ?(imply = Fun.flip List.mem) t =
               | true, true ->
                   [None, reduce xns1 * reduce xns2]
             end
-        | App(App(Const Div, t1), t2) ->
+        | App(App(Const (Div|Mod), t1), t2) ->
             raise NonLinear
         | _ ->
             Format.eprintf "t: @[%a@." CEGAR_print.term t;
