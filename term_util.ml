@@ -925,6 +925,7 @@ let make_if t1 t2 t3 =
   | Const False -> t3
   | _ when has_safe_attr t2 && same_term' t2 t3 -> t2
   | _ when t2.desc = Const True && t3.desc = Const False -> t1
+  | _ when same_term t2 t3 -> make_seq t1 t2
   | _ -> {desc=If(t1, t2, t3); typ=merge_typ t2.typ t3.typ; attr=make_attr[t1;t2;t3]}
 let make_assert ?loc ?(force=false) t =
   if !Flag.Method.only_specified && not force then
