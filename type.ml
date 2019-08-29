@@ -380,7 +380,7 @@ let rec unify typ1 typ2 =
   | TVar({contents = None} as r, n), typ
   | typ, TVar({contents = None} as r, n) ->
       if occurs r typ then
-        (Format.eprintf "occurs check failure: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
+        (Format.eprintf "occur-check failure: %a, %a@." print_init (flatten typ1) print_init (flatten typ2);
          raise CannotUnify);
       Option.iter (fun n -> Debug.printf "%a := %a@." print_tvar n print_init typ) n;
       r := Some typ

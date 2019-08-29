@@ -2642,16 +2642,16 @@ let extract_module =
   let tr_desc desc =
     match desc with
     | Local(Decl_let[m,{desc=Module decls}], t) ->
-        let aux decl t =
+        let aux decl =
           match decl with
           | Decl_let defs ->
               let defs' = List.map (Pair.map (Id.add_module_prefix ~m) Fun.id) defs in
-              make_let defs' t
-              |> List.fold_right2 (fun (x,_) (x',_) t -> subst_var x x' t) defs defs'
+              make_let defs'
+              |- List.fold_right2 (fun (x,_) (x',_) -> subst_var x x') defs defs'
           | Decl_type decls ->
               let decls' = List.map (Pair.map (Id.add_module_prefix_to_string m) Fun.id) decls in
-              make_let_type decls' t
-              |> List.fold_right2 (fun (s,_) (s',_) t -> subst_tdata s (TData s') t) decls decls'
+              make_let_type decls'
+              |- List.fold_right2 (fun (s,_) (s',_) -> subst_tdata s (TData s')) decls decls'
         in
         (tr.tr_term @@ List.fold_right aux decls t).desc
     | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
@@ -2926,13 +2926,13 @@ let instansiate_poly_types =
     | SetRef(t1,t2) ->
         Type.unify (Ty.ref t2.typ) t1.typ;
         tr.tr_term_rec t
-    | App({desc=Var f;typ}, ts) when is_poly_typ typ ->
+    | App({desc=Var f;typ} as t1, ts) when List.exists (fun t -> is_poly_typ t.typ) (t1::ts) ->
         let rec unify ty ts =
           match elim_tattr ty, ts with
           | TFun(x,ty'), t2::ts' ->
               Type.unify (Id.typ x) t2.typ;
               unify ty' ts'
-          | _, [] -> ()
+          | _, [] -> Type.unify ty t.typ
           | _ -> assert false
         in
         let ty = Type.copy typ in
