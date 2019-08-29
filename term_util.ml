@@ -540,6 +540,8 @@ let rename,rename_pat =
 let subst = make_trans2 ()
 
 (* [x |-> t], [t/x] *)
+(* fv = FV(t) *)
+(* capture-avoiding only when `fast = false` *)
 let subst_term (x,t,fv,fast as arg) t' =
   let rename map t = List.fold_left (fun t (y,y') -> subst.tr2_term_rec (y, make_var y', None, fast) t) t map in
   match t'.desc, fv with
@@ -551,7 +553,7 @@ let subst_term (x,t,fv,fast as arg) t' =
       let desc = subst.tr2_desc_rec arg @@ Fun(y', rename [y,y'] t1) in
       {t' with desc}
   | Local _, _ when fast -> subst.tr2_term_rec arg t'
-  | Local(Decl_let bindings, t2), _ when List.exists (fst |- Id.same x) bindings -> t'
+  | Local(Decl_let bindings, t2), _ when Id.mem_assoc x bindings -> t'
   | Local(Decl_let bindings, t2), Some fv when List.exists (Id.mem_assoc -$- bindings) fv ->
       let map =
         bindings
@@ -587,6 +589,16 @@ let subst_term (x,t,fv,fast as arg) t' =
         p, t1'
       in
       let desc = Match(subst.tr2_term arg t1, List.map aux pats_renamed) in
+      {t' with desc}
+  | Module decls, Some fv -> unsupported "subst"
+  | Module decls, _ ->
+      let rec aux decls =
+        match decls with
+        | [] -> []
+        | Decl_let bindings::_ when Id.mem_assoc x bindings -> decls
+        | decl::decls' -> subst.tr2_decl arg decl :: aux decls'
+      in
+      let desc = Module (aux decls) in
       {t' with desc}
   | _ -> subst.tr2_term_rec arg t'
 
