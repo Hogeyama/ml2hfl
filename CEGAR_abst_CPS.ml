@@ -459,7 +459,11 @@ let abstract_def env (f,xs,t1,e,t2) =
     [f, xs', Const True, e, assume env' [] pts t1 t2']
 
 let abstract_prog prog =
-  let env = List.map (fun f -> f, abstract_typ @@ List.assoc f prog.env) @@ List.filter_out is_randint_var @@ get_ext_funs prog in
+  let env =
+    get_ext_funs prog
+    |> List.filter_out is_randint_var
+    |> List.map (fun f -> f, abstract_typ @@ List.assoc f prog.env)
+  in
   let defs = List.flatten_map (abstract_def prog.env) prog.defs in
   let attr = List.remove_all prog.info.attr ACPS in
   {env; defs; main=prog.main; info={prog.info with attr}}

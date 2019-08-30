@@ -900,42 +900,45 @@ let implies env t =
     FpatInterface.implies pre [p]
   with _ -> false
 
-let rec simplify_if_term env t =
+(* fv = FV(env) *)
+let rec simplify_if_term env fv t =
   match t with
   | Const c -> Const c
   | Var x -> Var x
   | App(App(App(Const If, Const True), t2), t3) ->
-      simplify_if_term env t2
+      simplify_if_term env fv t2
   | App(App(App(Const If, Const False), t2), t3) ->
-      simplify_if_term env t3
+      simplify_if_term env fv t3
   | App(App(App(Const If, t1), t2), t3) ->
       let add_env t env = if has_rand t then env else t::env in
       let t1' =
         t1
-        |> simplify_if_term env
+        |> simplify_if_term env fv
         |> normalize_bool_term
       in
-      let t2' = simplify_if_term (add_env t1' env) t2 in
-      let t3' = simplify_if_term (add_env (make_not t1') env) t3 in
-      let t1'',t2'',t3'' =
-        match t1' with
-        | App(Const Not, t1'') -> t1'', t3', t2'
-        | _ -> t1', t2', t3'
-      in
-      begin
-        if implies env t1'' then
-          t2''
-        else if implies env (make_not t1'') then
-          t3''
-        else
-          make_if t1'' t2'' t3''
-      end
-  | App(t1,t2) -> App(simplify_if_term env t1, simplify_if_term env t2)
-  | Let(x, t1, t2) -> Let(x, simplify_if_term env t1, simplify_if_term env t2)
-  | Fun(x,typ,t) -> Fun(x, typ, simplify_if_term env t)
+      let fv_t1 = get_fv t1' in
+      let fv' = fv_t1 @ fv in
+      let b = List.Set.inter fv fv_t1 <> [] in
+      if b && implies env t1' then
+        simplify_if_term env fv t2
+      else if b && implies env (make_not t1') then
+        simplify_if_term env fv t3
+      else
+        let t2' = simplify_if_term (add_env t1' env) fv' t2 in
+        let t3' = simplify_if_term (add_env (make_not t1') env) fv' t3 in
+        let t1'',t2'',t3'' =
+          match t1' with
+          | App(Const Not, t1'') -> t1'', t3', t2'
+          | _ -> t1', t2', t3'
+        in
+        make_if t1'' t2'' t3''
+  | App(t1,t2) -> App(simplify_if_term env fv t1, simplify_if_term env fv t2)
+  | Let(x, t1, t2) -> Let(x, simplify_if_term env fv t1, simplify_if_term env fv t2)
+  | Fun(x,typ,t) -> Fun(x, typ, simplify_if_term env fv t)
+let simplify_if_term t = simplify_if_term [] [] t
 
 let simplify_if {env; defs; main; info} =
-  let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term [] t1, e, simplify_if_term [] t2) defs in
+  let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term t1, e, simplify_if_term t2) defs in
   {env; defs=defs'; main; info}
 
 
