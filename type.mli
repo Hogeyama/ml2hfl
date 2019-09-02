@@ -30,7 +30,7 @@ and 'a attr =
   | TAPureFun
   | TAEffect of effect
   | TAId of string * int
-and effect = EVar of int | ENone | ECont | EExcep
+and effect = EVar of int | ENone | EFail | EDiv | EExcep
 
 exception CannotUnify
 

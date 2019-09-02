@@ -40,7 +40,7 @@ and 'a attr =
   | TAEffect of effect
   | TAId of string * int
 
-and effect = EVar of int | ENone | ECont | EExcep
+and effect = EVar of int | ENone | EFail | EDiv | EExcep
   [@@deriving show]
 
 exception CannotUnify
@@ -173,7 +173,8 @@ let print_effect fm e =
   match e with
   | EVar n -> Format.fprintf fm "'e%d" n
   | ENone -> Format.fprintf fm "none"
-  | ECont -> Format.fprintf fm "cont"
+  | EFail -> Format.fprintf fm "fail"
+  | EDiv -> Format.fprintf fm "div"
   | EExcep -> Format.fprintf fm "excep"
 
 let print_attr fm a =

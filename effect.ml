@@ -10,9 +10,11 @@ type env =
    mutable counter: int;
    for_cps: bool}
 
+let var_effect = EVar 0 (* has some effect *)
+
 let initial_env for_cps =
   let counter = 0 in
-  let constraints = [ECont, EVar 0] in
+  let constraints = [EFail, var_effect; EDiv, var_effect] in
   {counter; constraints; for_cps}
 
 let new_evar env =
@@ -33,7 +35,7 @@ let rec make_template env ty =
         let ty2' = make_template env ty2 in
         if env.for_cps then
           match elim_tattr ty2 with
-          | TBase _ -> env.constraints <- (ECont, effect_of_typ ty2') :: env.constraints
+          | TBase _ -> env.constraints <- (var_effect, effect_of_typ ty2') :: env.constraints
           | _ -> ()
         else
           ();
@@ -68,7 +70,7 @@ let add_evar env t =
 let rec force_cont ty =
   let attrs,ty1 =
     match ty with
-    | TAttr(TAEffect e::attrs, ty1) -> TAEffect ECont::attrs, ty1
+    | TAttr(TAEffect e::attrs, ty1) -> TAEffect var_effect::attrs, ty1
     | _ -> assert false
   in
   let ty1' =
@@ -123,14 +125,14 @@ let rec gen_constr env tenv t =
   | Const (Rand(_, false)) ->
       let t' = add_evar env t in
       let e = get_tfun_effect t'.typ in
-      env.constraints <- (ECont, e) :: env.constraints;
+      env.constraints <- (var_effect, e) :: env.constraints;
       t'
   | Const (Rand(_, true)) -> unsupported __MODULE__
   | Const _ -> add_evar env t
   | Bottom ->
       let t' = add_evar env t in
       let e = effect_of t' in
-      env.constraints <- (ECont, e) :: env.constraints;
+      env.constraints <- (var_effect, e) :: env.constraints;
       t'
   | Var x ->
       let typ =
@@ -180,7 +182,7 @@ let rec gen_constr env tenv t =
       env.constraints <- (effect_of t1', e) :: env.constraints;
       flatten_sub env t2'.typ typ;
       flatten_sub env t3'.typ typ;
-      if env.for_cps then env.constraints <- (ECont, e) :: env.constraints;
+      if env.for_cps then env.constraints <- (var_effect, e) :: env.constraints;
       set_effect e @@ {Term.(if_ t1' t2' t3') with typ; attr=t.attr}
   | Local(Decl_let bindings, t1) ->
       let tenv' =
@@ -192,6 +194,14 @@ let rec gen_constr env tenv t =
         let f_typ = Id.assoc f tenv' in
         let f' = Id.set_typ f f_typ in
         let t1' = gen_constr env tenv' t1 in
+        let rec aux_div t =
+          match t.desc with
+          | Fun(_,t') -> aux_div t'
+          | _ ->
+              if Id.mem f' (get_fv t) then
+                env.constraints <- (EDiv, effect_of t) :: env.constraints
+        in
+        aux_div t1';
         flatten_sub env t1'.typ f_typ;
         env.constraints <- (effect_of t1', e) :: env.constraints;
         f', t1'
@@ -219,7 +229,7 @@ let rec gen_constr env tenv t =
   | Event(s,false) ->
       let t' = add_evar env t in
       let e = get_tfun_effect t'.typ in
-      env.constraints <- (ECont, e) :: env.constraints;
+      env.constraints <- (var_effect, e) :: env.constraints;
       t'
   | Proj(i,t1) ->
       let t1' = gen_constr env tenv t1 in
@@ -267,16 +277,18 @@ let rec solve env =
   let n = env.counter + 1 in
   let upper = Array.make n [] in
   let sol = Array.make n (EVar 0) in
-  let init (conts,exceps) (x,y) =
+  let init (fails,divs,exceps) (x,y) =
     match x,y with
-    | EVar i, EVar j -> upper.(i) <- j::upper.(i); conts, exceps
-    | ENone, EVar _ -> conts, exceps
-    | ECont, EVar i -> i::conts, exceps
-    | EExcep, EVar i -> conts, i::exceps
+    | EVar i, EVar j -> upper.(i) <- j::upper.(i); fails, divs, exceps
+    | ENone, EVar _ -> fails, divs, exceps
+    | EFail, EVar i -> i::fails, divs, exceps
+    | EDiv, EVar i -> fails, i::divs, exceps
+    | EExcep, EVar i -> fails, divs, i::exceps
     | _ -> assert false
   in
-  let conts,exceps = List.fold_left init ([],[]) env.constraints in
-  Debug.printf "conts: %a@." (List.print Format.pp_print_int) conts;
+  let fails,divs,exceps = List.fold_left init ([],[],[]) env.constraints in
+  Debug.printf "fails: %a@." (List.print Format.pp_print_int) fails;
+  Debug.printf "divs: %a@." (List.print Format.pp_print_int) divs;
   Debug.printf "exceps: %a@." (List.print Format.pp_print_int) exceps;
   let set c xs = List.iter (fun y -> sol.(y) <- c) xs in
   let rec solve c rest =
@@ -288,10 +300,13 @@ let rec solve env =
         set c up;
         solve c (up@rest')
   in
-  solve EExcep exceps;
-  set EExcep exceps;
-  solve ECont conts;
-  set ECont conts;
+  let solve' c xs =
+    solve c xs;
+    set c xs
+  in
+  solve' EExcep exceps;
+  solve' EFail fails;
+  solve' EDiv divs;
   Array.iteri (fun i x -> Debug.printf  "  e_%d := %a@." i print_effect x) sol;
   fun x ->
     if x < 0 || n < x then invalid_arg "solve";
