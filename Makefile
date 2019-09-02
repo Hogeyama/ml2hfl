@@ -86,11 +86,11 @@ CMO = revision.cmo mconfig.cmo util.cmo flag.cmo debug.cmo		\
 	CEGAR_util.cmo typing.cmo type_check.cmo CEGAR_ref_type.cmo	\
 	smtlib2_interface.cmo fpatInterface.cmo QE.cmo			\
 	rec_CHC_solver.cmo ref_type.cmo spec.cmo problem.cmo		\
-	ref_type_gen.cmo trans.cmo slice.cmo trans_problem.cmo		\
-	CHC.cmo ref_type_check.cmo CFA.cmo uncurry.cmo lift.cmo		\
-	fair_termination_util.cmo CEGAR_lift.cmo useless_elim.cmo	\
-	inter_type.cmo type_trans.cmo effect.cmo CPS.cmo curry.cmo	\
-	CEGAR_CPS.cmo parser_wrapper.cmo encode_list.cmo		\
+	ref_type_gen.cmo trans.cmo effect.cmo slice.cmo			\
+	trans_problem.cmo CHC.cmo ref_type_check.cmo CFA.cmo		\
+	uncurry.cmo lift.cmo fair_termination_util.cmo CEGAR_lift.cmo	\
+	useless_elim.cmo inter_type.cmo type_trans.cmo CPS.cmo		\
+	curry.cmo CEGAR_CPS.cmo parser_wrapper.cmo encode_list.cmo	\
 	encode_rec.cmo encode_rec_variant.cmo encode.cmo		\
 	omegaInterface.cmo CEGAR_abst_util.cmo CEGAR_trans.cmo		\
 	CEGAR_abst_CPS.cmo CEGAR_abst.cmo CEGAR_parser.cmo		\

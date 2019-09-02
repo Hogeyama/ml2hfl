@@ -548,23 +548,24 @@ let col_typ col typ =
 let col_var col x = col.col_typ (Id.typ x)
 
 let col_pat col p =
+  let (++) = col.col_app in
   let r1 = col.col_typ p.pat_typ in
   let r2 =
     match p.pat_desc with
     | PAny -> col.col_empty
     | PNondet -> col.col_empty
     | PVar x -> col.col_var x
-    | PAlias(p,x) -> col.col_app (col.col_pat p) (col.col_var x)
+    | PAlias(p,x) -> col.col_pat p ++ col.col_var x
     | PConst t -> col.col_term t
     | PConstr(s,ps) -> col_list col col.col_pat ps
     | PNil -> col.col_empty
-    | PCons(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
+    | PCons(p1,p2) -> col.col_pat p1 ++ col.col_pat p2
     | PTuple ps -> col_list col col.col_pat ps
     | PRecord pats -> col_list col (snd |- col.col_pat) pats
-    | POr(p1,p2) -> col.col_app (col.col_pat p1) (col.col_pat p2)
+    | POr(p1,p2) -> col.col_pat p1 ++ col.col_pat p2
     | PNone -> col.col_empty
     | PSome p -> col.col_pat p
-    | PWhen(p,cond) -> col.col_app (col.col_pat p) (col.col_term cond)
+    | PWhen(p,cond) -> col.col_pat p ++ col.col_term cond
   in
   col.col_app r1 r2
 

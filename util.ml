@@ -1001,3 +1001,13 @@ let save_as_dot filename vertices edges =
     edges;
   Format.fprintf ocf "}@]@?";
   close_out oc
+
+let save_as_dot_simple filename vertices edges =
+  let vs =
+    match vertices with
+    | None -> List.flatten_map Pair.to_list edges
+    | Some vs -> vs
+  in
+  let vertices = List.map (fun v -> v, "") vs in
+  let edges = List.map (fun (v1,v2) -> v1, v2, "") edges in
+  save_as_dot filename vertices edges

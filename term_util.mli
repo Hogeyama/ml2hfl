@@ -172,6 +172,7 @@ val get_max_var_id : term -> int
 val col_same_term : term -> term -> term list
 val col_info_id : term -> id list
 val col_id : term -> int list
+val col_tid : typ -> (string * int) list
 val col_typ_var : term -> typ option ref list
 val col_app_args : id -> term -> term list list
 
@@ -241,6 +242,7 @@ val rename : (id * id) list -> term -> term
 val rename_pat : (id * id) list -> pattern -> pattern
 val set_id_counter_to_max : term -> unit
 val is_length_var : id -> bool
+val size : term -> int
 
 module Term : sig
   val unit : term

@@ -3256,6 +3256,7 @@ let reduce_branch =
   tr.tr_term
 
 
+(* Add unique id to each "fail" *)
 let mark_fail =
   let fld = make_fold_tr () in
   let fld_term map t =

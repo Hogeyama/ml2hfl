@@ -1387,6 +1387,19 @@ let col_id =
   col.col_typ <- Fun.const [];
   List.unique -| col.col_term
 
+let col_tid =
+  let col = make_col [] (@@@) in
+  let col_typ ty =
+    let acc = col.col_typ_rec ty in
+    match ty with
+    | TAttr(attr,ty) ->
+        List.filter_map (function TAId(s,n) -> Some(s,n) | _ -> None) attr @@@ acc
+    | _ -> acc
+  in
+  col.col_typ <- col_typ;
+  col.col_term <- Fun.const [];
+  List.unique -| col.col_typ
+
 
 let rec is_fail t =
   match t.desc with
@@ -1593,6 +1606,60 @@ let get_pred_share ty =
 
 let set_id_counter_to_max =
   Id.set_counter -| succ -| get_max_var_id
+
+let rec size_pattern p =
+  let sum ps = List.fold_left (fun s p -> s + size_pattern p) 0 ps in
+  match p.pat_desc with
+  | PAny -> 1
+  | PNondet -> 1
+  | PVar x -> 1
+  | PAlias(p,x) -> 1 + size_pattern p
+  | PConst t -> size t
+  | PConstr(s,ps) -> 1 + sum ps
+  | PNil -> 1
+  | PCons(p1,p2) -> 1 + sum [p1;p2]
+  | PTuple ps -> 1 + sum ps
+  | PRecord pats -> 1 + sum (List.map snd pats)
+  | POr(p1,p2) -> 1 + sum [p1;p2]
+  | PNone -> 1
+  | PSome p -> 1 + size_pattern p
+  | PWhen(p,cond) -> 1 + size_pattern p + size cond
+and size_declaration decl =
+  match decl with
+  | Decl_let bindings -> List.fold_left (fun s (_,t) -> s + size t) 0 bindings
+  | Decl_type _ -> 0
+and size t =
+  let sum ts = List.fold_left (fun s t -> s + size t) 0 ts in
+  match t.desc with
+  | End_of_definitions -> 1
+  | Const c -> 1
+  | Var y -> 1
+  | Fun(y, t) -> 1 + size t
+  | App(t1, ts) -> 1 + size t1
+  | If(t1, t2, t3) -> 1 + sum [t1;t2;t3]
+  | Local(decl, t2) -> 1 + size t2 + size_declaration decl
+  | BinOp(op, t1, t2) -> 1 + sum [t1;t2]
+  | Not t1 -> 1 + size t1
+  | Event(s,b) -> 1
+  | Record fields -> 1 + sum (List.map snd fields)
+  | Field(t1,s) -> 1 + size t1
+  | SetField(t1,_,t2) -> 1 + sum [t1;t2]
+  | Nil -> 1
+  | Cons(t1,t2) -> 1 + sum [t1;t2]
+  | Constr(s,ts) -> 1 + sum ts
+  | Match(t1,pats) -> 1 + size t1 + List.fold_left (fun s (p,t) -> s + size_pattern p + size t) 0 pats
+  | Raise t -> 1 + size t
+  | TryWith(t1,t2) -> 1 + sum [t1;t2]
+  | Tuple ts -> 1 + sum ts
+  | Proj(i,t) -> 1 + size t
+  | Bottom -> 1
+  | Label(info, t) -> 1 + size t
+  | Ref t -> 1 + size t
+  | Deref t -> 1 + size t
+  | SetRef(t1,t2) -> 1 + sum [t1;t2]
+  | TNone -> 1
+  | TSome t -> 1 + size t
+  | Module decls -> 1 + List.fold_left (fun s decl -> s + size_declaration decl) 0 decls
 
 module Term = struct
   let unit = unit_term
