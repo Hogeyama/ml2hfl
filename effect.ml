@@ -260,6 +260,7 @@ let rec gen_constr env tenv t =
       let e = effect_of_typ ty in
       flatten_sub env t1'.typ ty';
       flatten_sub env t2'.typ ty;
+      env.constraints <- (effect_of t1', e) :: (effect_of_typ ty, e) :: env.constraints;
       set_effect e @@ {desc=TryWith(t1',t2'); typ=ty'; attr=t.attr}
   | Raise t1 ->
       let t1' = gen_constr env tenv t1 in
