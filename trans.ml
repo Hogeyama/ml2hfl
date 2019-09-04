@@ -3058,7 +3058,6 @@ let split_type_decls =
 
 let is_big_literal t =
   match t.desc with
-  | Const (Int n) -> !Flag.Encode.abst_literal <= abs n
   | Const (String s) -> !Flag.Encode.abst_literal <= String.length s
   | Cons _ ->
       begin
