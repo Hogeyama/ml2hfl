@@ -313,37 +313,39 @@ let is_cp prog =
   |> conv_prog
   |> F.RefTypInfer.is_cut_point
 
-let infer solver labeled is_cp cexs ext_cexs prog =
+let make_def_randint prog f =
+  if CEGAR_syntax.is_randint_var f then
+    []
+  else
+    let argss = List.filter_map (fun (g, args, _, _, _) -> if f = g then Some args else None) prog.defs in
+    let n = List.length argss in
+    List.make (3 - n) (f, List.hd argss, Const True, [Event "fail"], Const Unit)
+
+let trans fair_cond cexs prog =
   let fs = List.map fst prog.env in
-  let defs' =
-    if Flag.Method.(!mode = FairNonTermination || !verify_ref_typ) then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
-      let aux f =
-        if CEGAR_syntax.is_randint_var f then
-          []
-        else
-          let argss =
-            List.filter_map (fun (g, args, _, _, _) ->
-              if f = g then
-                Some args
-              else
-                None
-            ) prog.defs in
-          let n = List.length argss in
-          List.make (3 - n) (f, List.hd argss, Const True, [Event "fail"], Const Unit) in
-      prog.defs @ List.concat_map aux fs
+  let defs =
+    if fair_cond then (* TODO: ad-hoc fix, remove after Fpat is fixed *)
+      prog.defs @ List.concat_map (make_def_randint prog) fs
     else
-      prog.defs in
-  let prog = conv_prog {prog with defs=defs'} in
+      prog.defs
+  in
+  let prog = conv_prog {prog with defs} in
   let cexs =
-    if Flag.Method.(!mode = FairNonTermination || !verify_ref_typ) then (* TODO: ad-hoc fix, remove after Fpat is fiexed *)
-      List.map (flip (@) [2]) cexs
+    if fair_cond then (* TODO: ad-hoc fix, remove after Fpat is fixed *)
+      List.map (Util.List.snoc -$- 2) cexs
     else
-      cexs in
+      cexs
+  in
+  cexs, prog
+
+let infer solver labeled is_cp cexs ext_cexs prog =
+  let fair_cond = Flag.Method.(!mode = FairNonTermination || !verify_ref_typ) in
+  let cexs,prog = trans fair_cond cexs prog in
   let env = F.AbsTypInfer.refine ~solver prog labeled is_cp cexs false ext_cexs in
-  Flag.Log.Time.parameter_inference :=
-    !Flag.Log.Time.parameter_inference +. !F.EAHCCSSolver.elapsed_time;
+  Flag.Log.Time.parameter_inference := !Flag.Log.Time.parameter_inference +. !F.EAHCCSSolver.elapsed_time;
   List.map (Pair.map F.Idnt.base inv_abst_type) env
 
+(* TODO: merge with infer *)
 let infer_with_ext
     (labeled: string list)
     (is_cp: F.Idnt.t -> bool)
@@ -357,33 +359,10 @@ let infer_with_ext
     Verbose.fprintf ppf "(%a).%a" F.TypEnv.pr tenv F.Formula.pr phi
   in
   Verbose.printf "ext_cexs %a@." (Util.List.print @@ Util.List.print (fun fm (x,p) -> Format.fprintf fm "%a, %a" F.Idnt.pr x (Util.List.print pr) p)) ext_cexs;
-  let fs = List.map fst prog.env in
-  let defs' =
-    if Flag.Method.(!mode = FairNonTermination) then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
-      let aux f =
-        if CEGAR_syntax.is_randint_var f then
-          []
-        else
-          let argss =
-          List.filter_map (fun (g, args, _, _, _) ->
-            if f = g then
-              Some args
-            else
-              None
-          ) prog.defs in
-          let n = List.length argss in
-          List.make (3 - n) (f, List.hd argss, Const True, [Event "fail"], Const Unit) in
-      prog.defs @ List.concat_map aux fs
-    else
-      prog.defs in
 
-  let prog = conv_prog {prog with defs=defs'} in
+  let fair_cond = Flag.Method.(!mode = FairNonTermination) in
+  let cexs,prog = trans fair_cond cexs prog in
 
-  let cexs =
-    if Flag.Method.(!mode = FairNonTermination) then (* TODO ad-hoc fix, remove after Fpat is fiexed *)
-      List.map (flip (@) [2]) cexs
-    else
-      cexs in
   Verbose.printf "@[<v>BEGIN refinement:@,  %a@," F.Prog.pr prog;
   let old_split_eq = !F.AbsType.split_equalities in
   let old_eap = !F.AbsType.extract_atomic_predicates in
@@ -399,8 +378,7 @@ let infer_with_ext
   F.HCCSSolver.link_dyn old_chc_solver;
   Verbose.printf "END refinement@,@]";
 
-  Flag.Log.Time.parameter_inference :=
-    !Flag.Log.Time.parameter_inference +. !F.EAHCCSSolver.elapsed_time;
+  Flag.Log.Time.parameter_inference := !Flag.Log.Time.parameter_inference +. !F.EAHCCSSolver.elapsed_time;
   List.map (Pair.map F.Idnt.base inv_abst_type) env
 
 
