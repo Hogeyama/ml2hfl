@@ -468,31 +468,39 @@ let abstract_prog prog =
   let attr = List.remove_all prog.info.attr ACPS in
   {env; defs; main=prog.main; info={prog.info with attr}}
 
-let pr s prog = Debug.printf "@.##[CEGAR_abst_CPS] %a:@.%a@.@." Color.s_red s CEGAR_print.prog prog
+let pr s prog = Debug.printf "@.##[%.3f][CEGAR_abst_CPS] %a:@.%a@.@." !!Time.get Color.s_red s CEGAR_print.prog prog
 
-let abstract prog top_funs =
+let abstract prog preprocessed =
   let labeled,prog = add_label prog in
   let b = not !Flag.PredAbst.no_simplification in
-  prog
-  |@> pr "INPUT"
-  |> fixpred_to_abstpred
-  |&b&> expand_non_rec
-  |@b&> pr "EXPAND_NONREC"
-  |&b&> CEGAR_trans.simplify_if
-  |@b&> pr "SIMPLIFY_IF"
-  |> eta_expand
-  |@> pr "ETA_EXPAND"
-  |> abstract_prog
-  |@> pr "ABST"
-  |&b&> CEGAR_trans.simplify_if
-  |@b&> pr "SIMPLIFY_IF"
-  |> Typing.infer ~fun_annot:true ~rename:true -| initialize_env
-  |@!Flag.Debug.abst&> eval_step_by_step
-  |> trans_eager
-  |@> pr "TRANS_EAGER"
-  |&b&> put_arg_into_if
-  |&b&> Typing.infer
-  |@b&> pr "PUT_INTO_IF"
-  |> CEGAR_lift.lift2
-  |@> pr "LIFT"
-  |> Pair.add_left @@ Fun.const labeled
+  let preprocessed =
+    match preprocessed with
+    | None ->
+        prog
+        |@> pr "INPUT"
+        |&b&> expand_non_rec
+        |@b&> pr "EXPAND_NONREC"
+        |&b&> CEGAR_trans.simplify_if
+        |@b&> pr "SIMPLIFY_IF"
+    | Some p -> p
+  in
+  let abstracted =
+    {preprocessed with env=prog.env}
+    |> fixpred_to_abstpred
+    |> eta_expand (* assign types to arguments *)
+    |@> pr "ETA_EXPAND"
+    |> abstract_prog
+    |@> pr "ABST"
+    |&b&> CEGAR_trans.simplify_if
+    |@b&> pr "SIMPLIFY_IF"
+    |> Typing.infer ~fun_annot:true ~rename:true -| initialize_env
+    |@!Flag.Debug.abst&> eval_step_by_step
+    |> trans_eager
+    |@> pr "TRANS_EAGER"
+    |&b&> put_arg_into_if
+    |&b&> Typing.infer
+    |@b&> pr "PUT_INTO_IF"
+    |> CEGAR_lift.lift2
+    |@> pr "LIFT"
+  in
+  labeled, Some preprocessed, abstracted

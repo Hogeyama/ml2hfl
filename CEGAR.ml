@@ -55,7 +55,7 @@ let improve_precision () =
   | _ ->
       raise NoProgress
 
-let rec loop prog0 is_cp ces =
+let rec loop preprocessed prog0 is_cp ces =
   pre ();
   let prog =
     if !Flag.Method.relative_complete
@@ -72,7 +72,7 @@ let rec loop prog0 is_cp ces =
   Verbose.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop pr prog;
   if !Flag.Print.abst_typ
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop CEGAR_print.env prog.env;
-  let labeled,abst = CEGAR_abst.abstract prog.info.orig_fun_list prog.info.inlined prog in
+  let labeled,preprocessed,abst = CEGAR_abst.abstract prog.info.orig_fun_list prog.info.inlined prog preprocessed in
   print_non_CPS_abst abst prog;
   let spec =
     match prog.info.CEGAR_syntax.fairness with
@@ -111,7 +111,7 @@ let rec loop prog0 is_cp ces =
   | MC.Unsafe (MC.CENonTerm ce_tree), Flag.Method.NonTermination ->
       let prog' = CEGAR_non_term.cegar prog0 labeled is_cp ce_tree prog in
       post ();
-      loop prog' is_cp ((MC.CENonTerm ce_tree)::ces)
+      loop preprocessed prog' is_cp ((MC.CENonTerm ce_tree)::ces)
   | MC.Unsafe (MC.CEFairNonTerm ce_rules), Flag.Method.FairNonTermination ->
       begin
         let prog' = CEGAR_fair_non_term.cegar prog0 labeled is_cp ce_rules prog in
@@ -126,12 +126,12 @@ let rec loop prog0 is_cp ces =
         if same_counterexample then
           try
             improve_precision ();
-            loop prog is_cp ces
+            loop preprocessed prog is_cp ces
           with NoProgress ->
             post ();
             raise NoProgress
         else
-          loop prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces)
+          loop preprocessed prog' is_cp ((MC.CEFairNonTerm ce_rules)::ces)
       end
   | MC.Unsafe ce, _ ->
       let ce_orig =
@@ -151,7 +151,7 @@ let rec loop prog0 is_cp ces =
       if same_counterexample then
         try
           improve_precision ();
-          loop prog is_cp ces
+          loop preprocessed prog is_cp ces
         with NoProgress ->
           post ();
           raise NoProgress
@@ -184,7 +184,7 @@ let rec loop prog0 is_cp ces =
               in
               Verbose.printf "Prefix of spurious counterexample::@.%a@.@." CEGAR_print.ce prefix;
               post ();
-              loop prog' is_cp ces'
+              loop preprocessed prog' is_cp ces'
         end
 
 
@@ -206,10 +206,10 @@ let run prog =
   try
     let is_cp = FpatInterface.is_cp prog in
     try
-      snd @@ loop {prog with info} is_cp []
+      snd @@ loop None {prog with info} is_cp []
     with Fpat.RefTypInfer.FailedToRefineTypes when !Flag.PrettyPrinter.web ->
       FpatInterface.parse_arg "-hccs it";
-      snd @@ loop {prog with info} is_cp []
+      snd @@ loop None {prog with info} is_cp []
   with NoProgress | CEGAR_abst.NotRefined ->
     post ();
     raise NoProgress

@@ -131,26 +131,27 @@ let abstract orig_fun_list prog =
 
 
 
-let abstract orig_fun_list force ?(top_funs=[]) prog =
-  let labeled,abst =
+let abstract orig_fun_list force prog preprocessed =
+  let labeled,preprocessed,abst =
     Time.measure_and_add
       Flag.Log.Time.abstraction
       (fun () ->
          if !Flag.Print.progress then Color.printf Color.Green "(%d-1)[%.3f] Abstracting ... @?" !Flag.Log.cegar_loop !!Time.get;
          set_status @@ Flag.Log.Other (Format.sprintf "(%d-1) Abstraction" !Flag.Log.cegar_loop);
-         let labeled,abst =
+         let labeled,preprocessed,abst =
            if List.mem ACPS prog.info.attr then
-             CEGAR_abst_CPS.abstract prog top_funs
+             CEGAR_abst_CPS.abstract prog preprocessed
            else
-             abstract orig_fun_list prog
+             let labeled,abst = abstract orig_fun_list prog in
+             labeled, None, abst
          in
          Debug.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;
          if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
-         labeled, abst) ()
+         labeled, preprocessed, abst) ()
   in
   let abst',_,_ = CEGAR_trans.rename_prog abst in
   if !incr_wp_max && !prev_abst_defs = abst'.defs
   then raise NotRefined;
   incr_wp_max := false;
   prev_abst_defs := abst'.defs;
-  labeled, abst
+  labeled, preprocessed, abst
