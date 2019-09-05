@@ -341,8 +341,6 @@ let infer t =
   let env = initial_env fv in
   let env,ty = make_template env t.typ in
   let env,t' = gen_constr env 0 t ty in
-  let edges = List.map (Pair.map_same string_of_int) env.constr in
-  save_as_dot_simple "test.dot" None edges;
   Debug.printf "Add evar: %a@." Print.term' t';
   Debug.printf "CONSTRAINTS:@.";
   List.iter (fun (e1,e2) -> Debug.printf "  %d <: %d@." e1 e2) env.constr;
@@ -355,9 +353,6 @@ let rec can_remove sol t =
   let effect = effect_of_typ ty in
   is_base_typ ty &&
   sol (get_id ty) &&
-(*
-  has_safe_attr t
- *)
   List.mem effect [ENone]
 
 let slice =
@@ -377,7 +372,6 @@ let slice =
 
 let slice t =
   Debug.printf "SLICE: %d@." (size t);
-let r =
   t
   |> Effect.infer
   |@> Debug.printf "EFFECT: %a@." Print.term
@@ -389,7 +383,4 @@ let r =
   |> Trans.remove_tid label
   |> Trans.remove_effect_attribute
   |> Trans.reconstruct
-in
-Debug.printf "SLICED: %d@." (size r);
-Debug.printf "SLICED: @[%a@." Print.term r;
-r
+  |@> Debug.printf "SLICED: %d@." -| size
