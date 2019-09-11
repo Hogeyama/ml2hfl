@@ -20,7 +20,7 @@ let check ?limit t =
   with
   | Eval.RaiseExcep _ -> false
   | Eval.EventFail -> false
-  | Eval.ReachLimit -> false
+  | Eval.ReachLimit -> true
   | Eval.ReachBottom -> true
 
 let rec repeat n t =

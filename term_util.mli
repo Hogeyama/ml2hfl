@@ -140,7 +140,7 @@ val bool_of_term : term -> bool
 val pair_of_term : term -> term * term
 val tuple_of_term : term -> term list
 val list_of_term : term -> term list
-val effect_of : term -> Type.effect
+val effect_of : term -> Type.effect list
 
 val is_base_var : id -> bool
 val is_fun_var : id -> bool
@@ -210,7 +210,7 @@ val get_argvars : typ -> id list
 val get_argtyps : typ -> typ list
 val get_opt_typ : typ -> typ
 val opt_typ : typ -> typ
-val effect_of_typ : typ -> Type.effect
+val effect_of_typ : typ -> Type.effect list
 val copy_for_pred_share : bool -> typ -> typ * typ
 val get_pred_share : typ -> (int list * int list list * int list) list
 

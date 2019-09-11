@@ -351,6 +351,58 @@ let wrap_input_for_fair_termination () =
   IO.output_file ~filename ~text;
   Flag.Input.filenames := [filename]
 
+let main_sub spec t =
+  let p = 0.1 in
+  let pp_all = Preprocess.all spec in
+  let pp =
+    let open Preprocess in
+    before Slice pp_all @
+    [Slice, map_trans_list (Problem.map_list (Slice.slice_subs -$- p))] @
+    and_after CPS pp_all;
+  in
+  let pped = Preprocess.run_problem pp (Problem.safety t) in
+  let check pp =
+    if not (Quick_check.repeat 1000 t) then
+      false
+    else
+      let r = Main_loop.check spec pp in
+      match r.Main_loop.result with
+      | CEGAR.Safe _ -> true
+      | CEGAR.Unsafe _ -> false
+      | CEGAR.Unknown _ -> false
+  in
+  let r = List.exists check pped in
+  if r then
+    Format.printf "Safe@.@."
+  else
+    Format.printf "Unsafe@.@.";
+  r
+
+let main_sub spec t =
+  let p = 0.1 in
+  let pp_all = Preprocess.all spec in
+  let pp =
+    let open Preprocess in
+    before Slice pp_all @
+    [Slice, map_trans_list (Problem.map_list (Slice.slice_subs -$- p))]
+  in
+  let pped = Preprocess.run_problem pp (Problem.safety t) in
+  let ps = List.map Preprocess.last_problem pped in
+  let check p =
+    let pp = Preprocess.run_problem Preprocess.(after Slice pp_all) p in
+    let p' = List.get pp in
+    let r = Main_loop.check spec p' in
+    match r.Main_loop.result with
+    | CEGAR.Safe _ -> true
+    | CEGAR.Unsafe _ -> false
+    | CEGAR.Unknown _ -> false
+  in
+  let r = List.exists check ps in
+  if r then
+    Format.printf "Safe@.@."
+  else
+    Format.printf "Unsafe@.@.";
+  r
 let main filenames =
   if String.ends_with !!Flag.Input.main ".bin" then
     check_bin !!Flag.Input.main
@@ -393,6 +445,8 @@ let main filenames =
         main_fair_termination spec parsed
       else if !Flag.Mode.module_mode then
         Verify_module.main verify parsed
+      else if !Flag.Method.sub then
+        main_sub spec parsed
       else
         verify parsed
 

@@ -28,9 +28,9 @@ and 'a attr =
   | TAPredShare of int
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
-  | TAEffect of effect
+  | TAEffect of effect list
   | TAId of string * int
-and effect = EVar of int | ENone | EFail | EDiv | EExcep
+and effect = EVar of int | EEvent | ENonDet | EDiv | EExcep
 
 exception CannotUnify
 
@@ -55,6 +55,7 @@ val typ_unknown : 'a t
 val elim_tattr : 'a t -> 'a t
 val tfuns_to_tfun : 'a t -> 'a t
 val elim_tattr_all : 'a t -> 'a t
+val elim_tid : string -> 'a t -> 'a t
 val flatten : 'a t -> 'a t
 val unify : 'a t -> 'a t -> unit
 val copy : 'a t -> 'a t
@@ -64,6 +65,8 @@ val order : 'a t -> int
 val arity : 'a t -> int
 val var_name_of : 'a t -> string
 val remove_arg_at : int -> 'a t -> 'a t
+val filter_map_attr : ('a attr -> 'a attr option) -> 'a t -> 'a t
+val map_attr : ('a attr -> 'a attr) -> 'a t -> 'a t
 
 (** {6 destructor} *)
 
@@ -111,6 +114,7 @@ val print :
 val print_init : Format.formatter -> 'a t -> unit
 val print_base : Format.formatter -> base -> unit
 val print_effect : Format.formatter -> effect -> unit
+val print_attr : Format.formatter -> 'a attr -> unit
 
 (** ppx_deriving *)
 val pp_base : Format.formatter -> base -> unit

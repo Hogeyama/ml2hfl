@@ -192,7 +192,8 @@ let rec arg_spec for_completion =
      "-disable-comment-spec", Arg.Clear Flag.Method.comment_spec, " disable {SPEC} on comments";
      "-module-verification", Arg.Set Flag.Mode.module_mode, " Check input as library";
      "-quickcheck", Arg.Set Flag.Method.quick_check, " Disprove safety via QuickCheck (other method options will be ignored)";
-     "-only-specified", Arg.Set Flag.Method.only_specified, " Verify only specified targets"]
+     "-only-specified", Arg.Set Flag.Method.only_specified, " Verify only specified targets";
+     "-sub", Arg.Set Flag.Method.sub, " Verify sub-programs"]
   in
   let modular =
      "Options for Modular Verification",

@@ -385,7 +385,7 @@ let main _ spec parsed =
     in
     problem
     |@> pr "ORIG" Problem.print
-    |> Preprocess.run pps
+    |> Preprocess.run_problem pps
     |> Preprocess.get
     |> Preprocess.last_problem
     |> Problem.term

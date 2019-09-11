@@ -9,14 +9,16 @@ type env =
   {constr: (int * int) list;
    counter: int;
    tenv: (id * typ) list;
-   fv: id list}
+   fv: id list;
+   ty_exn: typ option}
 
 (* id 0 represents "CARE"*)
 let initial_env fv =
   let counter = 1 in
   let constr = [] in
   let tenv = [] in
-  {counter; constr; tenv; fv}
+  let ty_exn = None in
+  {counter; constr; tenv; fv; ty_exn}
 
 let new_id env =
   let counter = env.counter + 1 in
@@ -89,10 +91,19 @@ let rec make_template env ty =
   | TApp _ -> unsupported __MODULE__
   | TModule _ -> unsupported __MODULE__
 
+let get_ty_exn env ty =
+  match env.ty_exn with
+  | None ->
+      let env,ty_exn = make_template env ty in
+      Debug.printf "ty_exn: %a@." Print.typ ty_exn;
+      {env with ty_exn=Some ty_exn}, ty_exn
+  | Some ty_exn ->
+      env, ty_exn
+
 let rec flatten_sub_attr attr1 attr2 env =
   let x = get_id_attr attr1 in
   let y = get_id_attr attr2 in
-  {env with constr=(x, y)::env.constr}
+  add_constr x y env
 
 let rec flatten_sub ty1 ty2 constr =
   Debug.printf "FLATTEN: @[@[%a@] <:@ @[%a@." Print.typ ty1 Print.typ ty2;
@@ -122,11 +133,6 @@ let rec flatten_sub ty1 ty2 constr =
   | TAttr(attr,ty1'), ty2'
   | ty1', TAttr(attr, ty2') -> flatten_sub ty1' ty2' constr
   | TModule _, _ -> unsupported __MODULE__
-(*
-let flatten_sub ty1 ty2 constr =
-  Debug.printf "FLATTEN: @[@[%a@] <:@ @[%a@." Print.typ ty1 Print.typ ty2;
-  flatten_sub ty1 ty2 constr
- *)
 
 let rec gen_constr env l t ty =
   let env,l_t = new_id env in
@@ -144,8 +150,8 @@ let rec gen_constr env l t ty =
     match t.desc with
     | Const (Rand(_, true)) -> unsupported __MODULE__
     | Const (Rand(_, false))
-      | Const _
-      | Bottom ->
+    | Const _
+    | Bottom ->
         let env = add_constr l_t (get_id typ) env in
         env, t.desc
     | Var x ->
@@ -207,9 +213,11 @@ let rec gen_constr env l t ty =
     | If(t1, t2, t3) ->
         let env,l' = new_id env in
         Debug.printf "IF l': %d@." l';
+        let env,l'' = new_id env in
+        let env = add_constr l' l'' env in
         let env,t1' = gen_constr env l_t t1 (add_id l' Ty.bool) in
-        let env,t2' = gen_constr env l' t2 typ in
-        let env,t3' = gen_constr env l' t3 typ in
+        let env,t2' = gen_constr env l'' t2 typ in
+        let env,t3' = gen_constr env l'' t3 typ in
         env, If(t1', t2', t3')
     | Local(Decl_let bindings, t1) ->
         let tenv = env.tenv in
@@ -235,6 +243,7 @@ let rec gen_constr env l t ty =
                   else
                     env
             in
+            let aux_div _ env = env in
             env
             |> aux_div t1'
             |> flatten_sub t1'.typ f_typ
@@ -258,7 +267,7 @@ let rec gen_constr env l t ty =
         let env,t1' = gen_constr env l_t t1 (add_id l' t1.typ) in
         env, Not t1'
     | Event(s,false) ->
-        let env = add_constr (get_id typ) 0 env in
+        let env = add_constr l_t 0 env in
         env, t.desc
     | Event(s,true) -> unsupported __MODULE__
     | Proj(i,t1) ->
@@ -279,26 +288,26 @@ let rec gen_constr env l t ty =
         in
         env, Tuple ts'
     | TryWith(t1, t2) ->
-        let env,ty2 =
-          match elim_tattr t2.typ with
+        let env,ty2 = make_template env t2.typ in
+        let env = add_constr l_t (get_id ty2) env in
+        let env =
+          match elim_tattr ty2 with
           | TFun(x,_) ->
-              let env,x_ty = make_template env (Id.typ x) in
-              let env = force x_ty env in
-              let x' = Id.set_typ x x_ty in
-              env, add_id 0 (TFun(x', ty))
-          | _ ->
-              Format.eprintf "ty: %a@." Print.typ ty;
-              assert false
+              let env,ty_exn = get_ty_exn env (elim_tattr_all @@ Id.typ x) in
+              flatten_sub ty_exn (Id.typ x) env
+          | _ -> assert false
         in
         let env,t1' = gen_constr env l_t t1 typ in
         let env,t2' = gen_constr env l_t t2 ty2 in
-        let l' = get_id typ in
-        let env = add_constr l' 0 env in
+        let l' = get_id typ in(*
+        let env = add_constr l' 0 env in*)
         env, TryWith(t1',t2')
     | Raise t1 ->
         let env,ty' = make_template env t1.typ in
         let env,t1' = gen_constr env l_t t1 ty' in
         let env = add_constr l_t 0 env in
+        let env,ty_exn = get_ty_exn env t1.typ in
+        let env = flatten_sub t1'.typ ty_exn env in
         env, Raise t1'
     | _ ->
         Format.eprintf "%a@." Print.term t;
@@ -334,13 +343,17 @@ let solve env t =
     sol.(x)
 
 
-
-let infer t =
+let gen_constr_init t =
   assert (is_base_typ t.typ);
   let fv = get_fv t in
   let env = initial_env fv in
+  let env,x = new_id env in
   let env,ty = make_template env t.typ in
-  let env,t' = gen_constr env 0 t ty in
+  gen_constr env x t ty
+
+
+let infer t =
+  let env,t' = gen_constr_init t in
   Debug.printf "Add evar: %a@." Print.term' t';
   Debug.printf "CONSTRAINTS:@.";
   List.iter (fun (e1,e2) -> Debug.printf "  %d <: %d@." e1 e2) env.constr;
@@ -353,9 +366,9 @@ let rec can_remove sol t =
   let effect = effect_of_typ ty in
   is_base_typ ty &&
   sol (get_id ty) &&
-  List.mem effect [ENone]
+  effect = []
 
-let slice =
+let remove_dont_care =
   let tr = make_trans2 () in
   let tr_term sol t =
     if can_remove sol t then
@@ -378,9 +391,115 @@ let slice t =
   |> infer
   |@> Debug.printf "INFERRED: %a@." Print.term -| snd
   |@> Debug.printf "INFERRED: %a@." Print.term' -| snd
-  |> slice
+  |> remove_dont_care
   |@> Debug.printf "SLICED: %a@." Print.term
   |> Trans.remove_tid label
   |> Trans.remove_effect_attribute
   |> Trans.reconstruct
   |@> Debug.printf "SLICED: %d@." -| size
+
+(*
+let collect =
+  let col = make_col2 [] (@@@) in
+  let col_term (f,bv) t =
+    if f t then
+      [bv,t]
+    else
+      match t.desc with
+      | Fun(x,t') -> col.col2_term (f,x::bv) t'
+      | Local(decl, t') ->
+          let bv' =
+            match decl with
+            | Decl_let bindings -> List.map fst bindings
+            | _ -> bv
+          in
+          col.col2_decl (f,bv) decl @@@ col.col2_term (f,bv') t'
+      | _ -> col.col2_term_rec (f,bv) t
+  in
+  col.col2_term <- col_term;
+  col.col2_typ <- Fun.const2 [];
+  fun f t -> col.col2_term (f,[]) t
+ *)
+
+let remove_unrelated =
+  let tr = make_trans2 () in
+  let tr_term (dist,longest) t =
+    let d = dist t in
+    let effects = effect_of_typ t.typ in
+    if d < 0 && is_base_typ t.typ && List.Set.subset effects [ENonDet;EDiv] then
+      let () = Debug.printf "REMOVE CONTEXT %d@." (get_id t.typ) in
+      make_term t.typ
+    else if d > longest && is_base_typ t.typ && List.Set.subset effects [ENonDet;EDiv] then
+      let () = Debug.printf "REMOVE FAR %d@." (get_id t.typ) in
+      let () = Debug.printf "%a@.@." Print.term' t in
+      make_rand_unit @@ elim_tid label t.typ
+    else
+      let attr = List.filter (function AId _ -> false | _ -> true) t.attr in
+      {(tr.tr2_term_rec (dist,longest) t) with attr}
+  in
+  tr.tr2_term <- tr_term;
+  tr.tr2_typ <- Fun.snd;
+  Fun.curry tr.tr2_term
+
+
+let make_slice_sub t =
+  let env,t' = gen_constr_init @@ Effect.infer t in
+  let graph = Graph.from_edges env.constr in
+  let scc = Graph.scc graph in
+  Graph.save_as_dot "test.dot" graph;
+  List.iter (fun x -> if x <> scc.(x) then Debug.printf "scc: %d <-> %d@." x scc.(x)) graph.Graph.nodes;
+  let graph' =
+    let sbst x = scc.(x) in
+    let edges =
+      List.map (Pair.map_same sbst) graph.Graph.edges
+      |> List.unique
+      |> List.filter_out (fun (x,y) -> x = y)
+    in
+    Graph.from_edges edges
+  in
+  Graph.save_as_dot "test2.dot" graph';
+
+  let sbst x = scc.(x) in
+  let graph' =
+    List.map (Pair.map_same sbst) graph.Graph.edges
+    |> List.unique
+    |> List.filter_out (fun (x,y) -> x = y)
+    |> Graph.from_edges
+  in
+  let hops = Graph.hops_to graph' (sbst 0) in
+  let dist = hops in
+  Array.iteri(fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
+  let dist' t = dist.(get_id t.typ) in
+  let longest = List.fold_left (fun l i -> max l dist.(i)) (-1) graph'.Graph.nodes in
+  fun p ->
+    let far = int_of_float (p *. float_of_int (List.fold_left (fun l i -> max l dist.(i)) (-1) graph'.Graph.nodes)) in
+    Debug.printf "longest: %d@." longest;
+    Debug.printf "far: %d@." far;
+    Debug.printf "INFER_ORIG: @[%a@." Print.term' t';
+    let t' = Trans.map_tattr (List.map (function TAId(l,x) when l = label -> TAId(l,sbst x) | a -> a)) t' in
+    let t'' = Trans.remove_effect_attribute @@ remove_unrelated dist' far t' in
+    Debug.printf "ORIG: @[%a@." Print.term t;
+    Debug.printf "INFER: @[%a@." Print.term' t';
+    Debug.printf "REMOVE_UNRELATED: @[%a@." Print.term t'';
+    let t'' =
+      t''
+      |> Trans.remove_tid label
+      |> Trans.reconstruct
+      |@> Type_check.check
+      |> Trans.reduce_rand
+    in
+    Debug.printf "SIMPLIFIED: @[%a@." Print.term t'';
+    t''
+
+let slice_sub t p =
+  make_slice_sub t p
+
+let slice_subs t p =
+  let make = make_slice_sub t in
+  let n = int_of_float (ceil (1. /. p)) in
+  let p_of i =
+    let p' = min 1. (float_of_int i *. p) in
+    make p'
+    |&!!Debug.check&> add_comment (Format.sprintf "SLICE_SUB %.3f" p')
+  in
+  List.init n p_of

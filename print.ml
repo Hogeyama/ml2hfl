@@ -121,7 +121,7 @@ and print_attr fm = function
   | AComment s -> fprintf fm "AComment %S" s
   | AId n -> fprintf fm "AId %d" n
   | ADoNotInline -> fprintf fm "ADoNotInline"
-  | AEffect e -> print_effect fm e
+  | AEffect e -> List.print print_effect fm e
   | ALoc l -> Location.print_compact fm l
 
 and print_attr_list fm attrs =

@@ -797,39 +797,38 @@ let max_pat_num = max_pat_num.col_term
 
 
 
-let same_list same xs ys = List.length xs = List.length ys && List.for_all2 same xs ys
-
 let rec same_const c1 c2 =
   match c1,c2 with
   | Rand(typ1, b1), Rand(typ2, b2) -> b1 = b2 && same_shape typ1 typ2
   | _ -> c1 = c2
 and same_term t1 t2 = same_desc t1.desc t2.desc
 and same_desc t1 t2 =
+  let (===) = same_term in
   match t1,t2 with
   | Const c1, Const c2 -> same_const c1 c2
   | Var x, Var y -> Id.(x = y)
-  | Fun(x,t1), Fun(y,t2) -> same_term t1 @@ subst_var y x t2
-  | App(t1,ts1), App(t2,ts2) -> same_list same_term (t1::ts1) (t2::ts2)
-  | If(t11,t12,t13), If(t21,t22,t23) -> same_term t11 t21 && same_term t12 t22 && same_term t13 t23
+  | Fun(x,t1), Fun(y,t2) -> t1 === subst_var y x t2
+  | App(t1,ts1), App(t2,ts2) -> List.eq ~eq:same_term (t1::ts1) (t2::ts2)
+  | If(t11,t12,t13), If(t21,t22,t23) -> t11 === t21 && t12 === t22 && t13 === t23
   | Local(Decl_let bindings1,t1), Local(Decl_let bindings2,t2) ->
-     let same_binding (f,t1) (g,t2) = Id.(f = g) && same_term t1 t2 in
-     same_list same_binding bindings1 bindings2 && same_term t1 t2
-  | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && same_term t11 t21 && same_term t12 t22
-  | Not t1, Not t2 -> same_term t1 t2
+     let eq (f,t1) (g,t2) = Id.(f = g) && t1 === t2 in
+     List.eq ~eq bindings1 bindings2 && t1 === t2
+  | BinOp(op1,t11,t12), BinOp(op2,t21,t22) -> op1 = op2 && t11 === t21 && t12 === t22
+  | Not t1, Not t2 -> t1 === t2
   | Event(s1,b1), Event(s2,b2) -> s1 = s2 && b1 = b2
   | Record _, Record _ -> unsupported "same_term 2"
   | Field _, Field _ -> unsupported "same_term 3"
   | SetField _, SetField _ -> unsupported "same_term 4"
   | Nil, Nil -> true
-  | Cons(t11,t12), Cons(t21,t22) -> same_term t11 t21 && same_term t12 t22
-  | Constr(c1, ts1), Constr(c2, ts2) -> c1 = c2 && List.for_all2 same_term ts1 ts2
+  | Cons(t11,t12), Cons(t21,t22) -> t11 === t21 && t12 === t22
+  | Constr(c1, ts1), Constr(c2, ts2) -> c1 = c2 && List.for_all2 (===) ts1 ts2
   | Match(t1,pats1), Match(t2,pats2) ->
-      let eq (pat1,t1) (pat2,t2) = pat1 = pat2 && same_term t1 t2 in
-      same_term t1 t2 && List.eq ~eq pats1 pats2
-  | Raise t1, Raise t2 -> same_term t1 t2
-  | TryWith(t11,t12), TryWith(t21,t22) -> same_term t11 t21 && same_term t12 t22
-  | Tuple ts1, Tuple ts2 -> List.length ts1 = List.length ts2 && List.for_all2 same_term ts1 ts2
-  | Proj(i,t1), Proj(j,t2) -> i = j && same_term t1 t2
+      let eq (pat1,t1) (pat2,t2) = pat1 = pat2 && t1 === t2 in
+      t1 === t2 && List.eq ~eq pats1 pats2
+  | Raise t1, Raise t2 -> t1 === t2
+  | TryWith(t11,t12), TryWith(t21,t22) -> t11 === t21 && t12 === t22
+  | Tuple ts1, Tuple ts2 -> List.eq ~eq:same_term ts1 ts2
+  | Proj(i,t1), Proj(j,t2) -> i = j && t1 === t2
   | Bottom, Bottom -> true
   | Label _, Label _ -> unsupported "same_term 11"
   | _ -> false

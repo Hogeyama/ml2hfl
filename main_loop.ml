@@ -24,7 +24,13 @@ let cegar_of_preprocessed ?fun_list spec results =
   let problem = Preprocess.last_problem results in
   let fun_list' =
     match fun_list with
-    | None -> Term_util.get_top_funs @@ Problem.term Preprocess.(take_result Decomp_pair_eq results)
+    | None ->
+        begin
+          try
+            let t = Problem.term Preprocess.(take_result Decomp_pair_eq results) in
+            Term_util.get_top_funs t
+          with Not_found -> []
+        end
     | Some fun_list' -> fun_list'
   in
 
@@ -76,7 +82,7 @@ let run_preprocess ?make_pps spec problem =
     | None -> Preprocess.all spec
     | Some make_pps' -> make_pps' spec
   in
-  Preprocess.run pps' problem
+  Preprocess.run_problem pps' problem
 
 
 let write_annot env orig =

@@ -934,10 +934,8 @@ let save_dep deps_cls hcs filename =
   in
   let deps = List.unique @@ List.fold_left aux [] hcs in
   let deps_cls' = transitive_closure deps in
-  let vertices = List.map (fun x -> string_of_int x, "") @@ List.unique @@ List.flatten_map Pair.to_list deps in
-  let edges = List.map (fun (x,y) -> string_of_int x, string_of_int y, "") deps in
   Format.printf "Save %s@." filename;
-  save_as_dot filename vertices edges;
+  Graph.(save_as_dot filename @@ from_edges deps);
   if dbg then Debug.printf "deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps_cls;
   if dbg then Debug.printf "deps_cls': %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements deps_cls';
   if dbg then Debug.printf "deps_cls'\\deps_cls: %a@." (List.print @@ Pair.print Format.pp_print_int Format.pp_print_int) @@ Dependency.elements @@ Dependency.diff deps_cls' deps_cls;

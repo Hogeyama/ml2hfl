@@ -45,6 +45,7 @@ val subst_with_rename : ?check:bool -> id -> term -> term -> term
 val ignore_non_termination : term -> term
 val decomp_var_match_tuple : term -> term
 val map_attr : (attr list -> attr list) -> term -> term
+val map_tattr : (tattr list -> tattr list) -> term -> term
 val filter_attr : (attr -> bool) -> term -> term
 val split_assert : term -> (term * Location.t option) list
 val split_assert_and : term -> term

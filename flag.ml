@@ -70,6 +70,7 @@ module Method = struct
   let only_specified = ref false
   let occurence_param = ref false
   let slice = ref true
+  let sub = ref false
 end
 
 module Encode = struct

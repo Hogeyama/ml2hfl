@@ -1934,7 +1934,7 @@ let set_main t =
   match List.decomp_snoc_option @@ get_last_definition t with
   | None ->
       let u = Id.new_var ~name:"main" t.typ in
-      make_let [u, catch_all t] unit_term
+      Term.(let_ [u, catch_all t] unit)
   | Some(_, (f,_)) ->
       let main =
         let xs = get_args (Id.typ f) in
@@ -3193,8 +3193,8 @@ let reduce_rand =
     | App({desc=Const (Rand(_,false))}, [{desc=Const Unit}]) -> true
     | Tuple ts -> List.for_all is_rand_unit ts
     | BinOp((Eq|Lt|Gt|Leq|Geq), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
-    | BinOp((Add|Sub), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
-    | BinOp(Div, t1, {desc=Const _}) -> is_rand_unit t1
+    | BinOp((Add|Sub|Mult), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
+    | BinOp(Div, t1, {desc=Const c}) when c <> Int 0 -> is_rand_unit t1
     | If(t1,t2,t3) -> has_safe_attr t1 && is_rand_unit t2 && is_rand_unit t3
     | _ -> false
   in
@@ -3210,6 +3210,8 @@ let reduce_rand =
         match t'.desc with
         | _ when is_rand_unit t' -> Term.rand t.typ
         | App({desc=Var f}, ts) when Id.mem f rand_funs && List.for_all has_safe_attr ts -> Term.rand t.typ
+        | If(t1, t2, {desc=Bottom}) when is_rand_unit t1 -> t2
+        | If(t1, t2, t3) when is_rand_unit t1 && same_term t2 t3 -> t2
         | Local(Decl_let bindings, t) -> assert false
         | _ -> t'
   in
@@ -3762,3 +3764,9 @@ let add_occurence_param =
   fld.fld_term <- fld_term;
   fld.fld_typ <- fld_typ;
   snd -| fld.fld_term [] -| eta_normal
+
+let map_typ =
+  let tr = make_trans2 () in
+  tr.tr2_term <- Fun.snd;
+  tr.tr2_typ <- (@@);
+  tr.tr2_term

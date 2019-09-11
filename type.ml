@@ -20,7 +20,7 @@ and 'a t =
   | TVariant of bool * (string * 'a t list) list (** true means polymorphic variant *)
   | TRecord of (string * (mutable_flag * 'a t)) list
   | TApp of constr * 'a t list
- | TAttr of 'a attr list * 'a t
+  | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
 
 and mutable_flag = Immutable | Mutable
@@ -37,10 +37,10 @@ and 'a attr =
   | TAPredShare of int
   | TARefPred of 'a t Id.t * 'a (* TARefPred occur at most ones *)
   | TAPureFun
-  | TAEffect of effect
+  | TAEffect of effect list
   | TAId of string * int
 
-and effect = EVar of int | ENone | EFail | EDiv | EExcep
+and effect = EVar of int | EEvent | ENonDet | EDiv | EExcep
   [@@deriving show]
 
 exception CannotUnify
@@ -172,9 +172,9 @@ let rec decomp_effect = function
 let print_effect fm e =
   match e with
   | EVar n -> Format.fprintf fm "'e%d" n
-  | ENone -> Format.fprintf fm "none"
-  | EFail -> Format.fprintf fm "fail"
+  | EEvent -> Format.fprintf fm "event"
   | EDiv -> Format.fprintf fm "div"
+  | ENonDet -> Format.fprintf fm "nondet"
   | EExcep -> Format.fprintf fm "excep"
 
 let print_attr fm a =
@@ -182,7 +182,7 @@ let print_attr fm a =
   | TAPred _ -> Format.fprintf fm "TAPred"
   | TARefPred _ -> Format.fprintf fm "TARefPred"
   | TAPureFun -> Format.fprintf fm "TAPureFun"
-  | TAEffect e -> Format.fprintf fm "TAEffect %a" print_effect e
+  | TAEffect e -> Format.fprintf fm "TAEffect %a" (List.print print_effect) e
   | TAPredShare x -> Format.fprintf fm "TAPredShare %d" x
   | TAId(s,x) -> Format.fprintf fm "TAId(%s,%d)" s x
 
@@ -249,8 +249,9 @@ let rec print occur print_pred fm typ =
       Format.fprintf fm "(@[<hov 2>%a%a -*>@ %a@])" pr_arg x print' (Id.typ x) print' typ
   | TAttr(TAPureFun::attrs, ty) when not !!Debug_attr.check ->
       print' fm (TAttr(attrs@[TAPureFun],ty))
-  | TAttr([TAEffect e], typ) when not !!Debug_attr.check ->
-      Format.fprintf fm "(@[%a # %a@])" print' typ print_effect e
+  | TAttr(TAEffect e::attrs, typ) when not !!Debug_attr.check ->
+      let ty = TAttr(attrs,typ) in
+      Format.fprintf fm "(@[%a # %a@])" print' ty (List.print print_effect) e
   | TAttr(TARefPred(x,p)::attrs, ty) ->
       let ty' = TAttr(attrs,ty) in
       Format.fprintf fm "@[{%a:%a|%a}@]" Id.print x print' ty' print_pred p
@@ -591,6 +592,30 @@ let add_tattr attr ty =
   match ty with
   | TAttr(attrs, ty') when not (List.mem attr attrs) -> TAttr(attr::attrs, ty')
   | _ -> TAttr([attr], ty)
+
+let rec filter_map_attr f ty =
+  match ty with
+  | TBase b -> TBase b
+  | TVarLazy _ -> assert false
+  | TVar({contents=Some typ},_) -> filter_map_attr f typ
+  | TVar(r,id) -> TVar(r,id)
+  | TFun(x, typ) -> TFun(Id.map_typ (filter_map_attr f) x, filter_map_attr f typ)
+  | TApp(c, typs) -> TApp(c, List.map (filter_map_attr f) typs)
+  | TTuple xs -> TTuple (List.map (Id.map_typ (filter_map_attr f)) xs)
+  | TData s -> TData s
+  | TAttr(attr,typ) ->
+      let attr' = List.filter_map f attr in
+      TAttr(attr', filter_map_attr f typ)
+  | TFuns _ -> unsupported "elim_tid"
+  | TVariant(poly,labels) -> TVariant(poly, List.map (Pair.map_snd @@ List.map @@ filter_map_attr f) labels)
+  | TRecord fields -> TRecord (List.map (Pair.map_snd @@ Pair.map_snd @@ filter_map_attr f) fields)
+  | TModule sgn -> TModule (List.map (Pair.map_snd @@ filter_map_attr f) sgn)
+
+let map_attr f ty = filter_map_attr (Option.some -| f) ty
+
+let rec elim_tid l ty =
+  filter_map_attr (function TAId(l',_) when l = l' -> None | a -> Some a) ty
+
 
 module Ty = struct
   let unit = TBase TUnit

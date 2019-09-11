@@ -164,6 +164,9 @@ let before_and label (pps:t list) =
 let and_after label (pps:t list) =
   List.dropwhile ((<>) label -| fst) pps
 
+let after label (pps:t list) =
+  List.tl @@ and_after label pps
+
 let filter_out labels pps =
   List.filter_out (fst |- List.mem -$- labels) pps
 
@@ -357,7 +360,9 @@ let rec trans_and_print
       List.iter aux rs;
       Some rs
 
-let run (pps:t list) problem =
+let make_init problem = [[Init, (problem, get_rtyp_id)]]
+
+let run (pps:t list) results =
   let aux1 (acc:result list list) (label,tr) : result list list =
     let aux2 rs =
       match rs with
@@ -369,11 +374,13 @@ let run (pps:t list) problem =
     in
     List.flatten_map aux2 acc
   in
-  List.fold_left aux1 [[Init, (problem, get_rtyp_id)]] pps
+  List.fold_left aux1 results pps
+
+let run_problem pps problem = run pps @@ make_init problem
 
 let run_on_term pps t =
   t
   |> Problem.safety
-  |> run pps
+  |> run_problem pps
   |> List.map last_problem
   |> List.map Problem.term

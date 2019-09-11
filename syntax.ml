@@ -6,6 +6,7 @@ type label = Read | Write | Close
 and binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
 
 and typ = term Type.t
+and tattr = term Type.attr [@printer Type.print_attr]
 and id = typ Id.t
 
 and const = (* only base type constants *)
@@ -30,7 +31,7 @@ and attr =
   | AComment of string
   | AId of int
   | ADoNotInline
-  | AEffect of Type.effect
+  | AEffect of Type.effect list
   | ALoc of (Location.t [@printer Location.print])
 
 and term = {desc:desc; typ:typ; attr:attr list}

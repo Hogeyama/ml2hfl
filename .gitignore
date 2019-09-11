@@ -90,3 +90,5 @@ wiki/
 option.conf
 *.log
 *.gz
+*.png
+*.svg

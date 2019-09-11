@@ -185,6 +185,7 @@ module Fun = struct
   let ignore3 _ _ _ = ()
   let if_ cond f1 f2 x = if cond x then f1 x else f2 x
   let cond b f x = if b then f x else x
+  let copy f x = f x x
 end
 
 module Option = struct
@@ -984,30 +985,3 @@ let rec transitive_closure ?(eq=(=)) edges =
     List.fold_left aux edges' edges'
   in
   fixed_point ~eq:(List.Set.eq ~eq:eq') f edges
-
-
-(* graph *)
-let save_as_dot filename vertices edges =
-  let oc = open_out filename in
-  let ocf = Format.formatter_of_out_channel oc in
-  Format.fprintf ocf "@[<v>digraph flow {@ ";
-  List.iter
-    (fun (vertex, attribute) ->
-      Format.fprintf ocf "  \"%s\" %s@ " vertex attribute)
-    vertices;
-  List.iter
-    (fun (vertex1, vertex2, attribute) ->
-      Format.fprintf ocf "  \"%s\" -> \"%s\" %s@ " vertex1 vertex2 attribute)
-    edges;
-  Format.fprintf ocf "}@]@?";
-  close_out oc
-
-let save_as_dot_simple filename vertices edges =
-  let vs =
-    match vertices with
-    | None -> List.flatten_map Pair.to_list edges
-    | Some vs -> vs
-  in
-  let vertices = List.map (fun v -> v, "") vs in
-  let edges = List.map (fun (v1,v2) -> v1, v2, "") edges in
-  save_as_dot filename vertices edges

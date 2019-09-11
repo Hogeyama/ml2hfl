@@ -32,6 +32,10 @@ let map ?(tr_env=Fun.id) tr {term; env; attr; kind; info} =
   let env = tr_env env in
   {term; env; attr; kind; info}
 
+let map_list tr {term; env; attr; kind; info} =
+  let terms = tr term in
+  List.map (fun term -> {term; env; attr; kind; info}) terms
+
 let map_on focus ?(tr_env=Fun.id) tr {term; env; attr; kind; info} =
   let r = tr term in
   let ctx,term = focus r in

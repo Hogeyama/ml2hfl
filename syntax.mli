@@ -4,6 +4,7 @@
 type label = Read | Write | Close
 type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
 type typ = term Type.t
+and tattr = term Type.attr
 and id = typ Id.t
 and attr =
   | AAbst_under
@@ -13,7 +14,7 @@ and attr =
   | AComment of string
   | AId of int
   | ADoNotInline
-  | AEffect of Type.effect
+  | AEffect of Type.effect list
   | ALoc of Location.t
 and term = {desc:desc; typ:typ; attr:attr list}
 and const = (* only base type constants *)
