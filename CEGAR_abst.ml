@@ -117,7 +117,7 @@ let abstract_def env (f,xs,t1,e,t2) =
 
 
 
-let abstract orig_fun_list prog =
+let abstract prog =
   Format.eprintf "WARNING: Abstraction for non-CPS programs is unmaintained.@.";
   let prog = make_arg_let prog in
   let labeled,prog = add_label prog in
@@ -131,7 +131,7 @@ let abstract orig_fun_list prog =
 
 
 
-let abstract orig_fun_list force prog preprocessed =
+let abstract force prog preprocessed =
   let labeled,preprocessed,abst =
     Time.measure_and_add
       Flag.Log.Time.abstraction
@@ -142,7 +142,7 @@ let abstract orig_fun_list force prog preprocessed =
            if List.mem ACPS prog.info.attr then
              CEGAR_abst_CPS.abstract prog preprocessed
            else
-             let labeled,abst = abstract orig_fun_list prog in
+             let labeled,abst = abstract prog in
              labeled, None, abst
          in
          Debug.printf "Abstracted program::@\n%a@." CEGAR_print.prog abst;

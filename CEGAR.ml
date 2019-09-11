@@ -72,7 +72,7 @@ let rec loop preprocessed prog0 is_cp ces =
   Verbose.printf "Program with abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop pr prog;
   if !Flag.Print.abst_typ
   then Format.printf "Abstraction types (CEGAR-cycle %d)::@.%a@." !Flag.Log.cegar_loop CEGAR_print.env prog.env;
-  let labeled,preprocessed,abst = CEGAR_abst.abstract prog.info.orig_fun_list prog.info.inlined prog preprocessed in
+  let labeled,preprocessed,abst = CEGAR_abst.abstract prog.info.inlined prog preprocessed in
   print_non_CPS_abst abst prog;
   let spec =
     match prog.info.CEGAR_syntax.fairness with
