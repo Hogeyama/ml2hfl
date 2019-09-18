@@ -347,6 +347,8 @@ let rec trans_and_print
         let problem' = fst r in
         if desc = "Init" || l > 1 || problem <> problem' then
           print desc problem';
+        if desc = !Flag.Debug.stop_after then
+          exit 0;
         if !!Debug.check || !!Debug_ty.check then
           let t = Problem.term problem' in
           try

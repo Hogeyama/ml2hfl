@@ -76,7 +76,6 @@ let rec arg_spec for_completion =
      "<dir>  Add <dir> to the list of include directories";
      "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
      "-only-result", Arg.Unit set_only_result, " Show only result";
-     "-debug", Arg.String Flag.Debug.set_debug_modules, "<modules>  Set debug flag of modules (comma-separated)";
      "-color", Arg.Set Flag.PrettyPrinter.color, " Turn on syntax highlighting";
      "-color-always", Arg.Set Flag.PrettyPrinter.color_always, " Turn on syntax highlighting even if stdout does not refer to a terminal";
      "-ignore-conf", Arg.Set Flag.Mode.ignore_conf, " Ignore option.conf";
@@ -97,6 +96,11 @@ let rec arg_spec for_completion =
          !!Flag.Trans.string_of_destinations;
      "-p", Arg.Set_int Flag.Parallel.num, "<n>  Numbers of jobs to run simultaneously";
      "-s", Arg.Unit set_silent, " Do not print any information"]
+  in
+  let debug =
+    "Debug options",
+    ["-debug", Arg.String Flag.Debug.set_debug_modules, "<modules>  Set debug flag of modules (comma-separated)";
+     "-stop-after", Arg.Set_string Flag.Debug.stop_after, "<label>"]
   in
   let experiment =
     "Options for experiments",
@@ -338,6 +342,7 @@ let rec arg_spec for_completion =
   in
   align_spec
     [general;
+     debug;
      experiment;
      abstraction;
      completion;

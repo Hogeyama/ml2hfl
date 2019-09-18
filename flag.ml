@@ -281,6 +281,7 @@ module Debug = struct
   let debuggable_modules : string list ref = ref []
   let debug_module : string list ref = ref []
   let abst = ref false
+  let stop_after = ref ""
 
   let print_ref_typ () = List.mem "Ref_type" !debug_module
   let make_check s =
