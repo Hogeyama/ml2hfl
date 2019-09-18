@@ -382,11 +382,11 @@ let abst_recdata_term (env: env) t =
         make_proj (List.find_pos (fun _ (s',_) -> s = s') fields) @@ abst_recdata.tr2_term env t
   | SetField _ -> assert false
   | Local(Decl_type [s,ty], t) ->
-      (* TODO subst_tdataは最初にまとめてやる *)
       let ty' = encode_recdata_typ env s ty in
       let env' = (s, (ty, List.mem s @@ get_tdata ty, ty')) :: env in
       subst_tdata_with_copy s ty' @@ abst_recdata.tr2_term env' t
-  | Local(Decl_type decls, t) ->
+  | Local(Decl_type decls, t1) ->
+      Format.printf "ABST_RECDATA_TERM: %a@." Print.term t;
       (* TODO *)
       unsupported "encode_rec: Decl_type"
   | _ -> abst_recdata.tr2_term_rec env t

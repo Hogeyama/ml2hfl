@@ -176,23 +176,18 @@ and print_let_decls cfg bang fm bindings =
   in
   print_list print_binding "@ " fm bindings
 
-and print_type_decls bang =
+and print_type_decls fm defs =
   let b = ref true in
   let print_decl fm (name,ty) =
-    let pre =
-      if !b then
-        "type" ^ (if bang then "!" else "")
-      else
-        "and"
-    in
+    let pre = if !b then "type" else "and" in
     fprintf fm "@[<hov 2>%s @[<hov 2>%s@] =@ %a@]" pre name print_typ ty;
     b := false
   in
-  print_list print_decl "@ "
+  print_list print_decl "@ " fm defs
 
 and print_decl cfg bang fm decl =
   match decl with
-  | Decl_type decls -> print_type_decls bang fm decls
+  | Decl_type decls -> print_type_decls fm decls
   | Decl_let bindings -> print_let_decls cfg bang fm bindings
 
 and print_decls cfg fm decls =

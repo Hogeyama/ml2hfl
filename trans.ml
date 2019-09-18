@@ -3045,11 +3045,16 @@ let split_type_decls =
   let tr = make_trans () in
   let tr_desc desc =
     match desc with
-    | Local(Decl_type decls, t) ->
+    | Local(Decl_type decls as decl, t) ->
         let tys = List.map fst decls in
         let decls1,decls2 = List.partition (fun (x,ty) -> List.Set.subset (List.Set.inter (get_tdata ty) tys) [x]) decls in
-        let t' = tr.tr_term t in
-        (List.fold_right (fun decl -> make_local @@ Decl_type [decl]) decls1 @@ make_local (Decl_type decls2) t').desc
+        if decls1 = [] then
+          Local(decl, tr.tr_term t)
+        else
+          make_local (Decl_type decls2) t
+          |> tr.tr_term
+          |> List.fold_right (fun decl -> make_local @@ Decl_type [decl]) decls1
+          |> Syntax.desc
     | _ -> tr.tr_desc_rec desc
   in
   tr.tr_desc <- tr_desc;
