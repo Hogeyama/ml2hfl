@@ -288,8 +288,6 @@ let rec gen_constr env l t ty =
         in
         let env,t1' = gen_constr env l_t t1 typ in
         let env,t2' = gen_constr env l_t t2 ty2 in
-        let l' = get_id typ in(*
-        let env = add_constr l' 0 env in*)
         env, TryWith(t1',t2')
     | Raise t1 ->
         let env,ty' = make_template env t1.typ in
@@ -434,41 +432,17 @@ let remove_unrelated =
 let make_slice_sub t =
   let env,t' = gen_constr_init @@ Effect.infer t in
   let graph = Graph.from_edges env.constr in
-  (*  let scc = Graph.scc graph in*)
-  if !!Debug.check then Graph.save_as_dot "test.dot" graph;(*
-  List.iter (fun x -> if x <> scc.(x) then Debug.printf "scc: %d <-> %d@." x scc.(x)) graph.Graph.nodes;
-  let graph' =
-    let sbst x = scc.(x) in
-    let edges =
-      List.map (Pair.map_same sbst) graph.Graph.edges
-      |> List.unique
-      |> List.filter_out (fun (x,y) -> x = y)
-    in
-    Graph.from_edges edges
-  in
-  if !!Debug.check then Graph.save_as_dot "test2.dot" graph';
-
-  let sbst x = scc.(x) in
-  let graph' =
-    List.map (Pair.map_same sbst) graph.Graph.edges
-    |> List.unique
-    |> List.filter_out (fun (x,y) -> x = y)
-    |> Graph.from_edges
-  in*)
-  let graph' = graph in
-  let sbst = Fun.id in
-  let hops = Graph.hops_to graph' (sbst 0) in
-  let dist = hops in
+  if !!Debug.check then Graph.save_as_dot "test.dot" graph;
+  let hops = Graph.hops_to graph 0 in
   Array.iteri(fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
-  let dist' t = dist.(get_id t.typ) in
-  let longest = IntSet.fold (fun i l -> max l dist.(i)) graph'.Graph.nodes (-1) in
+  let dist t = hops.(get_id t.typ) in
+  let longest = Graph.fold_node (fun i l -> max l hops.(i)) graph (-1) in
   fun p ->
-    let far = int_of_float (p *. float_of_int (IntSet.fold (fun i l -> max l dist.(i)) graph'.Graph.nodes (-1))) in
+    let far = int_of_float (p *. float_of_int longest) in
     Debug.printf "longest: %d@." longest;
     Debug.printf "far: %d@." far;
     Debug.printf "INFER_ORIG: @[%a@." Print.term' t';
-    let t' = Trans.map_tattr (List.map (function TAId(l,x) when l = label -> TAId(l,sbst x) | a -> a)) t' in
-    let t'' = Trans.remove_effect_attribute @@ remove_unrelated dist' far t' in
+    let t'' = Trans.remove_effect_attribute @@ remove_unrelated dist far t' in
     Debug.printf "ORIG: @[%a@." Print.term t;
     Debug.printf "INFER: @[%a@." Print.term' t';
     Debug.printf "REMOVE_UNRELATED: @[%a@." Print.term t'';

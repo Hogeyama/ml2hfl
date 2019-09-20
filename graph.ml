@@ -5,12 +5,23 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 type t =
   {size : int;
    nodes : IntSet.t; (* elements must not be negative *)
-   edges : (int * int) list}
+   edges : (int * int) list;
+   mutable in_neighbor : int list Array.t option;
+   mutable out_neighbor : int list Array.t option}
+
+let size g = g.size
+let nodes g = g.nodes
+let edges g = g.edges
 
 let from_edges edges =
   let nodes = List.fold_left (fun acc (x,y) -> IntSet.add x @@ IntSet.add y acc) IntSet.empty edges in
   let size = 1 + IntSet.fold max nodes 0 in
-  {size; nodes; edges}
+  let in_neighbor = None in
+  let out_neighbor = None in
+  {size; nodes; edges; in_neighbor; out_neighbor}
+
+let fold_node f graph = IntSet.fold f graph.nodes
+let fold_edge f graph = List.fold_right (fun (x,y) acc -> f x y acc) graph.edges
 
 let save_as_dot filename ?(name_of=string_of_int) ?(attribute_of_node=Fun.const "") ?(attribute_of_edge=Fun.const "") graph =
   let oc = open_out filename in
@@ -21,25 +32,46 @@ let save_as_dot filename ?(name_of=string_of_int) ?(attribute_of_node=Fun.const 
   Format.fprintf ocf "}@]@?";
   close_out oc
 
-let make_neighbor {size;nodes;edges} =
+let make_neighbor ({size;nodes;edges} as graph) =
   let out_neighbor = Array.make size [] in
   let in_neighbor = Array.make size [] in
   List.iter (fun (x,y) -> out_neighbor.(x) <- y::out_neighbor.(x); in_neighbor.(y) <- x::in_neighbor.(y)) edges;
+  graph.in_neighbor <- Some in_neighbor;
+  graph.out_neighbor <- Some out_neighbor;
   in_neighbor, out_neighbor
 
-let make_in_neighbor {size;nodes;edges} =
+let make_in_neighbor ({size;nodes;edges} as graph) =
   let in_neighbor = Array.make size [] in
   List.iter (fun (x,y) -> in_neighbor.(y) <- x::in_neighbor.(y)) edges;
+  graph.in_neighbor <- Some in_neighbor;
   in_neighbor
 
-let make_out_neighbor {size;nodes;edges} =
+let make_out_neighbor ({size;nodes;edges} as graph) =
   let out_neighbor = Array.make size [] in
   List.iter (fun (x,y) -> out_neighbor.(x) <- y::out_neighbor.(x)) edges;
+  graph.out_neighbor <- Some out_neighbor;
   out_neighbor
+
+let get_neighbor ({in_neighbor;out_neighbor} as graph) =
+  match in_neighbor, out_neighbor with
+  | Some i, Some o -> i, o
+  | Some i, None -> i, make_out_neighbor graph
+  | None, Some o -> make_in_neighbor graph, o
+  | None, None -> make_neighbor graph
+
+let get_in_neighbor graph =
+  match graph.in_neighbor with
+  | Some i -> i
+  | None -> make_in_neighbor graph
+
+let get_out_neighbor ({in_neighbor} as graph) =
+  match graph.out_neighbor with
+  | Some o -> o
+  | None -> make_out_neighbor graph
 
 (* Kosaraju's algorithm *)
 let scc ({size;nodes;edges} as graph) =
-  let in_neighbor,out_neighbor = make_neighbor graph in
+  let in_neighbor,out_neighbor = get_neighbor graph in
   let visited = Array.make size false in
   let root = Array.make size (-1) in
   let rec visit x acc =
@@ -66,7 +98,7 @@ let scc ({size;nodes;edges} as graph) =
 (* `dist x y < 0` means disconnected *)
 let shortest_to ({size;nodes;edges} as graph) dist goal =
   let d = Array.make size (-1) in
-  let in_neighbor = make_in_neighbor graph in
+  let in_neighbor = get_in_neighbor graph in
   d.(goal) <- 0;
   let rec take m xs1 xs2 =
     match xs2 with
@@ -103,7 +135,7 @@ let shortest_to ({size;nodes;edges} as graph) dist goal =
 (* graph must be DAG *)
 let paths_to ({size;nodes;edges} as graph) goal =
   let paths = Array.make size None in
-  let out_neighbor = make_out_neighbor graph in
+  let out_neighbor = get_out_neighbor graph in
   paths.(goal) <- Some [[]];
   let rec go x =
     match paths.(x) with
@@ -146,7 +178,7 @@ let hops_to {size;nodes;edges} goal =
 let hops_to ({size;nodes;edges} as graph) goal =
   let queue = Queue.create () in
   let hops = Array.make size (-1) in
-  let in_neighbor = make_in_neighbor graph in
+  let in_neighbor = get_in_neighbor graph in
   hops.(goal) <- 0;
   let count = ref 0 in
   Queue.add goal queue;

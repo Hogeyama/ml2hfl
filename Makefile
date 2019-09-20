@@ -77,7 +77,7 @@ MLI = lift.mli CPS.mli curry.mli encode_rec.mli encode_list.mli		\
 	HORS_parser.mli fpatInterface.mli ref_type.mli encode.mli	\
 	ref_type_gen.mli modular_common.mli CEGAR_abst_CPS.mli		\
 	CEGAR_abst_util.mli ref_type_check.mli				\
-	ref_type_pred_typing.mli slice.mli
+	ref_type_pred_typing.mli slice.mli graph.mli
 CMI = $(MLI:.mli=.cmi)
 
 CMO = revision.cmo mconfig.cmo util.cmo flag.cmo debug.cmo graph.cmo	\
