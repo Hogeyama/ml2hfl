@@ -142,10 +142,13 @@ let rec gen_constr env l t ty =
     |> add_constr l l_t
     |> flatten_sub typ ty
   in
-  Debug.printf "gen_constr:@.";
-  Debug.printf "  l, l_t: %d, %d@." l l_t;
-  Debug.printf "  t: @[%a@." Print.term t;
-  Debug.printf "  ty @[%a@." Print.typ ty;
+  if false then
+    begin
+      Debug.printf "gen_constr:@.";
+      Debug.printf "  l, l_t: %d, %d@." l l_t;
+      Debug.printf "  t: @[%a@." Print.term t;
+      Debug.printf "  ty @[%a@." Print.typ ty;
+    end;
   let env,desc =
     match t.desc with
     | Const (Rand(_, true)) -> unsupported __MODULE__
@@ -233,21 +236,7 @@ let rec gen_constr env l t ty =
           let f' = Id.set_typ f f_typ in
           let env,t1' = gen_constr env l_t t1 f_typ in
           Debug.printf "f: %a@." Print.id f;
-          let env =
-            let rec aux_div t env =
-              match t.desc with
-              | Fun(_,t') -> aux_div t' env
-              | _ ->
-                  if Id.mem f' (get_fv t) then
-                    add_constr (get_id t.typ) 0 env
-                  else
-                    env
-            in
-            let aux_div _ env = env in
-            env
-            |> aux_div t1'
-            |> flatten_sub t1'.typ f_typ
-          in
+          let env = flatten_sub t1'.typ f_typ env in
           env, (f', t1')::bindings
         in
         let env,bindings' = List.fold_right aux bindings (env,[]) in
@@ -445,8 +434,8 @@ let remove_unrelated =
 let make_slice_sub t =
   let env,t' = gen_constr_init @@ Effect.infer t in
   let graph = Graph.from_edges env.constr in
-  let scc = Graph.scc graph in
-  Graph.save_as_dot "test.dot" graph;
+  (*  let scc = Graph.scc graph in*)
+  if !!Debug.check then Graph.save_as_dot "test.dot" graph;(*
   List.iter (fun x -> if x <> scc.(x) then Debug.printf "scc: %d <-> %d@." x scc.(x)) graph.Graph.nodes;
   let graph' =
     let sbst x = scc.(x) in
@@ -457,7 +446,7 @@ let make_slice_sub t =
     in
     Graph.from_edges edges
   in
-  Graph.save_as_dot "test2.dot" graph';
+  if !!Debug.check then Graph.save_as_dot "test2.dot" graph';
 
   let sbst x = scc.(x) in
   let graph' =
@@ -465,14 +454,16 @@ let make_slice_sub t =
     |> List.unique
     |> List.filter_out (fun (x,y) -> x = y)
     |> Graph.from_edges
-  in
+  in*)
+  let graph' = graph in
+  let sbst = Fun.id in
   let hops = Graph.hops_to graph' (sbst 0) in
   let dist = hops in
   Array.iteri(fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
   let dist' t = dist.(get_id t.typ) in
-  let longest = List.fold_left (fun l i -> max l dist.(i)) (-1) graph'.Graph.nodes in
+  let longest = IntSet.fold (fun i l -> max l dist.(i)) graph'.Graph.nodes (-1) in
   fun p ->
-    let far = int_of_float (p *. float_of_int (List.fold_left (fun l i -> max l dist.(i)) (-1) graph'.Graph.nodes)) in
+    let far = int_of_float (p *. float_of_int (IntSet.fold (fun i l -> max l dist.(i)) graph'.Graph.nodes (-1))) in
     Debug.printf "longest: %d@." longest;
     Debug.printf "far: %d@." far;
     Debug.printf "INFER_ORIG: @[%a@." Print.term' t';

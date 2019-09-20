@@ -71,8 +71,11 @@ let add_evar env t =
 let rec force_cont ty =
   let attrs,ty1 =
     match ty with
-    | TAttr(TAEffect e::attrs, ty1) -> TAEffect [EEvent]::attrs, ty1
-    | _ -> assert false
+    | TAttr(attrs, ty1) ->
+        List.map (function TAEffect _ -> TAEffect [EEvent] | a -> a) attrs,
+        ty1
+    | _ ->
+        assert false
   in
   let ty1' =
     match ty1 with
@@ -287,7 +290,7 @@ let rec solve env =
     | EEvent, EVar i -> nondets, i::events, divs, exceps
     | EDiv, EVar i -> nondets, events, i::divs, exceps
     | EExcep, EVar i -> nondets, events, divs, i::exceps
-    | _ -> assert false
+    | _ -> nondets, events, divs, exceps
   in
   let nondets,events,divs,exceps = List.fold_left init ([],[],[],[]) env.constraints in
   Debug.printf "nondets: %a@." (List.print Format.pp_print_int) nondets;
