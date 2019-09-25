@@ -3,7 +3,7 @@ open Util
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 type t =
-  {size : int;
+  {size : int; (* number of nodes *)
    nodes : IntSet.t; (* elements must not be negative *)
    edges : (int * int) list;
    mutable in_neighbor : int list Array.t option;

@@ -290,7 +290,8 @@ let rec solve env =
     | EEvent, EVar i -> nondets, i::events, divs, exceps
     | EDiv, EVar i -> nondets, events, i::divs, exceps
     | EExcep, EVar i -> nondets, events, divs, i::exceps
-    | _ -> nondets, events, divs, exceps
+    | _ ->
+        unsupported "Effect.infer: external functions with raise-throwable function arguments?"
   in
   let nondets,events,divs,exceps = List.fold_left init ([],[],[],[]) env.constraints in
   Debug.printf "nondets: %a@." (List.print Format.pp_print_int) nondets;
@@ -359,7 +360,15 @@ let infer ?(for_cps=false) t =
       List.iter (fun x -> Format.eprintf "%a: %a@." Id.print x Print.typ (Id.typ x)) ext_funs;
       unsupported "polymorphic use of external functions";
     end;
-  let tenv = List.map (Pair.add_right (Id.typ |- make_template env |- force_cont)) ext_funs in
+  let tenv =
+    let aux x =
+      x
+      |> Id.typ
+      |> make_template env
+      |&for_cps&> force_cont
+    in
+    List.map (Pair.add_right aux) ext_funs
+  in
   let t' = gen_constr env tenv t in
   Debug.printf "Add evar: %a@." Print.term' t';
   Debug.printf "CONSTRAINTS:@.";
