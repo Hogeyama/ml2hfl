@@ -110,6 +110,7 @@ let trans_rtype env rty =
     | Union(sty, rts) -> Union(sty, List.map rtype rts)
     | ExtArg(arg, argty, retty) -> ExtArg(arg, rtype argty, rtype retty)
     | List(i, p_i, len, p_len, rty) -> List(i, term p_i, len, term p_len, rtype rty)
+    | App _ -> unsupported "Ref_type_pred_typing.trans_rtype: App"
     | Exn(rty1, rty2) -> Exn(rtype rty1, rtype rty2)
   in
   rtype rty

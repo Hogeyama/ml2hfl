@@ -604,6 +604,7 @@ let rec trans_rty env =
                                     tr.tr_var y,
                                     tr.tr_term p_i,
                                     trans_rty env ty2)
+  | App _ -> unsupported "Encode_rec.trans_rty: App"
   | Exn(ty1,ty2) -> Exn(trans_rty env ty1, trans_rty env ty2)
 
 let trans_rid = abst_recdata.tr2_var

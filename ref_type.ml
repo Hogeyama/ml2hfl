@@ -15,8 +15,14 @@ type t =
   | Union of S.typ * t list
   | ExtArg of S.id * t * t
   | List of S.id * S.term * S.id * S.term * t
+  | App of constr * t
   | Exn of t * t
   [@@deriving show]
+
+and constr =
+  | Ref
+  | Array
+  | Option
 
 let typ_result = Base(T.TPrim "X", Id.new_var T.Ty.unit, U.true_term)
 
@@ -85,6 +91,7 @@ let rec occur x = function
   | List(_,p_len,_,p_i,typ) ->
       let aux =  Id.mem x -| U.get_fv in
       aux p_len || aux p_i || occur x typ
+  | App(_,ty) -> occur x ty
   | Exn(typ1, typ2) -> occur x typ1 || occur x typ2
 
 let rec decomp_funs typ =
@@ -93,6 +100,12 @@ let rec decomp_funs typ =
   | Fun(x,typ1,typ2) ->
       Pair.map_fst (List.cons (x,typ1)) @@ decomp_funs typ2
   | _ -> [], typ
+
+let string_of_constr c =
+  match c with
+  | Ref -> "ref"
+  | Array -> "array"
+  | Option -> "option"
 
 let rec print fm = function
   | Base(base,x,p) when p = U.true_term ->
@@ -168,6 +181,8 @@ let rec print fm = function
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;
       Format.fprintf fm "list@])"
+  | App(constr, ty) ->
+      Format.fprintf fm "(@[%a %s@])" print ty (string_of_constr constr)
   | Exn(typ1, typ2) ->
       if is_bottom typ2 then
         print fm typ1
@@ -200,6 +215,7 @@ let rec arg_num = function
   | Union(_, typ::_) -> arg_num typ
   | Fun(_,_,typ2) -> 1 + arg_num typ2
   | ExtArg(_,_,typ2) -> arg_num typ2
+  | App _ -> 0
   | List _ -> 0
   | Exn(typ, _) -> arg_num typ
 
@@ -213,6 +229,7 @@ let rec map_pred f typ =
   | Union(typ, typs) -> Union(typ, List.map (map_pred f) typs)
   | ExtArg(y,typ1,typ2) -> ExtArg(y, map_pred f typ1, map_pred f typ2)
   | List(y,p_len,z,p_i,typ) -> List(y, f p_len, z, f p_i, map_pred f typ)
+  | App(constr, ty) -> App(constr, map_pred f ty)
   | Exn(typ1, typ2) -> Exn(map_pred f typ1, map_pred f typ2)
 
 let rec subst_map map typ =
@@ -243,6 +260,7 @@ let rec subst_map map typ =
       let map1 = List.filter_out (fst |- Id.eq y) map in
       let map2 = List.filter_out (fst |- Id.eq z) map1 in
       List(y, U.subst_map map p_len, z, U.subst_map map1 p_i, subst_map map2 typ)
+  | App(constr, ty) -> App(constr, subst_map map ty)
   | Exn(typ1, typ2) -> Exn(subst_map map typ1, subst_map map typ2)
 let subst x t typ = subst_map [x,t] typ
 let subst_var x y typ = subst x (U.make_var y) typ
@@ -291,6 +309,7 @@ let rec rename full var ty =
       let typ' = subst_var x x' typ in
       let typ'' = subst_var y y' typ' in
       List(x', p_len', y', p_i', rename full None typ'')
+  | App(constr, ty) -> App(constr, rename full var ty)
   | Exn(typ1, typ2) -> Exn(rename full var typ1, rename full var typ2)
 let rename ?(full=false) typ = rename full None typ
 
@@ -300,6 +319,7 @@ let rec of_simple typ =
   | T.TBase T.TUnit -> Base(T.TUnit, Id.new_var typ, U.true_term)
   | T.TBase T.TBool -> Base(T.TBool, Id.new_var typ, U.true_term)
   | T.TBase T.TInt -> Base(T.TInt, Id.new_var typ, U.true_term)
+  | T.TBase (T.TPrim s) -> Base(T.TPrim s, Id.new_var typ, U.true_term)
   | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
@@ -309,6 +329,18 @@ let rec of_simple typ =
            Id.new_var T.Ty.int,
            U.true_term,
            of_simple typ)
+  | T.TVar({contents=Some ty},_) -> of_simple ty
+  | T.TApp(constr, [ty]) ->
+      let constr' =
+        match constr with
+        | T.TRef -> Ref
+        | T.TArray -> Array
+        | T.TOption -> Option
+        | _ ->
+            Format.printf "%a@." Print.typ typ;
+            unsupported "Ref_type.of_simple"
+      in
+      App(constr', of_simple ty)
   | _ ->
       Format.printf "%a@." Print.typ typ;
       unsupported "Ref_type.of_simple"
@@ -366,6 +398,14 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
           Id.typ x'
         else
           U.add_tapred x' [U.subst x (U.make_length @@ U.make_var x') p_len] @@ Id.typ x'
+  | App(constr, ty) ->
+      let make =
+        match constr with
+        | Ref -> T.make_tref
+        | Array -> T.make_tarray
+        | Option -> T.make_toption
+      in
+      make @@ to_abst_typ ~decomp_pred ~with_pred ty
   | Exn(typ1, _) -> to_abst_typ ~decomp_pred ~with_pred typ1
   in
   Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;
@@ -390,6 +430,14 @@ let rec to_simple ?(with_pred=false) typ =
         sty
   | ExtArg _ -> assert false
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
+  | App(constr, ty) ->
+      let make =
+        match constr with
+        | Ref -> T.make_tref
+        | Array -> T.make_tarray
+        | Option -> T.make_toption
+      in
+      make @@ to_simple ~with_pred ty
   | Exn(typ1, _) -> to_simple ~with_pred typ1
 
 let make_base ?(pred=U.true_term) base = Base(base, Id.new_var (Type.TBase base), pred)
@@ -410,6 +458,7 @@ let rec copy_fun_arg_to_base = function
   | Union(typ, typs) -> Union(typ, List.map copy_fun_arg_to_base typs)
   | ExtArg(x,typ1,typ2) -> ExtArg(x, copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, copy_fun_arg_to_base typ)
+  | App(constr,ty) -> App(constr, copy_fun_arg_to_base ty)
   | Exn(typ1,typ2) -> Exn(copy_fun_arg_to_base typ1, copy_fun_arg_to_base typ2)
 
 
@@ -440,6 +489,7 @@ let rec has_no_predicate typ =
   | Union(_, typs) -> List.for_all has_no_predicate typs
   | ExtArg _ -> unsupported "has_no_predicate"
   | List(x,p_len,y,p_i,typ1) -> p_len = U.true_term && p_i = U.true_term && has_no_predicate typ1
+  | App(constr,ty) -> has_no_predicate ty
   | Exn(typ1,typ2) -> has_no_predicate typ1 && has_no_predicate typ2
 
 
@@ -671,6 +721,7 @@ and simplify typ =
       if p_len' = U.false_term
       then Union(to_simple typ, [])
       else List(x, p_len', y, simplify_pred p_i, simplify typ)
+  | App(constr, ty) -> App(constr, simplify ty)
   | Exn(typ1,typ2) ->
       let typ1' = simplify typ1 in
       let typ2' = simplify typ2 in
@@ -779,6 +830,7 @@ let rec contract typ =
       end
   | ExtArg(x,typ1,typ2) -> ExtArg(x, contract typ1, contract typ2)
   | List(x,p_len,y,p_i,typ) -> List(x, p_len, y, p_i, contract typ)
+  | App(constr,ty) -> App(constr, contract ty)
   | Exn(typ1,typ2) -> Exn(contract typ1, contract typ2)
 
 let rec split_inter typ =
@@ -814,6 +866,7 @@ let rec has_inter_union ty =
   | Union(_,tys) -> tys <> []
   | ExtArg(_, ty1, ty2) -> has_inter_union ty1 || has_inter_union ty2
   | List(_,_,_,_,ty') -> has_inter_union ty'
+  | App(_,ty') -> has_inter_union ty'
   | Exn(ty1,ty2) -> has_inter_union ty1 || has_inter_union ty2
 
 (* special_case : Ref_type.t -> Syntax.trans -> (Ref_type.t -> Ref_type.t) -> Ref_type.t option
@@ -836,6 +889,7 @@ let mk_trans_rty ?special_case:(special_case = fun _rty _trans _trans_rty -> Non
                                           tr.tr_var y,
                                           tr.tr_term p_i,
                                           trans_rty ty2)
+        | App(constr,ty) -> App(constr, trans_rty ty)
         | Exn(ty1,ty2) -> Exn(trans_rty ty1, trans_rty ty2)
         end
     | Some rty -> rty

@@ -8,7 +8,13 @@ type t =
   | Union of Syntax.typ * t list
   | ExtArg of Syntax.id * t * t
   | List of Syntax.id * Syntax.term * Syntax.id * Syntax.term * t
+  | App of constr * t
   | Exn of t * t
+and constr =
+  | Ref
+  | Array
+  | Option
+
 module Env : Menv.ENV with type key := Syntax.id with type value := t
 type env = Env.t
 module NegEnv : Menv.ENV with type key := Syntax.id with type value := t

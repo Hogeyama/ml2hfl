@@ -509,6 +509,15 @@ module List = struct
   let to_string ?(delimiter=";") f xs =
     "[" ^ BatString.join delimiter (List.map f xs) ^ "]"
 
+  let takedrop_while f xs =
+    let rec go acc_rev xs =
+      match xs with
+      | [] -> List.rev acc_rev, []
+      | x::_ when not (f x) -> List.rev acc_rev, xs
+      | x::xs' -> go (x::acc_rev) xs'
+    in
+    go [] xs
+
   module Set = struct
     let diff ?(eq=(=)) l1 l2 = filter_out (mem ~eq -$- l2) l1
     let inter ?(eq=(=)) l1 l2 = filter (mem ~eq -$- l2) l1

@@ -463,6 +463,13 @@ let is_app t =
   | App _ -> true
   | _ -> false
 
+let rec decomp_decls t =
+  match t.desc with
+  | Local(decl, t2) ->
+      let decls,t2' = decomp_decls t2 in
+      decl::decls, t2'
+  | _ -> [], t
+
 let rec decomp_lets t =
   match t.desc with
   | Local(Decl_let bindings, t2) ->
@@ -1501,6 +1508,16 @@ let has_pnondet =
   in
   col.col_pat <- col_pat;
   col.col_pat
+
+let has_event =
+  let col = make_col false (||) in
+  let col_desc desc =
+    match desc with
+    | Event _ -> true
+    | _ -> col.col_desc_rec desc
+  in
+  col.col_desc <- col_desc;
+  col.col_term
 
 let rec copy_for_pred_share n m ty =
   let copy_var x =

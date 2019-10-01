@@ -378,18 +378,37 @@ let main_sub spec t =
     Format.printf "Unsafe@.@.";
   r
 
+let main_sub verify t =
+  let dp = 0.1 in
+  let make_sub = Slice.slice_top_fun t in
+  let rec loop p =
+    let removed,t' = make_sub p in
+    verify t' ||
+    if p > 1.0 then false else loop (p +. dp)
+  in
+  let r = loop 0. in
+  if r then
+    Format.printf "Safe@.@."
+  else
+    Format.printf "Unsafe@.@.";
+  r
+
 let main_sub spec t =
   let p = 0.1 in
-  let pp_all = Preprocess.all spec in
-  let pp =
+  let pps1,pps2 =
     let open Preprocess in
-    before Slice pp_all @
-    [Slice, map_trans_list (Problem.map_list (Slice.slice_subs -$- p))]
+    let label = Copy_poly in
+    let pps1,pp,pps2 = split label @@ all spec in
+    pps1@[label, pp; Slice, map_trans_list (Slice.slice_top_fun_subs p)], pps2
   in
-  let pped = Preprocess.run_problem pp (Problem.safety t) in
-  let ps = List.map Preprocess.last_problem pped in
+  let ps =
+    t
+    |> Problem.safety
+    |> Preprocess.run_problem pps1
+    |> List.map Preprocess.last_problem
+  in
   let check p =
-    let pp = Preprocess.run_problem Preprocess.(after Slice pp_all) p in
+    let pp = Preprocess.run_problem pps2 p in
     let p' = List.get pp in
     let r = Main_loop.check spec p' in
     match r.Main_loop.result with
@@ -403,6 +422,7 @@ let main_sub spec t =
   else
     Format.printf "Unsafe@.@.";
   r
+
 let main filenames =
   if String.ends_with !!Flag.Input.main ".bin" then
     check_bin !!Flag.Input.main

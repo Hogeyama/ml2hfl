@@ -431,10 +431,10 @@ let remove_unrelated =
 
 let make_slice_sub t =
   let env,t' = gen_constr_init @@ Effect.infer t in
-  let graph = Graph.from_edges env.constr in
+  let graph = Graph.from_directed_edges env.constr in
   if !!Debug.check then Graph.save_as_dot "test.dot" graph;
-  let hops = Graph.hops_to graph 0 in
-  Array.iteri(fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
+  let hops = Graph.hops_to graph [0] in
+  Array.iteri (fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
   let dist t = hops.(get_id t.typ) in
   let longest = Graph.fold_node (fun i l -> max l hops.(i)) graph (-1) in
   fun p ->
@@ -468,3 +468,93 @@ let slice_subs t p =
     |&!!Debug.check&> add_comment (Format.sprintf "SLICE_SUB %.3f" p')
   in
   List.init n p_of
+
+
+let get_top_fun_dependencies t =
+  let decls,t' = decomp_decls t in
+  if t'.desc <> Const Unit && t'.desc <> End_of_definitions then
+    unsupported "Slice.slice_top_fun";
+  let defs = List.flatten_map (function Decl_let defs -> defs | Decl_type _ -> []) decls in
+  let module IDMap = Map.Make(ID) in
+  let fs = get_fv t @ List.map fst defs in
+  let map,_ = List.fold_left (fun (acc,cnt) f -> IDMap.add f cnt acc, cnt + 1) (IDMap.empty,0) fs in
+  let id_of f = IDMap.find f map in
+  let goals =
+    defs
+    |> List.filter_map (fun (f,t) -> if has_event t then Some f else None)
+    |@> Debug.printf "GOALS: %a@." Print.(list id)
+    |> List.map id_of
+  in
+  let deps =
+    defs
+    |> List.flatten_map (fun (f,t) -> List.map (Pair.pair -$- f) @@ get_fv t)
+    |> List.map (Pair.map_same id_of)
+  in
+  id_of, goals, deps
+
+let rec remove_unrelated_funs dist far t =
+  let ruf = remove_unrelated_funs dist far in
+  let removed,desc =
+    match t.desc with
+    | Local(Decl_type decl, t') ->
+        let removed,t'' = ruf t' in
+        removed, Local(Decl_type decl, t'')
+    | Local(Decl_let defs, t') ->
+        let defs1,defs2 =
+          let check (f,_) =
+            let d = dist f in
+            d < 0 || d > far
+          in
+          List.partition check defs
+        in
+        let removed1 = List.map fst defs1 in
+        if defs2 <> [] then Debug.printf "Dom(defs2): @[%a@." Print.(list id) (List.map fst defs2);
+        let removed2,t'' = ruf t' in
+        let desc =
+          if defs2 = [] then
+            t''.desc
+          else
+            Local(Decl_let defs, t'')
+        in
+        removed1@removed2, desc
+    | Const Unit
+    | End_of_definitions -> [], End_of_definitions
+    | _ -> assert false
+  in
+  removed, {t with desc}
+
+let slice_top_fun t =
+  let id_of,goals,deps = get_top_fun_dependencies t in
+  let graph = Graph.from_edges deps in
+  let hops = Graph.hops_to graph goals in
+  Array.iteri (fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
+  let dist f =
+    let x = id_of f in
+    let n = hops.(x) in
+    if false then Debug.printf "hops(%a : #%d) = %d@." Print.id f x n;
+    n
+  in
+  let longest = Graph.fold_node (fun i l -> max l hops.(i)) graph (-1) in
+  fun p ->
+    Format.printf "p: %f@." p;
+    let far = int_of_float (ceil (p *. float_of_int longest)) in
+    Format.printf "longest: %d@." longest;
+    Format.printf "far: %d@." far;
+    let removed,t' = remove_unrelated_funs dist far t in
+    let t'' =
+      t'
+      |> Trans.remove_effect_attribute
+      |> Trans.set_main
+      |&!!Debug.check&> add_comment (Format.sprintf "SLICE_TOP_FUN %.3f" p)
+    in
+    Debug.printf "REMOVE_UNRELATED: @[%a@." Print.term t'';
+    removed, t''
+
+let slice_top_fun_subs dp problem =
+  let make = slice_top_fun problem.Problem.term in
+  let rec go p =
+    let _,term = make p in
+    let problem' = {problem with Problem.term} in
+    problem' :: if p > 1.0 then [] else go (p +. dp)
+  in
+  go 0.

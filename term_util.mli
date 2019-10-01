@@ -133,6 +133,7 @@ val decomp_var : term -> id option
 val decomp_bexp : term -> term list
 val decomp_prog : term -> (id * term) list list * term
 val decomp_list : term -> term list option
+val decomp_decls : term -> declaration list * term
 val decomp_type_decls : term -> ((string * typ) list) list * term
 val var_of_term : term -> id
 val int_of_term : term -> int
@@ -176,6 +177,7 @@ val col_tid : typ -> (string * int) list
 val col_typ_var : term -> typ option ref list
 val col_app_args : id -> term -> term list list
 
+val has_event : term -> bool
 val has_pnondet : pattern -> bool
 val has_safe_attr : term -> bool
 val has_pure_attr : term -> bool

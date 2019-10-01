@@ -130,6 +130,7 @@ let rec from_ref_type typ =
   | Ref_type.Union _ -> assert false
   | Ref_type.ExtArg _ -> assert false
   | Ref_type.List _ -> assert false
+  | Ref_type.App _ -> assert false
   | Ref_type.Exn _ -> assert false
 
 let rec get_fv_typ = function
@@ -1171,6 +1172,7 @@ let rec instantiate_any mode pos typ =
   | Union(typ, typs) -> Union(typ, List.map (instantiate_any mode pos) typs)
   | ExtArg(y,typ1,typ2) -> unsupported "instantiate_any"
   | List(y,p_len,z,p_i,typ) -> unsupported "instantiate_any"
+  | App _ -> unsupported "instantiate_any"
   | Exn(typ1, typ2) ->
       let mode' =
         if mode = ToNatural then

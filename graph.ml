@@ -6,6 +6,7 @@ type t =
   {size : int; (* number of nodes *)
    nodes : IntSet.t; (* elements must not be negative *)
    edges : (int * int) list;
+   directed : bool;
    mutable in_neighbor : int list Array.t option;
    mutable out_neighbor : int list Array.t option}
 
@@ -13,12 +14,15 @@ let size g = g.size
 let nodes g = g.nodes
 let edges g = g.edges
 
-let from_edges edges =
+let from_edges_aux directed edges =
   let nodes = List.fold_left (fun acc (x,y) -> IntSet.add x @@ IntSet.add y acc) IntSet.empty edges in
   let size = 1 + IntSet.fold max nodes 0 in
   let in_neighbor = None in
   let out_neighbor = None in
-  {size; nodes; edges; in_neighbor; out_neighbor}
+  {size; nodes; edges; directed; in_neighbor; out_neighbor}
+
+let from_edges edges = from_edges_aux false edges
+let from_directed_edges edges = from_edges_aux true edges
 
 let fold_node f graph = IntSet.fold f graph.nodes
 let fold_edge f graph = List.fold_right (fun (x,y) acc -> f x y acc) graph.edges
@@ -32,25 +36,36 @@ let save_as_dot filename ?(name_of=string_of_int) ?(attribute_of_node=Fun.const 
   Format.fprintf ocf "}@]@?";
   close_out oc
 
-let make_neighbor ({size;nodes;edges} as graph) =
-  let out_neighbor = Array.make size [] in
+let make_in_neighbor ({size;nodes;edges;directed} as graph) =
   let in_neighbor = Array.make size [] in
-  List.iter (fun (x,y) -> out_neighbor.(x) <- y::out_neighbor.(x); in_neighbor.(y) <- x::in_neighbor.(y)) edges;
+  if directed then
+    List.iter (fun (x,y) -> in_neighbor.(y) <- x::in_neighbor.(y)) edges
+  else
+    List.iter (fun (x,y) -> in_neighbor.(y) <- x::in_neighbor.(y); in_neighbor.(x) <- y::in_neighbor.(x)) edges;
   graph.in_neighbor <- Some in_neighbor;
-  graph.out_neighbor <- Some out_neighbor;
-  in_neighbor, out_neighbor
-
-let make_in_neighbor ({size;nodes;edges} as graph) =
-  let in_neighbor = Array.make size [] in
-  List.iter (fun (x,y) -> in_neighbor.(y) <- x::in_neighbor.(y)) edges;
-  graph.in_neighbor <- Some in_neighbor;
+  if directed then graph.out_neighbor <- Some in_neighbor;
   in_neighbor
 
-let make_out_neighbor ({size;nodes;edges} as graph) =
-  let out_neighbor = Array.make size [] in
-  List.iter (fun (x,y) -> out_neighbor.(x) <- y::out_neighbor.(x)) edges;
-  graph.out_neighbor <- Some out_neighbor;
-  out_neighbor
+let make_out_neighbor ({size;nodes;edges;directed} as graph) =
+  if directed then
+    let out_neighbor = Array.make size [] in
+    List.iter (fun (x,y) -> out_neighbor.(x) <- y::out_neighbor.(x)) edges;
+    graph.out_neighbor <- Some out_neighbor;
+    out_neighbor
+  else
+    make_in_neighbor graph
+
+let make_neighbor ({size;nodes;edges;directed} as graph) =
+  if directed then
+    let out_neighbor = Array.make size [] in
+    let in_neighbor = Array.make size [] in
+    List.iter (fun (x,y) -> out_neighbor.(x) <- y::out_neighbor.(x); in_neighbor.(y) <- x::in_neighbor.(y)) edges;
+    graph.in_neighbor <- Some in_neighbor;
+    graph.out_neighbor <- Some out_neighbor;
+    in_neighbor, out_neighbor
+  else
+    let in_neighbor = make_in_neighbor graph in
+    in_neighbor, in_neighbor
 
 let get_neighbor ({in_neighbor;out_neighbor} as graph) =
   match in_neighbor, out_neighbor with
@@ -175,16 +190,14 @@ let hops_to {size;nodes;edges} goal =
   IntSet.iter (go 0 (-1) |- ignore) nodes;
   hops
 
-let hops_to ({size;nodes;edges} as graph) goal =
+let hops_to ({size;nodes;edges} as graph) goals =
   let queue = Queue.create () in
   let hops = Array.make size (-1) in
   let in_neighbor = get_in_neighbor graph in
-  hops.(goal) <- 0;
+  List.iter (fun goal -> hops.(goal) <- 0; Queue.add goal queue) goals;
   let count = ref 0 in
-  Queue.add goal queue;
   while not (Queue.is_empty queue) do
     incr count;
-    Format.printf "%d/%d@." !count size;
     let x = Queue.take queue in
     let neighbor = List.filter (fun y -> hops.(y) < 0) in_neighbor.(x) in
     let n = hops.(x) + 1 in

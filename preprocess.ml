@@ -167,6 +167,10 @@ let and_after label (pps:t list) =
 let after label (pps:t list) =
   List.tl @@ and_after label pps
 
+let split label (pps:t list) =
+  let pps1,pps2 = List.takedrop_while ((<>) label -| fst) pps in
+  pps1, snd (List.hd pps2), List.tl pps2
+
 let filter_out labels pps =
   List.filter_out (fst |- List.mem -$- labels) pps
 

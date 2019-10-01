@@ -586,6 +586,7 @@ let rec trans_rty ty =
         let ty_f = Fun(y, Base(TInt,y,p_i'), ty2') in
         let f = Id.new_var @@ to_simple ty_f in
         Tuple [x,Base(TInt,x,p_len'); f, ty_f]
+  | App _ -> unsupported "Encode_list.trans_rty App"
   | Exn(ty1,ty2) -> Exn(trans_rty ty1, trans_rty ty2)
 
 let trans_env env =

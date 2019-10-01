@@ -125,9 +125,18 @@ let rec generate_check typ_exn make_fail genv cenv x typ =
       let genv'',cenv'',ts = List.fold_left aux (genv,cenv,[]) typs in
       genv'', cenv'', U.make_ors ts
   | Exn(typ1, typ2) when is_bottom' typ2 -> generate_check typ_exn make_fail genv cenv x typ1
-  | Exn _ -> Format.eprintf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check Exn"
-  | ExtArg _ -> Format.eprintf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check ExtArg"
-  | List _ -> Format.eprintf "typ: %a@." print typ; unsupported "Ref_type_gen.generate_check List"
+  | App _ ->
+      Format.eprintf "typ: %a@." print typ;
+      unsupported "Ref_type_gen.generate_check App"
+  | Exn _ ->
+      Format.eprintf "typ: %a@." print typ;
+      unsupported "Ref_type_gen.generate_check Exn"
+  | ExtArg _ ->
+      Format.eprintf "typ: %a@." print typ;
+      unsupported "Ref_type_gen.generate_check ExtArg"
+  | List _ ->
+      Format.eprintf "typ: %a@." print typ;
+      unsupported "Ref_type_gen.generate_check List"
 
 and generate typ_exn make_fail genv cenv typ =
   Debug.printf "Ref_type_gen.generate: %a@." print typ;
@@ -409,6 +418,7 @@ and generate typ_exn make_fail genv cenv typ =
               else genv', cenv', U.make_let [def] t
           in
           genv', cenv', U.make_let [l,U.randint_unit_term] @@ U.make_assume p_len' t
+    | App _ -> unsupported "Ref_type.generate_check"
     | Exn(typ1,typ2) ->
         let genv',cenv',t_typ1 = generate typ_exn make_fail genv cenv typ1 in
         let genv'',cenv'',t_typ2 = generate typ_exn make_fail genv' cenv' typ2 in
