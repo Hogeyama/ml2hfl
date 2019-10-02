@@ -71,6 +71,7 @@ module Method = struct
   let occurence_param = ref false
   let slice = ref true
   let sub = ref false
+  let target = ref ""
 end
 
 module Encode = struct
@@ -115,6 +116,7 @@ module Print = struct
   let only_if_id = ref false
   let result = ref true
   let certificate = ref false
+  let assert_loc = ref false
 end
 
 module Log = struct

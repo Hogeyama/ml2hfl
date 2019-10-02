@@ -805,7 +805,9 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attr
         let env,t = from_expression env e in
         env, Term.(let_ [m',mdl] t)
     | Texp_assert e ->
-        let force = [] <> from_attributes exp_attributes in
+        let s = Format.asprintf "%a" Location.print_compact exp_loc in
+        if !Flag.Print.assert_loc then Format.printf "Found assertion: %s@." s;
+        let force = [] <> from_attributes exp_attributes || Flag.Method.(!target <> "" && String.exists s !target) in
         let env,t = from_expression env e in
         let t' =
           if t.desc = Const False

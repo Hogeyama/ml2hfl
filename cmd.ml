@@ -131,7 +131,8 @@ let rec arg_spec for_completion =
      "-print-progress", Arg.Set Flag.Print.progress, " Print progress (use after -modular/-imodular)";
      "-print-unused-arg", Arg.Unit Print.set_unused, " Print unused arguments";
      "-print-cert", Arg.Set Flag.Print.certificate, " Print certificates even if the model checker does not support certificates (need TRecS)";
-     "-print-depth", Arg.Int Print.set_depth, " Print depth of terms"]
+     "-print-depth", Arg.Int Print.set_depth, " Print depth of terms";
+     "-print-assert-location", Arg.Set Flag.Print.assert_loc, " Print the locations of assertions (used for -target)"]
   in
   let preprocessing =
     "Options for preprocessing",
@@ -197,6 +198,8 @@ let rec arg_spec for_completion =
      "-module-verification", Arg.Set Flag.Mode.module_mode, " Check input as library";
      "-quickcheck", Arg.Set Flag.Method.quick_check, " Disprove safety via QuickCheck (other method options will be ignored)";
      "-only-specified", Arg.Set Flag.Method.only_specified, " Verify only specified targets";
+     "-target", Arg.String (fun s -> Flag.Method.target := s; Flag.Method.only_specified := true),
+       "<location>  Verify only assertions matched with <location> (use -print-assert-location)";
      "-sub", Arg.Set Flag.Method.sub, " Verify sub-programs"]
   in
   let modular =
@@ -209,8 +212,8 @@ let rec arg_spec for_completion =
      "-disable-predicate-accumulation", Arg.Set Flag.Refine.disable_predicate_accumulation, " Disable predicate accumulation"]
   in
   let relative_complete =
-     "Options for relatively complete verification",
-     ["-relative-complete", Arg.Set Flag.Method.relative_complete, " Enable relatively complete verification from the begining"]
+    "Options for relatively complete verification",
+    ["-relative-complete", Arg.Set Flag.Method.relative_complete, " Enable relatively complete verification from the begining"]
   in
   let predicate_abstraction =
     "Options for predicate abstraction",

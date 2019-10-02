@@ -394,12 +394,12 @@ let main_sub verify t =
   r
 
 let main_sub spec t =
-  let p = 0.1 in
+  let dp = 0.1 in
   let pps1,pps2 =
     let open Preprocess in
     let label = Copy_poly in
     let pps1,pp,pps2 = split label @@ all spec in
-    pps1@[label, pp; Slice, map_trans_list (Slice.slice_top_fun_subs p)], pps2
+    pps1@[label,pp], pps2
   in
   let ps =
     t
@@ -407,14 +407,23 @@ let main_sub spec t =
     |> Preprocess.run_problem pps1
     |> List.map Preprocess.last_problem
   in
-  let check p =
-    let pp = Preprocess.run_problem pps2 p in
-    let p' = List.get pp in
-    let r = Main_loop.check spec p' in
-    match r.Main_loop.result with
-    | CEGAR.Safe _ -> true
-    | CEGAR.Unsafe _ -> false
-    | CEGAR.Unknown _ -> false
+  let check problem =
+    let make = Slice.slice_top_fun problem.Problem.term in
+    let rec go p =
+      if p > 1. then
+        false
+      else
+        let _,term = make p in
+        let pp = Preprocess.run_problem pps2 {problem with Problem.term} in
+        let preprocessed = List.get pp in
+        let r = Main_loop.check spec preprocessed in
+        let p' = p +. dp in
+        match r.Main_loop.result with
+        | CEGAR.Safe _ -> true
+        | CEGAR.Unsafe _ -> go p'
+        | CEGAR.Unknown _ -> go p'
+    in
+    go 0.
   in
   let r = List.exists check ps in
   if r then

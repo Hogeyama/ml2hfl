@@ -494,11 +494,11 @@ let get_top_fun_dependencies t =
 
 let rec remove_unrelated_funs dist far t =
   let ruf = remove_unrelated_funs dist far in
-  let removed,desc =
+  let removed,target,desc =
     match t.desc with
     | Local(Decl_type decl, t') ->
-        let removed,t'' = ruf t' in
-        removed, Local(Decl_type decl, t'')
+        let removed,target,t'' = ruf t' in
+        removed, target, Local(Decl_type decl, t'')
     | Local(Decl_let defs, t') ->
         let defs1,defs2 =
           let check (f,_) =
@@ -509,22 +509,25 @@ let rec remove_unrelated_funs dist far t =
         in
         let removed1 = List.map fst defs1 in
         if defs2 <> [] then Debug.printf "Dom(defs2): @[%a@." Print.(list id) (List.map fst defs2);
-        let removed2,t'' = ruf t' in
+        let removed2,target2,t'' = ruf t' in
         let desc =
           if defs2 = [] then
             t''.desc
           else
             Local(Decl_let defs, t'')
         in
-        removed1@removed2, desc
+        let fv = get_fv t'' in
+        let target1 = List.map fst @@ List.filter_out (fun (f,_) -> Id.mem f fv) defs2 in
+        removed1@removed2, target1@target2, desc
     | Const Unit
-    | End_of_definitions -> [], End_of_definitions
+    | End_of_definitions -> [], [], End_of_definitions
     | _ -> assert false
   in
-  removed, {t with desc}
+  removed, target, {t with desc}
 
 let slice_top_fun t =
   let id_of,goals,deps = get_top_fun_dependencies t in
+  if List.length goals >= 2 then unsupported "Slice.slice_top_fun";
   let graph = Graph.from_edges deps in
   let hops = Graph.hops_to graph goals in
   Array.iteri (fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
@@ -536,11 +539,17 @@ let slice_top_fun t =
   in
   let longest = Graph.fold_node (fun i l -> max l hops.(i)) graph (-1) in
   fun p ->
-    Format.printf "p: %f@." p;
+    Debug.printf "p: %f@." p;
     let far = int_of_float (ceil (p *. float_of_int longest)) in
-    Format.printf "longest: %d@." longest;
-    Format.printf "far: %d@." far;
-    let removed,t' = remove_unrelated_funs dist far t in
+    Debug.printf "longest: %d@." longest;
+    Debug.printf "far: %d@." far;
+    let removed,target,t' =
+      t
+      |*> Trans.elim_unused_let
+      |> remove_unrelated_funs dist far
+    in
+    Debug.printf "TARGET: %a@." Print.(list id) target;
+    if List.length target >= 2 then unsupported "Slice.slice_top_fun";
     let t'' =
       t'
       |> Trans.remove_effect_attribute
