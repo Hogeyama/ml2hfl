@@ -380,7 +380,9 @@ let run (pps:t list) results =
     in
     List.flatten_map aux2 acc
   in
-  List.fold_left aux1 results pps
+  Time.measure_and_add
+    Flag.Log.Time.preprocess
+    (List.fold_left aux1 results) pps
 
 let run_problem pps problem = run pps @@ make_init problem
 
