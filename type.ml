@@ -391,6 +391,7 @@ let rec unify typ1 typ2 =
   | TVariant(false,labels1), TVariant(false,labels2) ->
       List.iter2 (fun (s1,typs1) (s2,typs2) -> assert (s1 = s2); List.iter2 unify typs1 typs2) labels1 labels2
   | TRecord fields1, TRecord fields2 -> List.iter2 (fun (s1,(f1,typ1)) (s2,(f2,typ2)) -> assert (s1 = s2 && f1 = f2); unify typ1 typ2) fields1 fields2
+  | TModule _, TModule _ -> () (* TODO *)
   | _, TData _ -> ()
   | TData _, _ -> ()
   | _ ->

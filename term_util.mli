@@ -193,6 +193,7 @@ val subst_decl_map : (id * term) list -> declaration -> declaration
 val subst_var : ?fast:bool -> id -> id -> term -> term
 val subst_var_map : (id * id) list -> term -> term
 val subst_tdata : string -> typ -> term -> term
+val subst_tdata_ca : string -> typ -> term -> term
 val subst_tdata_typ : string -> typ -> typ -> typ
 val subst_tdata_map : (string * typ) list -> term -> term
 val subst_tdata_typ_map : (string * typ) list -> typ -> typ

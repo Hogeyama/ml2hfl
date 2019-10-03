@@ -1181,8 +1181,7 @@ let subst_tdata,subst_tdata_typ =
     | _ -> tr.tr2_typ_rec (s,ty1) ty2
   in
   tr.tr2_typ <- tr_typ;
-  (fun s ty' t -> tr.tr2_term (s,ty') t),
-  (fun s ty' ty -> tr.tr2_typ (s,ty') ty)
+  Fun.curry tr.tr2_term, Fun.curry tr.tr2_typ
 
 (* not capture-avoiding *)
 let subst_tdata_map,subst_tdata_typ_map =
@@ -1194,6 +1193,39 @@ let subst_tdata_map,subst_tdata_typ_map =
   in
   tr.tr2_typ <- tr_typ;
   tr.tr2_term, tr.tr2_typ
+
+(* capture-avoiding *)
+let subst_tdata_ca =
+  let tr = make_trans2 () in
+  let tr_desc (s,ty) desc =
+    match desc with
+    | Local(Decl_type decls, _) when List.mem_assoc s decls -> desc
+    | Module decls ->
+        let _,decls_rev =
+          let aux (b,acc_rev) decl =
+            let b',decl' =
+              if b then
+                true, decl
+              else
+                match decl with
+                | Decl_type decls when List.mem_assoc s decls -> true, decl
+                | _ -> false, tr.tr2_decl (s,ty) decl
+            in
+            b', decl'::acc_rev
+          in
+          List.fold_left aux (false,[]) decls
+        in
+        Module (List.rev decls_rev)
+    | _ -> tr.tr2_desc_rec (s,ty) desc
+  in
+  let tr_typ (s,ty1) ty2 =
+    match ty2 with
+    | TData s' when s = s' -> ty1
+    | _ -> tr.tr2_typ_rec (s,ty1) ty2
+  in
+  tr.tr2_desc <- tr_desc;
+  tr.tr2_typ <- tr_typ;
+  Fun.curry tr.tr2_term
 
 let alpha_rename_pred_share =
   let fld = make_fold_tr () in

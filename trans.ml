@@ -2651,7 +2651,7 @@ let extract_module =
           | Decl_type decls ->
               let decls' = List.map (Pair.map (Id.add_module_prefix_to_string m) Fun.id) decls in
               make_let_type decls'
-              |- List.fold_right2 (fun (s,_) (s',_) -> subst_tdata s (TData s')) decls decls'
+              |- List.fold_right2 (fun (s,_) (s',_) -> subst_tdata_ca s (TData s')) decls decls'
         in
         (tr.tr_term @@ List.fold_right aux decls t).desc
     | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
