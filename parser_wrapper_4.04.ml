@@ -1,4 +1,4 @@
-# 2 "parser_wrapper_4.03.ml"
+# 2 "parser_wrapper_4.04.ml"
 open Util
 open Asttypes
 open Typedtree
@@ -310,6 +310,7 @@ let get_constr_name desc typ env =
   | Cstr_constant _ -> desc.cstr_name
   | Cstr_block _ -> desc.cstr_name
   | Cstr_extension(path, _) -> Path.name path
+  | Cstr_unboxed -> unsupported "Cstr_unboxed"
 
 let get_label_name label env =
   label.lbl_name
@@ -691,29 +692,39 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attr
         in
         let desc = Constr(name, ts) in
         env, {desc; typ; attr=[]}
-    | Texp_record(fields, None) ->
-        let fields' = List.sort (fun (_,lbl1,_) (_,lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos) fields in
+    | Texp_record({fields; extended_expression=None}) ->
+        let fields' =
+          fields
+          |> Array.to_list
+          |> List.sort (fun (lbl1,_) (lbl2,_) -> compare lbl1.lbl_pos lbl2.lbl_pos)
+        in
         let env,fields'' =
-          let aux env (_,label,e) =
-            let env,t = from_expression env e in
+          let aux env (label,lbl_def) =
+            let env,t =
+              match lbl_def with
+              | Overridden(_,e) -> from_expression env e
+              | _ -> assert false
+            in
             env, (get_label_name label env, t)
           in
           from_list aux env fields'
         in
         env, {desc=Record fields''; typ; attr=[]}
-    | Texp_record(fields, Some init) ->
-        let labels = Array.to_list (Triple.snd @@ List.hd fields).lbl_all in
+    | Texp_record{fields; extended_expression=Some init} ->
+        let labels = Array.to_list (fst fields.(0)).lbl_all in
         let r = Id.new_var ~name:"r" typ in
         let env,fields' =
           let aux env lbl =
             let name = get_label_name lbl env in
-            try
-              let _,_,e = List.find (fun (_,lbl',_) -> lbl.lbl_name = lbl'.lbl_name) fields in
-              let env,t = from_expression env e in
-              env, (name, t)
-            with Not_found ->
-              let env,typ = from_type_expr env tenv lbl.lbl_arg in
-              env, (name, {desc=Field(make_var r,name); typ; attr=[]})
+            let _,e = Array.find (fun (lbl',_) -> lbl.lbl_name = lbl'.lbl_name) fields in
+            let env,t =
+              match e with
+              | Overridden(_,e) -> from_expression env e
+              | Kept _ ->
+                  let env,typ = from_type_expr env tenv lbl.lbl_arg in
+                  env, {desc=Field(make_var r,name); typ; attr=[]}
+            in
+            env, (name, t)
           in
           from_list aux env labels
         in
@@ -794,7 +805,7 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attr
         in
         env, Term.(lets [init,t1; last,t2] t)
     | Texp_send _
-    | Texp_new _ -> unsupported "expression (class)"
+      | Texp_new _ -> unsupported "expression (class)"
     | Texp_instvar _ -> unsupported "expression (instvar)"
     | Texp_setinstvar _ -> unsupported "expression (setinstvar)"
     | Texp_override _ -> unsupported "expression (override)"
@@ -802,6 +813,7 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attr
         let env, m', mdl = from_module_expr_top env m mb_expr in
         let env,t = from_expression env e in
         env, Term.(let_ [m',mdl] t)
+    | Texp_letexception _ -> unsupported "expression (let exception)"
     | Texp_assert e ->
         let s = Format.asprintf "%a" Location.print_compact exp_loc in
         if !Flag.Print.assert_loc then Format.printf "Found assertion: %s@." s;
@@ -849,7 +861,7 @@ and from_module_type env mty =
   | Mty_signature sgn -> TModule []
   | Mty_functor(id, None, mty2) -> unsupported "Mty_functor"
   | Mty_functor(id, Some mty1, mty2) -> TFun(from_ident id @@ from_module_type env mty1, from_module_type env mty2)
-  | Mty_alias path -> TData (Path.name path)
+  | Mty_alias(_,path) -> TData (Path.name path)
 
 and from_module_expr_top env mb_id mb_expr : env * id * term =
   let md_prefix_orig = env.md_prefix in
@@ -947,10 +959,10 @@ and from_str_item env str_item : env * (Asttypes.rec_flag * declaration) list =
   | Tstr_exception _ -> env, []
   | Tstr_module mb -> from_module_binding env tenv mb
   | Tstr_recmodule _
-  | Tstr_modtype _ -> env, []
+    | Tstr_modtype _ -> env, []
   | Tstr_open _ -> env, []
   | Tstr_class _
-  | Tstr_class_type _ -> unsupported "class"
+    | Tstr_class_type _ -> unsupported "class"
   | Tstr_include _ -> env, []
   | Tstr_attribute _ -> env, []
 
