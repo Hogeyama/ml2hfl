@@ -10,7 +10,7 @@ let num_of_positive_float f =
   let sm = string_of_float m in
   let s = String.make 16 '0' in
   (** sm starts with "0." *)
-  let _ = String.blit sm 2 s 0 (String.length sm - 2) in
+  let _ = String.blit sm 2 (Bytes.of_string s) 0 (String.length sm - 2) in
   let e' = Num.power_num (Num.Int 2) (Num.num_of_int e) in
   Num.div_num
     (Num.mult_num (Num.num_of_string s) e')

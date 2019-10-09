@@ -104,7 +104,7 @@ let initialize filename =
     oc := Some(oc_);
     ppf :=
       if !Global.print_log then Format.std_formatter
-      else Format.make_formatter (output oc_) (fun () -> flush oc_);
+      else Format.formatter_of_out_channel oc_;
     Format.fprintf !ppf "@[<v>";
     log_begin "FPAT"
   end

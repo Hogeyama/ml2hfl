@@ -851,7 +851,7 @@ let save_graphviz = Logger.log_block2 "HCCS.save_graphviz" save_graphviz
 let save_smtlib filename hcs =
   let hcs = normalize hcs in
   let oc = open_out filename in
-  let ocf = Format.make_formatter (output oc) (fun () -> flush oc) in
+  let ocf = Format.formatter_of_out_channel oc in
   let tenv = hcs |> tenv in
   let vs = hcs |> fvs |> List.map Idnt.string_of in
   Format.fprintf ocf "@[<v>";
@@ -884,7 +884,7 @@ let save_smtlib = Logger.log_block2 "HCCS.save_smtlib" save_smtlib
 
 let save_smtlib2 filename hcs =
   let oc = open_out filename in
-  let ocf = Format.make_formatter (output oc) (fun () -> flush oc) in
+  let ocf = Format.formatter_of_out_channel oc in
   let is_real = ref false in
   let string_of_ty = function
     | ty when Type.is_int ty -> " Int"

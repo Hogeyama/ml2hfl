@@ -45,7 +45,7 @@ and process_pattern env p =
   | Ppat_interval _ -> []
   | Ppat_exception _ -> []
   | Ppat_extension _ -> []
-  | _ -> []
+  | _ -> [] (* for after 4.05 *)
 and process_expopt env eopt = Util.Option.map_default (process_expression env) [] eopt
 and process_expression env e =
   match e.pexp_desc with
@@ -133,7 +133,7 @@ and process_expression env e =
   | Pexp_coerce (_, _, _) -> Util.unsupported "Not implemented: writeAnnot"
   | Pexp_extension _ -> Util.unsupported "Not implemented: writeAnnot"
   | Pexp_unreachable -> Util.unsupported "Not implemented: writeAnnot"
-  | _ -> Util.unsupported "Not implemented: writeAnnot"
+  | _ -> Util.unsupported "Not implemented: writeAnnot" (* for after 4.05 *)
 
 let process_top_level_phrase env = function
   | Ptop_dir _ ->

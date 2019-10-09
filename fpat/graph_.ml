@@ -24,8 +24,8 @@ path/cycle is Hamitonian if it contains every vertex of the graph
 
 (** @todo there is a bug related to vertices? *)
 let save_graphviz filename vertices edges =
-  let oc = open_out filename in 
-  let ocf = Format.make_formatter (output oc) (fun () -> flush oc) in
+  let oc = open_out filename in
+  let ocf = Format.formatter_of_out_channel oc in
   Format.fprintf ocf "@[<v>digraph flow {@ ";
 
   List.iter
@@ -52,7 +52,7 @@ let rec assign es assigned v root =
       (fun assigned v -> assign es assigned v root)
       ((v, root) :: assigned)
       (preds es v)
-    
+
 (** Kosaraju's algorithm *)
 let rec visit es visited l v =
   if List.mem v visited then
