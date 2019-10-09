@@ -7,7 +7,7 @@ open Syntax
 open Term_util
 open Type
 
-module Debug = Debug.Make(struct let check = Flag.Debug.make_check "Parser_wrapper" end)
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
 let () = Compmisc.init_path false
 

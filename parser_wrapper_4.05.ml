@@ -1,4 +1,4 @@
-# 2 "parser_wrapper_4.04.ml"
+# 2 "parser_wrapper_4.05.ml"
 open Util
 open Asttypes
 open Typedtree
@@ -575,19 +575,19 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attr
           from_expression env e
         in
         env, make_match t1 [p, t2]
-    | Texp_function(_,[case],Total) when is_var_case case ->
+    | Texp_function {cases=[case]; partial=Total} when is_var_case case ->
         begin
           let env,(p,t) = from_case env case in
           match p with
           | {pat_desc=PVar x} -> env, make_fun x t
           | _ -> assert false
         end
-    | Texp_function(_,pats,totality) ->
+    | Texp_function {cases; partial} ->
         let env,x,typ2 =
           match typ with
           | TFun(x,typ2) ->
               let env,x' = (* for readable variable names *)
-                let env,p = from_pattern env (List.hd pats).c_lhs in
+                let env,p = from_pattern env (List.hd cases).c_lhs in
                 let x' =
                   match p with
                   | {pat_desc=PTuple ps} ->
@@ -608,18 +608,18 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attr
               env, x', typ2
           | _ -> assert false
         in
-        let env,pats' = from_list from_case env pats in
-        let pats'' =
-          match totality with
-          | Total -> pats'
-          | Partial -> pats' @ [make_pvar (Id.new_var_id x), make_fail ~loc:exp_loc typ2]
+        let env,pats = from_list from_case env cases in
+        let pats' =
+          match partial with
+          | Total -> pats
+          | Partial -> pats @ [make_pvar (Id.new_var_id x), make_fail ~loc:exp_loc typ2]
         in
         let t =
-          match pats'' with
+          match pats' with
           | [{pat_desc=PAny},t'] -> make_fun x t'
           | [{pat_desc=PVar y},t'] -> make_fun x @@ subst_var y x t'
           | [{pat_desc=PConst{desc=Const Unit}},t'] -> make_fun x t'
-          | _ -> make_fun x @@ make_match (make_var x) pats''
+          | _ -> make_fun x @@ make_match (make_var x) pats'
         in
         env, t
     | Texp_apply(e, es) ->
