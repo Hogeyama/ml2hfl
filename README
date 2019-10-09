@@ -8,10 +8,10 @@ How to build MoCHi
 What do you need?
 =================
 
-- OCaml compiler versions (from 4.03 to 4.05)
+- OCaml compiler (from 4.03 to 4.05)
 - Libraries available via OPAM
   - ocamlfind/findlib
-  - Z3
+  - Z3 4.7.1
   - ppx_deriving
   - Yojson
   - batteries

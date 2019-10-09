@@ -948,7 +948,6 @@ end
 
 module JSON = struct
   include Yojson.Basic
-  type t = json
 
   let load file of_json =
     IO.CPS.open_in file @@
