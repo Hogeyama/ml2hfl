@@ -279,18 +279,13 @@ let print_error = function
       Format.eprintf "  due to the incompleteness of the refinement type system@."
   | e when Fpat.FPATConfig.is_fpat_exception e ->
       Format.eprintf "FPAT: %a@." Fpat.FPATConfig.pr_exception e
-  | Syntaxerr.Error err ->
-      Format.eprintf "%a@." Syntaxerr.report_error err
-  | Typecore.Error(loc,env,err) ->
-      Format.eprintf "%a%a@." Location.print_error loc (Typecore.report_error env) err
-  | Typemod.Error(loc,env,err) ->
-      Format.eprintf "%a%a@." Location.print_error loc (Typemod.report_error env) err
-  | Env.Error e ->
-      Format.eprintf "%a@." Env.report_error e
-  | Typetexp.Error(loc,env,err) ->
-      Format.eprintf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
-  | Lexer.Error(err, loc) ->
-      Format.eprintf "%a%a@." Location.print_error loc Lexer.report_error err
+  | Syntaxerr.Error _
+  | Typecore.Error _
+  | Typemod.Error _
+  | Env.Error _
+  | Typetexp.Error _
+  | Lexer.Error _ as e ->
+      Parser_wrapper.report_error e
   | CEGAR_syntax.NoProgress ->
       Format.eprintf "Unknown. (CEGAR not progress) @."
   | CEGAR_abst.NotRefined ->
@@ -303,7 +298,7 @@ let print_error = function
       Format.eprintf "%s@." s
   | TimeOut
   | Fpat.Timer.Timeout
-  | Assert_failure("timer.ml", _, _) ->
+  | Assert_failure("timer.ml", _, _) -> (* for Fpat *)
       Format.eprintf "Verification failed (time out)@."
   | e when !Flag.Debug.debug_module = [] ->
       Format.eprintf "Exception: %s@." @@ Printexc.to_string e

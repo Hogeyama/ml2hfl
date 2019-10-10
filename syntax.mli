@@ -258,6 +258,9 @@ val is_prim_var : id -> bool
 val decomp_funs : term -> id list * term
 val decomp_locals : term -> declaration list * term
 
+val print_location_ref : (Format.formatter -> Location.t -> unit) ref
+val print_location : Format.formatter -> Location.t -> unit
+
 (* ppx_deriving show *)
 val pp_term : Format.formatter -> term -> unit
 val pp_id : Format.formatter -> id -> unit

@@ -11,6 +11,26 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 let () = Compmisc.init_path false
 
+let print_location = Location.print_loc
+let () = Syntax.print_location_ref := print_location
+let add_load_path path = Config.load_path := path::!Config.load_path
+
+let report_error e =
+  match e with
+  | Syntaxerr.Error err ->
+      Format.eprintf "%a@." Syntaxerr.report_error err
+  | Typecore.Error(loc,env,err) ->
+      Format.eprintf "%a%a@." Location.print_error loc (Typecore.report_error env) err
+  | Typemod.Error(loc,env,err) ->
+      Format.eprintf "%a%a@." Location.print_error loc (Typemod.report_error env) err
+  | Env.Error e ->
+      Format.eprintf "%a@." Env.report_error e
+  | Typetexp.Error(loc,env,err) ->
+      Format.eprintf "%a%a@." Location.print_error loc (Typetexp.report_error env) err
+  | Lexer.Error(err, loc) ->
+      Format.eprintf "%a%a@." Location.print_error loc Lexer.report_error err
+  | _ -> assert false
+
 type env =
   {path : string list;
    id_env : id list;

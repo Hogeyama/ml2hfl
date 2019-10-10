@@ -24,4 +24,4 @@ RUN eval `opam config env` && \
     make install-lib && \
     make -B depend && \
     make opt && \
-    LD_LIBRARY_PATH=/home/mochi/.opam/4.03.0/lib/z3 ./mochi.opt -v
+    LD_LIBRARY_PATH=/home/mochi/.opam/$ocaml_var/lib/z3 ./mochi.opt -v

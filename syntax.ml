@@ -2,6 +2,9 @@ open Format
 open Util
 open Type
 
+let print_location_ref = ref (fun _ -> assert false)
+let print_location fm loc = !print_location_ref fm loc
+
 type label = Read | Write | Close
 and binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
 
@@ -32,7 +35,7 @@ and attr =
   | AId of int
   | ADoNotInline
   | AEffect of Type.effect list
-  | ALoc of (Location.t [@printer Location.print])
+  | ALoc of (Location.t [@printer print_location])
 
 and term = {desc:desc; typ:typ; attr:attr list}
 and desc =

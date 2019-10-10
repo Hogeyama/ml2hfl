@@ -217,6 +217,10 @@ clean:
 clean-test:
 	rm -f */*.trecs_out */*.horsat_out */*.hors */*.annot */*.dot */*.pml
 
+clean-all: clean clean-test
+	cd fpat && make clean && cd atp && make clean
+	cd csisat && make clean
+
 
 ################################################################################
 # test

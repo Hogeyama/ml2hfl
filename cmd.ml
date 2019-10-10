@@ -72,7 +72,7 @@ let rec arg_spec for_completion =
   in
   let general =
     "General options",
-    ["-I", Arg.String (fun dir -> Config.load_path := dir::!Config.load_path),
+    ["-I", Arg.String Parser_wrapper.add_load_path,
      "<dir>  Add <dir> to the list of include directories";
      "-margin", Arg.Int Format.set_margin, "<n>  Set pretty printing margin";
      "-only-result", Arg.Unit set_only_result, " Show only result";

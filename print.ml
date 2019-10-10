@@ -122,7 +122,7 @@ and print_attr fm = function
   | AId n -> fprintf fm "AId %d" n
   | ADoNotInline -> fprintf fm "ADoNotInline"
   | AEffect e -> List.print print_effect fm e
-  | ALoc l -> Location.print_compact fm l
+  | ALoc l -> print_location fm l
 
 and print_attr_list fm attrs =
   List.print print_attr fm attrs
