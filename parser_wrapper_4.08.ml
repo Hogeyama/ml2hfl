@@ -72,7 +72,7 @@ let from_mutable_flag = function
 
 let prim_typ_constr =
   ["list", TList;
-   "Pervasives.ref", TRef;
+   "Stdlib.ref", TRef;
    "option", TOption;
    "array", TArray;
    "Lazy.t", TLazy]
