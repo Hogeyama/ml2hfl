@@ -461,9 +461,9 @@ let conv_primitive_app t ts typ loc =
       make_app {randint_term with attr} [unit_term]
   | Var {Id.name="Stdlib.!"}, [t] -> make_deref t
   | Var {Id.name="Stdlib.:="}, [t1;t2] -> make_setref t1 t2
-  | Var {Id.name="Random.bool"}, [{desc=Const Unit}] -> randbool_unit_term
-  | Var {Id.name="Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
-  | Var {Id.name="Random.int"}, [t] ->
+  | Var {Id.name="Stdlib.Random.bool"}, [{desc=Const Unit}] -> randbool_unit_term
+  | Var {Id.name="Stdlib.Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
+  | Var {Id.name="Stdlib.Random.int"}, [t] ->
       let x = Id.new_var ~name:"n" Ty.int in
       make_let [x, randint_unit_term] @@
         make_assume
