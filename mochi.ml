@@ -98,6 +98,7 @@ let main_input_cegar filename =
     Main_loop.run_cegar {prog with env})
 
 let main_termination parsed =
+  if float_of_string Mconfig.ocaml_major_ver >= 4.05 then unsupported "Termination checking for OCaml >=4.05";
   let open BRA_util in
   (* let parsed = (BRA_transform.remove_unit_wraping parsed) in *)
   let parsed = BRA_transform.lambda_lift (BRA_transform.remove_unit_wraping parsed) in
