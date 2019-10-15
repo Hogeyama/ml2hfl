@@ -261,8 +261,7 @@ let rec define_rand ?(name="") (env, defs as ed) typ =
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
         (env',defs'), t
     | _ ->
-        Format.eprintf "define_rand: %a@." Print.typ typ;
-        assert false
+        unsupported @@ Format.asprintf "define_rand: %a@." Print.typ typ
 let define_rand ed typ = define_rand ~name:"" ed typ
 
 (* INPUT: type declarations must be on top *)
@@ -2638,8 +2637,8 @@ let rename_module =
   fun x y t -> tr.tr2_term (x,y) t
 
 let extract_module =
-  let tr = make_trans () in
-  let tr_desc desc =
+  let tr = make_trans2 () in
+  let tr_desc mods desc =
     match desc with
     | Local(Decl_let[m,{desc=Module decls}], t) ->
         let aux decl =
@@ -2653,20 +2652,21 @@ let extract_module =
               make_let_type decls'
               |- List.fold_right2 (fun (s,_) (s',_) -> subst_tdata_ca s (TData s')) decls decls'
         in
-        (tr.tr_term @@ List.fold_right aux decls t).desc
-    | Local(Decl_let[_m,{desc=App(_, [{desc=Module _}])}], t) ->
+        (tr.tr2_term (m::mods) @@ List.fold_right aux decls t).desc
+    | Local(Decl_let[m,{desc=App(_, [{desc=Module _}])}], t) ->
+        if Id.mem m mods then unsupported "Module shadowing";
         Flag.Encode.use_abst "Functor";
-        tr.tr_desc t.desc
+        tr.tr2_desc (m::mods) t.desc
     | Local(Decl_let[_f,{desc=Fun(_, {desc=Module _})}], t) ->
         Flag.Encode.use_abst "Functor";
-        tr.tr_desc t.desc
+        tr.tr2_desc mods t.desc
     | Module _ ->
         Format.eprintf "%a@." Print.desc desc;
         unsupported "extract_module"
-    | _ -> tr.tr_desc_rec desc
+    | _ -> tr.tr2_desc_rec mods desc
   in
-  tr.tr_desc <- tr_desc;
-  tr.tr_term
+  tr.tr2_desc <- tr_desc;
+  tr.tr2_term []
 
 let inline_module_var =
   let tr = make_trans () in
