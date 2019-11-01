@@ -57,8 +57,17 @@ let add_randint_precondition r n =
   ext_ce_ref := e;
   rand_precond_ref := c
 
-(* sat=true denotes constr is satisfiable *)
-let rec check_aux pr ce sat n constr env defs t k =
+let rec check_aux
+          (pr : CEGAR_syntax.t -> int -> int -> CEGAR_syntax.event list -> unit) (* printer *)
+          (ce : int list) (* counterexample: list of integers whose element represents which branch is taken *)
+          (sat : bool) (* true denotes constr is satisfiable *)
+          (n : int) (* length of infeasible prefix *)
+          (constr : CEGAR_syntax.t) (* constraints of which we will check the satisfiability *)
+          (env : (string * _ CEGAR_type.t) list) (* type environment (actually, types are completely used) *)
+          (defs : (CEGAR_syntax.var * CEGAR_syntax.var list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list) (* function definitions*)
+          (t : CEGAR_syntax.t) (* the term to be reduced *)
+          k (* continuation *)
+  =
   Debug.printf "check_aux[%d]: %a@." (List.length ce) CEGAR_print.term t;
   match t with
   | Const (Rand(TInt,_)) -> assert false
@@ -66,11 +75,11 @@ let rec check_aux pr ce sat n constr env defs t k =
   | Var x -> k ce sat n constr env (Var x)
   | App(Const Not, t) ->
       check_aux pr ce sat n constr env defs t (fun ce sat n constr env t ->
-      k ce sat n constr env (make_app (Const Not) [t]))
+      k ce sat n constr env Term.(not t))
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul|Div as op),t1),t2) ->
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
-      k ce sat n constr env (make_app (Const op) [t1;t2])))
+      k ce sat n constr env Term.(t1 <|op|> t2)))
   | App _ when is_app_randint t ->
      if Flag.Method.(!mode = FairNonTermination) && !ext_ce_ref = [] then
        init_cont ce sat n constr env t
@@ -88,34 +97,34 @@ let rec check_aux pr ce sat n constr env defs t k =
   | App(t1,t2) ->
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
-      if ce = [] then
+      match ce with
+      | [] ->
         if Flag.Method.(!mode = FairNonTermination) then
           init_cont ce sat n constr env (App (t1, t2))
         else
           assert false
-      else
-      let t1',ts = decomp_app (App(t1,t2)) in
-      let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
-        if List.length xs > List.length ts
-        then k ce sat n constr env (App(t1,t2))
-        else
-          let num,(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' in
-          let ts1,ts2 = List.split_nth (List.length xs) ts in
-          let aux = List.fold_right2 subst xs ts1 in
-          rand_precond_ref := aux !rand_precond_ref;
-          let tf1' = aux tf1 in
-          let tf2' = make_app (aux tf2) ts2 in
-          let constr' = make_and tf1' constr in
-          let ce' = List.tl ce in
-          let n' = if sat then n+1 else n in
-          let sat' = sat && checksat env constr' in
-          assert (List.length xs = List.length ts);
-          assert (ts2 = []);
-          pr t1' (List.hd ce) num e;
-          if e = [Event "fail"]
-          then init_cont ce' sat' n' constr' env tf2'
+      | c::ce' ->
+          let t1',ts = decomp_app (App(t1,t2)) in
+          let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
+          if List.length xs > List.length ts then
+            k ce sat n constr env (App(t1,t2))
           else
-            check_aux pr ce' sat' n' constr' env defs tf2' k))
+            let num,(f,xs,tf1,e,tf2) = assoc_def defs c t1' in
+            let ts1,ts2 = List.split_nth (List.length xs) ts in
+            let aux = List.fold_right2 subst xs ts1 in
+            rand_precond_ref := aux !rand_precond_ref;
+            let tf1' = aux tf1 in
+            let tf2' = make_app (aux tf2) ts2 in
+            let constr' = make_and tf1' constr in
+            let n' = if sat then n+1 else n in
+            let sat' = sat && checksat env constr' in
+            assert (List.length xs = List.length ts);
+            assert (ts2 = []);
+            pr t1' c num e;
+            if e = [Event "fail"] then
+              init_cont ce' sat' n' constr' env tf2'
+            else
+              check_aux pr ce' sat' n' constr' env defs tf2' k))
     | Let _ -> assert false
     | Fun _ -> assert false
 
@@ -183,13 +192,6 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
 
 
 
-
-
-
-
-
-
-
 let init_cont ce ce_br env _ = assert (ce=[]); List.rev ce_br
 
 let assoc_def defs n t ce_br =
@@ -207,7 +209,7 @@ let rec trans_ce ce ce_br env defs t k =
   | App(App(Const (And|Or|Lt|Gt|Leq|Geq|EqUnit|EqBool|EqInt|Add|Sub|Mul|Div as op),t1),t2) ->
       trans_ce ce ce_br env defs t1 (fun ce ce_br env t1 ->
       trans_ce ce ce_br env defs t2 (fun ce ce_br env t2 ->
-      k ce ce_br env (make_app (Const op) [t1;t2])))
+      k ce ce_br env Term.(t1 <|op|> t2)))
 (*
   | App(Const (Event s), t) -> trans_ce ce constr env defs (App(t,Const Unit)) k
 *)
@@ -222,8 +224,8 @@ let rec trans_ce ce ce_br env defs t k =
       trans_ce ce ce_br env defs t2 (fun ce ce_br env t2 ->
       let t1',ts = decomp_app (App(t1,t2)) in
       let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
-      if List.length xs > List.length ts
-      then k ce ce_br env (App(t1,t2))
+      if List.length xs > List.length ts then
+        k ce ce_br env (App(t1,t2))
       else
         let ce_br',(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' ce_br in
         let ts1,ts2 = List.split_nth (List.length xs) ts in
@@ -232,9 +234,10 @@ let rec trans_ce ce ce_br env defs t k =
         let ce' = List.tl ce in
         assert (List.length xs = List.length ts);
         assert (ts2 = []);
-        if e = [Event "fail"]
-        then init_cont ce' ce_br' env tf2'
-        else (assert (e=[]); trans_ce ce' ce_br' env defs tf2' k)))
+        match e with
+        | [Event "fail"] -> init_cont ce' ce_br' env tf2'
+        | [] -> trans_ce ce' ce_br' env defs tf2' k
+        | _ -> assert false))
   | Let _ -> assert false
   | Fun _ -> assert false
 
@@ -253,6 +256,9 @@ let trans_ce ce {defs=defs;main=main} =
 let print_ce_reduction ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs=defs;main=main} =
   let ce' = List.tl ce in
   let _,_,_,e,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  (* t: Term to be print *)
+  (* n: Number of the branches *)
+  (* e: Events *)
   let pr t br n e =
     let s1 = if n = 1 then "" else " [" ^ string_of_int (br+1) ^ "/" ^ string_of_int n ^ "]" in
     let s2 = match e with [] -> "" | [Event s] -> s ^ " -->" | _ -> assert false in

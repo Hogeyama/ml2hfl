@@ -934,9 +934,11 @@ module Term = struct
   let (>=) = make_geq
   let (&&) = make_and
   let (||) = make_or
+  let not = make_not
   let (+) = make_add
   let (-) = make_sub
   let ( * ) = make_mul
   let (/) = make_div
   let (|->) = subst
+  let (<|) t1 op t2 = make_app (Const op) [t1;t2] and (|>) mb t2 = mb t2
 end
