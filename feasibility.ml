@@ -28,8 +28,8 @@ let get_solution env t =
 let init_cont ce sat n constr env _ = assert (Flag.Method.(!mode <> FairNonTermination) => (ce=[])); constr, n, env
 
 let assoc_def defs n t =
-  let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
-    List.length defs', List.nth defs' n
+  let defs' = List.filter (fun def -> Var def.fn = t) defs in
+  List.length defs', List.nth defs' n
 
 let add_randint_precondition map_randint_to_preds ext_ce rand_precond r = function
   | None -> rand_precond, ext_ce
@@ -64,7 +64,7 @@ let rec check_aux
           (n : int) (* length of infeasible prefix *)
           (constr : CEGAR_syntax.t) (* constraints of which we will check the satisfiability *)
           (env : (string * _ CEGAR_type.t) list) (* type environment (actually, types are completely used) *)
-          (defs : (CEGAR_syntax.var * CEGAR_syntax.var list * CEGAR_syntax.t * CEGAR_syntax.event list * CEGAR_syntax.t) list) (* function definitions*)
+          (defs : CEGAR_syntax.fun_def list) (* function definitions*)
           (t : CEGAR_syntax.t) (* the term to be reduced *)
           k (* continuation *)
   =
@@ -106,11 +106,11 @@ let rec check_aux
           assert false
       | c::ce' ->
           let t1',ts = decomp_app (App(t1,t2)) in
-          let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
+          let {args=xs} = List.find (fun def -> Var def.fn = t1') defs in
           if List.length xs > List.length ts then
             k ce sat n constr env (App(t1,t2))
           else
-            let num,(f,xs,tf1,e,tf2) = assoc_def defs c t1' in
+            let num,{fn=f;args=xs;cond=tf1;events=e;body=tf2} = assoc_def defs c t1' in
             let ts1,ts2 = List.split_nth (List.length xs) ts in
             let aux = List.fold_right2 subst xs ts1 in
             rand_precond_ref := aux !rand_precond_ref;
@@ -142,7 +142,7 @@ let check ce {defs; main} =
   set_status @@ Flag.Log.Other (Format.sprintf "(%d-3) Feasibility checking" !Flag.Log.cegar_loop);
   if false then Format.printf "ce:	  %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
-  let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  let {body=t} = List.find (fun def -> def.fn = main) defs in
   let pr _ _ _ _ = () in
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
   let prefix = get_prefix ce (n+1) in
@@ -166,7 +166,7 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
   set_status @@ Flag.Log.Other (Format.sprintf "(%d-3) Feasibility checking" !Flag.Log.cegar_loop);
   if false then Format.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
-  let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  let {body=t} = List.find (fun def -> def.fn = main) defs in
   let pr _ _ _ _ = () in
   init_refs map_randint_to_preds ext_ce; (* initialize abstraction predicate path of randint *)
   let constr,n,env' = check_aux pr ce' true 0 (Const True) [] defs t init_cont in
@@ -196,7 +196,7 @@ let check_non_term ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs; main} =
 let init_cont ce ce_br env _ = assert (ce=[]); List.rev ce_br
 
 let assoc_def defs n t ce_br =
-  let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
+  let defs' = List.filter (fun def -> Var def.fn = t) defs in
   let len = List.length defs' in
   let ce_br' = if len > 1 then (n=0)::ce_br else ce_br in
   ce_br', List.nth defs' n
@@ -224,11 +224,11 @@ let rec trans_ce ce ce_br env defs t k =
       trans_ce ce ce_br env defs t1 (fun ce ce_br env t1 ->
       trans_ce ce ce_br env defs t2 (fun ce ce_br env t2 ->
       let t1',ts = decomp_app (App(t1,t2)) in
-      let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
+      let {args=xs} = List.find (fun def -> Var def.fn = t1') defs in
       if List.length xs > List.length ts then
         k ce ce_br env (App(t1,t2))
       else
-        let ce_br',(f,xs,tf1,e,tf2) = assoc_def defs (List.hd ce) t1' ce_br in
+        let ce_br',{fn=f;args=xs;cond=tf1;events=e;body=tf2} = assoc_def defs (List.hd ce) t1' ce_br in
         let ts1,ts2 = List.split_nth (List.length xs) ts in
         let aux = List.fold_right2 subst xs ts1 in
         let tf2' = make_app (aux tf2) ts2 in
@@ -245,7 +245,7 @@ let rec trans_ce ce ce_br env defs t k =
 let trans_ce ce {defs=defs;main=main} =
   Debug.printf "ce:        %a@." CEGAR_print.ce ce;
   let ce' = List.tl ce in
-  let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  let {body=t} = List.find (fun def -> def.fn = main) defs in
   trans_ce ce' [] [] defs t init_cont
 
 
@@ -256,7 +256,7 @@ let trans_ce ce {defs=defs;main=main} =
 
 let print_ce_reduction ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs=defs;main=main} =
   let ce' = List.tl ce in
-  let _,_,_,e,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  let {events=e;body=t} = List.find (fun def -> def.fn = main) defs in
   (* t: Term to be printed *)
   (* br: branch will be taken *)
   (* n: Number of the branches *)

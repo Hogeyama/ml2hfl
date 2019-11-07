@@ -55,17 +55,18 @@ let rec beta_reduce_term = function
       end
   | Fun(x, typ, t) -> Fun(x, typ, beta_reduce_term t)
   | Let _ -> assert false
-let beta_reduce_def (f,xs,t1,e,t2) =
-  f, xs, beta_reduce_term t1, e, beta_reduce_term t2
+let beta_reduce_def def =
+  {def with cond=beta_reduce_term def.cond; body=beta_reduce_term def.body}
 
 let rec expand_non_rec {env;defs;main;info} =
   let non_rec = info.non_rec in
-  let aux (f,xs,t1,e,t2) =
-    let non_rec' = List.filter_out (fst |- List.mem -$- xs) non_rec in
-    f, xs, subst_map non_rec' t1, e, subst_map non_rec' t2 in
+  let aux ({args; cond; body} as def) =
+    let non_rec' = List.filter_out (fst |- List.mem -$- args) non_rec in
+    {def with cond=subst_map non_rec' cond; body=subst_map non_rec' body}
+  in
   let defs' =
     defs
-    |> List.filter_out (fun (f,_,_,_,_) -> List.mem_assoc f non_rec)
+    |> List.filter_out (fun def -> List.mem_assoc def.fn non_rec)
     |> List.map aux
     |> List.map beta_reduce_def
   in
@@ -158,10 +159,10 @@ let rec trans_eager_term env c t =
       let t1' = trans_eager_term env (_App (Var f)) t1 in
       c Term.(let_ f (fun_ x t2') t1')
 
-let trans_eager_def env (f,xs,t1,e,t2) =
+let trans_eager_def env ({fn=f; args=xs; cond; body} as def) =
   let env' = get_arg_env (List.assoc f env) xs @@@ env in
-  assert (t1 = Const True);
-  f, xs, t1, e, trans_eager_term env' Fun.id t2
+  assert (cond = Const True);
+  {def with body = trans_eager_term env' Fun.id body}
 
 let trans_eager prog = map_def_prog (trans_eager_def prog.env) prog
 
@@ -220,10 +221,9 @@ let rec eta_expand_term env t typ =
       | _ ->
           Format.eprintf "%a, %a@." CEGAR_print.term t CEGAR_print.typ typ;
           assert false
-let eta_expand_def env (f,xs,t1,e,t2) =
-  let typ,env' = decomp_typ_var (List.assoc f env) xs in
-  let t2' = eta_expand_term (env' @ env) t2 typ in
-  f, xs, t1, e, t2'
+let eta_expand_def env ({fn=f; args; body} as def) =
+  let typ,env' = decomp_typ_var (List.assoc f env) args in
+  {def with body = eta_expand_term (env' @ env) body typ}
 let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
 
@@ -426,7 +426,7 @@ let rec abstract_typ = function
 let abstract_typ typ = List.get @@ abstract_typ typ
 
 
-let abstract_def env (f,xs,t1,e,t2) =
+let abstract_def env {fn=f; args=xs; cond=t1; events=e; body=t2} =
   let xs,t1,t2 =
     if List.exists (fun x -> x = "l0" || x = "l1") xs then
       let xs' = List.map (fun x -> x ^ "___") xs in
@@ -450,13 +450,14 @@ let abstract_def env (f,xs,t1,e,t2) =
     |> make_let'
     |> eta_reduce_term
   in
+  let cond = Const True in
   if e <> [] && t1 <> Const True then
     let g = rename_id f in
     let fv = List.Set.diff (get_fv t2') (List.map fst env) in
-    [g, fv, Const True, e, t2';
-     f, xs', Const True, [], assume env' [] pts t1 @@ make_app (Var g) (List.map _Var fv)]
+    [{fn=g; args=fv; cond; events=e; body=t2'};
+     {fn=f; args=xs'; cond; events=[]; body=assume env' [] pts t1 @@ make_app (Var g) (List.map _Var fv)}]
   else
-    [f, xs', Const True, e, assume env' [] pts t1 t2']
+    [{fn=f; args=xs'; cond; events=e; body=assume env' [] pts t1 t2'}]
 
 let abstract_prog prog =
   let env =

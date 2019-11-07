@@ -89,7 +89,7 @@ let rec abstract_term env cond pbs t typ =
 
 
 
-let abstract_def env (f,xs,t1,e,t2) =
+let abstract_def env {fn=f; args=xs; cond=t1; events; body=t2} =
   let rec aux typ xs env =
     match xs with
     | [] -> typ, env
@@ -105,14 +105,15 @@ let abstract_def env (f,xs,t1,e,t2) =
   let typ,env' = aux (List.assoc f env) xs env in
   let pbs = List.rev_flatten_map (Fun.uncurry abst_arg) env' in
   let t2' = abstract_term env' [t1] pbs t2 typ in
-  if e <> [] && t1 <> Const True
-  then
+  let cond = Const True in
+  if events <> [] && t1 <> Const True then
     let g = new_id "f" in
     let fv = List.Set.diff (get_fv t2') (List.map fst env) in
     let t = assume env' [] pbs t1 (make_app (Var g) @@ List.map _Var fv) in
-    [g,fv,Const True,e,t2'; f,xs,Const True,[],t]
+    [{fn=g; args=fv; cond; events; body=t2'};
+     {fn=f; args=xs; cond; events=[]; body=t}]
   else
-    [f, xs, Const True, e, assume env' [] pbs t1 t2']
+    [{fn=f; args=xs; cond; events; body=assume env' [] pbs t1 t2'}]
 
 
 

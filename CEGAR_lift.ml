@@ -37,19 +37,19 @@ let rec lift_term lift_unused xs t =
       let xs',t1',lifted = lift_aux lift_unused f' xs t1 in
       let defs1,t1'' = lift_term lift_unused xs' t1' in
       let defs2,t2' = lift_term lift_unused xs @@ subst f lifted t2 in
-      (f',xs',Const True,[],t1'') :: defs1 @ defs2, t2'
+      {fn=f'; args=xs'; cond=Const True; events=[]; body=t1''} :: defs1 @ defs2, t2'
   | Fun _ ->
       let f' = new_id @@ "f_" ^ string_of_int !Flag.Log.cegar_loop in
       let xs',t',lifted = lift_aux lift_unused f' xs t in
       let defs,t'' = lift_term lift_unused xs' t' in
-      (f',xs',Const True,[],t'') :: defs, lifted
+      {fn=f'; args=xs'; cond=Const True; events=[]; body=t''} :: defs, lifted
 
-let lift_def lift_unused (f,xs,t1,e,t2) =
+let lift_def lift_unused ({args=xs;cond=t1;body=t2} as def) =
   let ys,t2' = decomp_fun t2 in
   let xs' = xs@ys in
   let defs1,t1' = lift_term lift_unused xs t1 in
   let defs2,t2'' = lift_term lift_unused xs' t2' in
-  (f, xs', t1', e, t2'')::defs1@defs2
+  {def with args=xs'; cond=t1'; body=t2''}::defs1@defs2
 
 let lift0 lift_unused prog =
   Debug.printf "##[CEGAR_lift] INPUT:@.%a@.@." CEGAR_print.prog_typ prog;

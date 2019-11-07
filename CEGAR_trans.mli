@@ -21,7 +21,7 @@ val get_var_arity : 'a -> ('a * typ) list -> int
 
 val is_CPS_value : (var * typ) list -> t -> bool
 
-val is_CPS_def : (var * typ) list -> var * var list * t * 'a * t -> bool
+val is_CPS_def : (var * typ) list -> fun_def -> bool
 
 val is_CPS : prog -> bool
 
@@ -52,9 +52,7 @@ val step_eval_abst_cbn :
   int list ->
   var list ->
   'a ->
-  (var * var list * t *
-   event list * t)
-  list -> t -> int list * t
+  fun_def list -> t -> int list * t
 
 val eval_abst_cbn : prog -> var list -> prog -> int list -> unit
 

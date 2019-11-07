@@ -35,8 +35,8 @@ val make_arg_let_term : CEGAR_syntax.t -> CEGAR_syntax.t
 val reduce_let : CEGAR_syntax.env -> CEGAR_syntax.t -> CEGAR_syntax.t
 val make_arg_let_def :
   (CEGAR_syntax.var * CEGAR_syntax.typ) list ->
-  CEGAR_syntax.var * CEGAR_syntax.var list * 'a * 'b * CEGAR_syntax.t ->
-  CEGAR_syntax.var * CEGAR_syntax.var list * 'a * 'b * CEGAR_syntax.t
+  CEGAR_syntax.fun_def ->
+  CEGAR_syntax.fun_def
 val make_arg_let : CEGAR_syntax.prog -> CEGAR_syntax.prog
 val add_label :
   CEGAR_syntax.prog -> CEGAR_syntax.var list * CEGAR_syntax.prog

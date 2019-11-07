@@ -14,9 +14,9 @@ let is_head_tuple t =
 let and_cps = "and_cps"
 let or_cps = "or_cps"
 let not_cps = "not_cps"
-let and_def = and_cps, ["x"; "y"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Var "y")) (App(Var "k", Const False)))
-let or_def = or_cps, ["x"; "y"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Const True)) (App(Var "k", Var "y")))
-let not_def = not_cps, ["x"; "k"], Const True, [], (make_if (Var "x") (App(Var "k", Const False)) (App(Var "k", Const True)))
+let and_def = {fn=and_cps; args=["x"; "y"; "k"]; cond=Const True; events=[]; body=Term.(if_ (var "x") (var "k" @ [var "y"]) (var "k" @ [false_]))}
+let or_def = {fn=or_cps; args=["x"; "y"; "k"]; cond=Const True; events=[]; body=Term.(if_ (var "x") (var "k" @ [true_]) (var "k" @ [var "y"]))}
+let not_def = {fn=not_cps; args=["x"; "k"]; cond=Const True; events=[]; body=Term.(if_ (var "x") (var "k" @ [false_]) (var "k" @ [true_]))}
 
 let rec trans_const = function
   | Const (Int _ | Unit | True | False | Rand(TBool,_) | If | Tuple _ | Bottom | Label _ as c) -> Const c
@@ -107,17 +107,17 @@ let rec trans_simpl c = function
       let k = new_id "k" in
       c (Fun(x, None, Fun(k, None, trans_simpl (fun x -> App(Var k, x)) t)))
 
-let trans_simpl_def (f,xs,t1,e,t2) =
-  assert (xs = []);
-  let t2 = trans_simpl (fun x -> x) t2 in
-  Debug.printf "TRANS1: %a@." CEGAR_print.term t2;
-  let t2 = trans_const t2 in
-  Debug.printf "TRANS2: %a@." CEGAR_print.term t2;
-  (f, [], t1, e, t2)
+let trans_simpl_def def =
+  assert (def.args = []);
+  let body =
+    def.body
+    |> trans_simpl Fun.id
+    |@> Debug.printf "TRANS1: %a@." CEGAR_print.term
+    |> trans_const
+    |@> Debug.printf "TRANS2: %a@." CEGAR_print.term
+  in
+  {def with body}
 
-
-
-let hd x = assert (List.length x = 1); List.hd x
 
 let rec extract_tuple_var env x =
   match List.assoc x env with
@@ -143,11 +143,11 @@ let rec extract_tuple_term env = function
       let t',ts = decomp_app t2 in
         [make_app t1 ts]
   | App(t1,t2) ->
-      [make_app (hd (extract_tuple_term env t1)) (extract_tuple_term env t2)]
+      [make_app (List.get (extract_tuple_term env t1)) (extract_tuple_term env t2)]
 (*
   | Let(x,t1,t2) ->
-      let t1' = hd (extract_tuple_term env t1) in
-      let t2' = hd (extract_tuple_term env t2) in
+      let t1' = List.get (extract_tuple_term env t1) in
+      let t2' = List.get (extract_tuple_term env t2) in
         [Let(x, t1', t2')]
   | Fun(x,t) ->
       let xs = extract_tuple_var env x in
@@ -156,12 +156,13 @@ let rec extract_tuple_term env = function
   | Fun _ -> assert false
 
 
-let extract_tuple_def env (f,xs,t1,e,t2) =
+let extract_tuple_def env {fn=f; args=xs; cond=t1; events; body=t2} =
   let env' = get_arg_env (List.assoc f env) xs @@@ env in
   let xs' = List.flatten (List.map (extract_tuple_var env') xs) in
-  let t1' = hd (extract_tuple_term env t1) in
-  let t2' = hd (extract_tuple_term env' t2) in
-    f, xs', t1', e, t2'
+  let t1' = List.get (extract_tuple_term env t1) in
+  let t2' = List.get (extract_tuple_term env' t2) in
+  {fn=f;args=xs';cond=t1';events;body=t2'}
+
 let extract_tuple {env;defs;main;info} =
   let defs = List.map (extract_tuple_def env) defs in
   let () = if false then Format.printf "EXTRACTED:\n%a@." CEGAR_print.prog {env=[];defs;main;info} in
@@ -169,18 +170,18 @@ let extract_tuple {env;defs;main;info} =
 
 
 
-let to_funs_def (f,xs,t1,e,t2) = f, [], t1, e, List.fold_right (fun x t-> Fun(x,None,t)) xs t2
+let to_funs_def {fn=f; args=xs; cond=t1; events; body=t2} = {fn=f; args=[]; cond=t1; events; body=List.fold_right (fun x t-> Fun(x,None,t)) xs t2}
 let to_funs defs = List.map to_funs_def defs
 
 
 let rec reduce = function
-    Const c -> Const c
+  | Const c -> Const c
   | Var x -> Var x
   | App(Fun(x,_,t1),t2) -> reduce (subst x t2 t1)
   | App(t1,t2) -> App(reduce t1, reduce t2)
   | Fun(x,typ,t) -> Fun(x, typ, reduce t)
   | Let(x,t1,t2) -> reduce (subst x t1 t2)
-let reduce_def (f,xs,t1,e,t2) = f,xs,t1,e,reduce t2
+let reduce_def def = {def with body = reduce def.body}
 
 let trans {env;defs;main;info} lift_opt =
   let _ = Typing.infer {env;defs;main;info} in

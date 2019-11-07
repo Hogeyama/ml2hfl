@@ -352,7 +352,7 @@ let new_env env x =
   let typ = template (List.assoc x env) in
     x, typ
 
-let constraints_def env_orig env (f,xs,t1,_,t2)  =
+let constraints_def env_orig env {fn=f;args=xs;cond=t1;body=t2}  =
   let f_typ_orig = List.assoc f env_orig in
   let env_orig' = get_arg_env f_typ_orig xs @@@ env_orig in
   let f_typ = List.assoc f env in
@@ -455,10 +455,10 @@ let rec elim_term env = function
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let elim_def env (f,xs,t1,es,t2) =
+let elim_def env {fn=f;args=xs;cond=t1;events;body=t2} =
   let f_typ = List.assoc f env in
-  if snd (decomp_tfun f_typ) = TTop
-  then []
+  if snd (decomp_tfun f_typ) = TTop then
+    None
   else
     let use = use_of_typ f_typ in
     let xs' = List.map (List.nth xs) use in
@@ -469,12 +469,12 @@ let elim_def env (f,xs,t1,es,t2) =
       | _ -> []
     in
     let env' = get_arg_env f_typ xs @@@ env in
-    [f, xs', elim_term env' t1, es, elim_term env' t2]
+    Some {fn=f; args=xs'; cond=elim_term env' t1; events; body=elim_term env' t2}
 
 (** call-by-name *)
 let elim {env; defs; main; info} =
   let env' = infer {env; defs; main; info} in
-  let defs' = List.flatten_map (elim_def env') defs in
+  let defs' = List.filter_map (elim_def env') defs in
   Format.printf "BEFORE:@.%a@.@.%a@.AFTER:@.%a@."
                 CEGAR_print.prog {env; defs; main; info} print_env env'
                 CEGAR_print.prog {env; defs=defs'; main; info};

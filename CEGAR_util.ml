@@ -17,7 +17,7 @@ let const_of_bool b = if b then True else False
 
 let type_not_found x = raise (Type_not_found x)
 
-let map_body_def f (g,xs,t1,e,t2) = g, xs, t1, e, f t2
+let map_body_def f def = {def with body = f def.body}
 let map_def_prog f prog = {prog with defs = List.map f prog.defs}
 let map_body_prog f prog = map_def_prog (map_body_def f) prog
 
@@ -79,7 +79,7 @@ let rec arg_num = function
 
 let rec pop_main {env;defs;main;info} =
   let compare_fun f g = compare (g = main, f) (f = main, g) in
-  let compare_def (f,_,_,_,_) (g,_,_,_,_) = compare_fun f g in
+  let compare_def {fn=f} {fn=g} = compare_fun f g in
   let compare_env (f,_) (g,_) = compare_fun f g in
   let env' = List.sort compare_env env in
   let defs' = List.sort compare_def defs in
@@ -116,11 +116,11 @@ let rec put_arg_into_if_term t =
   | Let(x,t1,t2) -> Let(x, put_arg_into_if_term t1, put_arg_into_if_term t2)
 let put_arg_into_if prog = map_body_prog put_arg_into_if_term prog
 
-let eta_expand_def env (f,xs,t1,e,t2) =
+let eta_expand_def env ({fn=f; args=xs; body=t2} as def) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = List.init d (fun _ -> new_id "x") in
   let t2' = List.fold_left (fun t x -> App(t, Var x)) t2 ys in
-  f, xs@ys, t1, e, t2' (* put_arg_into_term t2' *)
+  {def with fn=f; args=xs@ys; body=t2'} (* put_arg_into_term t2' *)
 
 let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
@@ -179,12 +179,6 @@ let decomp_rand_typ ?(xs=None) typ =
       typs', preds
   | _ -> assert false
 
-let mem_assoc_renv n env =
-  try
-    ignore @@ assoc_renv n env;
-    true
-  with Not_found -> false
-
 let rec col_rand_ids t =
   match t with
   | Const (Rand(TInt, Some n)) -> [n]
@@ -195,7 +189,7 @@ let rec col_rand_ids t =
   | Fun _ -> unsupported "col_rand_ids"
 
 let get_renv_aux prog i =
-  let f,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
+  let {fn=f;args=xs} = List.find (fun {body} -> List.mem i @@ col_rand_ids body) prog.defs in
   let typs,_ = decomp_tfun (List.assoc f prog.env) in
   let env = List.combine xs typs in
   List.filter (is_base -| snd) env
@@ -510,14 +504,14 @@ let assoc_fun_def defs f =
     let map = List.map2 (fun x x' -> x, Var x') xs xs' in
     List.fold_right (fun x t -> Fun(x,None,t)) xs' (subst_map map t)
   in
-  let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
+  let defs' = List.filter (fun {fn=g} -> f = g) defs in
   match defs' with
-  | [_,xs,Const True,_,t] -> make_fun xs t
+  | [{args=xs; cond=Const True; body=t}] -> make_fun xs t
   | [_] -> raise (Fatal "Not implemented: CEGAR_abst_CPS.assoc_fun_def")
-  | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when make_not t11 = t21 ->
+  | [{args=xs1;cond=t11;body=t12}; {args=xs2;cond=t21;body=t22}] when make_not t11 = t21 ->
       assert (xs1 = xs2);
       make_fun xs1 (make_if t11 t12 t22)
-  | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
+  | [{args=xs1;cond=t11;body=t12}; {args=xs2;cond=t21;body=t22}] when t11 = make_not t21 ->
       assert (xs1 = xs2);
       make_fun xs1 (make_if t21 t22 t12)
   | _ -> Format.eprintf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
@@ -527,17 +521,17 @@ let get_non_rec red_CPS prog =
   let main = prog.main in
   let orig_fun_list = prog.info.orig_fun_list in
   let force = prog.info.inlined in
-  let check (f,xs,t1,e,t2) =
-    let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
-    let used = List.count (fun (_,_,_,_,t2) -> List.mem f @@ get_fv t2) defs in
-    List.for_all (fun (_,_,t1,e,_) -> e = []) defs' &&
+  let check {fn=f;args=xs;cond=t1;body=t2} =
+    let defs' = List.filter (fun {fn=g} -> f = g) defs in
+    let used = List.count (fun {body} -> List.mem f @@ get_fv body) defs in
+    List.for_all (fun {events} -> events = []) defs' &&
     f <> main &&
-    (List.for_all (fun (_,xs,_,_,t2) -> List.Set.subset (get_fv t2) xs) defs' ||
+    (List.for_all (fun {args=xs;body=t2} -> List.Set.subset (get_fv t2) xs) defs' ||
      (1 >= used || List.mem f force) &&
      2 >= List.length defs')
   in
   let defs' = List.filter check defs in
-  let non_rec = List.rev_map (fun (f,_,_,_,_) -> f, assoc_fun_def defs f) defs' in
+  let non_rec = List.rev_map (fun {fn=f} -> f, assoc_fun_def defs f) defs' in
   let non_rec' =
     if !Flag.PredAbst.expand_non_rec_init then
       non_rec
@@ -588,17 +582,17 @@ let eval_step_by_step  prog =
       let map = List.map2 (fun x x' -> x, Var x') xs xs' in
       List.fold_right (fun x t -> Fun(x,None,t)) xs' (subst_map map t)
     in
-    let defs' = List.filter (fun (g,_,_,_,_) -> f = g) defs in
+    let defs' = List.filter (fun {fn=g} -> f = g) defs in
     match defs' with
-    | [_,xs,Const True,_,t] -> make_fun xs t
+    | [{args=xs; cond=Const True; body=t}] -> make_fun xs t
     | [_] -> raise (Fatal "Not implemented: CEGAR_abst_CPS.assoc_fun_def")
-    | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when make_not t11 = t21 ->
+    | [{args=xs1;cond=t11;body=t12}; {args=xs2;cond=t21;body=t22}] when make_not t11 = t21 ->
         assert (xs1 = xs2);
         make_fun xs1 (make_if t11 t12 t22)
-    | [_,xs1,t11,_,t12; _,xs2,t21,_,t22] when t11 = make_not t21 ->
+    | [{args=xs1;cond=t11;body=t12}; {args=xs2;cond=t21;body=t22}] when t11 = make_not t21 ->
         assert (xs1 = xs2);
         make_fun xs1 (make_if t21 t22 t12)
-    | [_,xs1,Const True,_,t12; _,xs2,Const True,_,t22] -> make_fun xs1 @@ make_br t22 t12
+    | [{args=xs1; cond=Const True; body=t12}; {args=xs2; cond=Const True; body=t22}] -> make_fun xs1 @@ make_br t22 t12
     | _ -> Format.eprintf "LENGTH[%s]: %d@." f @@ List.length defs'; assert false
   in
   let counter = ref 0 in
@@ -689,7 +683,7 @@ let make_map_randint_to_preds prog =
   let env' = List.filter (is_randint_var -| fst) prog.env in
   let aux (f,typ) =
     let i = Option.get @@ decomp_randint_name f in
-    let _,xs,_,_,_ = List.find (fun (_,_,_,_,t) -> List.mem i @@ col_rand_ids t) prog.defs in
+    let {args=xs} = List.find (fun {body} -> List.mem i @@ col_rand_ids body) prog.defs in
     let _,preds = decomp_rand_typ ~xs:(Some (List.map _Var xs)) typ in
     i, preds
   in
@@ -788,10 +782,10 @@ let rec col_app t =
 (* only remove trivially the same arguments *)
 let elim_same_arg prog =
   let find_same_arg defs =
-    let fs = List.map (fun (f,_,_,_,_) -> f) defs in
+    let fs = List.map (fun def -> def.fn) defs in
     let apps =
       defs
-      |> List.flatten_map (fun (_,_,cond,_,t) -> assert (col_app cond = []); col_app t)
+      |> List.flatten_map (fun {cond;body=t} -> assert (col_app cond = []); col_app t)
       |> List.filter (fun (f,_) -> List.mem f fs)
     in
     let candidates =
@@ -822,7 +816,7 @@ let elim_same_arg prog =
     | Fun _ -> unsupported "col_app"
   in
   let elim_arg_def defs (f,i,j) =
-    let elim (g,xs,cond,e,t) =
+    let elim {fn=g;args=xs;cond;events;body=t} =
       if g = f then
         let x = List.nth xs i in
         let y = List.nth xs j in
@@ -830,10 +824,10 @@ let elim_same_arg prog =
         Debug.printf "elim[%d,%d]: %s@." i j y;
         let cond' = subst y (Var x) cond in
         let t' = elim_arg (f,j) @@ subst y (Var x) t in
-        g, xs', cond', e, t'
+        {fn=g; args=xs'; cond=cond'; events; body=t'}
       else
         let t' = elim_arg (f,j) t in
-        g, xs, cond, e, t'
+        {fn=g; args=xs; cond; events; body=t'}
     in
     List.map elim defs
   in

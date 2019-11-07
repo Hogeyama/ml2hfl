@@ -79,7 +79,7 @@ let rec trans_term br = function
   | Fun _ -> assert false
   | Let _ -> assert false
 
-let rec trans_fun_def br (f,xs,t1,es,t2) =
+let rec trans_fun_def br {fn=f; args=xs; cond=t1; events=es; body=t2} =
   let rec add_event e t =
     match e with
     | Event s -> HS.PTapp(HS.Name ("event_" ^ s), [t])

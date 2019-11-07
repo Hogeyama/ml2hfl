@@ -414,18 +414,18 @@ let rec is_CPS_value env = function
         n > List.length ts && List.for_all (is_CPS_value env) ts
   | Let _ -> assert false
   | Fun _ -> assert false
-let is_CPS_def env (f,xs,cond,es,t) =
+let is_CPS_def env {fn=f; args=xs; cond; body=t} =
   let env' = get_arg_env (List.assoc f env) xs @@@ env in
   let b1 = is_CPS_value env' cond in
   let b2 =
     match t with
-        Const _ -> true
-      | Var _ -> true
-      | App _ -> List.for_all (is_CPS_value env') (snd (decomp_app t))
-      | Let _ -> assert false
-      | Fun _ -> assert false
+    | Const _ -> true
+    | Var _ -> true
+    | App _ -> List.for_all (is_CPS_value env') (snd (decomp_app t))
+    | Let _ -> assert false
+    | Fun _ -> assert false
   in
-    b1 && b2
+  b1 && b2
 let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 
 
@@ -434,20 +434,20 @@ let is_CPS {env=env;defs=defs} = List.for_all (is_CPS_def env) defs
 let event_of_temp {env;defs;main;info} =
   if List.mem ACPS info.attr
   then
-    let make_event (f,xs,t1,e,t2) =
-      assert (e = []);
+    let make_event ({fn=f; args=xs; cond=t1; events; body=t2} as def) =
+      assert (events = []);
       match t2 with
       | App(Const (Temp s), t2') when t1 = Const True || not @@ List.mem ACPS info.attr ->
-          [], [f, xs, t1, [Event s], App(t2', Const Unit)]
+          [], [{def with events=[Event s]; body=App(t2', Const Unit)}]
       | App(Const (Temp s), t2') ->
           let g = new_id s in
           let u = new_id "u" in
           let k = new_id "k" in
-          [g, TFun(typ_unit,fun _ -> TFun(TFun(typ_unit, fun _ -> typ_result), fun _ -> typ_result))],
+          [g, TFun(typ_unit, fun _ -> TFun(TFun(typ_unit, fun _ -> typ_result), fun _ -> typ_result))],
           (* cannot refute if u is eliminated, because k cannot have predicates in current impl. *)
-          [g, [u; k], Const True, [Event s], App(Var k, Const Unit);
-           f, xs, t1, [], Term.(Var g @ [unit; t2'])]
-      | _ -> [], [f, xs, t1, [], t2]
+          [{fn=g; args=[u; k]; cond=Const True; events=[Event s]; body=App(Var k, Const Unit)};
+           {fn=f; args=xs; cond=t1; events=[]; body=Term.(Var g @ [unit; t2'])}]
+      | _ -> [], [def]
     in
     let envs,defss = List.split_map make_event defs in
     {env=List.flatten envs @@@ env; defs=List.flatten defss; main; info}
@@ -460,10 +460,10 @@ let event_of_temp {env;defs;main;info} =
       | Fun _ -> assert false
       | Let _ -> assert false
     in
-    let evts = List.unique @@ List.rev_map_flatten (fun (_,_,_,_,t) -> aux t) defs in
+    let evts = List.unique @@ List.rev_map_flatten (fun def -> aux def.body) defs in
     let map = List.map (fun e -> e, new_id e) evts in
     let evt_env = List.map (fun (_,f) -> f, TFun(typ_unit, fun _ -> typ_unit)) map in
-    let evt_defs = List.map (fun (e,f) -> f,["u"],Const True,[Event e],Const Unit) map in
+    let evt_defs = List.map (fun (e,f) -> {fn=f; args=["u"]; cond=Const True; events=[Event e]; body=Const Unit}) map in
     let rec aux = function
       | Const c -> Const c
       | Var x -> Var x
@@ -484,11 +484,11 @@ let rec uniq_env = function
       else (f,typ) :: uniq_env env
 
 
-let remove_id_event = map_def_prog (fun (f,xs,t1,e,t2) -> f, xs, t1, List.remove_all e (Event "id"), t2)
+let remove_id_event = map_def_prog (fun def -> {def with events=List.remove_all def.events (Event "id")})
 
 let rename_prog prog =
   Debug.printf "@.BEFORE RENAMING:@.%a@." CEGAR_print.prog_typ prog;
-  let vars = List.map (fun (f,_,_,_,_) -> f) prog.defs in
+  let vars = List.map (fun def -> def.fn) prog.defs in
   let var_names = List.rev_map id_name (List.unique vars) in
   let rename_id' x var_names =
     let x_name = id_name x in
@@ -506,7 +506,7 @@ let rename_prog prog =
   let rename_var map x = List.assoc_default x x map in
   let env = List.map (Pair.map_fst @@ rename_var fun_map) prog.env in
   let defs =
-    let rename_def (f,xs,t1,e,t2) =
+    let rename_def {fn=f; args=xs; cond=t1; events; body=t2} =
       Id.save_counter ();
       Id.clear_counter ();
       let var_names' =
@@ -536,15 +536,12 @@ let rename_prog prog =
         in
         check @@ List.sort compare xs
       in
-      let def =
-        rename_var fun_map f,
-        List.map (rename_var arg_map) xs |@> check_uniq,
-        rename_term t1,
-        e,
-        rename_term t2
-      in
+      let fn = rename_var fun_map f in
+      let args = List.map (rename_var arg_map) xs |@> check_uniq in
+      let cond = rename_term t1 in
+      let body = rename_term t2 in
       Id.reset_counter();
-      def
+      {fn; args; cond; events; body}
     in
     List.map rename_def prog.defs
   in
@@ -612,7 +609,7 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
     let typ = if is_cps then typ_result else typ_unit in
     (main,typ,[],Const True,[],t_main') :: defs_t @ List.flatten_map trans_def defs
   in
-  let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), (f,xs,t1,e,t2)) defs' in
+  let env,defs'' = List.split_map (fun (f,typ,xs,t1,e,t2) -> (f,typ), {fn=f; args=xs; cond=t1; events=e; body=t2}) defs' in
   let env' = uniq_env env in
   let info =
     let attr = if is_cps then [ACPS] else [] in
@@ -627,7 +624,7 @@ let trans_prog ?(spec=[]) {Problem.term=t; attr} =
     in
     {init_info with attr; pred_share}
   in
-  let max_id = List.fold_left (fun m x -> max m @@ snd @@ decomp_id x) 0 @@ List.flatten_map (fun (f,xs,_,_,_) -> f::xs) defs'' in
+  let max_id = List.fold_left (fun m x -> max m @@ snd @@ decomp_id x) 0 @@ List.flatten_map (fun def -> def.fn :: def.args) defs'' in
   Id.set_counter max_id;
   let prog,map,rmap =
     {env=env'; defs=defs''; main; info}
@@ -674,7 +671,7 @@ let add_env spec prog =
 
 
 let assoc_def_aux defs n t =
-  let defs' = List.filter (fun (f,_,_,_,_) -> Var f = t) defs in
+  let defs' = List.filter (fun def -> Var def.fn = t) defs in
     List.nth defs' n
 
 let assoc_def labeled t ce defs =
@@ -715,10 +712,10 @@ let rec step_eval_abst_cbn ce labeled env_abst defs = function
       ce, t
   | Const Unit -> ce, Const Unit
   | Var x ->
-      let ce',(f,xs,tf1,es,tf2) = assoc_def labeled (Var x) ce defs in
-      assert (tf1 = Const True);
-      if List.mem (Event "fail") es then raise EvalFail;
-      ce', tf2
+      let ce',{cond;events;body=body} = assoc_def labeled (Var x) ce defs in
+      assert (cond = Const True);
+      if List.mem (Event "fail") events then raise EvalFail;
+      ce', body
   | App(App(App(Const If, Const True), t2), _) -> ce, t2
   | App(App(App(Const If, Const False), _), t3) -> ce, t3
   | App(App(App(Const If, t1), t2), t3) ->
@@ -737,11 +734,11 @@ let rec step_eval_abst_cbn ce labeled env_abst defs = function
           step_eval_abst_cbn ce labeled env_abst defs (make_if t1 t2' t3')
         | _ -> assert false
       else
-        let ce',(f,xs,tf1,es,tf2) = assoc_def labeled t1 ce defs in
+        let ce',{fn=f;args=xs;cond;events;body} = assoc_def labeled t1 ce defs in
         let ts1,ts2 = List.split_nth (List.length xs) ts in
-        assert (tf1 = Const True);
-        if List.mem (Event "fail") es then raise EvalFail;
-        ce', make_app (List.fold_right2 subst xs ts1 tf2) ts2
+        assert (cond = Const True);
+        if List.mem (Event "fail") events then raise EvalFail;
+        ce', make_app (List.fold_right2 subst xs ts1 body) ts2
   | _ -> assert false
 
 let rec eval_abst_cbn prog labeled abst ce =
@@ -801,8 +798,8 @@ let assoc_def labeled defs ce acc rand_num t =
     None
   else
     let f = match t with Var f -> f | _ -> assert false in
-    let defs' = List.filter (fun (g,_,_,_,_) -> g = f) defs in
-    let aux (_,_,_,_,t) = (* In fair nonterm mode, trans_ce ends just before 'read_int' *)
+    let defs' = List.filter (fun {fn=g} -> g = f) defs in
+    let aux {body=t} = (* In fair nonterm mode, trans_ce ends just before 'read_int' *)
       rand_num = Some 0 && is_app_read_int t in
     if List.mem f labeled
     then
@@ -857,14 +854,14 @@ let rec trans_ce_aux labeled ce acc defs rand_num t k =
       trans_ce_aux labeled ce acc defs rand_num t1 (fun ce acc rand_num t1 ->
       trans_ce_aux labeled ce acc defs rand_num t2 (fun ce acc rand_num t2 ->
       let t1',ts = decomp_app (App(t1,t2)) in
-      let _,xs,_,_,_ = List.find (fun (f,_,_,_,_) -> Var f = t1') defs in
-      if List.length xs > List.length ts
-      then k ce acc rand_num (App(t1,t2))
+      let {args=xs} = List.find (fun def -> Var def.fn = t1') defs in
+      if List.length xs > List.length ts then
+        k ce acc rand_num (App(t1,t2))
       else
          match assoc_def labeled defs ce acc rand_num t1' with
           | None ->
              init_cont ce acc rand_num t1'
-          | Some (ce',acc',(f,xs,tf1,e,tf2)) ->
+          | Some (ce', acc', {fn=f; args=xs; events=e; body=tf2}) ->
              let ts1,ts2 = List.split_nth (List.length xs) ts in
              let aux = List.fold_right2 subst xs ts1 in
              let tf2' = make_app (aux tf2) ts2 in
@@ -876,7 +873,7 @@ let rec trans_ce_aux labeled ce acc defs rand_num t k =
   | Fun _ -> assert false
 
 let trans_ce labeled {defs; main} ce rand_num =
-  let _,_,_,_,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
+  let {body=t} = List.find (fun def -> def.fn = main) defs in
   let ce' = trans_ce_aux labeled ce [] defs rand_num t init_cont in
   assert (not (List.mem main labeled));
   0::ce'
@@ -938,15 +935,15 @@ let rec simplify_if_term env fv t =
 let simplify_if_term t = simplify_if_term [] [] t
 
 let simplify_if {env; defs; main; info} =
-  let defs' = List.map (fun (f,xs,t1,e,t2) -> f, xs, simplify_if_term t1, e, simplify_if_term t2) defs in
+  let defs' = List.map (fun def -> {def with cond=simplify_if_term def.cond; body=simplify_if_term def.body}) defs in
   {env; defs=defs'; main; info}
 
 
 let add_fail_to_end prog =
-  let aux (f, args, cond, e, t) =
-    if t = Const(CPS_result)
-    then (f, args, cond, [Event "fail"], t)
-    else (f, args, cond, e, t)
+  let aux def =
+    if def.body = Const(CPS_result)
+    then {def with events = [Event "fail"]}
+    else def
   in
   map_def_prog aux prog
 

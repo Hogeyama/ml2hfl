@@ -36,7 +36,6 @@ val initialize_env : prog -> prog
 val has_no_effect : t -> bool
 val get_renv : prog -> (int * env) list
 val assoc_renv : int -> env -> typ
-val mem_assoc_renv : int -> env -> bool
 val assign_id_to_rand : prog -> prog
 val decomp_rand_typ : ?xs:t list option -> typ -> typ list * (t -> t list)
 val make_map_randint_to_preds : prog -> (int * (t -> t list)) list

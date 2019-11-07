@@ -49,14 +49,14 @@ let uncapitalize_env env = List.map (Pair.map_fst uncapitalize_var) env
 let capitalize {env;defs;main;info} =
   let env' = List.map (Pair.map_fst capitalize_var) env in
   let sbst1 = subst_map @@ List.map (fun (f,_) -> f, Var (capitalize_var f)) env in
-  let aux (f,xs,t1,e,t2) =
+  let aux {fn=f; args=xs; cond; events; body} =
     let xs' = List.map uncapitalize_var xs in
     let sbst2 = subst_map @@ List.map2 (fun x x' -> x, Var x') xs xs' in
-    capitalize_var f,
-    xs',
-    sbst1 @@ sbst2 t1,
-    e,
-    sbst1 @@ sbst2 t2
+    {fn = capitalize_var f;
+     args = xs';
+     cond = sbst1 @@ sbst2 cond;
+     events;
+     body = sbst1 @@ sbst2 body}
   in
   let defs' = List.map aux defs in
   let main' = capitalize_var main in
@@ -65,20 +65,20 @@ let capitalize {env;defs;main;info} =
 
 let elim_non_det ({defs;main;info} as prog) =
   let env = get_ext_fun_env prog in
-  let check f (g,_,_,_,_) = f = g in
+  let check f {fn=g} = f = g in
   let mem f defs = List.exists (check f) defs in
   let rec elim_non_det_def = function
     | [] -> []
-    | (f,xs,t1,e,t2)::defs when mem f defs ->
+    | {fn=f; args=xs; cond=t1; events; body=t2}::defs when mem f defs ->
         let f' = rename_id f in
         let defs1,defs2 = List.partition (check f) defs in
-        let defs1' = List.map (fun (f,xs,t1,e,t2) -> rename_id f,xs,t1,e,t2) defs1 in
+        let defs1' = List.map (fun def -> {def with fn = rename_id def.fn}) defs1 in
         let t =
           let args = List.map (fun x -> Var x) xs in
           let app f = make_app (Var f) args in
-          List.fold_left (fun t (g,_,_,_,_) -> make_br (app g) t) (app f') defs1'
+          List.fold_left (fun t {fn=g} -> make_br (app g) t) (app f') defs1'
         in
-        (f,xs,Const True,[],t)::(f',xs,t1,e,t2)::defs1' @ elim_non_det_def defs2
+        {fn=f;args=xs;cond=Const True;events=[];body=t}::{fn=f';args=xs;cond=t1;events;body=t2}::defs1' @ elim_non_det_def defs2
     | def::defs -> def :: elim_non_det_def defs
   in
   Typing.infer {env; defs=elim_non_det_def defs; main; info}
@@ -90,7 +90,7 @@ let make_bottom {env;defs;main;info} =
     bottoms := (x,n)::!bottoms;
     Var x
   in
-  let aux_def (f,xs,t1,e,t2) =
+  let aux_def {fn=f; args=xs; cond=t1; events=e; body=t2} =
     let f_typ = List.assoc f env in
     let env' = get_arg_env f_typ xs @@@ env in
     let rec aux_term t typ =
@@ -129,12 +129,14 @@ let make_bottom {env;defs;main;info} =
     in
     let typ = List.fold_right app_typ xs f_typ in
     let t2' = aux_term t2 typ in
-    f, xs, t1, e, t2'
+    {fn=f; args=xs; cond=t1; events=e; body=t2'}
   in
   let bot0 = make_bottom 0 in
-  let make (x,n) = x, List.init n @@ Fun.const "x", Const True, [], bot0 in
   let defs' = List.map aux_def defs in
-  let bottom_defs = List.map make (List.unique !bottoms) in
+  let bottom_defs =
+    let make (x,n) = {fn=x; args=List.init n @@ Fun.const "x"; cond=Const True; events=[]; body=bot0} in
+    List.map make (List.unique !bottoms)
+  in
   {env; defs=bottom_defs@@@defs'; main; info}
 
 
@@ -152,12 +154,12 @@ let rec eta_expand_term env = function
   | Let _ -> assert false
 
 
-let eta_expand_def env ((f,xs,t1,e,t2):fun_def) =
+let eta_expand_def env ({fn=f; args=xs; body=t2} as def) =
   let d = arg_num (List.assoc f env) - List.length xs in
   let ys = Array.to_list (Array.init d (fun _ -> new_id "x")) in
   let t2' = eta_expand_term (get_arg_env (List.assoc f env) xs @@@ env) t2 in
-  let t2'' = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
-    f, xs@ys, t1, e, t2''
+  let body = List.fold_left (fun t x -> App(t, Var x)) t2' ys in
+  {def with args=xs@ys; body}
 
 let eta_expand prog =
   {prog with defs = List.map (eta_expand_def prog.env) prog.defs}
@@ -195,8 +197,11 @@ let rec church_encode_term = function
   | Let _ -> assert false
   | Fun _ -> assert false
 let church_encode {env;defs;main;info} =
-  let true_def = true_var, ["x"; "y"], Const True, [], Var "x" in
-  let false_def = false_var, ["x"; "y"], Const True, [], Var "y" in
+  let args = ["x"; "y"] in
+  let cond = Const True in
+  let events = [] in
+  let true_def = {fn=true_var; args; cond=Const True; events; body=Var "x"} in
+  let false_def = {fn=false_var; args; cond; events; body=Var "y"} in
   let defs' = List.map (map_body_def church_encode_term) defs @ [true_def; false_def] in
   let prog = {env=[];defs=defs';main;info} in
   if false then Format.printf "CHURCH ENCODE:\n%a@." CEGAR_print.prog prog;
@@ -215,12 +220,12 @@ let rec full_app f n = function
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let should_reduce (f,xs,t1,es,t2) env defs =
+let should_reduce {fn=f; cond; events} env defs =
   let n = arg_num (List.assoc f env) in
-    t1 = Const True && es = [] &&
-    List.length (List.filter (fun (g,_,_,_,_) -> f=g) defs) = 1 &&
-    List.length (List.rev_flatten_map (fun (_,_,_,_,t) -> List.filter ((=) f) (get_fv t)) defs) = 1 &&
-    List.for_all (fun (_,_,_,_,t2) -> full_app f n t2) defs
+  cond = Const True && events = [] &&
+  List.count (fun {fn} -> f = fn) defs = 1 &&
+  List.length (List.rev_flatten_map (fun {body} -> List.filter ((=) f) (get_fv body)) defs) = 1 &&
+  List.for_all (fun def -> full_app f n def.body) defs
 
 let rec get_head_count f = function
   | Const _ -> 0
@@ -234,33 +239,33 @@ let rec get_head_count f = function
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let rec beta_reduce_term flag (f,xs,t1,es,t2) = function
+let rec beta_reduce_term flag ({fn=f; args=xs; cond=t1; events=es; body=t2} as def) = function
   | Const c -> Const c
   | Var x -> Var x
   | App _ as t ->
       let t1,ts = decomp_app t in
-      let ts' = List.map (beta_reduce_term flag (f,xs,t1,es,t2)) ts in
-        if t1 = Var f
-        then
-          if List.for_all (function Const _ | Var _ -> true | App _ -> false | _ -> assert false) ts'
-          then List.fold_right2 subst xs ts' t2
-          else (flag := true; make_app t1 ts')
-        else make_app t1 ts'
+      let ts' = List.map (beta_reduce_term flag def) ts in
+      if t1 = Var f then
+        if List.for_all (function Const _ | Var _ -> true | App _ -> false | _ -> assert false) ts'
+        then List.fold_right2 subst xs ts' t2
+        else (flag := true; make_app t1 ts')
+      else
+        make_app t1 ts'
   | Let _ -> assert false
   | Fun _ -> assert false
 
-let beta_reduce_term flag ((f,_,_,_,_) as def) t =
+let beta_reduce_term flag ({fn=f} as def) t =
   let n = get_head_count f t in
-    if n = 1
-    then beta_reduce_term flag def t
-    else (if n >= 2 then flag := true; t)
+  if n = 1
+  then beta_reduce_term flag def t
+  else (if n >= 2 then flag := true; t)
 
 let beta_reduce_aux {env;defs;main;info} =
   let rec aux defs1 = function
       [] -> defs1
-    | ((f,_,_,_,_) as def)::defs2 when should_reduce def env (defs1@@@def::defs2) ->
+    | def::defs2 when should_reduce def env (defs1@@@def::defs2) ->
         let flag = ref false in
-        let reduce_def (f',xs',t1',es',t2') = f', xs', t1', es', beta_reduce_term flag def t2' in
+        let reduce_def def' = {def' with body = beta_reduce_term flag def def'.body} in
         let defs1' = List.map reduce_def defs1 in
         let defs2' = List.map reduce_def defs2 in
           if !flag

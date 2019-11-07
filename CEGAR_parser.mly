@@ -88,9 +88,9 @@ defs:
 
 def:
 | id id_list ARROW event_list term SEMISEMI
-  {($1, $2, Const True, $4, $5)}
+  {{fn=$1; args=$2; cond=Const True; events=$4; body=$5}}
 | id id_list WHEN term ARROW event_list term SEMISEMI
-  {($1, $2, $4, $6, $7)}
+  {{fn=$1; args=$2; cond=$4; events=$6; body=$7}}
 
 id:
 | IDENT { $1 }

@@ -244,7 +244,7 @@ let conv_event e = (***)
     F.Term.mk_const (F.Const.Event(x))
   | Branch(_) -> assert false
 
-let conv_fdef typs (f, args, guard, events, body) =
+let conv_fdef typs {fn=f; args; cond=guard; events; body} =
   { F.Fdef.name = f;
     F.Fdef.args = List.map (F.Idnt.make >> F.Pattern.mk_var) args;
     F.Fdef.guard = conv_formula guard;
@@ -317,9 +317,9 @@ let make_def_randint prog f =
   if CEGAR_syntax.is_randint_var f then
     []
   else
-    let argss = List.filter_map (fun (g, args, _, _, _) -> if f = g then Some args else None) prog.defs in
+    let argss = List.filter_map (fun {fn=g; args} -> if f = g then Some args else None) prog.defs in
     let n = List.length argss in
-    List.make (3 - n) (f, List.hd argss, Const True, [Event "fail"], Const Unit)
+    List.make (3 - n) {fn=f; args=List.hd argss; cond=Const True; events=[Event "fail"]; body=Const Unit}
 
 let trans fair_cond cexs prog =
   let fs = List.map fst prog.env in
@@ -604,12 +604,12 @@ let instantiate_param prog =
   let res =
     typs,
     List.map
-      (fun (f, args, guard, events, body) ->
-       (f,
-        args,
-        CEGAR_util.subst_map map guard,
-        events,
-        CEGAR_util.subst_map map body))
+      (fun {fn=f; args; cond=guard; events; body} ->
+       {fn=f;
+        args;
+        cond=CEGAR_util.subst_map map guard;
+        events;
+        body=CEGAR_util.subst_map map body})
       fdefs,
     main
   in

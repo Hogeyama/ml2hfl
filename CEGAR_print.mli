@@ -2,10 +2,7 @@
 (** Pretty printer for CEGAR language *)
 
 val const : Format.formatter -> CEGAR_syntax.const -> unit
-val fun_def :
-  Format.formatter ->
-  CEGAR_syntax.var * CEGAR_syntax.var list * CEGAR_syntax.t *
-  CEGAR_syntax.event list * CEGAR_syntax.t -> unit
+val fun_def : Format.formatter -> CEGAR_syntax.fun_def -> unit
 val term : Format.formatter -> CEGAR_syntax.t -> unit
 val term' : Format.formatter -> CEGAR_syntax.t -> unit
 val var : Format.formatter -> CEGAR_syntax.var -> unit

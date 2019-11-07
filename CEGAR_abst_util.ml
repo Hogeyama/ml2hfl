@@ -181,8 +181,9 @@ let rec reduce_let env = function
       | _, (TBase _ as typ) -> Let(x, reduce_let env t1, reduce_let ((x,typ)::env) t2)
       | _ -> assert false
 
-let make_arg_let_def env (f,xs,t1,e,t2) =
-    f, xs, t1, e, reduce_let (get_arg_env (List.assoc f env) xs @@@ env) (make_arg_let_term t2)
+let make_arg_let_def env ({fn=f; args=xs; body=t2} as def) =
+  let body = reduce_let (get_arg_env (List.assoc f env) xs @@@ env) (make_arg_let_term t2) in
+  {def with body}
 
 let make_arg_let prog =
   {prog with defs = List.map (make_arg_let_def prog.env) prog.defs}
@@ -190,7 +191,7 @@ let make_arg_let prog =
 
 
 let has_branch {defs} =
-  let fs = List.sort compare @@ List.map (fun (f,_,_,_,_) -> f) defs in
+  let fs = List.sort compare @@ List.map (fun def -> def.fn) defs in
   let rec aux fs =
     match fs with
     | [] -> []
@@ -203,25 +204,25 @@ let has_branch {defs} =
 let rec add_label prog =
   let merge = function
     | [] -> assert false
-    | [f,xs,t1,e,t2] -> assert (t1 = Const True); [f, xs, t1, e, t2]
-    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
-        [f1,xs1,t11,e1, make_label 1 t12; f2,xs2,t21,e2,make_label 0 t22]
-    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
-        [f1,xs1,t11,e1,make_label 0 t12; f2,xs2,t21,e2,make_label 1 t22]
-    | [f1,xs1,t11,e1,t12; f2,xs2,t21,e2,t22] as defs->
+    | [def] -> assert (def.cond = Const True); [def]
+    | [{fn=f1;args=xs1;cond=t11;body=t12} as def1; {fn=f2;args=xs2;cond=t21;body=t22} as def2] when f1=f2 && xs1=xs2 && t11=make_not t21 ->
+        [{def1 with body=make_label 1 t12}; {def2 with body=make_label 0 t22}]
+    | [{fn=f1;args=xs1;cond=t11;body=t12} as def1; {fn=f2;args=xs2;cond=t21;body=t22} as def2] when f1=f2 && xs1=xs2 && make_not t11=t21 ->
+        [{def1 with body=make_label 0 t12}; {def2 with body=make_label 1 t22}]
+    | [_; _] as defs->
         Format.eprintf "%a@." CEGAR_print.prog {env=[]; defs; main=""; info=init_info};
         assert false
-    | (f,_,_,_,_)::defs -> fatal @@ Format.sprintf "Not implemented (CEGAR_abst_util.add_label) %s %d" f (1 + List.length defs)
+    | def::defs -> fatal @@ Format.sprintf "Not implemented (CEGAR_abst_util.add_label) %s %d" def.fn (1 + List.length defs)
   in
   let rec aux = function
     | [] -> []
-    | (f,xs,t1,e,t2)::defs ->
-        let defs1,defs2 = List.partition (fun (g,_,_,_,_) -> f = g) defs in
-        let defs' = merge ((f,xs,t1,e,t2)::defs1) in
+    | ({fn=f} as def)::defs ->
+        let defs1,defs2 = List.partition (fun {fn=g} -> f = g) defs in
+        let defs' = merge (def::defs1) in
         defs' @ aux defs2
   in
   let defs = aux prog.defs in
-  let labeled = List.unique @@ List.rev_flatten_map (function (f,_,_,_,App(Const (Label _),_)) -> [f] | _ -> []) defs in
+  let labeled = List.unique @@ List.rev_flatten_map (function {fn=f;body=App(Const (Label _),_)} -> [f] | _ -> []) defs in
   assert (List.Set.eq labeled @@ has_branch prog);
   labeled, {prog with defs=defs}
 
@@ -247,7 +248,7 @@ and make_ext_fun = function
 
 let add_ext_funs prog =
   let env = get_ext_fun_env prog in
-  let defs = List.map (fun (f,typ) -> f, [], Const True, [], make_ext_fun typ) env in
+  let defs = List.map (fun (f,typ) -> {fn=f; args=[]; cond=Const True; events=[]; body=make_ext_fun typ}) env in
   let defs' = defs@prog.defs in
   ignore @@ Typing.infer {prog with env=[]; defs=defs'};
   {prog with defs=defs'}

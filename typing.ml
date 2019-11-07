@@ -183,7 +183,7 @@ let rec infer_term fun_arg_env env = function
       let typ1 = infer_term fun_arg_env env' t in
       TFun(typ_x,typ1)
 
-let infer_def fun_arg_env env (f,xs,t1,_,t2) =
+let infer_def fun_arg_env env {fn=f; args=xs; cond=t1; body=t2} =
   if false then Format.printf "%a@." CEGAR_print.var f;
   let typs = List.map (fun _ -> new_tvar()) xs in
   let env' = List.combine xs typs @ env in
@@ -200,7 +200,7 @@ let infer ?(fun_annot=false) ?(rename=false) prog =
   Debug.printf "INFER:@\n%a@." CEGAR_print.prog_typ prog;
   let ext_funs = get_ext_funs prog in
   let ext_env = List.map (fun f -> f, from_typ (assoc_env f env)) ext_funs in
-  let env = ext_env @ List.map (fun (f,_,_,_,_) -> f, new_tvar ()) defs in
+  let env = ext_env @ List.map (fun def -> def.fn, new_tvar ()) defs in
   let main_typ = if List.mem ACPS info.attr then TResult else TUnit in
   unify main_typ (assoc_env main env);
   List.iter (infer_def fun_arg_env env) defs;

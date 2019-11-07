@@ -242,9 +242,7 @@ let print fm (ce, {Problem.term=t}) =
     fun () ->
       match !r with
       | [] -> assert false
-      | n::ce' ->
-              Format.printf "(* GEN: %d *)" n;
-r := ce'; n
+      | n::ce' -> r := ce'; n
   in
   try
     ignore @@ eval_print fm cnt limit gen t;

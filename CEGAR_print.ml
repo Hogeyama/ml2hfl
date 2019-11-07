@@ -157,7 +157,7 @@ and print_term fm = function
       let env,t' = decomp_annot_fun t in
       Format.fprintf fm "@[<hov 1>(fun %a@ ->@ %a)@]" (print_list print_arg_var " ") env print_term t'
 
-and print_fun_def fm (f,xs,t1,es,t2) =
+and print_fun_def fm {fn=f;args=xs;cond=t1;events=es;body=t2} =
   let aux s = function
     | (Event e) -> Format.sprintf " {%s} =>" e ^ s
     | (Branch n) -> Format.sprintf " l%d =>" n ^ s
@@ -347,7 +347,7 @@ and print_term_ML fm = function
   | Fun(x,_,t) ->
       Format.fprintf fm "(fun %a -> %a)" print_var x print_term_ML t
 
-and print_fun_def_ML fm (f,xs,t1,_,t2) =
+and print_fun_def_ML fm {fn=f;args=xs;cond=t1;body=t2} =
   if t1 = Const True
   then Format.fprintf fm "and %a = %a@\n" (print_list print_var " ") (f::xs) print_term_ML t2
   else Format.fprintf fm "%a when %a = %a@\n" (print_list print_var " ") (f::xs) print_term_ML t1 print_term_ML t2

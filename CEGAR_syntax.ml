@@ -73,7 +73,7 @@ and ce = ce_node list
 
 
 
-and fun_def = var * var list * t * event list * t
+and fun_def = {fn:var; args:var list; cond:t; events:event list; body:t}
 and typ = t CEGAR_type.t
 and env = (var * typ) list
 and attr = ACPS
@@ -327,7 +327,7 @@ let is_app_read_int = is_app_randint ~is_read_int:true
 
 let get_ext_funs {env; defs} =
   env
-  |> List.filter_out (fun (f,_) -> List.exists (fun (g,_,_,_,_) -> f = g) defs)
+  |> List.filter_out (fun (f,_) -> List.exists (fun {fn=g} -> f = g) defs)
   |> List.map fst
 
 let get_ext_fun_env prog =
@@ -344,7 +344,7 @@ let rec size t =
   | Fun(_,_,t) -> 1 + size t
 
 let prog_size prog =
-  List.fold_left (fun sum (f,xs,t1,e,t2) -> sum + List.length xs + size t1 + size t2) 0 prog.defs
+  List.fold_left (fun sum {args;cond;body} -> sum + List.length args + size cond + size body) 0 prog.defs
 
 let randint_ID_map = ref (fun _ -> "no corresponding identifier")
 let rec is_rand = function
@@ -357,15 +357,17 @@ let add_ID_map r = function
   | None -> ()
 let rec make_ID_map_fd = function
   | [] -> ()
-  | (r,_,_,_,body)::ds -> add_ID_map r (is_rand body); make_ID_map_fd ds
-let make_ID_map {defs=defs} = make_ID_map_fd defs
+  | {fn;body}::ds -> add_ID_map fn (is_rand body); make_ID_map_fd ds
+let make_ID_map {defs} = make_ID_map_fd defs
 
 
 (** collect events that appear in HORS *)
 let gather_events defs =
-  let aux (_,_,_,es,_) =
+  let aux {events} =
     let aux' = function
       | Event s -> s
-      | _ -> assert false in
-    List.map aux' es in
+      | _ -> assert false
+    in
+    List.map aux' events
+  in
   List.flatten_map aux defs
