@@ -81,19 +81,20 @@ let rec check_aux
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
       k ce sat n constr env Term.(t1 <|op|> t2)))
   | App _ when is_app_randint t ->
+      pr t 0 1 [];
      if Flag.Method.(!mode = FairNonTermination) && !ext_ce_ref = [] then
        init_cont ce sat n constr env t
      else
-     let t',randnum =
-       let t_rand,ts = decomp_app t in
-       match t_rand with
-       | Const (Rand(TInt,randnum)) -> List.last ts, randnum
-       | _ -> assert false
-     in
-     let r = new_id "r" in
-     add_randint_precondition r randnum;
-     let env' = (r,typ_int)::env in
-     check_aux pr ce sat n constr env' defs (App(t',Var r)) k
+       let t',randnum =
+         let t_rand,ts = decomp_app t in
+         match t_rand with
+         | Const (Rand(TInt,randnum)) -> List.last ts, randnum
+         | _ -> assert false
+       in
+       let r = new_id "r" in
+       add_randint_precondition r randnum;
+       let env' = (r,typ_int)::env in
+       check_aux pr ce sat n constr env' defs (App(t',Var r)) k
   | App(t1,t2) ->
       check_aux pr ce sat n constr env defs t1 (fun ce sat n constr env t1 ->
       check_aux pr ce sat n constr env defs t2 (fun ce sat n constr env t2 ->
@@ -256,7 +257,8 @@ let trans_ce ce {defs=defs;main=main} =
 let print_ce_reduction ?(map_randint_to_preds = []) ?(ext_ce = []) ce {defs=defs;main=main} =
   let ce' = List.tl ce in
   let _,_,_,e,t = List.find (fun (f,_,_,_,_) -> f = main) defs in
-  (* t: Term to be print *)
+  (* t: Term to be printed *)
+  (* br: branch will be taken *)
   (* n: Number of the branches *)
   (* e: Events *)
   let pr t br n e =

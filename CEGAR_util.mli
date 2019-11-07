@@ -74,6 +74,7 @@ module Term : sig
   val (-) : t -> t -> t
   val ( * ) : t -> t -> t
   val (/) : t -> t -> t
+  val (mod) : t -> t -> t
   val (|->) : var -> t -> t -> t
   val (<|) : t -> const -> t -> t
   val (|>) : (t -> t) -> t -> t

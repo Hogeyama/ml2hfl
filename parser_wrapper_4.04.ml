@@ -891,6 +891,7 @@ and from_module_expr_top env mb_id mb_expr : env * id * term =
   let m = Id.add_attr Id.Module @@ from_ident mb_id mdl.typ in
   let ty_decl',ty_decl_ext = List.partition (fun (s,_) -> String.contains s '.') env.ty_decl_ext in
   let ty_decl = ty_decl' @ env.ty_decl in
+  Format.printf "Dom(ty_decl): %a@." Print.(list string) (List.map fst ty_decl');
   let env = {env with ty_decl; ty_decl_ext; md_prefix=md_prefix_orig} in
   env, m, mdl
 

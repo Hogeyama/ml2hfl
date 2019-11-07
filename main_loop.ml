@@ -144,7 +144,9 @@ let report_unsafe main ce set_main =
     Option.may pr main;
     match set_main with
     | None -> ()
-    | Some set_main -> Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_main)
+    | Some set_main ->
+        if not !Flag.Method.slice then
+          Format.printf "@[<v 2>Error trace:%a@." Eval.print (ce,set_main)
 
 (** TODO: merge with report_unsafe *)
 let report_unsafe_par main ce set_main =

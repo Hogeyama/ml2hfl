@@ -51,6 +51,7 @@ let binop_of_atom a =
   | "-" -> (-)
   | "*" -> ( * )
   | "div" -> ( / )
+  | "mod" -> (mod)
   | _ -> unsupported ("binop_of_atom "^a)
 
 let rec term_of_sexp s =

@@ -567,3 +567,11 @@ let slice_top_fun_subs dp problem =
     problem' :: if p > 1.0 then [] else go (p +. dp)
   in
   go 0.
+
+
+(* for experiments *)
+let slice t =
+  if !Flag.Method.slice_sub < 0. then
+    slice t
+  else
+    slice_sub t !Flag.Method.slice_sub

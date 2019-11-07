@@ -12,7 +12,7 @@ let mutable_record_term =
   let rec decomp env ty =
     match ty with
     | TData s when List.mem_assoc s env -> decomp env @@ List.assoc s env
-    | TData s -> assert false
+    | TData s -> Format.printf "TData %s@." s; assert false
     | TRecord fields -> fields
     | _ -> assert false
   in

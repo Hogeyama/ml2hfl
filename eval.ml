@@ -2,6 +2,8 @@ open Util
 open Syntax
 open Term_util
 
+module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
+
 exception RaiseExcep of term
 exception EventFail
 exception ReachLimit
@@ -50,6 +52,7 @@ let rec print_value fm t =
 
 
 let rec eval_print fm cnt limit gen t =
+  Debug.printf "eval: %a@." Print.term t;
   (match limit with None -> () | Some n -> incr cnt; if !cnt > n then raise ReachLimit);
   match t.desc with
   | _ when is_randbool_unit t -> Term.bool (!!gen mod 2 = 0)
@@ -239,7 +242,9 @@ let print fm (ce, {Problem.term=t}) =
     fun () ->
       match !r with
       | [] -> assert false
-      | n::ce' -> r := ce'; n
+      | n::ce' ->
+              Format.printf "(* GEN: %d *)" n;
+r := ce'; n
   in
   try
     ignore @@ eval_print fm cnt limit gen t;
