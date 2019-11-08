@@ -55,7 +55,7 @@ let print_info fm info =
   Format.printf "%a" (Print.list Format.pp_print_string) info
 
 let print fm {term; env; attr; kind; info} =
-  Format.fprintf fm "@[{@[term:%a@];@ @[env:%a@];@ @[attr:%a@];@ @[kind:%a@];@ @[info:%a@]}@]"
+  Format.fprintf fm "{@[@[term:%a@];@ @[env:%a@];@ @[attr:%a@];@ @[kind:%a@];@ @[info:%a@]@]}"
                  Print.term_typ_top term
                  Print.(list (id * Ref_type.print)) env
                  (Print.list print_attr) attr
@@ -63,7 +63,7 @@ let print fm {term; env; attr; kind; info} =
                  print_info info
 
 let print_debug fm {term; env; attr; kind; info} =
-  Format.fprintf fm "@[{@[term:%a@];@ @[env:%a@];@ @[attr:%a@];@ @[kind:%a@];@ @[info:%a@]}@]"
+  Format.fprintf fm "{@[term:%a@];@ @[env:%a@];@ @[attr:%a@];@ @[kind:%a@];@ @[info:%a@]}"
                  Print.term' term
                  Print.(list (id * Ref_type.print)) env
                  (Print.list print_attr) attr

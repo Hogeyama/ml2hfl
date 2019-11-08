@@ -66,6 +66,7 @@ type preprocess_label =
   | Unify_pure_fun_app
   | Add_occurence_param
   | Slice
+  | Split_by_ref_type
 
 
 type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
@@ -135,6 +136,7 @@ let string_of_label = function
   | Unify_pure_fun_app -> "Unify applications of pure functions"
   | Add_occurence_param -> "Add occurence parameters"
   | Slice -> "Slice"
+  | Split_by_ref_type -> "Split by refinement types"
 
 let get xs =
   match xs with
@@ -147,6 +149,7 @@ let last_get_rtyp (acc:result list) = snd @@ last acc
 let take_result l (acc:result list) = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
+let with_get_rtyp_id problems = Some (List.map (Pair.pair -$- get_rtyp_id) problems)
 
 let if_ b (tr:tr) x : tr_result list option = if b then tr x else None
 let map_trans_list (tr:Problem.t->Problem.t list) r : tr_result list option = Some (List.map (Pair.pair -$- get_rtyp_id) @@ tr r)
@@ -183,6 +186,8 @@ let all spec : t list =
       map_trans Ref_type_pred_typing.ref_type_pred_typing;
     Set_main,
       map_trans_list set_main;
+    Split_by_ref_type,
+      (fun prog -> with_get_rtyp_id (split_by_ref_type (Spec.get_ref_env spec @@ Problem.term prog) prog));
     Extract_module,
       map_trans extract_module;
     Inline_module_var,
@@ -237,7 +242,7 @@ let all spec : t list =
       map_trans decomp_pair_eq;
     Add_preds,
       if_ (spec.Spec.abst_env <> [])
-      (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
+      (fun problem -> with_get_rtyp_id [Problem.map (Trans.replace_typ (Spec.get_abst_env spec @@ Problem.term problem)) problem]);
     Ignore_excep_arg,
       if_ !Flag.Method.ignore_exn_arg @@
       map_trans ignore_exn_arg;
@@ -283,7 +288,7 @@ let all spec : t list =
       if_ !Flag.Method.tupling @@
       Option.some -| List.singleton -| Problem.map_on Focus.fst Tupling.trans;
     Inline,
-      (fun prog -> Some [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog, get_rtyp_id]);
+      (fun prog -> with_get_rtyp_id [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog]);
     Make_ext_funs,
       if_ !Flag.Method.encode_before_make_ext_fun @@
       map_trans make_ext_funs;
@@ -319,7 +324,7 @@ let all spec : t list =
       map_trans replace_bottom_def;
     Add_preds,
       if_ (spec.Spec.abst_cps_env <> [])
-      (fun problem -> Some [Problem.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Problem.term problem)) problem, get_rtyp_id]);
+      (fun problem -> with_get_rtyp_id [Problem.map (Trans.replace_typ (Spec.get_abst_cps_env spec @@ Problem.term problem)) problem]);
     Eliminate_same_arguments,
       if_ !Flag.Method.elim_same_arg @@
       map_trans @@ Problem.map Elim_same_arg.trans;

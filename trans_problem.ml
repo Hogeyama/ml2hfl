@@ -67,20 +67,21 @@ let set_main {term; env; attr; kind; info} =
       let term = Trans.set_main term in
       [{term; env; attr; kind; info}]
   | Ref_type_check check ->
+      let open Term_util in
       let make_check (x, ty) =
         let tys,ty' = Ref_type.decomp_funs ty in
         let r = Id.new_var ~name:"r" @@ Ref_type.to_simple ty' in
         let t_check =
           match ty' with
-          | Ref_type.Base(base,y,p) -> Term_util.subst_var y r p
-          | _ -> Term_util.Term.true_
+          | Ref_type.Base(base,y,p) -> subst_var y r p
+          | _ -> Term.true_
         in
         let xs =
           let aux = Id.new_var ~name:"arg" -| Ref_type.to_simple ~with_pred:true in
           List.map (snd |- aux) tys
         in
-        let t_check' = List.fold_right2 (Term_util.subst_var -| fst) tys xs t_check in
-        let main = Term_util.Term.(let_ [r, var x @ vars xs] (assert_ t_check')) in
+        let t_check' = List.fold_right2 (subst_var -| fst) tys xs t_check in
+        let main = Term.(let_ [r, var x @ vars xs] (assert_ t_check')) in
         let env =
           let aux x (y,ty) acc = (x,ty) :: List.map (Pair.map_snd @@ Ref_type.subst_var y x) acc in
           List.fold_right2 aux xs tys []
@@ -89,7 +90,7 @@ let set_main {term; env; attr; kind; info} =
       in
       check
       |> List.map make_check
-      |> List.map (fun (env',term) -> let env = env' @ env in {term; env; attr; kind=Safety; info})
+      |> List.map (fun (env',term) -> {term; env=env'@env; attr; kind=Safety; info})
 
 let make_ext_funs {term; env; attr; kind; info} =
   let term = Trans.make_ext_funs env term in
@@ -100,3 +101,20 @@ let alpha_rename {term; env; attr; kind; info} =
   let term = Trans.alpha_rename ~whole:true ~set_counter:true term in
   let map = [] in (* TODO *)
   {term; env; attr; kind; info}, map_rtyp map
+
+let split_by_ref_type spec {term; env; attr; kind; info} =
+  match kind with
+  | Safety ->
+      let aux (target, term) =
+        let env = spec @ env in
+        match target with
+        | None -> [{term; env; attr; kind=Safety; info}]
+        | Some (f,ty) ->
+            let info = Format.asprintf "Check %a: %a" Print.id f Ref_type.print ty :: info in
+            let env = List.filter_out (fun (g,_) -> Id.(f = g)) env in
+            set_main {term; env; attr; kind=Ref_type_check [f,ty]; info}
+      in
+      term
+      |> Trans.split_by_ref_type spec
+      |> List.flatten_map aux
+  | Ref_type_check check -> assert false

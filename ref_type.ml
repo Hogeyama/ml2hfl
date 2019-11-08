@@ -420,7 +420,9 @@ let rec to_simple ?(with_pred=false) typ =
   | ADT(s, x, p) ->
       T.TData s
       |&with_pred&> T.add_tattr (T.TARefPred(x,p))
-  | Fun(x,typ1,typ2) -> T.make_tfun (to_simple ~with_pred typ1) (to_simple ~with_pred typ2)
+  | Fun(x,typ1,typ2) ->
+      let x' = Id.set_typ x @@ to_simple ~with_pred typ1 in
+      T.TFun(x', to_simple ~with_pred typ2)
   | Tuple xtyps -> T.make_ttuple (List.map (to_simple ~with_pred -| snd) xtyps)
   | Inter(sty, _)
   | Union(sty, _) ->

@@ -48,6 +48,7 @@ rule token = parse
 | ':' { COLON }
 | '|' { BAR }
 | ',' { COMMA }
+| "assert" { ASSERT }
 | "type" { TYPE }
 | "val" { VAL }
 | "valcps" { VALCPS }

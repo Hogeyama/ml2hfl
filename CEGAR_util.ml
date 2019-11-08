@@ -61,6 +61,7 @@ and subst_typ x t = function
       TBase(b, ps')
   | TFun(typ1,typ2) -> TFun(subst_typ x t typ1, subst_typ x t -| typ2)
   | TApp(typ1, typ2) -> TApp(subst_typ x t typ1, subst_typ x t typ2)
+  | TConstr (TFixPred p) -> TConstr (TFixPred (subst x t -| p))
   | TConstr c -> TConstr c
 
 and subst_typ_map map = function

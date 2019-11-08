@@ -211,7 +211,7 @@ and generate typ_exn make_fail genv cenv typ =
         let t1 = U.make_or U.randbool_unit_term t_typ1 in
         let genv'',cenv'',t2 = generate typ_exn make_fail genv' cenv' typ2' in
         let t3 = make_fail @@ to_simple ~with_pred:true typ2' in
-        let cmt = Format.asprintf "GEN FUN: %a" print typ2 in
+        let cmt = Format.asprintf "GEN FUN: %a" print typ2' in
         genv'', cenv'', U.Term.(fun_ x' (comment cmt (if_ t1 t2 t3)))
     | Tuple xtyps ->
         let xs' = List.map (fun (x,typ) -> Id.new_var ~name:(Id.name x) @@ to_simple ~with_pred:true typ) xtyps  in

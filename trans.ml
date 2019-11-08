@@ -3775,3 +3775,24 @@ let map_typ =
   tr.tr2_term <- Fun.snd;
   tr.tr2_typ <- (@@);
   tr.tr2_term
+
+let split_by_ref_type env =
+  let make acc_rev t = List.fold_left (Fun.flip Term.local) t acc_rev in
+  let rec aux acc_rev t =
+    match t.desc with
+    | Local(decl, t1) ->
+        begin
+          match decl with
+          | Decl_let [f,t] when Id.mem_assoc f env ->
+              let tys = List.assoc_all ~eq:Id.eq f env in
+              if List.length tys > 1 then unsupported "split_by_ref_type";
+              let ty = List.get tys in
+              let acc_rev' = decl::acc_rev in
+              (Some (f,ty), make acc_rev' Term.eod) :: aux acc_rev t1
+          | Decl_let defs when List.exists (fun (f,_) -> Id.mem_assoc f defs) env ->
+              unsupported "split_by_ref_type";
+          | _ -> aux (decl::acc_rev) t1
+        end
+    | _ -> [None, make acc_rev t]
+  in
+  aux []

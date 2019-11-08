@@ -3,7 +3,8 @@ open Syntax
 open Term_util
 
 type t =
-    {ref_env: (id * Ref_type.t) list;
+    {assertion: (id * Ref_type.t) list;
+     ref_env: (id * Ref_type.t) list;
      ext_ref_env: (id * Ref_type.t) list;
      abst_env: env;
      abst_cps_env: env;
@@ -13,7 +14,8 @@ type t =
      fairness: Fair_termination_type.fairness}
 
 let init =
-  {ref_env = [];
+  {assertion = [];
+   ref_env = [];
    ext_ref_env = [];
    abst_env = [];
    abst_cps_env = [];
@@ -33,7 +35,8 @@ let print_aux ppf s pr env =
       Format.fprintf ppf "@]@]@\n"
     end
 
-let print_ref_env ppf renv = print_aux ppf "refinement type assertions" pr_ref_env renv
+let print_assert_ref_env ppf renv = print_aux ppf "refinement type assertions" pr_ref_env renv
+let print_ref_env ppf renv = print_aux ppf "refinement type interfaces" pr_ref_env renv
 let print_ext_ref_env ppf eenv = print_aux ppf "refinement type assumptions" pr_ref_env eenv
 let print_abst_env ppf aenv = print_aux ppf "abstraction type environment" pr_env aenv
 let print_abst_cps_env ppf cpsenv = print_aux ppf "abstraction type environment for CPS transformed program" pr_env cpsenv
@@ -42,12 +45,13 @@ let print_inlined ppf inlined = print_aux ppf "inlined functions" Print.id inlin
 let print_inlined_f ppf inlined_f = print_aux ppf "force inlined functions" Print.id inlined_f
 
 
-let print ppf {ref_env=renv; ext_ref_env=eenv; abst_env=aenv; abst_cps_env=cpsenv; abst_cegar_env=cegarenv; inlined; inlined_f} =
-  print_ref_env ppf renv;
-  print_ext_ref_env ppf eenv;
-  print_abst_env ppf aenv;
-  print_abst_cps_env ppf cpsenv;
-  print_abst_cegar_env ppf cegarenv;
+let print ppf {assertion; ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f} =
+  print_assert_ref_env ppf assertion;
+  print_ref_env ppf ref_env;
+  print_ext_ref_env ppf ext_ref_env;
+  print_abst_env ppf abst_env;
+  print_abst_cps_env ppf abst_cps_env;
+  print_abst_cegar_env ppf abst_cegar_env;
   print_inlined ppf inlined;
   print_inlined_f ppf inlined_f
 
@@ -69,7 +73,7 @@ let parse_comment parser lexer filename =
   let rec loop flag str =
     let s = try Some (input_line cin) with End_of_file -> None in
     match s with
-      None -> str
+    | None -> str
     | Some s when String.starts_with s "(*{SPEC}" -> loop true str
     | Some s when String.ends_with s "{SPEC}*)" -> loop false str
     | Some s when flag -> loop true (str ^ "\n" ^ s)
@@ -85,7 +89,8 @@ let parse_comment parser lexer filename =
 
 
 let merge spec1 spec2 =
-  {ref_env = spec1.ref_env @ spec2.ref_env;
+  {assertion = spec1.assertion @ spec2.assertion;
+   ref_env = spec1.ref_env @ spec2.ref_env;
    ext_ref_env = spec1.ext_ref_env @ spec2.ext_ref_env;
    abst_env = spec1.abst_env @ spec2.abst_env;
    abst_cps_env = spec1.abst_cps_env @ spec2.abst_cps_env;
@@ -110,9 +115,8 @@ let () = get_def_vars.col_term <- get_def_vars_term
 let get_def_vars = get_def_vars.col_term
 
 
-exception My_not_found of id
-
 type kind =
+  | Assertion
   | Ref_env
   | Ext_ref_env
   | Abst_env
@@ -121,10 +125,10 @@ type kind =
   | Inlined
   | Inlined_f
 
-let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f; fairness} vars =
+let rename ks {assertion; ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inlined; inlined_f; fairness} vars =
   let rename_id f = (* temporal implementation *)
-    if CEGAR_syntax.is_randint_var (Id.name f)
-    then f
+    if CEGAR_syntax.is_randint_var (Id.name f) then
+      f
     else
       try
         List.find_eq_on Id.to_string f vars
@@ -147,7 +151,8 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
   in
   let aux_typ (f,typ) = Option.try_with (fun () -> rename_id f, typ) ((=) Not_found) in
   let aux_id f = Option.try_with (fun () -> rename_id f) ((=) Not_found) in
-  {ref_env = if List.mem Ref_env ks then List.filter_map aux_ref ref_env else ref_env;
+  {assertion = if List.mem Assertion ks then List.filter_map aux_ref assertion else assertion;
+   ref_env = if List.mem Ref_env ks then List.filter_map aux_ref ref_env else ref_env;
    ext_ref_env = if List.mem Ext_ref_env ks then List.filter_map aux_ref ext_ref_env else ext_ref_env;
    abst_env = if List.mem Abst_env ks then List.filter_map aux_typ abst_env else abst_env;
    abst_cps_env = if List.mem Abst_cps_env ks then List.filter_map aux_typ abst_cps_env else abst_cps_env;
@@ -159,6 +164,7 @@ let rename ks {ref_env; ext_ref_env; abst_env; abst_cps_env; abst_cegar_env; inl
 let get_vars t = get_def_vars t @ get_fv t
 let get_vars_cegar prog = List.map (fun def -> Id.from_string def.CEGAR_syntax.fn Type.typ_unknown) prog.CEGAR_syntax.defs
 
+let get_assertion spec t = (rename [Assertion] spec @@ get_vars t).assertion
 let get_ref_env spec t = (rename [Ref_env] spec @@ get_vars t).ref_env
 let get_ext_ref_env spec t = (rename [Ext_ref_env] spec @@ get_vars t).ext_ref_env
 let get_abst_env spec t = (rename [Abst_env] spec @@ get_vars t).abst_env

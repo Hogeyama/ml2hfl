@@ -89,6 +89,7 @@ let make_match x cases =
 %token DIV
 %token BAR
 %token TYPE
+%token ASSERT
 %token VAL
 %token VALCPS
 %token VALCEGAR
@@ -208,6 +209,8 @@ spec:
 
 spec_list:
   { Spec.init }
+| assert_ref_type spec_list
+  { {$2 with Spec.assertion = $1::$2.Spec.assertion} }
 | ref_type spec_list
   { {$2 with Spec.ref_env = $1::$2.Spec.ref_env} }
 | ext_ref_type spec_list
@@ -224,6 +227,10 @@ spec_list:
   { {$2 with Spec.inlined_f = $1::$2.Spec.inlined_f} }
 | fairness spec_list
   { {$2 with Spec.fairness = $1::$2.Spec.fairness} }
+
+assert_ref_type:
+| ASSERT id COLON ref_typ
+  { $2, normalize_ref $4 }
 
 ref_type:
 | TYPE id COLON ref_typ

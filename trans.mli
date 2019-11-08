@@ -139,3 +139,4 @@ val elim_singleton_tuple : term -> term
 val lift_pwhen : term -> term
 val decompose_match : term -> term
 val variant_args_to_tuple : ?do_decomp:bool -> term -> term
+val split_by_ref_type : (id * Ref_type.t) list -> term -> ((id * Ref_type.t) option * term) list

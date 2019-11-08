@@ -246,7 +246,7 @@ let report orig parsed num i {result; stats; make_get_rtyp; set_main; main; info
       | None -> Format.printf "Whole result:@."
       | Some i -> Format.printf "Sub-problem %d/%d:@." i num
     end;
-  List.iter (Format.printf "%s@.") info;
+  List.iter (Format.printf "  %s@.") info;
   if info <> [] then Format.printf "@.";
   begin
     match result with
@@ -409,7 +409,12 @@ let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
     check_parallel ?fun_list ?exparam_sol spec preprocessed
   else
     try
-      List.map (check ?fun_list ?exparam_sol spec) preprocessed
+      let n = List.length preprocessed in
+      let aux i rs =
+        if n > 1 then Verbose.printf "Start checking %d/%d sub-problem.@." (i+1) n;
+        check ?fun_list ?exparam_sol spec rs
+      in
+      List.mapi aux preprocessed
     with e ->
          if !!Debug.check then Printexc.print_backtrace stdout;
          improve_precision e;

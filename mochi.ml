@@ -453,13 +453,13 @@ let main filenames =
         if !Flag.Method.modular then
           Modular.main orig spec t
         else
-          let env_assume = Spec.get_ext_ref_env spec t in
-          let env_assert = Spec.get_ref_env spec t in
+          let env = Spec.get_ext_ref_env spec t in
+          let assertion = Spec.get_assertion spec t in
           let problem =
-            if env_assert = [] then
-              Problem.safety ~env:env_assume t
+            if assertion = [] then
+              Problem.safety ~env t
             else
-              Problem.ref_type_check ~env:env_assume t env_assert
+              Problem.ref_type_check ~env t assertion
           in
           Main_loop.run ~orig ~spec problem
       in
