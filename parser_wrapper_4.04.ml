@@ -1116,6 +1116,7 @@ let parse_files filenames =
   in
   origs,
   cont Term.eod
+  |> make_tdecl env.ty_decl
   |> make_tdecl env.ty_decl_ext
   |> remove_TVarLazy
   |> subst_tdata "exn" !!exc_typ

@@ -2846,7 +2846,7 @@ let replace_complex_data_with_int =
           |> List.filter ((<>) (TData s))
           |> List.exists (data_occurs s)
       | _ -> false
-    with Not_found -> false
+    with Not_found -> true
   in
   abst_recdata "Complex data with int" is_complex
 

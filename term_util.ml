@@ -1579,7 +1579,9 @@ let rec copy_for_pred_share n m ty =
   | TData _ -> unsupported "copy_for_pred_share TData"
   | TVariant _ -> unsupported "copy_for_pred_share TVariant"
   | TRecord _ -> unsupported "copy_for_pred_share TRecord"
-  | TApp _ -> unsupported "copy_for_pred_share TApp"
+  | TApp(constr, tys) ->
+      let tys1,tys2 = List.split_map (copy_for_pred_share n m) tys in
+      TApp(constr, tys1), TApp(constr, tys2)
   | TAttr(attr,ty') ->
       let ty1,ty2 = copy_for_pred_share n m ty' in
       _TAttr attr ty1, _TAttr attr ty2
