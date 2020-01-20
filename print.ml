@@ -122,7 +122,7 @@ and print_attr fm = function
   | AId n -> fprintf fm "AId %d" n
   | ADoNotInline -> fprintf fm "ADoNotInline"
   | AEffect e -> List.print print_effect fm e
-  | ALoc l -> print_location fm l
+  | ALoc l -> fprintf fm "@[%a@]" print_location l
 
 and print_attr_list fm attrs =
   List.print print_attr fm attrs
@@ -161,14 +161,23 @@ and print_term cfg pri fm t =
 and print_let_decls cfg bang fm bindings =
   let first = ref true in
   let non_rec = is_non_rec bindings in
+  let is_module = List.exists (fun (_,t) -> is_module t || is_functor t) bindings in
   let print_binding fm (f,t1) =
     let pre =
+      let s_rec =
+          if is_module then
+            " module"
+          else if non_rec then
+            ""
+          else
+            " rec"
+      in
       if !first then
-        "let" ^ (if bang then "!" else "") ^ (if non_rec then "" else " rec")
+        "let" ^ (if bang then "!" else "") ^ s_rec
       else
         "and"
     in
-    let xs,t1' = if !!Debug.check then [], t1 else decomp_funs t1 in
+    let xs,t1' = if !!Debug.check || is_module then [], t1 else decomp_funs t1 in
     let fv = get_fv t1' in
     let pr_ty fm = if cfg.ty then Format.fprintf fm " : %a" print_typ t1'.typ in
     fprintf fm "@[<hov 2>%s @[<hov 2>%a%a%t@] =@ %a@]" pre print_id f (print_ids ~fv cfg) xs pr_ty (print_term cfg 0) t1';
@@ -211,6 +220,10 @@ and print_desc cfg pri attr fm desc =
   | End_of_definitions -> fprintf fm "EOD"
   | Const c -> print_const {cfg with top=false} fm c
   | Var x -> print_id fm x
+  | Fun(x,t1) when is_functor t1 || is_module t1 ->
+      let p = 15 in
+      let s1,s2 = paren pri (p+1) in
+      fprintf fm "%s@[<hov 2>functor@[%a@] ->@ %a%s@]" s1 (print_ids {cfg with top=false}) [x] (pr_t 0) t1 s2
   | Fun(x,t1) ->
       let xs,t =
         if !!Debug.check then
@@ -413,7 +426,7 @@ and print_desc cfg pri attr fm desc =
   | Module decls ->
       let p = 10 in
       let s1,s2 = paren pri (p+1) in
-      fprintf fm "%s@[<v>@[<v 2>module@ @[%a@]@]@ end@]%s" s1 (print_decls {cfg with top=true}) decls s2
+      fprintf fm "%s@[<v>@[<v 2>struct@ @[%a@]@]@ end@]%s" s1 (print_decls {cfg with top=true}) decls s2
 
 
 
@@ -491,12 +504,24 @@ let rec print_term' pri fm t =
         fprintf fm "%s@[@[if %a@]@ then @[%a@]@ else @[%a@]@]%s"
                 s1 (print_term' p) t1 (print_term' p) t2 (print_term' p) t3 s2
     | Local(Decl_let bindings, t2) ->
-        let s_rec = if is_non_rec bindings then "" else " rec" in
+        let s_rec =
+          if List.exists (is_module -| snd) bindings then
+            " module"
+          else if is_non_rec bindings then
+            ""
+          else
+            " rec"
+        in
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
         let b = ref true in
         let print_binding fm (f,t1) =
-          let xs,t1' = decomp_funs t1 in
+          let xs,t1' =
+            if is_functor t1 then
+              [], t1
+            else
+              decomp_funs t1
+          in
           let pre = if !b then "let" ^ s_rec else "and" in
           fprintf fm "@[<hov 2>%s%a =@ %a@ @]" pre (print_ids {!config_default with ty=true}) (f::xs) (print_term' p) t1';
           b := false
@@ -603,7 +628,7 @@ let rec print_term' pri fm t =
     | Module decls ->
         let p = 10 in
         let s1,s2 = paren pri (p+1) in
-        fprintf fm "@[%s@[<hv 2>module@ @[%a@]@]@ end%s@]" s1 print_declaration' decls s2
+        fprintf fm "@[%s@[<hv 2>struct@ @[%a@]@]@ end%s@]" s1 print_declaration' decls s2
   );fprintf fm ":@ @[%a@]@])" (Color.cyan print_typ) t.typ
 
 and print_declaration' fm decls = (* TODO: fix *)

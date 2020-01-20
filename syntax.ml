@@ -1621,6 +1621,17 @@ let is_non_rec bindings =
   | [f, t] -> not @@ Id.mem f @@ get_fv t
   | _ -> false
 
+let is_module t =
+  match t.desc, elim_tattr t.typ with
+  | Module _, _
+  | _, TModule _ -> true
+  | _ -> false
+
+let rec is_functor t =
+  match t.desc, elim_tattr t.typ with
+  | Fun(_,t'), _ -> is_module t' || is_functor t'
+  | _, TFun(_, TModule _) -> true
+  | _ -> false
 
 let rec decomp_funs t =
   match t.desc with

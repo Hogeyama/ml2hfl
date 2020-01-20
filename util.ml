@@ -882,6 +882,14 @@ module Unix = struct
 end
 
 
+module Lexing = struct
+  include Lexing
+
+  let print_position fm {pos_fname; pos_lnum; pos_cnum; pos_bol} =
+  Format.fprintf fm "File \"%s\", line %d, column %d" pos_fname pos_lnum (pos_cnum - pos_bol)
+end
+
+
 module Time = struct
   let get () =
     let open Unix in

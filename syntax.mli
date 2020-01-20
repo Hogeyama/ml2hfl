@@ -257,6 +257,8 @@ val is_non_rec : (id * term) list -> bool
 val is_prim_var : id -> bool
 val decomp_funs : term -> id list * term
 val decomp_locals : term -> declaration list * term
+val is_module : term -> bool
+val is_functor : term -> bool
 
 val print_location_ref : (Format.formatter -> Location.t -> unit) ref
 val print_location : Format.formatter -> Location.t -> unit

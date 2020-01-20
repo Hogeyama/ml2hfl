@@ -261,7 +261,7 @@ let rec define_rand ?(name="") (env, defs as ed) typ =
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
         (env',defs'), t
     | _ ->
-        unsupported @@ Format.asprintf "define_rand: %a@." Print.typ typ
+        unsupported @@ Format.asprintf "define_rand: %a" Print.typ typ
 let define_rand ed typ = define_rand ~name:"" ed typ
 
 (* INPUT: type declarations must be on top *)
@@ -2653,11 +2653,11 @@ let extract_module =
               |- List.fold_right2 (fun (s,_) (s',_) -> subst_tdata_ca s (TData s')) decls decls'
         in
         (tr.tr2_term (m::mods) @@ List.fold_right aux decls t).desc
-    | Local(Decl_let[m,{desc=App(_, [{desc=Module _}])}], t) ->
+    | Local(Decl_let[m,{desc=App(_, [arg])}], t) when is_module arg ->
         if Id.mem m mods then unsupported "Module shadowing";
         Flag.Encode.use_abst "Functor";
         tr.tr2_desc (m::mods) t.desc
-    | Local(Decl_let[_f,{desc=Fun(_, {desc=Module _})}], t) ->
+    | Local(Decl_let[_f,{desc=Fun(_, body)}], t) when is_module body || is_functor body ->
         Flag.Encode.use_abst "Functor";
         tr.tr2_desc mods t.desc
     | Module _ ->
