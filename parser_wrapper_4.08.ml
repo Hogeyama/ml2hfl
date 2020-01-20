@@ -34,6 +34,7 @@ let init_env : env =
    tr_lazy = true}
 
 
+(* TODO: move into `Problem.info` *)
 let exc_init : (string * typ list) list = []
 (*
   ["Assert_failure", [];
@@ -72,7 +73,7 @@ let from_mutable_flag = function
 
 let prim_typ_constr =
   ["list", TList;
-   "Stdlib.ref", TRef;
+   "Stdlib.Pervasives.ref", TRef;
    "option", TOption;
    "array", TArray;
    "Lazy.t", TLazy]

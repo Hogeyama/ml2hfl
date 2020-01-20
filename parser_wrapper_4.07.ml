@@ -86,7 +86,7 @@ let from_mutable_flag = function
 
 let prim_typ_constr =
   ["list", TList;
-   "Pervasives.ref", TRef;
+   "Stdlib.Pervasives.ref", TRef;
    "option", TOption;
    "array", TArray;
    "Lazy.t", TLazy]
@@ -459,7 +459,7 @@ let conv_primitive_app t ts typ loc =
         else
           randint_term.attr in
       make_app {randint_term with attr} [unit_term]
-  | Var {Id.name="Stdlib.!"}, [t] -> make_deref t
+  | Var {Id.name="Stdlib.!"}, [t] -> (try make_deref t with _ -> Format.printf "t: %a@." Print.term' t; assert false)
   | Var {Id.name="Stdlib.:="}, [t1;t2] -> make_setref t1 t2
   | Var {Id.name="Stdlib.Random.bool"}, [{desc=Const Unit}] -> randbool_unit_term
   | Var {Id.name="Stdlib.Random.int"}, [{desc=Const (Int 0)}] -> randint_unit_term
@@ -649,7 +649,7 @@ let rec from_expression env {exp_desc; exp_loc; exp_type; exp_env=tenv; exp_attr
             match a,b with
             | _, None -> unsupported "expression (optional)"
             | Optional _, Some e ->
-                (* I don't know why, but the type environment of e is not appropriate for this context *)
+                (* I don't know why, but the type environment of `e` is not appropriate for this context *)
                 from_expression env {e with exp_env=tenv}
             | _, Some e ->
                 from_expression env e
