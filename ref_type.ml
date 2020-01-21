@@ -19,10 +19,7 @@ type t =
   | Exn of t * t
   [@@deriving show]
 
-and constr =
-  | Ref
-  | Array
-  | Option
+and constr = string
 
 let typ_result = Base(T.TPrim "X", Id.new_var T.Ty.unit, U.true_term)
 
@@ -101,11 +98,7 @@ let rec decomp_funs typ =
       Pair.map_fst (List.cons (x,typ1)) @@ decomp_funs typ2
   | _ -> [], typ
 
-let string_of_constr c =
-  match c with
-  | Ref -> "ref"
-  | Array -> "array"
-  | Option -> "option"
+let string_of_constr c = c
 
 let rec print fm = function
   | Base(base,x,p) when p = U.true_term ->
@@ -122,6 +115,8 @@ let rec print fm = function
       Format.fprintf fm "Bot"
   | Base(base,x,p) ->
       Format.fprintf fm "@[{%a:%a |@ %a}@]" Id.print x Type.print_base base Print.term p
+  | ADT(s,x,p) when p = U.true_term ->
+      Format.fprintf fm "%s" s
   | ADT(s,x,p) ->
       Format.fprintf fm "@[{%a:%s |@ %a}@]" Id.print x s Print.term p
   | Fun(x, typ1, Exn(typ2, typ3)) when is_bottom typ3 ->
@@ -323,24 +318,14 @@ let rec of_simple typ =
   | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.true_term)
   | T.TFun(x, typ) -> Fun(x, of_simple @@ Id.typ x, of_simple typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right @@ of_simple -| Id.typ) xs)
-  | T.TApp(T.TList,[typ]) ->
+  | T.TApp("list",[typ]) ->
       List(Id.new_var T.Ty.int,
            U.true_term,
            Id.new_var T.Ty.int,
            U.true_term,
            of_simple typ)
   | T.TVar({contents=Some ty},_) -> of_simple ty
-  | T.TApp(constr, [ty]) ->
-      let constr' =
-        match constr with
-        | T.TRef -> Ref
-        | T.TArray -> Array
-        | T.TOption -> Option
-        | _ ->
-            Format.printf "%a@." Print.typ typ;
-            unsupported "Ref_type.of_simple"
-      in
-      App(constr', of_simple ty)
+  | T.TApp(constr, [ty]) -> App(constr, of_simple ty)
   | _ ->
       Format.printf "%a@." Print.typ typ;
       unsupported "Ref_type.of_simple"
@@ -399,13 +384,7 @@ let rec to_abst_typ ?(decomp_pred=false) ?(with_pred=false) typ =
         else
           U.add_tapred x' [U.subst x (U.make_length @@ U.make_var x') p_len] @@ Id.typ x'
   | App(constr, ty) ->
-      let make =
-        match constr with
-        | Ref -> T.make_tref
-        | Array -> T.make_tarray
-        | Option -> T.make_toption
-      in
-      make @@ to_abst_typ ~decomp_pred ~with_pred ty
+      T.make_tconstr constr @@ to_abst_typ ~decomp_pred ~with_pred ty
   | Exn(typ1, _) -> to_abst_typ ~decomp_pred ~with_pred typ1
   in
   Debug.printf "Ref_type.to_abst_typ IN: %a@." print typ;
@@ -433,13 +412,7 @@ let rec to_simple ?(with_pred=false) typ =
   | ExtArg _ -> assert false
   | List(_,_,_,_,typ) -> T.make_tlist @@ to_simple ~with_pred typ
   | App(constr, ty) ->
-      let make =
-        match constr with
-        | Ref -> T.make_tref
-        | Array -> T.make_tarray
-        | Option -> T.make_toption
-      in
-      make @@ to_simple ~with_pred ty
+      T.make_tconstr constr @@ to_simple ~with_pred ty
   | Exn(typ1, _) -> to_simple ~with_pred typ1
 
 let make_base ?(pred=U.true_term) base = Base(base, Id.new_var (Type.TBase base), pred)
@@ -741,7 +714,7 @@ let rec make_strongest typ =
   | T.TData s -> Base(T.TPrim s, Id.new_var typ, U.false_term)
   | T.TFun(x, typ) -> Fun(x, make_weakest @@ Id.typ x, make_strongest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_strongest -| Id.typ)) xs)
-  | T.TApp(T.TList, _) -> unsupported "Ref_type.make_strongest TList"
+  | T.TApp("list", _) -> unsupported "Ref_type.make_strongest TList"
   | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.false_term)
   | _ ->
       Format.eprintf "make_strongest: %a@." Print.typ typ;
@@ -757,7 +730,7 @@ and make_weakest typ =
   | T.TAttr([T.TAPureFun],T.TFun(x, typ)) -> Fun(x, make_weakest @@ Id.typ x, make_weakest typ)
   | T.TFun(x, typ) -> Fun(x, make_strongest @@ Id.typ x, make_weakest typ)
   | T.TTuple xs -> Tuple(List.map (Pair.add_right (make_weakest -| Id.typ)) xs)
-  | T.TApp(T.TList, _) -> unsupported "Ref_type.make_weakest List"
+  | T.TApp("list", _) -> unsupported "Ref_type.make_weakest List"
   | _ when typ = U.typ_result -> Base(T.TUnit, Id.new_var typ, U.true_term)
   | _ ->
       Format.eprintf "make_weakest: %a@." Print.typ typ;

@@ -11,7 +11,8 @@ module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ en
 
 let () = Compmisc.init_path false
 
-let print_location = Location.print_loc
+let print_location fm {Location.loc_start} = Lexing.print_position fm loc_start
+
 let () = Syntax.print_location_ref := print_location
 let add_load_path path = Config.load_path := path::!Config.load_path
 
@@ -85,11 +86,11 @@ let from_mutable_flag = function
 
 
 let prim_typ_constr =
-  ["list", TList;
-   "Pervasives.ref", TRef;
-   "option", TOption;
-   "array", TArray;
-   "Lazy.t", TLazy]
+  ["list", "list";
+   "Pervasives.ref", "ref";
+   "option", "option";
+   "array", "array";
+   "lazy_t", "lazy_t"]
 
 let is_prim_constr constrs =
   match constrs with

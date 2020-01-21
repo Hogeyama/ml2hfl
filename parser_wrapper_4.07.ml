@@ -85,11 +85,11 @@ let from_mutable_flag = function
 
 
 let prim_typ_constr =
-  ["list", TList;
-   "Stdlib.Pervasives.ref", TRef;
-   "option", TOption;
-   "array", TArray;
-   "Lazy.t", TLazy]
+  ["list", "list";
+   "Pervasives.ref", "ref";
+   "option", "option";
+   "array", "array";
+   "lazy_t", "lazy_t"]
 
 let is_prim_constr constrs =
   match constrs with

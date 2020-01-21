@@ -13,16 +13,10 @@ and 'a t =
   | TData of string
   | TVariant of bool * (string * 'a t list) list (** true means polymorphic variant *)
   | TRecord of (string * (mutable_flag * 'a t)) list
-  | TApp of constr * 'a t list
+  | TApp of string * 'a t list
   | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
 and mutable_flag = Immutable | Mutable
-and constr =
-  | TList
-  | TRef
-  | TOption
-  | TArray
-  | TLazy
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
   | TAPredShare of int
@@ -102,6 +96,7 @@ val make_tlist : 'a t -> 'a t
 val make_tref : 'a t -> 'a t
 val make_toption : 'a t -> 'a t
 val make_tarray : 'a t -> 'a t
+val make_tconstr : string -> 'a t -> 'a t
 val add_tattr: 'a attr -> 'a t -> 'a t
 
 
@@ -121,7 +116,6 @@ val pp_base : Format.formatter -> base -> unit
 val pp : (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a t -> unit
 val pp_effect : Format.formatter -> effect -> unit
 val pp_mutable_flag : Format.formatter -> mutable_flag -> unit
-val pp_constr : Format.formatter -> constr -> unit
 
 
 module Ty : sig

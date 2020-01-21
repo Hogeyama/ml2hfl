@@ -51,8 +51,14 @@ let make_match x cases =
    typ=typ_unknown;
    attr=[]}
 
+let var_of_ref_type ty =
+  match ty with
+  | RT.Base(_,y,_) -> y
+  | _ -> Id.new_var @@ RT.to_simple ty
+
 %}
 
+%token <string> TVAR
 %token <string> LIDENT /* start with lowercase letter */
 %token <string> UIDENT /* start with uppercase letter */
 %token <string> EVENT
@@ -343,6 +349,7 @@ ref_simple:
     let typ' = RT.subst_var (orig_id x) x typ in
     RT.List(x,p_len,Id.new_var Ty.int,true_term,typ')
   }
+/*
 | index_ref ref_simple length_ref LIST
   {
     let y,p_i = $1 in
@@ -352,6 +359,7 @@ ref_simple:
     let p_i' = subst_var (orig_id x) x p_i in
     RT.List(x,p_len,y,p_i',typ')
   }
+*/
 
 index_ref:
 | LSQUAR id RSQUAR { Id.new_var ~name:(Id.name $2) Ty.int, true_term }
@@ -376,6 +384,14 @@ length_ref:
     x', subst_var x x' $4
   }
 
+tuple_ref_typ:
+| ref_typ TIMES ref_typ
+  {
+    [var_of_ref_type $1, $1; var_of_ref_type $3, $3]
+  }
+| tuple_ref_typ TIMES ref_typ
+  { $1 @ [var_of_ref_type $3, $3] }
+
 ref_typ:
 | ref_simple { $1 }
 | id COLON ref_simple TIMES ref_typ
@@ -388,15 +404,8 @@ ref_typ:
     let y = Id.new_var (Ref_type.to_simple $7) in
     ref_tuple [($2,$4);(y,$7)]
   }
-| ref_typ TIMES ref_typ
-  {
-    let x  =
-      match $1 with
-      | RT.Base(_,y,_) -> y
-      | _ -> Id.new_var (RT.to_simple $1)
-    in
-    RT.Tuple[x, $1; Id.new_var @@ Ref_type.to_simple $3, $3]
-  }
+| tuple_ref_typ
+  { RT.Tuple $1 }
 | id COLON ref_simple ARROW ref_typ
   {
     let x = Id.set_typ $1 (Ref_type.to_simple $3)
@@ -418,6 +427,8 @@ ref_typ:
   }
 | ref_typ UNION ref_typ { RT.Union(RT.to_simple $1, [$1; $3]) }
 | ref_typ INTER ref_typ { RT.Inter(RT.to_simple $1, [$1; $3]) }
+| ref_typ LIST { RT.App("list", $1) }
+| ref_typ LIDENT { RT.App($2, $1) }
 
 pred_list:
   { [] }

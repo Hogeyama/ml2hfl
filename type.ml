@@ -19,18 +19,11 @@ and 'a t =
   | TData of string
   | TVariant of bool * (string * 'a t list) list (** true means polymorphic variant *)
   | TRecord of (string * (mutable_flag * 'a t)) list
-  | TApp of constr * 'a t list
+  | TApp of string * 'a t list
   | TAttr of 'a attr list * 'a t
   | TModule of (string * 'a t) list
 
 and mutable_flag = Immutable | Mutable
-
-and constr =
-  | TList
-  | TRef
-  | TOption
-  | TArray
-  | TLazy
 
 and 'a attr =
   | TAPred of 'a t Id.t * 'a list (* TAPred occur at most ones *)
@@ -69,7 +62,7 @@ let rec var_name_of typ =
   | TBase TInt -> "n"
   | TFun _ -> "f"
   | TTuple _ -> "p"
-  | TApp(TList,_) -> "xs"
+  | TApp("list",_) -> "xs"
   | TAttr(_,ty) -> var_name_of ty
   | _ -> "x"
 
@@ -87,10 +80,11 @@ let make_tfun ?name typ1 typ2 = TFun(new_var ?name typ1, typ2)
 let make_ptfun ?name typ1 typ2 = TAttr([TAPureFun], make_tfun ?name typ1 typ2)
 let make_ttuple typs = TTuple (List.map new_var typs)
 let make_tpair typ1 typ2 = make_ttuple [typ1; typ2]
-let make_tlist typ = TApp(TList, [typ])
-let make_tref typ = TApp(TRef, [typ])
-let make_toption typ = TApp(TOption, [typ])
-let make_tarray typ = TApp(TArray, [typ])
+let make_tlist typ = TApp("list", [typ])
+let make_tref typ = TApp("ref", [typ])
+let make_toption typ = TApp("option", [typ])
+let make_tarray typ = TApp("array", [typ])
+let make_tconstr s typ = TApp(s, [typ])
 
 
 let rec elim_tattr = function
@@ -280,11 +274,11 @@ let rec print occur print_pred fm typ =
       in
       Format.fprintf fm "{@[%a@]}" (print_list pr ";@ ") fields
   | TModule _ -> Format.fprintf fm "@[sig ...@ end@]"
-  | TApp(TRef, [typ]) -> Format.fprintf fm "@[%a ref@]" print' typ
-  | TApp(TList, [typ]) -> Format.fprintf fm "@[%a list@]" print' typ
-  | TApp(TOption, [typ]) -> Format.fprintf fm "@[%a option@]" print' typ
-  | TApp(TArray, [typ]) -> Format.fprintf fm "@[%a array@]" print' typ
-  | TApp(TLazy, [typ]) -> Format.fprintf fm "@[%a Lazy.t@]" print' typ
+  | TApp("ref", [typ]) -> Format.fprintf fm "@[%a ref@]" print' typ
+  | TApp("list", [typ]) -> Format.fprintf fm "@[%a list@]" print' typ
+  | TApp("option", [typ]) -> Format.fprintf fm "@[%a option@]" print' typ
+  | TApp("array", [typ]) -> Format.fprintf fm "@[%a array@]" print' typ
+  | TApp("lazy", [typ]) -> Format.fprintf fm "@[%a Lazy.t@]" print' typ
   | TApp _ -> assert false
 
 let print ?(occur=fun _ _ -> false) print_pred fm typ =
@@ -449,25 +443,25 @@ let snd_typ typ = proj_typ 1 typ
 
 let ref_typ typ =
   match elim_tattr typ with
-  | TApp(TRef, [typ]) -> typ
+  | TApp("ref", [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "ref_typ"
 
 let list_typ typ =
   match elim_tattr typ with
-  | TApp(TList, [typ]) -> typ
+  | TApp("list", [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "list_typ"
 
 let option_typ typ =
   match elim_tattr typ with
-  | TApp(TOption, [typ]) -> typ
+  | TApp("option", [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "option_typ"
 
 let array_typ typ =
   match elim_tattr typ with
-  | TApp(TArray, [typ]) -> typ
+  | TApp("array", [typ]) -> typ
   | typ when typ = typ_unknown -> typ_unknown
   | _ -> invalid_arg "array_typ"
 
@@ -496,16 +490,13 @@ let rec to_id_string = function
   | TVar({contents=None},_) -> "abst"
   | TVar({contents=Some typ},_) -> to_id_string typ
   | TFun(x,typ) -> to_id_string (Id.typ x) ^ "__" ^ to_id_string typ
-  | TApp(TList, [typ]) -> to_id_string typ ^ "_list"
+  | TApp(s, [typ]) -> to_id_string typ ^ s
   | TTuple xs ->
       let xs',x = List.decomp_snoc xs in
       let aux x s = to_id_string (Id.typ x) ^ "_x_" ^ s in
       List.fold_right aux xs' @@ to_id_string @@ Id.typ x
   | TData s -> s
   | TAttr(_,typ) -> to_id_string typ
-  | TApp(TRef, [typ]) -> to_id_string typ ^ "_ref"
-  | TApp(TOption, [typ]) -> to_id_string typ ^ "_option"
-  | TApp(TArray, [typ]) -> to_id_string typ ^ "_array"
   | TApp _ -> assert false
   | TFuns _ -> unsupported ""
   | TVariant(_,labels) -> String.join "_" @@ List.map fst labels

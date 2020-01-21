@@ -258,10 +258,10 @@ let make_tuple ts =
 let make_fst t = {desc=Proj(0,t); typ=proj_typ 0 t.typ; attr=t.attr}
 let make_snd t = {desc=Proj(1,t); typ=proj_typ 1 t.typ; attr=t.attr}
 let make_pair t1 t2 = make_tuple [t1;t2]
-let make_nil typ = {desc=Nil; typ=TApp(TList, [typ]); attr=const_attr}
+let make_nil typ = {desc=Nil; typ=make_tlist typ; attr=const_attr}
 let make_nil2 typ = {desc=Nil; typ; attr=const_attr}
 let make_cons t1 t2 =
-  assert (Flag.Debug.check_typ => Type.can_unify (TApp(TList, [t1.typ])) t2.typ);
+  assert (Flag.Debug.check_typ => Type.can_unify (make_tlist t1.typ) t2.typ);
   let attr = make_attr [t1;t2] in
   {desc=Cons(t1,t2); typ=t2.typ; attr}
 let rec make_list ?typ ts =
@@ -391,7 +391,7 @@ let rec make_term typ =
   | TData "char" -> {desc=Const(Char '\000'); typ; attr=[]}
   | TData "string" -> {desc=Const(String ""); typ; attr=[]}
   | TData "float" -> {desc=Const(Float 0.); typ; attr=[]}
-  | TApp(TList, [typ']) -> make_nil typ'
+  | TApp("list", [typ']) -> make_nil typ'
   | _ -> Format.eprintf "ERROR: %a@." Print.typ typ; assert false
 
 

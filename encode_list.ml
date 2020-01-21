@@ -75,17 +75,17 @@ let rec get_rtyp_list rtyp typ =
   | RT.Union(_, rtyps), _ ->
       RT.Union(typ, List.map (get_rtyp_list -$- typ) rtyps)
   (* TODO RT.Data *)
-  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Fun(y, RT.Base(TInt, y', p_i), typ2)], TApp(TList, [typ]) ->
+  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Fun(y, RT.Base(TInt, y', p_i), typ2)], TApp("list", [typ]) ->
       let p_len' = subst_var x' x p_len in
       let p_i' = subst_var y' y p_i in
       RT.List(x, p_len', y, p_i', get_rtyp_list typ2 typ)
-  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Inter(_, [])], TApp(TList, [typ]) ->
+  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Inter(_, [])], TApp("list", [typ]) ->
       let p_len' = subst_var x' x p_len in
       RT.List(x, p_len', Id.new_var typ_unknown, true_term, RT.Inter(typ, []))
-  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Inter(_, typs)], TApp(TList, [typ]) ->
+  | RT.Tuple[x, RT.Base(TInt, x', p_len); _, RT.Inter(_, typs)], TApp("list", [typ]) ->
       let typs' = List.map (fun typ -> RT.Tuple [x, RT.Base(TInt, x', p_len); Id.new_var typ_unknown, typ]) typs in
       get_rtyp_list (RT.Inter(typ_unknown, typs')) (make_tlist typ)
-  | _, TApp(TList, [typ]) ->
+  | _, TApp("list", [typ]) ->
       Format.eprintf "%a@." RT.print rtyp;
       raise (Fatal "not implemented get_rtyp_list")
   | RT.ADT(_,_,_), _ -> assert false
@@ -140,7 +140,7 @@ let encode_list = make_trans2 ()
 let encode_list_typ post typ =
   match typ with
   | TVar({contents=None},_) -> fatal "Polymorphic types occur! (Encode_list.encode_list_typ)"
-  | TApp(TList, [typ]) ->
+  | TApp("list", [typ]) ->
       let l = Id.new_var ~name:"l" Ty.int in
       TTuple[l; Id.new_var @@ pureTFun(Id.new_var ~name:"i" Ty.int, encode_list.tr2_typ post typ)]
   | _ -> encode_list.tr2_typ_rec post typ
@@ -255,7 +255,7 @@ let rec encode_list_pat p =
 
 let rec make_rand typ =
   match typ with
-  | TApp(TList, [typ']) ->
+  | TApp("list", [typ']) ->
       let l = Id.new_var ~name:"l" Ty.int in
       Term.(let_ [l, randi]
            (assume (int 0 <= var l)
@@ -377,7 +377,7 @@ let make_list_eq typ =
 let inst_list_eq = make_trans2 ()
 let inst_list_eq_term map t =
   match t.desc with
-  | BinOp(Eq, ({desc=Var(path)}), {desc=Nil; typ=TApp(TList, [typ])}) when path.Id.name = "path" ->
+  | BinOp(Eq, ({desc=Var(path)}), {desc=Nil; typ=TApp("list", [typ])}) when path.Id.name = "path" ->
       (* XXX temporary measure
          path = nil
        *)
@@ -388,13 +388,13 @@ let inst_list_eq_term map t =
       let t2' = inst_list_eq.tr2_term map t2 in
       begin
         match t1.typ with
-        | TApp(TList, [TBase TInt|TData _ as typ]) when List.mem_assoc typ map ->
+        | TApp("list", [TBase TInt|TData _ as typ]) when List.mem_assoc typ map ->
             if !Flag.Encode.abst_list_eq then
               (Flag.Encode.use_abst "List equality";
                randbool_unit_term)
             else
               make_app (make_var @@ List.assoc typ map) [t1'; t2']
-        | TApp(TList, _) ->
+        | TApp("list", _) ->
             Flag.Encode.use_abst "List equality";
             randbool_unit_term
         | _ -> inst_list_eq.tr2_term_rec map t
@@ -435,7 +435,7 @@ let encode_list_opt = make_trans ()
 let encode_list_opt_typ typ =
   match typ with
   | TVar({contents=None},_) -> raise (Fatal "Polymorphic types occur! (Encode_list.encode_list_opt_typ)")
-  | TApp(TList, [typ]) -> TFun(Id.new_var ~name:"i" Ty.int, opt_typ @@ encode_list_opt.tr_typ typ)
+  | TApp("list", [typ]) -> TFun(Id.new_var ~name:"i" Ty.int, opt_typ @@ encode_list_opt.tr_typ typ)
   | _ -> encode_list_opt.tr_typ_rec typ
 
 let rec get_match_bind_cond_opt t p =

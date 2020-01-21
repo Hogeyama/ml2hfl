@@ -127,8 +127,8 @@ let rec check env t typ =
         | _ -> assert false
       end;
       check env t1 t1.typ
-  | Nil, TApp(TList, _) -> ()
-  | Cons(t1,t2), TApp(TList, [typ']) ->
+  | Nil, TApp("list", _) -> ()
+  | Cons(t1,t2), TApp("list", [typ']) ->
       check env t1 typ';
       check env t2 typ
   | Constr(s,ts), TVariant(_,labels) ->
@@ -145,15 +145,15 @@ let rec check env t typ =
       check env t1 typ;
       check env t2 @@ make_tfun (TVar(ref None, None)) typ
   | Bottom, typ -> ()
-  | Ref t, TApp(TRef, [typ]) ->
+  | Ref t, TApp("ref", [typ]) ->
       check env t typ
   | Deref t, typ ->
       check env t (make_tref typ)
   | SetRef(t1,t2), TBase TUnit ->
       check env t1 (make_tref t2.typ);
       check env t2 t2.typ
-  | TNone, TApp(TOption, _) -> ()
-  | TSome t, TApp(TOption, [typ]) ->
+  | TNone, TApp("option", _) -> ()
+  | TSome t, TApp("option", [typ]) ->
       check env t typ
   | Module _, TModule _ -> () (* TODO *)
   | _, TData s when List.mem_assoc s env ->

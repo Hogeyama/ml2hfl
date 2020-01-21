@@ -64,6 +64,7 @@ rule token = parse
 | "\\/" { UNION }
 | "_" { UNDER_SCORE }
 | digit+ { INT(int_of_string (Lexing.lexeme lexbuf)) }
+| '\''['a'-'z' 'A'-'Z']+(digit|lower|upper)* { TVAR(Lexing.lexeme lexbuf) }
 | (upper(digit|lower|upper)*'.')*lower(digit|lower|upper)* { LIDENT(Lexing.lexeme lexbuf) }
 | (upper(digit|lower|upper)*'.')*upper(digit|lower|upper)* { UIDENT(Lexing.lexeme lexbuf) }
 | "#randint_"digit+ { LIDENT(Lexing.lexeme lexbuf) }

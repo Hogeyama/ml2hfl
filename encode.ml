@@ -82,7 +82,7 @@ let abst_ref_term =
   in
   let tr_typ typ =
     match typ with
-    | TApp(TRef, _) -> Ty.unit
+    | TApp("ref", _) -> Ty.unit
     | _ -> tr.tr_typ_rec typ
   in
   tr.tr_term <- tr_term;
@@ -117,7 +117,7 @@ let array_term =
   in
   let tr_typ typ =
     match typ with
-    | TApp(TArray, [ty]) ->
+    | TApp("array", [ty]) ->
         let ty' = tr.tr_typ ty in
         Ty.(ref (int * (fun_ int ty')))
     | _ -> tr.tr_typ_rec typ
@@ -334,7 +334,7 @@ let option_term =
   in
   let tr_typ ty =
     match ty with
-    | TApp(TOption, [ty']) -> opt_typ @@ tr.tr_typ ty'
+    | TApp("option", [ty']) -> opt_typ @@ tr.tr_typ ty'
     | _ -> tr.tr_typ_rec ty
   in
   let tr_pat p =

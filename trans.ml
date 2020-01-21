@@ -199,10 +199,10 @@ let rec define_rand ?(name="") (env, defs as ed) typ =
     | TFun(x,typ) ->
         let ed',t = define_rand ed typ in
         ed', make_fun x t
-    | TApp(TList, [TVar({contents=None} as r,_)]) ->
+    | TApp("list", [TVar({contents=None} as r,_)]) ->
         r := Some Ty.unit;
         define_rand ed typ
-    | TApp(TList, [typ']) ->
+    | TApp("list", [typ']) ->
         let u = Id.new_var Ty.unit in
         let f = Id.new_var ~name:("make_" ^ to_id_string typ) (TFun(u,typ)) in
         let env' = (typ,f)::env in
@@ -216,10 +216,10 @@ let rec define_rand ?(name="") (env, defs as ed) typ =
         in
         let (env', defs'), ts = List.fold_right aux xs ((env,defs),[]) in
         (env', defs'), make_tuple ts
-    | TApp(TRef, [typ]) ->
+    | TApp("ref", [typ]) ->
         let ed',t = define_rand ed typ in
         ed', make_ref t
-    | TApp(TArray, [typ]) ->
+    | TApp("array", [typ]) ->
         let ed',t = define_rand ed @@ make_tlist typ in
         ed', make_app (make_var @@ Id.new_var ~name:"Array.of_list" ~attr:[Id.External] @@ make_tfun (make_tlist typ) (make_tarray typ)) [t]
     | TData s -> (env, defs), make_rand_unit typ
@@ -256,7 +256,7 @@ let rec define_rand ?(name="") (env, defs as ed) typ =
           ed', {desc=Record sfts; typ=typ; attr=[]}
         in
         (env'', (f,make_fun u t)::defs'), make_app (make_var f) [unit_term]
-    | TApp(TOption, [typ']) ->
+    | TApp("option", [typ']) ->
         let (env',defs'),t_typ' = define_rand (env,defs) typ' in
         let t = make_br {desc=TNone;typ;attr=[]} {desc=TSome(t_typ');typ;attr=[]} in
         (env',defs'), t

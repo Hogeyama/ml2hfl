@@ -10,10 +10,7 @@ type t =
   | List of Syntax.id * Syntax.term * Syntax.id * Syntax.term * t
   | App of constr * t
   | Exn of t * t
-and constr =
-  | Ref
-  | Array
-  | Option
+and constr = string
 
 module Env : Menv.ENV with type key := Syntax.id with type value := t
 type env = Env.t
