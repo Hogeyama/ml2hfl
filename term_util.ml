@@ -1711,6 +1711,23 @@ and size t =
   | TSome t -> 1 + size t
   | Module decls -> 1 + List.fold_left (fun s decl -> s + size_declaration decl) 0 decls
 
+(*
+let col_type_decls =
+  let col = make_col2 [] (@@@) in
+  let col_desc prefix desc =
+    match desc with
+    | Local(Decl_type env, t) -> List.map (Pair.map_fst ((^) prefix)) env
+    | Local(Decl_let [x, {desc=Module decls}], t) ->
+        let prefix' = prefix ^ "." ^ Id.to_string x in
+        List.fold_left (fun acc decl -> acc @ col.col2_decl prefix' decl) (col.col2_term prefix t) decls
+    | Module decls -> unsupported "col_type_decls"
+    | _ -> col.col2_desc_rec prefix desc
+  in
+  col.col2_desc <- col_desc;
+  col.col2_term
+ *)
+
+
 module Term = struct
   let unit = unit_term
   let tt = true_term

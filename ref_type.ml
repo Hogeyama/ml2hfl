@@ -875,6 +875,36 @@ let mk_trans_rty ?special_case:(special_case = fun _rty _trans _trans_rty -> Non
     | Some rty -> rty
   in trans_rty
 
+let rec replace_base_with_int ty =
+  let f = replace_base_with_int in
+  match ty with
+  | Base(_,y,p) -> Base(T.TInt, y, p)
+  | ADT(s,y,p) -> ty
+  | Fun(y,typ1,typ2) -> Fun(y, f typ1, f typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd f) xtyps)
+  | Inter(typ, typs) -> Inter(typ, List.map f typs)
+  | Union(typ, typs) -> Union(typ, List.map f typs)
+  | ExtArg(y,typ1,typ2) -> ExtArg(y, f typ1, f typ2)
+  | List(y,p_len,z,p_i,typ) -> List(y, p_len, z, p_i, f typ)
+  | App(constr, ty) -> App(constr, f ty)
+  | Exn(typ1, typ2) -> Exn(f typ1, f typ2)
+
+let rec replace_data_with_int ty =
+  let f = replace_data_with_int in
+  match ty with
+  | Base(base,y,p) -> ty
+  | ADT(_, y, p) ->
+      if p <> U.true_term then unsupported "-data-to-int";
+      Base(T.TInt, Id.new_var T.Ty.int, p)
+  | Fun(y,typ1,typ2) -> Fun(y, f typ1, f typ2)
+  | Tuple xtyps -> Tuple (List.map (Pair.map_snd f) xtyps)
+  | Inter(typ, typs) -> Inter(typ, List.map f typs)
+  | Union(typ, typs) -> Union(typ, List.map f typs)
+  | ExtArg(y,typ1,typ2) -> ExtArg(y, f typ1, f typ2)
+  | List(y,p_len,z,p_i,typ) -> List(y, p_len, z, p_i, f typ)
+  | App _ -> Base(T.TInt, Id.new_var T.Ty.int, U.true_term)
+  | Exn(typ1, typ2) -> Exn(f typ1, f typ2)
+
 module Ty = struct
   let result = typ_result
   let base = make_base

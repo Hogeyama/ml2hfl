@@ -1490,7 +1490,7 @@ let inline_simple_exp =
   tr.tr_term <- tr_term;
   tr.tr_term
 
-let replace_base_with_int =
+let replace_base_with_int,replace_base_with_int_typ =
   let hash_of_const c =
     match c with
     | Char c -> int_of_char c
@@ -1520,7 +1520,7 @@ let replace_base_with_int =
   tr.tr_desc <- tr_desc;
   tr.tr_typ <- tr_typ;
   tr.tr_pat <- tr_pat;
-  tr.tr_term
+  tr.tr_term, tr.tr_typ
 
 let remove_top_por =
   let tr = make_trans () in
@@ -2798,7 +2798,7 @@ let abst_recdata =
   in
   let tr_typ (s,check,env) ty =
     match ty with
-    | TData s when not (List.mem s prim_base_types) && check ty env -> Ty.int
+    | TData s when check ty env -> Ty.int
     | TVariant _ when check ty env -> Ty.int
     | _ -> tr.tr2_typ_rec (s,check,env) ty
   in

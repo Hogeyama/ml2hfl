@@ -190,14 +190,14 @@ let print_base fm b =
   | TUnit -> Format.fprintf fm "unit"
   | TBool -> Format.fprintf fm "bool"
   | TInt -> Format.fprintf fm "int"
-  | TPrim s -> Format.fprintf fm "%s" s
+  | TPrim s -> Format.fprintf fm "TPrim %s" s
 
 let rec print occur print_pred fm typ =
   let print' = print occur print_pred in
   let print_preds ps = print_list print_pred "; " ps in
   match typ with
   | TBase TUnit -> Format.fprintf fm "unit"
-    | TBase TBool -> Format.fprintf fm "bool"
+  | TBase TBool -> Format.fprintf fm "bool"
   | TBase TInt -> Format.fprintf fm "int"
   | TBase (TPrim s) -> Format.fprintf fm "%s" s
   | TVarLazy _ -> Format.fprintf fm "???"
@@ -233,7 +233,7 @@ let rec print occur print_pred fm typ =
         print' fm @@ Id.typ x
       in
       Format.fprintf fm "(@[<hov 2>%a@])" (print_list pr "@ *@ ") xs
-  | TData s -> Format.pp_print_string fm s
+  | TData s -> Format.fprintf fm "TData %s" s
   | TAttr(attrs, ty) when !print_as_ocaml -> print' fm ty
   | TAttr([], typ) -> print' fm typ
   | TAttr(TAPred(x,ps)::preds, typ) when not !!Debug_attr.check ->

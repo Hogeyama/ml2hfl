@@ -30,6 +30,7 @@ let rec make_template env ty =
     match ty with
     | TBase _ -> ty, false
     | TVarLazy _ -> assert false
+    | TVar({contents=None},_) -> unsupported __MODULE__
     | TVar _ -> unsupported __MODULE__
     | TFun(x, ty2) ->
         let x' = Id.map_typ (make_template env) x in

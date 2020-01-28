@@ -614,8 +614,10 @@ let trans_env : env -> (Syntax.id * Ref_type.t) list -> (Syntax.id * Ref_type.t)
 
 (* TODO: support records in refinement types *)
 let trans p =
+(*
   let env = gather_env @@ Problem.term p in
-  let p = Problem.map ~tr_env:(trans_env env) trans_term p in
+*)
+  let p = Problem.map (*~tr_env:(trans_env env)*) trans_term p in
   let t = Problem.(p.term) in
   Type_check.check t ~ty:t.typ;
   p

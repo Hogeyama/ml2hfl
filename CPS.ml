@@ -1354,7 +1354,7 @@ let initial_env () =
   {counter; constraints}
 
 
-let pr2 s p t = Debug.printf "##[CPS] %a:@.%a@.@." Color.s_red s p t
+let pr2 s p t = Debug.printf "##[CPS][%.3f] %a:@.%a@.@." !!Time.get Color.s_red s p t
 let pr s t = pr2 s Print.term_typ t
 
 let trans_force_typ typ_excep typ =

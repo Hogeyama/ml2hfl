@@ -3,7 +3,13 @@ open Problem
 
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-let extract_module = map Trans.extract_module
+let extract_module problem =(*
+  let tr_ty =
+    let env = col_type_decls @@ Problem.term problem in
+    Term_util.subst_tdata_typ_map
+  in
+  let tr_env env = List.map (Pair.map_snd tr_ty) env in*)
+  map Trans.extract_module problem
 let inline_module_var = map Trans.inline_module_var
 let instansiate_poly_types = map Trans.instansiate_poly_types
 let mark_fv_as_external = map Trans.mark_fv_as_external
@@ -18,9 +24,13 @@ let elim_redundant_arg = map Trans.elim_redundant_arg
 let recover_const_attr = map Trans.recover_const_attr
 let decomp_pair_eq = map Trans.decomp_pair_eq
 let ignore_exn_arg = map Trans.ignore_exn_arg
-let replace_base_with_int = map Trans.replace_base_with_int
+let replace_base_with_int =
+  let tr_env env = List.map (Pair.map_snd Ref_type.replace_base_with_int) env in
+  map ~tr_env Trans.replace_base_with_int
 let inline_simple_types = map Trans.inline_simple_types
-let replace_data_with_int = map Trans.replace_data_with_int
+let replace_data_with_int =
+  let tr_env env = List.map (Pair.map_snd Ref_type.replace_data_with_int) env in
+  map ~tr_env Trans.replace_data_with_int
 let replace_complex_data_with_int = map Trans.replace_complex_data_with_int
 let inline_simple_types = map Trans.inline_simple_types
 let inline_type_decl = map Trans.inline_type_decl
