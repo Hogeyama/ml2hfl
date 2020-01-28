@@ -100,7 +100,9 @@ let rec decomp_funs typ =
 
 let string_of_constr c = c
 
-let rec print fm = function
+let rec print is_arg fm ty =
+  let pr = print is_arg in
+  match ty with
   | Base(base,x,p) when p = U.true_term ->
       Format.fprintf fm "%a" Type.print_base base
   | Base(T.TBool,x,p) when U.make_var x = p ->
@@ -120,7 +122,7 @@ let rec print fm = function
   | ADT(s,x,p) ->
       Format.fprintf fm "@[{%a:%s |@ %a}@]" Id.print x s Print.term p
   | Fun(x, typ1, Exn(typ2, typ3)) when is_bottom typ3 ->
-      print fm (Fun(x, typ1, typ2))
+      pr fm (Fun(x, typ1, typ2))
   | Fun(x, typ1, Exn(typ2, typ3)) ->
       let arg =
         if occur x typ2 || occur x typ3 then
@@ -128,25 +130,25 @@ let rec print fm = function
         else
           ""
       in
-      Format.fprintf fm "(@[<hov 2>%s%a ->^[%a]@ %a@])" arg print typ1 print typ3 print typ2
+      Format.fprintf fm "(@[<hov 2>%s%a ->^[%a]@ %a@])" arg pr typ1 pr typ3 pr typ2
   | Fun _ as typ ->
       let rec aux fm (xtyps, typ) =
         match xtyps with
-        | [] -> print fm typ
+        | [] -> pr fm typ
         | (x,typ1)::xtyps' ->
             if List.exists (occur x) @@ typ :: List.map snd xtyps'
-            then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x print typ1 aux (xtyps', typ)
-            else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" print typ1 aux (xtyps', typ)
+            then Format.fprintf fm "@[<hov 2>%a:%a ->@ %a@]" Id.print x pr typ1 aux (xtyps', typ)
+            else Format.fprintf fm "@[<hov 2>%a ->@ %a@]" pr typ1 aux (xtyps', typ)
       in
       Format.fprintf fm "(%a)" aux @@ decomp_funs typ
   | Tuple xtys ->
       let rec aux xtys =
         match xtys with
         | [] -> ()
-        | [x,ty] -> print fm ty
+        | [x,ty] -> pr fm ty
         | (x,ty)::xtys' ->
             if occur x @@ Tuple xtys' then Format.fprintf fm "%a:" Id.print x;
-            Format.fprintf fm "%a *@ " print ty;
+            Format.fprintf fm "%a *@ " pr ty;
             aux xtys'
       in
       Format.fprintf fm "(@[";
@@ -154,35 +156,38 @@ let rec print fm = function
       Format.fprintf fm "@])"
   | Inter(styp, []) when !!Debug.check -> Format.fprintf fm "Top(%a)" Print.typ styp
   | Inter(_, []) -> Format.fprintf fm "Top"
-  | Inter(_, [typ]) -> print fm typ
-  | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " /\\@ ") typs
+  | Inter(_, [typ]) -> pr fm typ
+  | Inter(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list pr " /\\@ ") typs
   | Union(styp, []) when !!Debug.check -> Format.fprintf fm "Bot(%a)" Print.typ styp
   | Union(_, []) -> Format.fprintf fm "Bot"
-  | Union(_, [typ]) -> print fm typ
-  | Union(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list print " \\/@ ") typs
+  | Union(_, [typ]) -> pr fm typ
+  | Union(_, typs) -> Format.fprintf fm "(@[%a@])" (print_list pr " \\/@ ") typs
   | ExtArg(x,typ1,typ2) ->
-      Format.fprintf fm "(@[%a where %a:%a@])" print typ2 Id.print x print typ1
+      Format.fprintf fm "(@[%a where %a:%a@])" pr typ2 Id.print x pr typ1
   | List(x,p_len,y,p_i,typ2) ->
-      Format.fprintf fm "(@[";
+      let s1,s2 = if is_arg then "","" else "(",")" in
+      Format.fprintf fm "%s@[" s1;
       if p_i = U.true_term then
         if occur y typ2
-        then Format.fprintf fm "[%a]%a " Id.print y print typ2
-        else Format.fprintf fm "%a " print typ2
+        then Format.fprintf fm "[%a]%a " Id.print y pr typ2
+        else Format.fprintf fm "%a " (print true) typ2
       else
-        Format.fprintf fm "[%a: %a]%a " Id.print y Print.term p_i print typ2;
+        Format.fprintf fm "[%a: %a]%a " Id.print y Print.term p_i pr typ2;
       if p_len <> U.true_term then
         Format.fprintf fm "|%a: %a|" Id.print x Print.term p_len
       else
         if List.exists (Id.same x) (U.get_fv p_i) || occur x typ2
         then Format.fprintf fm "|%a|" Id.print x;
-      Format.fprintf fm "list@])"
+      Format.fprintf fm "list@]%s" s2
   | App(constr, ty) ->
-      Format.fprintf fm "(@[%a %s@])" print ty (string_of_constr constr)
+      let s1,s2 = if is_arg then "","" else "(",")" in
+      Format.fprintf fm "%s@[%a %s@]%s" s1 (print true) ty (string_of_constr constr) s2
   | Exn(typ1, typ2) ->
       if is_bottom typ2 then
-        print fm typ1
+        pr fm typ1
       else
-        Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" print typ1 print typ2
+        Format.fprintf fm "(@[<hov 2>%a@ |^[%a]@])" pr typ1 pr typ2
+let print = print false
 
 let rec decomp_funs_n n typ =
   match typ with
