@@ -784,7 +784,6 @@ end
 
 module Arg = struct
   include Arg
-  let separator = '_'
   let align args =
     let aux i (s,f,desc) =
       if s = "" then
@@ -792,7 +791,6 @@ module Arg = struct
         let s' =
           desc
           |> String.trim
-          |> String.map (fun c -> if c = separator then ' ' else c)
           |> Format.sprintf "%s(*** %s ***)" nr
         in
         s', f, " "

@@ -58,13 +58,10 @@ let usage =
 let rec arg_spec for_completion =
   let align_spec specs =
     let add_desc (desc,spec) =
-      let sep = String.of_char Arg.separator in
-      if String.exists sep desc then unsupported "add_desc";
-      let _,s = String.replace ~sub:sep ~by:" " ~str:desc in
       if for_completion then
         spec
       else
-        ("", Arg.Unit ignore, s)::spec
+        ("", Arg.Unit ignore, desc)::spec
     in
     specs
     |> List.flatten_map add_desc
@@ -341,9 +338,9 @@ let rec arg_spec for_completion =
        " Set the initial interaction count of counterexample expansion";
      "-expand-ce-count",
        Arg.Set_int Flag.FairNonTermination.expand_ce_iter_init,
-       " Same as -expand-ce-iter-init";
-     "", Arg.Unit ignore, "Other_options"]
+       " Same as -expand-ce-iter-init"]
   in
+  let tail = "Other options", [] in
   align_spec
     [general;
      debug;
@@ -363,7 +360,8 @@ let rec arg_spec for_completion =
      fair_termination;
      termination;
      non_termination;
-     fair_non_termination]
+     fair_non_termination;
+     tail]
 
 and print_option_and_exit () =
   arg_spec true
