@@ -456,13 +456,13 @@ let merge_result b r1 r2 =
 
 let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
   let results = loop ?make_pps ?fun_list ?exparam_sol spec parsed in
-  let bool_of_result {result; make_get_rtyp; set_main; main} =
+  let bool_of_result {result} =
     match result with
     | CEGAR.Safe _ -> true
     | CEGAR.Unsafe _ -> false
     | CEGAR.Unknown _ -> false
   in
-  let r =
+  let result =
     if results = [] then
       begin
         set_status Flag.Log.Safe;
@@ -481,6 +481,6 @@ let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
     begin
       List.iter (report orig parsed num) results;
       if num > 1 && !Flag.Parallel.num > 1 then
-        report orig parsed (List.length results) {(List.hd results) with result=r; stats=None; info=[]};
+        report orig parsed (List.length results) {(List.hd results) with result; stats=None; info=[]};
     end;
   List.for_all bool_of_result results
