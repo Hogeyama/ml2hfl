@@ -387,8 +387,6 @@ let main _ spec parsed =
     |@> pr "ORIG" Problem.print
     |> Preprocess.run_problem pps
     |> Preprocess.get
-    |> Preprocess.last_problem
-    |> Problem.term
     |> Trans.split_mutual_rec
     |> top_to_local
     |@> pr "TOP_TO_LOCAL" Print.term_typ

@@ -169,14 +169,12 @@ let output_randint_refinement_log input_string =
 let main_quick_check spec t =
   t
   |> Preprocess.(run_on_term (before CPS @@ all spec))
-  |> Preprocess.get
   |> Quick_check.repeat_forever
 
 let main_trans spec t =
   let pps_all = Preprocess.all spec in
   let print_as_ml pps =
        Preprocess.run_on_term pps
-    |- Preprocess.get
     |- Trans.remove_unambiguous_id
     |- Trans.replace_typ_result_with_unit
     |- Trans.rename_for_ocaml
@@ -191,7 +189,6 @@ let main_trans spec t =
         let t' =
           t
           |> Preprocess.(run_on_term (before_and CPS pps_all))
-          |> Preprocess.get
           |> Trans.alpha_rename ~whole:true
         in
         let ty = Ref_type.of_simple t'.Syntax.typ in
@@ -361,7 +358,11 @@ let main_sub spec t =
     [Slice, map_trans_list (Problem.map_list (Slice.slice_subs -$- p))] @
     and_after CPS pp_all;
   in
-  let pped = Preprocess.run_problem pp (Problem.safety t) in
+  let pped =
+    Problem.safety t
+    |> Preprocess.run_problem pp
+    |> Preprocess.lists_of_paths
+  in
   let check pp =
     if not (Quick_check.repeat 1000 t) then
       false
@@ -373,10 +374,8 @@ let main_sub spec t =
       | CEGAR.Unknown _ -> false
   in
   let r = List.exists check pped in
-  if r then
-    Format.printf "Safe@.@."
-  else
-    Format.printf "Unsafe@.@.";
+  let s = if r then "Safe" else "Unsafe" in
+  Format.printf "%s@.@." s;
   r
 
 let main_sub verify t =
@@ -388,35 +387,31 @@ let main_sub verify t =
     if p > 1.0 then false else loop (p +. dp)
   in
   let r = loop 0. in
-  if r then
-    Format.printf "Safe@.@."
-  else
-    Format.printf "Unsafe@.@.";
+  let s = if r then "Safe" else "Unsafe" in
+  Format.printf "%s@.@." s;
   r
 
 let main_sub spec t =
   let dp = 0.1 in
   let pps1,pps2 =
     let open Preprocess in
-    let label = Copy_poly in
+    let label = Slice in
     let pps1,pp,pps2 = split label @@ all spec in
     pps1@[label,pp], pps2
   in
-  let ps =
-    t
-    |> Problem.safety
-    |> Preprocess.run_problem pps1
-    |> List.map Preprocess.last_problem
-  in
-  let check problem =
+  let check (_,(problem,_)) =
     let make = Slice.slice_top_fun problem.Problem.term in
     let rec go p =
       if p > 1. then
         false
       else
         let _,term = make p in
-        let pp = Preprocess.run_problem pps2 {problem with Problem.term} in
-        let preprocessed = List.get pp in
+        let preprocessed =
+          {problem with Problem.term}
+          |> Preprocess.run_problem pps2
+          |> Preprocess.lists_of_paths
+          |> List.get
+        in
         let r = Main_loop.check spec preprocessed in
         let p' = p +. dp in
         match r.Main_loop.result with
@@ -426,11 +421,16 @@ let main_sub spec t =
     in
     go 0.
   in
+  let ps =
+    t
+    |> Problem.safety
+    |> Preprocess.run_problem pps1
+    |> Preprocess.lists_of_paths
+    |> List.map List.hd
+  in
   let r = List.exists check ps in
-  if r then
-    Format.printf "Safe@.@."
-  else
-    Format.printf "Unsafe@.@.";
+  let s = if r then "Safe" else "Unsafe" in
+  Format.printf "%s@.@." s;
   r
 
 let main filenames =

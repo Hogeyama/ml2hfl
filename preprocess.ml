@@ -4,7 +4,17 @@ open Mochi_util
 module Debug_ty = Debug.Make(struct let check = Flag.Debug.make_check (__MODULE__^".ty") end)
 module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
 
-type preprocess_label =
+type problem = Problem.t * get_rtyp
+and get_rtyp = (Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t
+and tr_result = op * problem list
+and tr = Problem.t -> tr_result option
+and result = preprocess_label * problem
+and t = preprocess_label * tr
+and tree = Before of problem | After of after
+and after = {label:preprocess_label; problem:problem; op:op; result:tree list}
+and op = And | Or
+
+and preprocess_label =
   | Init
   | Ref_type_pred_type_check
   | Set_main
@@ -67,12 +77,6 @@ type preprocess_label =
   | Add_occurence_param
   | Slice
   | Split_by_ref_type
-
-
-type tr_result = Problem.t * ((Syntax.id -> Ref_type.t) -> Syntax.id -> Ref_type.t)
-type tr = Problem.t -> tr_result list option
-type result = preprocess_label * tr_result
-type t = preprocess_label * tr
 
 let string_of_label = function
   | Init -> "Init"
@@ -138,10 +142,37 @@ let string_of_label = function
   | Slice -> "Slice"
   | Split_by_ref_type -> "Split by refinement types"
 
-let get xs =
-  match xs with
-  | [x] -> x
-  | _ -> unsupported "Multiple targets"
+let rec get r =
+  match r with
+  | Before(p,_) -> Problem.term p
+  | After {result} ->
+      match result with
+      | [r] -> get r
+      | _ -> unsupported "Multiple targets"
+
+let rec exists_or r =
+  match r with
+  | Before _ -> false
+  | After {op=And; result} -> List.exists exists_or result
+  | After {op=Or; result=[r]} -> exists_or r
+  | After {op=Or} -> true
+
+let rec list_of_leaves r =
+  match r with
+  | Before pg -> [pg]
+  | After {op=And; result} -> List.flatten_map list_of_leaves result
+  | After {op=Or; result=[r]} -> list_of_leaves r
+  | After {op=Or} -> unsupported "Multiple targets"
+
+let rec lists_of_paths r =
+  match r with
+  | Before problem -> [[Init, problem]]
+  | After {label; problem; op=And; result} ->
+      result
+      |> List.flatten_map lists_of_paths
+      |> List.map (List.cons (label, problem))
+  | After {label; problem; op=Or; result=[r]} -> List.map (List.cons (label, problem)) @@ lists_of_paths r
+  | After {op=Or} -> unsupported "Multiple targets"
 
 let last (acc:result list) = snd @@ List.hd acc
 let last_problem (acc:result list) = fst @@ last acc
@@ -149,11 +180,12 @@ let last_get_rtyp (acc:result list) = snd @@ last acc
 let take_result l (acc:result list) = fst @@ List.assoc l acc
 
 let get_rtyp_id get_rtyp f = get_rtyp f
-let with_get_rtyp_id problems = Some (List.map (Pair.pair -$- get_rtyp_id) problems)
+let with_get_rtyp_id ?(op=And) problems = Some (op, List.map (Pair.pair -$- get_rtyp_id) problems)
 
-let if_ b (tr:tr) x : tr_result list option = if b then tr x else None
-let map_trans_list (tr:Problem.t->Problem.t list) r : tr_result list option = Some (List.map (Pair.pair -$- get_rtyp_id) @@ tr r)
+let if_ b (tr:tr) x : tr_result option = if b then tr x else None
+let map_trans_list ?(op=And) (tr:Problem.t->Problem.t list) r : tr_result option = Some (op, List.map (Pair.pair -$- get_rtyp_id) @@ tr r)
 let map_trans tr = map_trans_list (tr |- List.singleton)
+let singleton tr = Option.some -| Pair.pair And -| List.singleton -| tr
 
 let assoc label pps =
   List.find ((=) label -| fst) pps
@@ -210,7 +242,7 @@ let all spec : t list =
     Lift_type_decl,
       map_trans lift_type_decl;
     Copy_poly,
-      Option.some -| List.singleton -| copy_poly_funs;
+      singleton copy_poly_funs;
     Encode_mutable_record,
       map_trans Encode.mutable_record;
     Inline_simple_types,
@@ -275,18 +307,18 @@ let all spec : t list =
     Abst_literal,
       map_trans abst_literal;
     Encode_list,
-      Option.some -| List.singleton -| Encode.list;
+      singleton Encode.list;
     Unify_pure_fun_app,
       map_trans unify_pure_fun_app;
     Ret_fun,
       if_ !Flag.Method.tupling @@
-      Option.some -| List.singleton -| Problem.map_on Focus.fst Ret_fun.trans;
+      singleton @@ Problem.map_on Focus.fst Ret_fun.trans;
     Ref_trans,
       if_ !Flag.Method.tupling @@
-      Option.some -| List.singleton -| Problem.map_on Focus.fst Ref_trans.trans;
+      singleton @@ Problem.map_on Focus.fst Ref_trans.trans;
     Tupling,
       if_ !Flag.Method.tupling @@
-      Option.some -| List.singleton -| Problem.map_on Focus.fst Tupling.trans;
+      singleton @@ Problem.map_on Focus.fst Tupling.trans;
     Inline,
       (fun prog -> with_get_rtyp_id [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog]);
     Make_ext_funs,
@@ -313,10 +345,10 @@ let all spec : t list =
       map_trans slice;
     CPS,
       if_ !Flag.Mode.trans_to_CPS @@
-      Option.some -| List.singleton -| CPS.trans;
+      singleton CPS.trans;
     Remove_pair,
       if_ !Flag.Mode.trans_to_CPS @@
-      Option.some -| List.singleton -| Curry.remove_pair;
+      singleton Curry.remove_pair;
     Add_occurence_param,
       if_ !Flag.Method.occurence_param @@
       map_trans add_occurence_param;
@@ -333,7 +365,7 @@ let all spec : t list =
       map_trans insert_param_funarg;
     Alpha_rename,
       if_ Flag.Method.(!mode <> Termination) @@
-      Option.some -| List.singleton -| alpha_rename;
+      singleton alpha_rename;
   ]
 
 let pr () = if !!Debug_ty.check then Problem.print_debug else Problem.print
@@ -349,10 +381,10 @@ let rec trans_and_print
   | None ->
       Debug.printf "END (skipped): %s@.@." desc;
       None
-  | Some rs ->
+  | Some(op,rs) ->
       let l = List.length rs in
       Debug.printf "END: %s@.@." desc;
-      let aux r =
+      let pr r =
         let problem' = fst r in
         if desc = "Init" || l > 1 || problem <> problem' then
           print desc problem';
@@ -368,22 +400,28 @@ let rec trans_and_print
             Format.eprintf "%a@.@." Syntax.pp_typ (t.Syntax.typ);
             assert false
       in
-      List.iter aux rs;
-      Some rs
+      List.iter pr rs;
+      Some(op,rs)
 
-let make_init problem = [[Init, (problem, get_rtyp_id)]]
+let make_init problem = Before(problem, get_rtyp_id)
 
-let run (pps:t list) results =
-  let aux1 (acc:result list list) (label,tr) : result list list =
-    let aux2 rs =
-      match rs with
-      | [] -> assert false
-      | (_,(problem,_))::_ ->
-          match trans_and_print tr (string_of_label label) problem with
-          | None -> [rs]
-          | Some rs' -> List.map (fun r -> (label, r)::rs) rs'
+let run (pps:t list) (results:tree) : tree =
+  let aux1 (acc:tree) (label,tr) : tree =
+    let rec aux2 acc =
+      match acc with
+      | Before problem ->
+          begin
+            match trans_and_print tr (string_of_label label) (fst problem) with
+            | None -> After {label; problem; op=And; result=[acc]}
+            | Some(op,rs) ->
+                let result = List.map (fun r -> Before r) rs in
+                After {label; problem; op; result}
+          end
+      | After r ->
+          let result = List.map aux2 r.result in
+          After {r with result}
     in
-    List.flatten_map aux2 acc
+    aux2 acc
   in
   Time.measure_and_add
     Flag.Log.Time.preprocess
@@ -395,5 +433,4 @@ let run_on_term pps t =
   t
   |> Problem.safety
   |> run_problem pps
-  |> List.map last_problem
-  |> List.map Problem.term
+  |> get

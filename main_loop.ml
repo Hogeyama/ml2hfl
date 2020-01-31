@@ -238,14 +238,9 @@ let status_of_result r =
   | CEGAR.Unknown s ->
       Flag.Log.Unknown s
 
-let report orig parsed num i {result; stats; make_get_rtyp; set_main; main; info} =
+let report orig parsed num {result; stats; make_get_rtyp; set_main; main; info} =
   print_result_delimiter ();
-  if num > 1 then
-    begin
-      match i with
-      | None -> Format.printf "Whole result:@."
-      | Some i -> Format.printf "Sub-problem %d/%d:@." i num
-    end;
+  if num > 1 then Format.printf "Sub-problem:@.";
   List.iter (Format.printf "  %s@.") info;
   if info <> [] then Format.printf "@.";
   begin
@@ -285,7 +280,7 @@ let check ?fun_list ?(exparam_sol=[]) spec pp =
   let cegar_prog =
     if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
       begin
-        Debug.printf "exparam_sol: %a@." (List.print @@ Pair.print Id.print Format.pp_print_int) exparam_sol;
+        Debug.printf "exparam_sol: %a@." Print.(list (id * Format.pp_print_int)) exparam_sol;
         let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
         let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') preprocessed in
         Debug.printf "MAIN_LOOP: %a@." CEGAR_print.prog preprocessed;
@@ -405,16 +400,46 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
 
 let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
   let preprocessed = run_preprocess ?make_pps spec problem in
-  if !Flag.Parallel.num > 1 && preprocessed <> [] then
-    check_parallel ?fun_list ?exparam_sol spec preprocessed
+  if !Flag.Parallel.num > 1 then
+    if Preprocess.exists_or preprocessed then
+      unsupported "parallel check for 'or'"
+    else
+      let pps = Preprocess.lists_of_paths preprocessed in
+      check_parallel ?fun_list ?exparam_sol spec pps
   else
+    let is_singleton = Exception.not_raise Preprocess.get preprocessed in
     try
-      let n = List.length preprocessed in
-      let aux i rs =
-        if n > 1 then Verbose.printf "Start checking %d/%d sub-problem.@." (i+1) n;
-        check ?fun_list ?exparam_sol spec rs
+      let rec aux label acc r =
+        match r with
+        | Preprocess.Before p ->
+            if not is_singleton then Verbose.printf "Start checking sub-problem.@.";
+            [check ?fun_list ?exparam_sol spec ((label,p)::acc)]
+        | Preprocess.After {Preprocess.label; problem; op; result} ->
+            let acc' = (label,problem)::acc in
+            match op with
+            | Preprocess.And ->
+                List.flatten_map (aux label acc') result
+            | Preprocess.Or ->
+                let rec aux' acc rest =
+                  match rest with
+                  | [] -> acc
+                  | x::rest' ->
+                      let rs = aux label acc' x in
+                      match List.find (fun r -> match r.result with CEGAR.Safe _ -> true | _ -> false) rs with
+                      | r -> [r]
+                      | exception Not_found ->
+                          let unknown = List.filter (fun r -> match r.result with CEGAR.Unknown _ -> true | _ -> false) rs in
+                          let acc' =
+                          if unknown = [] then
+                            rs @ acc
+                          else
+                            unknown @ acc
+                          in
+                          aux' acc' rest'
+                in
+                aux' [] result
       in
-      List.mapi aux preprocessed
+      aux Preprocess.Init [] preprocessed
     with e ->
          if !!Debug.check then Printexc.print_backtrace stdout;
          improve_precision e;
@@ -453,7 +478,9 @@ let run ?make_pps ?fun_list ?orig ?exparam_sol ?(spec=Spec.init) parsed =
   in
   let num = List.length results in
   if !Flag.Print.result then
-    List.iteri (fun i -> report orig parsed num (Some (i+1))) results;
-  if !Flag.Print.result && num > 1 && !Flag.Parallel.num > 1 then
-    report orig parsed (List.length results) None {(List.hd results) with result=r; stats=None; info=[]};
+    begin
+      List.iter (report orig parsed num) results;
+      if num > 1 && !Flag.Parallel.num > 1 then
+        report orig parsed (List.length results) {(List.hd results) with result=r; stats=None; info=[]};
+    end;
   List.for_all bool_of_result results
