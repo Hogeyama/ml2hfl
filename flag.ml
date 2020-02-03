@@ -71,6 +71,7 @@ module Method = struct
   let occurence_param = ref false
   let slice = ref true
   let slice_sub = ref (-1.) (* just for experiments *)
+  let slice_num = ref 10
   let sub = ref false
   let target = ref ""
 end

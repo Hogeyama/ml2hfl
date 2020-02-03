@@ -1646,3 +1646,9 @@ let rec decomp_locals t =
       let decls,t2' = decomp_locals t2 in
       decl::decls, t2'
   | _ -> [], t
+
+let decomp_assert_desc desc =
+  match desc with
+  | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) -> Some t1
+  | _ -> None
+let is_assert_desc = Option.is_some -| decomp_assert_desc

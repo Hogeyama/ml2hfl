@@ -470,6 +470,16 @@ let slice_subs t p =
   List.init n p_of
 
 
+let normalize =
+  let aux t =
+    match decomp_assert t with
+    | None -> t
+    | Some(t', _) ->
+        let u = Id.new_var Ty.unit in
+        Term.(let_ [u, assert_ t'] unit)
+  in
+  Trans.map_main aux
+
 let get_top_fun_dependencies t =
   let decls,t' = decomp_decls t in
   if t'.desc <> Const Unit && t'.desc <> End_of_definitions then
@@ -526,6 +536,7 @@ let rec remove_unrelated_funs dist far t =
   removed, target, {t with desc}
 
 let slice_top_fun t =
+  let t = normalize t in
   let id_of,goals,deps = get_top_fun_dependencies t in
   if List.length goals >= 2 then unsupported "Slice.slice_top_fun";
   let graph = Graph.from_edges deps in
@@ -558,6 +569,14 @@ let slice_top_fun t =
     in
     Debug.printf "REMOVE_UNRELATED: @[%a@." Print.term t'';
     removed, t''
+
+let slice_top_fun_with_context p t =
+  let _,t' = slice_top_fun p t in
+  let env =
+    get_fv t'
+    |> List.map (Pair.add_right @@ Ref_type.of_simple -| Id.typ)
+  in
+  Trans.make_ext_funs env t'
 
 let slice_top_fun_subs dp problem =
   let make = slice_top_fun problem.Problem.term in

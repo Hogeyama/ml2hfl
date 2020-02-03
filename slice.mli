@@ -8,5 +8,6 @@ val slice_sub : term -> float -> term
 val slice_subs : term -> float -> term list
 
 val slice_top_fun : term -> float -> id list * term
+val slice_top_fun_with_context : term -> float -> term
 
 val slice_top_fun_subs : float -> Problem.t -> Problem.t list

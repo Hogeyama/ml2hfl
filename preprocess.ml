@@ -77,6 +77,7 @@ and preprocess_label =
   | Add_occurence_param
   | Slice
   | Split_by_ref_type
+  | Slice_top_fun
 
 let string_of_label = function
   | Init -> "Init"
@@ -141,6 +142,7 @@ let string_of_label = function
   | Add_occurence_param -> "Add occurence parameters"
   | Slice -> "Slice"
   | Split_by_ref_type -> "Split by refinement types"
+  | Slice_top_fun -> "Slice by top-level function definitions"
 
 let rec get r =
   match r with
@@ -186,6 +188,7 @@ let if_ b (tr:tr) x : tr_result option = if b then tr x else None
 let map_trans_list ?(op=And) (tr:Problem.t->Problem.t list) r : tr_result option = Some (op, List.map (Pair.pair -$- get_rtyp_id) @@ tr r)
 let map_trans tr = map_trans_list (tr |- List.singleton)
 let singleton tr = Option.some -| Pair.pair And -| List.singleton -| tr
+let exists tr : tr = Option.some -| Pair.pair Or -| tr
 
 let assoc label pps =
   List.find ((=) label -| fst) pps
@@ -343,6 +346,9 @@ let all spec : t list =
     Slice,
       if_ !Flag.Method.slice @@
       map_trans slice;
+    Slice_top_fun,
+      if_ !Flag.Method.sub @@
+      exists Trans_problem.slice_top_fun;
     CPS,
       if_ !Flag.Mode.trans_to_CPS @@
       singleton CPS.trans;

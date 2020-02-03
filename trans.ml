@@ -1872,8 +1872,8 @@ let copy_poly_funs =
 
 let rec map_main f t =
   match t.desc with
-  | Local(Decl_let bindings, t2) ->
-      let desc = Local(Decl_let bindings, map_main f t2) in
+  | Local(decls, t') ->
+      let desc = Local(decls, map_main f t') in
       {t with desc}
   | _ -> f t
 

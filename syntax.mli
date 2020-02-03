@@ -259,6 +259,8 @@ val decomp_funs : term -> id list * term
 val decomp_locals : term -> declaration list * term
 val is_module : term -> bool
 val is_functor : term -> bool
+val decomp_assert_desc : desc -> term option
+val is_assert_desc : desc -> bool
 
 val print_location_ref : (Format.formatter -> Location.t -> unit) ref
 val print_location : Format.formatter -> Location.t -> unit

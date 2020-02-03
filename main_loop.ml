@@ -428,7 +428,7 @@ let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
                       match List.find (fun r -> match r.result with CEGAR.Safe _ -> true | _ -> false) rs with
                       | r -> [r]
                       | exception Not_found ->
-                          let unknown = List.filter (fun r -> match r.result with CEGAR.Unknown _ -> true | _ -> false) rs in
+                          let unknown = List.filter (fun {result} -> match result with CEGAR.Unknown _ -> true | _ -> false) rs in
                           let acc' =
                           if unknown = [] then
                             rs @ acc

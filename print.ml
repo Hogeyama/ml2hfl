@@ -247,7 +247,8 @@ and print_desc cfg pri attr fm desc =
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[assume%a %a;@ %a@]%s" s1 (print_if_label cfg) attr (pr_t p) t1 (pr_t p) t2 s2
-  | If(t1, {desc=Const Unit}, {desc=App({desc=Event("fail",_)}, [{desc=Const Unit}])}) when not !!Debug.check ->
+  | If _ when not !!Debug.check && is_assert_desc desc ->
+      let t1 = Option.get @@ decomp_assert_desc desc in
       let p = 80 in
       let s1,s2 = paren pri p in
       fprintf fm "@[<hov 2>%sassert%a %a%s@]" s1 (print_if_label cfg) attr (pr_t p) t1 s2

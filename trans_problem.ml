@@ -128,3 +128,11 @@ let split_by_ref_type spec {term; env; attr; kind; info} =
       |> Trans.split_by_ref_type spec
       |> List.flatten_map aux
   | Ref_type_check check -> assert false
+
+let slice_top_fun ?(num = !Flag.Method.slice_num) problem =
+  let make p =
+    let term = Slice.slice_top_fun_with_context problem.Problem.term p in
+    {problem with term}, Fun.id
+  in
+  List.init num (fun i -> float (i+1) /. float num)
+  |> List.map make

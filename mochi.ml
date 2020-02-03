@@ -475,8 +475,6 @@ let main filenames =
         main_fair_termination spec parsed
       else if !Flag.Mode.module_mode then
         Verify_module.main verify parsed
-      else if !Flag.Method.sub then
-        main_sub spec parsed
       else
         verify parsed
 
