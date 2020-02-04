@@ -2156,6 +2156,7 @@ let reconstruct =
       | Tuple ts -> make_tuple @@ List.map tr.tr_term ts
       | Proj(i, t) -> make_proj i @@ tr.tr_term t
       | Field(t1, s) -> make_field (tr.tr_term t1) s
+      | TryWith(t1, {desc=Fun(x,{desc=Match({desc=Var y},pats)})}) when Id.(x = y) -> make_trywith t1 x pats
       | _ -> tr.tr_term_rec t
     in
     let attr' = List.unique (t.attr @ t'.attr) in

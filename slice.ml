@@ -538,7 +538,7 @@ let rec remove_unrelated_funs dist far t =
 let slice_top_fun t =
   let t = normalize t in
   let id_of,goals,deps = get_top_fun_dependencies t in
-  if List.length goals >= 2 then unsupported "Slice.slice_top_fun";
+  if List.length goals >= 2 then unsupported "Slice.slice_top_fun: multiple goals";
   let graph = Graph.from_edges deps in
   let hops = Graph.hops_to graph goals in
   Array.iteri (fun i x -> Debug.printf "hops(%d) = %d@." i x) hops;
@@ -560,7 +560,7 @@ let slice_top_fun t =
       |> remove_unrelated_funs dist far
     in
     Debug.printf "TARGET: %a@." Print.(list id) target;
-    if List.length target >= 2 then unsupported "Slice.slice_top_fun";
+    if List.length target >= 2 then unsupported "Slice.slice_top_fun: multiple targets";
     let t'' =
       t'
       |> Trans.remove_effect_attribute
