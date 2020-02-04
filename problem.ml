@@ -21,6 +21,8 @@ let term {term} = term
 let env {env} = env
 let attr {attr} = attr
 
+let init_info = []
+
 let safety ?(env=[]) ?(attr=[]) ?(info=[]) term =
   {term; env; attr; kind=Safety; info}
 

@@ -26,6 +26,7 @@ end
 
 module Limit = struct
   let time = ref 0
+  let time_subproblem = ref 0
 end
 
 module Parallel = struct

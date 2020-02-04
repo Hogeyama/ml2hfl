@@ -940,6 +940,15 @@ module CommandLine = struct
     aux ()
 end
 
+module Timer = struct
+  let set_handler f = Sys.set_signal Sys.sigvtalrm (Sys.Signal_handle f)
+  let get () = Unix.((getitimer ITIMER_VIRTUAL).it_value)
+  let set ?(force=false) t =
+    if not force && !!get > 0. then invalid_arg "Timer.set";
+    ignore Unix.(setitimer ITIMER_VIRTUAL {it_interval=0.; it_value=t})
+  let reset () = set ~force:true 0.
+end
+
 module Cursor = struct
   let up fm n = Format.fprintf fm "\027[%dA" n
   let down fm n = Format.fprintf fm "\027[%dB" n

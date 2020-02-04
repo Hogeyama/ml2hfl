@@ -80,7 +80,8 @@ let rec arg_spec for_completion =
      "-env", Arg.Unit (fun () -> print_env false true; exit 0), " Print the version and the environment as JSON";
      "-version", Arg.Unit (fun () -> print_env false false; exit 0), " Print the version";
      "-limit", Arg.Set_int Flag.Limit.time, " Set time limit (seconds)";
-     "-par-limit", Arg.Set_int Flag.Parallel.time, " Set time limit for parallel execution (seconds)";
+     "-limit-sub", Arg.Set_int Flag.Limit.time_subproblem, " Set time limit for each sub-problem (seconds)";
+     "-limit-par", Arg.Set_int Flag.Parallel.time, " Set time limit for parallel execution (seconds)";
      "-pp", Arg.String (fun pp -> Flag.pp := Some pp), " Set preprocessor command";
      "-web", Arg.Set Flag.PrettyPrinter.web, " Web mode";
      "-rand-self-init", Arg.Unit Random.self_init, " Initialize the random seed";

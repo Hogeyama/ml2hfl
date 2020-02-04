@@ -18,6 +18,14 @@ and stats =
    mc : float;
    refine : float}
 
+let return_of_timeout =
+  {result = CEGAR.Unknown "TimeOut";
+   stats = None;
+   make_get_rtyp = (fun _ -> assert false);
+   set_main = None;
+   main = None;
+   info = Problem.init_info}
+
 let cegar_of_preprocessed ?fun_list spec results =
   let set_main = Option.map fst @@ List.assoc_option Preprocess.Set_main results in
   let main = Option.(set_main >>= return-|Problem.term >>= Trans.get_set_main)  in
@@ -398,6 +406,8 @@ let check_parallel ?fun_list ?(exparam_sol=[]) spec pps =
   in
   List.map result_of problems
 
+exception CheckTimeOut
+
 let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
   let preprocessed = run_preprocess ?make_pps spec problem in
   if !Flag.Parallel.num > 1 then
@@ -413,7 +423,17 @@ let rec loop ?make_pps ?fun_list ?exparam_sol spec problem =
         match r with
         | Preprocess.Before p ->
             if not is_singleton then Verbose.printf "Start checking sub-problem.@.";
-            [check ?fun_list ?exparam_sol spec ((label,p)::acc)]
+            begin
+              try
+                Timer.set_handler (fun _ -> raise CheckTimeOut);
+                Timer.set @@ float !Flag.Limit.time_subproblem;
+                let r = [check ?fun_list ?exparam_sol spec ((label,p)::acc)] in
+                Timer.reset ();
+                r
+              with CheckTimeOut ->
+                Verbose.printf "@.TIMEOUT: sub-problem@.@.";
+                [return_of_timeout]
+            end
         | Preprocess.After {Preprocess.label; problem; op; result} ->
             let acc' = (label,problem)::acc in
             match op with
