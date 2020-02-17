@@ -1924,30 +1924,42 @@ let ref_to_assert ?(make_fail=make_fail ?loc:None ~force:true) ?typ_exn ref_env 
   let map = List.map (Pair.map_snd Ref_type.to_abst_typ) ref_env in
   merge_bound_var_typ map @@ replace_main_wrap main t
 
-let set_main t =
-  let catch_all main =
-    match find_exn_typ t with
-    | None -> main
-    | Some ty -> make_trywith_simple main (make_fun (Id.new_var ty) @@ make_fail main.typ)
+let make_main catch_all f =
+  let xs = get_args (Id.typ f) in
+  let bindings =
+    let aux i x =
+      let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
+      let t = inst_randval @@ make_rand_unit @@ Id.typ x in
+      x', t
+    in
+    List.mapi aux xs
   in
+  let ys = List.map fst bindings in
+  Term.(lets bindings (catch_all (var f @ vars ys)))
+
+let make_catch_all t =
+  match find_exn_typ t with
+  | None -> Fun.id
+  | Some ty -> fun main -> make_trywith_simple main (make_fun (Id.new_var ty) @@ make_fail main.typ)
+
+let set_main t =
+  let catch_all = make_catch_all t in
   match List.decomp_snoc_option @@ get_last_definition t with
   | None ->
       let u = Id.new_var ~name:"main" t.typ in
       Term.(let_ [u, catch_all t] unit)
   | Some(_, (f,_)) ->
-      let main =
-        let xs = get_args (Id.typ f) in
-        let bindings =
-          let aux i x =
-            let x' = Id.new_var ~name:("arg" ^ string_of_int @@ i+1) @@ Id.typ x in
-            let t = inst_randval @@ make_rand_unit @@ Id.typ x in
-            x', t
-          in
-          List.mapi aux xs
-        in
-        let ys = List.map fst bindings in
-        Term.(lets bindings (catch_all (var f @ vars ys)))
-      in
+      let main = make_main catch_all f in
+      replace_main_wrap main t
+
+let set_main_for targets t =
+  let catch_all = make_catch_all t in
+  match get_last_definition t with
+  | [] ->
+      let u = Id.new_var ~name:"main" t.typ in
+      Term.(let_ [u, catch_all t] unit)
+  | _ ->
+      let main = Term.tuple (List.map (make_main catch_all) targets) in
       replace_main_wrap main t
 
 let recover_const_attr_shallowly t =

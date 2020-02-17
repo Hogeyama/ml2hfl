@@ -14,6 +14,7 @@ val ref_to_assert : ?make_fail:(typ -> term) -> ?typ_exn:typ -> Ref_type.env -> 
 val replace_main : ?force:bool -> main:term -> term -> term
 val map_main : (term -> term) -> term -> term
 val set_main : term -> term
+val set_main_for : id list -> term -> term
 val part_eval : term -> term
 val trans_let : term -> term
 val propagate_typ_arg : term -> term

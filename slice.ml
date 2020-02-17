@@ -502,6 +502,7 @@ let get_top_fun_dependencies t =
   in
   id_of, goals, deps
 
+(** removes function `f` in `t` if `dist f < || dist f < far` *)
 let rec remove_unrelated_funs dist far t =
   let ruf = remove_unrelated_funs dist far in
   let removed,target,desc =
@@ -524,16 +525,19 @@ let rec remove_unrelated_funs dist far t =
           if defs2 = [] then
             t''.desc
           else
-            Local(Decl_let defs, t'')
+            Local(Decl_let defs2, t'')
         in
-        let fv = get_fv t'' in
-        let target1 = List.map fst @@ List.filter_out (fun (f,_) -> Id.mem f fv) defs2 in
+        let target1 = List.Set.diff ~eq:Id.eq (List.map fst defs2) (get_fv t'' |@> (fun fv -> if fv <> [] then Debug.printf "fv: @[%a@." Print.(list id) fv)) in
+        if target1 <> [] then Debug.printf "target1: @[%a@." Print.(list id) target1;
         removed1@removed2, target1@target2, desc
     | Const Unit
     | End_of_definitions -> [], [], End_of_definitions
     | _ -> assert false
   in
   removed, target, {t with desc}
+let remove_unrelated_funs dist far t =
+  Format.printf "remove_unrelated_funs INPUT:@.  %a@.@." Print.term t;
+  remove_unrelated_funs dist far t
 
 let slice_top_fun t =
   let t = normalize t in
@@ -560,11 +564,10 @@ let slice_top_fun t =
       |> remove_unrelated_funs dist far
     in
     Debug.printf "TARGET: %a@." Print.(list id) target;
-    if List.length target >= 2 then unsupported "Slice.slice_top_fun: multiple targets";
     let t'' =
       t'
       |> Trans.remove_effect_attribute
-      |> Trans.set_main
+      |> Trans.set_main_for target
       |&!!Debug.check&> add_comment (Format.sprintf "SLICE_TOP_FUN %.3f" p)
     in
     Debug.printf "REMOVE_UNRELATED: @[%a@." Print.term t'';
