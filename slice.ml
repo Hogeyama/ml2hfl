@@ -413,10 +413,10 @@ let remove_unrelated =
   let tr_term (dist,longest) t =
     let d = dist t in
     let effects = effect_of_typ t.typ in
-    if d < 0 && is_base_typ t.typ && List.Set.subset effects [ENonDet;EDiv] then
+    if d < 0 && is_base_typ t.typ && List.Set.(effects <= [ENonDet;EDiv]) then
       let () = Debug.printf "REMOVE CONTEXT %d@." (get_id t.typ) in
       make_term t.typ
-    else if d > longest && is_base_typ t.typ && List.Set.subset effects [ENonDet;EDiv] then
+    else if d > longest && is_base_typ t.typ && List.Set.(effects <= [ENonDet;EDiv]) then
       let () = Debug.printf "REMOVE FAR %d@." (get_id t.typ) in
       let () = Debug.printf "%a@.@." Print.term' t in
       make_rand_unit @@ elim_tid label t.typ

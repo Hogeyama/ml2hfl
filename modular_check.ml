@@ -309,7 +309,7 @@ let check prog f typ depth =
       Debug.printf "map: %a@." (List.print @@ Pair.print Id.print Print.typ) map;
       Trans.merge_bound_var_typ map
     in
-    let {Main_loop.result; make_get_rtyp; set_main; main} =
+    let {Main_loop_util.result; make_get_rtyp; set_main; main} =
       t
       |@> Debug.printf "  t: %a@.@." Print.term_typ
       |> make_lets fun_env'

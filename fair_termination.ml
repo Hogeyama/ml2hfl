@@ -240,7 +240,7 @@ let rec get_top_fun_typ f t =
   | _ -> invalid_arg "get_top_fun_typ"
 
 let trans target fairness t =
-  let states = List.unique @@ List.Set.inter (get_states t) @@ List.flatten_map Pair.to_list fairness in
+  let states = List.unique @@ List.Set.(get_states t && List.flatten_map Pair.to_list fairness) in
   Debug.printf "STATES: %a@." (List.print Format.pp_print_string) states;
   let target_xs,target_result_typ = get_top_fun_typ target t in
   let s, set_flag, ps = make_extra_vars states target_xs in

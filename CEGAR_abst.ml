@@ -108,7 +108,7 @@ let abstract_def env {fn=f; args=xs; cond=t1; events; body=t2} =
   let cond = Const True in
   if events <> [] && t1 <> Const True then
     let g = new_id "f" in
-    let fv = List.Set.diff (get_fv t2') (List.map fst env) in
+    let fv = List.Set.(get_fv t2' - List.map fst env) in
     let t = assume env' [] pbs t1 (make_app (Var g) @@ List.map _Var fv) in
     [{fn=g; args=fv; cond; events; body=t2'};
      {fn=f; args=xs; cond; events=[]; body=t}]

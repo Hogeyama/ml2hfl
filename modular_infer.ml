@@ -387,7 +387,7 @@ let make_sub templates val_env typ1 typ2 =
 let filter_assumption val_env assumption =
   let vars = List.map fst val_env in
   assumption
-  |> List.filter (fun t -> List.Set.subset (Syntax.get_fv t) vars)
+  |> List.filter (fun t -> List.Set.(Syntax.get_fv t <= vars))
   |> List.map (fun t -> Exp t)
 
 let make_assumption templates val_env =

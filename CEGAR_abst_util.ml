@@ -223,7 +223,7 @@ let rec add_label prog =
   in
   let defs = aux prog.defs in
   let labeled = List.unique @@ List.rev_flatten_map (function {fn=f;body=App(Const (Label _),_)} -> [f] | _ -> []) defs in
-  assert (List.Set.eq labeled @@ has_branch prog);
+  assert List.Set.(labeled = has_branch prog);
   labeled, {prog with defs=defs}
 
 

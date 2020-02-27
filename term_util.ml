@@ -36,8 +36,8 @@ let rec is_value t =
   | Tuple ts -> List.for_all is_value ts
   | _ -> false
 
-let has_safe_attr t = List.Set.subset safe_attr t.attr
-let has_pure_attr t = List.Set.subset pure_attr t.attr
+let has_safe_attr t = List.Set.(safe_attr <= t.attr)
+let has_pure_attr t = List.Set.(pure_attr <= t.attr)
 let add_attr attr t = {t with attr=attr::t.attr}
 let add_attrs attrs t = List.fold_right add_attr attrs t
 let add_comment s t = add_attr (AComment s) t
@@ -861,7 +861,7 @@ let merge_tattrs attr1 attr2 =
       | TAId(s1,_), TAId(s2,_) -> s1 = s2
       | _ -> false
     in
-    List.classify ~eq (List.Set.union attr1 attr2)
+    List.classify ~eq List.Set.(attr1 + attr2)
   in
   let merge a1 a2 =
     match a1 with
@@ -1647,7 +1647,7 @@ let get_pred_share ty =
     | Some paths2 ->
         let prefix1,paths1' = longest_common_prefix paths1 in
         let prefix2,paths2' = longest_common_prefix paths2 in
-        assert (List.Set.subset paths2' paths1');
+        assert List.Set.(paths2' <= paths1');
         Some (prefix1, paths2', prefix2)
   in
   List.map fst id_paths

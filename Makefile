@@ -106,11 +106,12 @@ CMO = revision.cmo mconfig.cmo util.cmo flag.cmo debug.cmo graph.cmo	\
 	writeAnnot.cmo tupling.cmo ref_trans.cmo ret_fun.cmo		\
 	BRA_types.cmo BRA_util.cmo BRA_state.cmo BRA_transform.cmo	\
 	extraClsDepth.cmo extraParamInfer.cmo elim_same_arg.cmo		\
-	ref_type_pred_typing.cmo preprocess.cmo main_loop.cmo		\
-	modular_common.cmo comp_tree.cmo horn_clause.cmo		\
-	modular_infer.cmo modular_check.cmo modular.cmo			\
-	termination_loop.cmo fair_termination.cmo verify_ref_typ.cmo	\
-	verify_module.cmo cmd.cmo mochi.cmo
+	ref_type_pred_typing.cmo preprocess.cmo parallel.cmo		\
+	main_loop_util.cmo main_loop.cmo modular_common.cmo		\
+	comp_tree.cmo horn_clause.cmo modular_infer.cmo			\
+	modular_check.cmo modular.cmo termination_loop.cmo		\
+	fair_termination.cmo verify_ref_typ.cmo verify_module.cmo	\
+	cmd.cmo mochi.cmo
 
 CMX = $(CMO:.cmo=.cmx)
 CMA =

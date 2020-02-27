@@ -17,7 +17,7 @@ let lift_aux lift_unused f xs t1 =
     if lift_unused then
       xs
     else
-      List.Set.inter xs (List.Set.diff (get_fv t1) ys)
+      List.Set.(xs && (get_fv t1 - ys))
   in
   let ys' = List.map (Fun.if_ (List.mem -$- xs) rename_id Fun.id) ys in
   xs' @ ys',

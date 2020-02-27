@@ -323,7 +323,7 @@ let init_after_parse_arg () =
   IO.empty_file @@ Filename.change_extension !!Flag.Input.main "json"
 
 let check_bin filename =
-  let open Main_loop in
+  let open Main_loop_util in
   let {args;preprocessed} = Marshal.from_file_exn !!Flag.Input.main in
   Cmd.parse_arg_list true args;
   Flag.Input.filenames := [filename];
@@ -368,7 +368,7 @@ let main_sub spec t =
       false
     else
       let r = Main_loop.check spec pp in
-      match r.Main_loop.result with
+      match r.Main_loop_util.result with
       | CEGAR.Safe _ -> true
       | CEGAR.Unsafe _ -> false
       | CEGAR.Unknown _ -> false
@@ -414,7 +414,7 @@ let main_sub spec t =
         in
         let r = Main_loop.check spec preprocessed in
         let p' = p +. dp in
-        match r.Main_loop.result with
+        match r.Main_loop_util.result with
         | CEGAR.Safe _ -> true
         | CEGAR.Unsafe _ -> go p'
         | CEGAR.Unknown _ -> go p'

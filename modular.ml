@@ -180,7 +180,7 @@ let rec main_loop_ind history c prog cmp dep f typ cdepth idepth ce_set =
                 let _,env',neg_env',ce_set3 = List.fold_left aux (`Typable, env, neg_env, ce_set2) candidate' in
                 if not @@ Ref_type.Env.eq env' env then
                   main_loop_ind history (c+1) {prog with fun_typ_env=env'; fun_typ_neg_env=neg_env'} cmp dep f typ cdepth idepth ce_set3
-                else if not @@ List.Set.eq ce_set3 ce_set2 then
+                else if not @@ List.Set.(ce_set3 = ce_set2) then
                   refine_loop neg_env' ce_set3 None
                 else if not @@ Modular_infer.is_last_mode mode then
                   let mode' = Modular_infer.next_mode mode in
@@ -236,7 +236,7 @@ let rec main_loop prog cmp candidates main typ infer_mode depth ce_set =
     `Typable, env', neg_env, ce_set'
   else
     let infer_mode' =
-      if List.Set.eq ce_set ce_set' then
+      if List.Set.(ce_set = ce_set') then
         (if Modular_infer.is_last_mode infer_mode then raise NoProgress;
          MVerbose.printf "change infer_mode@.";
          Modular_infer.next_mode infer_mode)

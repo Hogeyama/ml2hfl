@@ -1988,7 +1988,7 @@ let beta_reduce_trivial =
         begin
           try
             let n,t = Id.assoc f env in
-            let check t = has_no_effect t || List.Set.subset [ATerminate;ANotFail] t.attr in
+            let check t = has_no_effect t || List.Set.([ATerminate;ANotFail] <= t.attr) in
             let ts' = List.map (tr.tr2_term env) ts in
             if n = List.length ts && List.for_all check ts'
             then alpha_rename t
@@ -2039,7 +2039,7 @@ let ignore_non_termination =
         let check f t =
           let xs,t = decomp_funs t in
           List.for_all (Type.is_base_typ -| Id.typ) xs &&
-          List.Set.subset (get_fv t) (xs @@@ fail_free) &&
+          List.Set.(get_fv t <= (xs @@@ fail_free)) &&
           not @@ exists_exception t
         in
         let fail_free' = List.filter_map (fun (f,t) -> if check f t then Some f else None) bindings' in
@@ -3060,7 +3060,7 @@ let split_type_decls =
     match desc with
     | Local(Decl_type decls as decl, t) ->
         let tys = List.map fst decls in
-        let decls1,decls2 = List.partition (fun (x,ty) -> List.Set.subset (List.Set.inter (get_tdata ty) tys) [x]) decls in
+        let decls1,decls2 = List.partition (fun (x,ty) -> List.Set.((get_tdata ty && tys) <= [x])) decls in
         if decls1 = [] then
           Local(decl, tr.tr_term t)
         else

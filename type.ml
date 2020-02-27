@@ -50,7 +50,7 @@ let _TAttr attr ty =
     ty
   else
     match ty with
-    | TAttr(attr', ty') -> TAttr(List.Set.union attr attr', ty')
+    | TAttr(attr', ty') -> TAttr(List.Set.(attr + attr'), ty')
     | _ -> TAttr(attr, ty)
 
 let typ_unknown = TData "???"

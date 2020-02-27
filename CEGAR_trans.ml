@@ -915,7 +915,7 @@ let rec simplify_if_term env fv t =
       in
       let fv_t1 = get_fv t1' in
       let fv' = fv_t1 @ fv in
-      let b = List.Set.inter fv fv_t1 <> [] in
+      let b = List.Set.(fv && fv_t1) <> [] in
       if b && implies env t1' then
         simplify_if_term env fv t2
       else if b && implies env (make_not t1') then

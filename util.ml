@@ -553,7 +553,7 @@ let topological_sort ?(eq=(=)) edges =
         let edges1,edges2 = List.partition (fst |- eq r) edges in
         let roots'' =
           let ys = List.map snd edges1 in
-          List.filter (fun y -> not @@ List.exists (snd |- eq y) edges2) ys @ roots'
+          List.filter_out (fun y -> List.exists (snd |- eq y) edges2) ys @ roots'
         in
         let xs' = List.filter_out (eq r) xs in
         let rev_acc' = r::rev_acc in

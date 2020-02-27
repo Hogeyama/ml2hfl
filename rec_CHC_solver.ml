@@ -105,7 +105,7 @@ let unfold sol =
   Hashtbl.fold (fun f (xs,t) acc -> (f,(xs,t))::acc) sol' []
 
 let approximate (args, t) =
-  let rest = List.Set.diff (CEGAR_syntax.get_fv t) (List.map fst args) in
+  let rest = List.Set.(CEGAR_syntax.get_fv t - List.map fst args) in
   let t' =
     if rest <> [] then
       let open CEGAR_syntax in

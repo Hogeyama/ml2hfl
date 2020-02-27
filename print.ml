@@ -138,7 +138,7 @@ and filter_attr_list attr =
   if !!Debug_attr.check then
     attr
   else
-    List.Set.diff attr ignore_attr_list
+    List.Set.(attr - ignore_attr_list)
     |> List.filter (Option.is_none -| decomp_comment)
     |&!Flag.Print.only_if_id&> List.filter (function AId _ -> false | _ -> true)
 

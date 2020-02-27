@@ -527,7 +527,7 @@ let get_non_rec red_CPS prog =
     let used = List.count (fun {body} -> List.mem f @@ get_fv body) defs in
     List.for_all (fun {events} -> events = []) defs' &&
     f <> main &&
-    (List.for_all (fun {args=xs;body=t2} -> List.Set.subset (get_fv t2) xs) defs' ||
+    (List.for_all (fun {args=xs;body=t2} -> List.Set.(get_fv t2 <= xs)) defs' ||
      (1 >= used || List.mem f force) &&
      2 >= List.length defs')
   in
@@ -537,7 +537,7 @@ let get_non_rec red_CPS prog =
     if !Flag.PredAbst.expand_non_rec_init then
       non_rec
     else
-      let orig_fun_list' = List.Set.diff orig_fun_list force in
+      let orig_fun_list' = List.Set.(orig_fun_list - force) in
       List.filter_out (fun (f,_) -> List.mem f orig_fun_list') non_rec
   in
   let non_rec'' =
