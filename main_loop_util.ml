@@ -1,3 +1,6 @@
+open Util
+open Mochi_util
+
 type return =
     {result : CEGAR.result;
      stats : stats option;
@@ -24,3 +27,37 @@ let return_of_timeout =
 type bin_input =
     {args : string list;
      preprocessed : Preprocess.result list}
+
+let result_of_json json =
+  let open JSON.Util in
+  let result =
+    match json |> member "result" |> to_string with
+    | "Safe" -> CEGAR.Safe []
+    | "Unsafe" when !Flag.Encode.used_abst <> [] -> CEGAR.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.Encode.used_abst)
+    | "Unsafe" -> CEGAR.Unsafe([], ModelCheck.CESafety [])
+    | r when !Flag.Parallel.continue -> CEGAR.Unknown r
+    | r -> failwith r
+  in
+  let cycles = json |> member "cycles" |> to_int in
+  let total = json |> member "total" |> to_float in
+  let abst = json |> member "abst" |> to_float in
+  let mc = json |> member "mc" |> to_float in
+  let refine = json |> member "refine" |> to_float in
+  result, {cycles; total; abst; mc; refine}
+
+let make_result
+      ?(make_get_rtyp = fun _ _ -> unsupported "Main_loop_util.make_result")
+      ?set_main
+      ?main
+      result
+      stats
+      preprocessed
+  =
+  let {Problem.info} = Preprocess.last_problem preprocessed in
+  {result; stats; make_get_rtyp; set_main; main; info}
+
+let add_to_log info =
+  Flag.Log.cegar_loop := info.cycles + !Flag.Log.cegar_loop;
+  Flag.Log.Time.abstraction := info.abst +. !Flag.Log.Time.abstraction;
+  Flag.Log.Time.mc := info.mc +. !Flag.Log.Time.mc;
+  Flag.Log.Time.cegar := info.refine +. !Flag.Log.Time.cegar;

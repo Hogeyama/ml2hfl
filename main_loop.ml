@@ -261,23 +261,39 @@ let report orig parsed num {result; stats; make_get_rtyp; set_main; main; info} 
         Format.printf "  refine: %.3f sec@." refine
 
 
+let check_by_spawn ?fun_list ?(exparam_sol=[]) spec preprocessed =
+  if exparam_sol <> [] then unsupported "check_by_spawn";
+  if spec <> Spec.init then unsupported "check_by_spawn";
+  let args = List.filter_out ((=) "-spawn") !Flag.Log.args in
+  let bin = {args; preprocessed} in
+  let file = Filename.change_extension !!Flag.Input.main @@ Format.sprintf "bin" in
+  Marshal.to_file ~flag:[Marshal.Closures] file bin;
+  ignore @@ Sys.command @@ Format.sprintf "%s -s -limit %d %s" Sys.argv.(0) !Flag.Limit.time_subproblem file;
+  let json_file = Filename.change_extension file "json" in
+  let result,info = JSON.load json_file result_of_json in
+  add_to_log info;
+  make_result result (Some info) preprocessed
+
 let check ?fun_list ?(exparam_sol=[]) spec pp =
-  let preprocessed, make_get_rtyp, set_main, main, info = cegar_of_preprocessed ?fun_list spec pp in
-  let cegar_prog =
-    if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
-      begin
-        Debug.printf "exparam_sol: %a@." Print.(list (id * Format.pp_print_int)) exparam_sol;
-        let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
-        let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') preprocessed in
-        Debug.printf "MAIN_LOOP: %a@." CEGAR_print.prog preprocessed;
-        let info = {preprocessed.CEGAR_syntax.info with CEGAR_syntax.exparam_orig=Some preprocessed} in
-        {prog'' with CEGAR_syntax.info}
-      end
-    else
-      preprocessed
-  in
-  let result = CEGAR.run cegar_prog in
-  {result; stats=None; make_get_rtyp; set_main; main; info}
+  if !Flag.Experiment.spawn then
+    check_by_spawn ?fun_list ~exparam_sol spec pp
+  else
+    let preprocessed, make_get_rtyp, set_main, main, info = cegar_of_preprocessed ?fun_list spec pp in
+    let cegar_prog =
+      if Flag.(Method.(List.mem !mode [FairTermination;Termination]) && !Termination.add_closure_exparam) then
+        begin
+          Debug.printf "exparam_sol: %a@." Print.(list (id * Format.pp_print_int)) exparam_sol;
+          let exparam_sol' = List.map (Pair.map CEGAR_trans.trans_var CEGAR_syntax.make_int) exparam_sol in
+          let prog'' = CEGAR_util.map_body_prog (CEGAR_util.subst_map exparam_sol') preprocessed in
+          Debug.printf "MAIN_LOOP: %a@." CEGAR_print.prog preprocessed;
+          let info = {preprocessed.CEGAR_syntax.info with CEGAR_syntax.exparam_orig=Some preprocessed} in
+          {prog'' with CEGAR_syntax.info}
+        end
+      else
+        preprocessed
+    in
+    let result = CEGAR.run cegar_prog in
+    {result; stats=None; make_get_rtyp; set_main; main; info}
 
 
 exception CheckTimeOut

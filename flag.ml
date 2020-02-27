@@ -271,6 +271,7 @@ module Modular = struct
 end
 
 module Experiment = struct
+  let spawn = ref false
   module HORS_quickcheck = struct
     type use = Shortest | Longest | LowestCoverage | HighestCoverage
     let command = ref Mconfig.hors_quickcheck

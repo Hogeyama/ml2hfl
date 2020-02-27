@@ -9,28 +9,9 @@ exception QuitWithUnsafe
 let result_of i problems =
   let input,_,_,_ = List.assoc i problems in
   let file = Filename.change_extension input "json" in
-  let of_json json =
-    let open JSON.Util in
-    let result =
-      match json |> member "result" |> to_string with
-      | "Safe" -> CEGAR.Safe []
-      | "Unsafe" when !Flag.Encode.used_abst <> [] -> CEGAR.Unknown (Format.asprintf "because of abstraction options %a" Print.(list string) !Flag.Encode.used_abst)
-      | "Unsafe" -> CEGAR.Unsafe([], ModelCheck.CESafety [])
-      | r when !Flag.Parallel.continue -> CEGAR.Unknown r
-      | r -> failwith r
-    in
-    let cycles = json |> member "cycles" |> to_int in
-    let total = json |> member "total" |> to_float in
-    let abst = json |> member "abst" |> to_float in
-    let mc = json |> member "mc" |> to_float in
-    let refine = json |> member "refine" |> to_float in
-    Flag.Log.cegar_loop := cycles + !Flag.Log.cegar_loop;
-    Flag.Log.Time.abstraction := abst +. !Flag.Log.Time.abstraction;
-    Flag.Log.Time.mc := mc +. !Flag.Log.Time.mc;
-    Flag.Log.Time.cegar := refine +. !Flag.Log.Time.cegar;
-    result, Some {cycles; total; abst; mc; refine}
-  in
-  JSON.load file of_json
+  let result,info = JSON.load file result_of_json in
+  add_to_log info;
+  result, info
 
 let print_status (i,(_,status,_,_)) =
   let s = BatPervasives.input_file status in
@@ -64,7 +45,7 @@ let rec make_wait isatty num problems finished =
       let i = List.assoc pid running in
       let r = result_of i problems in
       let is_safe = match r with CEGAR.Safe _, _ -> true | _ -> false in
-      finished := (i,r) :: !finished;
+      finished := (i, r) :: !finished;
       if not (is_safe || !Flag.Parallel.continue) then raise QuitWithUnsafe;
       pid, st
   in
@@ -85,7 +66,7 @@ let prepare (_,(file,status,_,preprocessed)) =
 
 let check ?fun_list ?(exparam_sol=[]) spec pps =
   if exparam_sol <> [] then unsupported "Parallel.check";
-  if spec.Spec.abst_cegar_env <> [] then unsupported "Parallel.check";
+  if spec <> Spec.init then unsupported "Parallel.check";
 
   let isatty = Unix.isatty Unix.stdout in
   let finished = ref [] in
@@ -105,11 +86,11 @@ let check ?fun_list ?(exparam_sol=[]) spec pps =
   if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
 
   let result_of (i,(file,status,cmd,preprocessed)) =
-    let result,stats = List.assoc_default (CEGAR.Unknown "", None) i !finished in
-    let make_get_rtyp _ _ = unsupported "Parallel.check" in
-    let set_main = None in
-    let main = None in
-    let {Problem.info} = Preprocess.last_problem preprocessed in
-    {result; stats; make_get_rtyp; set_main; main; info}
+    let result,stats =
+      !finished
+      |> List.map (fun (i,(r,s)) -> i, (r, Some s))
+      |> List.assoc_default (CEGAR.Unknown "", None) i
+    in
+    make_result result stats preprocessed
   in
   List.map result_of problems
