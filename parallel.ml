@@ -38,7 +38,7 @@ let print_status (i,(_,status,_,_)) =
     try
       let f,st = String.split s ~by:"," in
       float_of_string f, st
-    with _ -> -1., s
+    with Failure "float_of_string" -> -1., s
   in
   if f < 0. then
     Verbose.printf "%d: %-40s@." i st
@@ -71,38 +71,40 @@ let rec make_wait isatty num problems finished =
   wait
 
 let make_problem i preprocessed =
-  let input = Filename.change_extension !!Flag.Input.main @@ Format.sprintf "%d.bin" i in
-  let status = Filename.change_extension input "status" in
-  let cmd = Format.sprintf "%s -s -limit %d %s" Sys.argv.(0) !Flag.Parallel.time input in
-  i, (input, status, cmd, preprocessed)
+  let file = Filename.change_extension !!Flag.Input.main @@ Format.sprintf "%d.bin" i in
+  let status = Filename.change_extension file "status" in
+  let cmd = Format.sprintf "%s -s -limit %d %s" Sys.argv.(0) !Flag.Parallel.time file in
+  i, (file, status, cmd, preprocessed)
 
-let prepare (_,(input,status,_,preprocessed)) =
+(* make the binary input file *.bin and empty the status file *)
+let prepare (_,(file,status,_,preprocessed)) =
   let args = !Flag.Log.args in
   let bin = {args; preprocessed} in
-  Marshal.to_file ~flag:[Marshal.Closures] input bin;
+  Marshal.to_file ~flag:[Marshal.Closures] file bin;
   IO.empty_file status
 
 let check ?fun_list ?(exparam_sol=[]) spec pps =
+  if exparam_sol <> [] then unsupported "Parallel.check";
+  if spec.Spec.abst_cegar_env <> [] then unsupported "Parallel.check";
+
   let isatty = Unix.isatty Unix.stdout in
   let finished = ref [] in
   let num = List.length pps in
 
   if !Flag.Print.progress
   then Color.printf Color.Green "Verifying sub-problems in parallel ... @?";
-  if exparam_sol <> [] then unsupported "Parallel.check";
-  if spec.Spec.abst_cegar_env <> [] then unsupported "Parallel.check";
 
   let problems = List.mapi make_problem pps in
   List.iter prepare problems;
   let wait = make_wait isatty num problems finished in
   if isatty then Verbose.printf "%t" Cursor.hide;
+  let commands = List.map (fun (_,(_,_,cmd,_)) -> cmd) problems in
   Exception.finally
     (fun () -> if isatty then Verbose.printf "%t%a" Cursor.show Cursor.down num)
-    (Unix.parallel ~wait !Flag.Parallel.num)
-    (List.map (fun (_,(_,_,cmd,_)) -> cmd) problems);
+    (Unix.parallel ~wait !Flag.Parallel.num) commands;
   if !Flag.Print.progress then Color.printf Color.Green "DONE!@.@.";
 
-  let result_of (i,(input,status,cmd,preprocessed)) =
+  let result_of (i,(file,status,cmd,preprocessed)) =
     let result,stats = List.assoc_default (CEGAR.Unknown "", None) i !finished in
     let make_get_rtyp _ _ = unsupported "Parallel.check" in
     let set_main = None in
