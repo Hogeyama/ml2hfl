@@ -1,9 +1,0 @@
-CamlProgP4Byt(grep,expr.cmo auto.cmo ensent.cmo determ.cmo grep.cmo,)
-CamlProgP4Bin(fastgrep,expr.cmx auto.cmx ensent.cmx determ.cmx grep.cmx,)
-CamlCustomProgByt(cfastgrep,expr.cmo auto.cmo ensent.cmo determ.cmo fastgrep.cmo fastrec.o,)
-
-fastrec.o: fastrec.c
-	$(CAMLBYT) -c -I $(LIBDIR)/caml fastrec.c
-
-clean::
-	rm -f fastrec.o

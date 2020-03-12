@@ -340,7 +340,6 @@ let rec infer_effect env tenv t =
 	try
 	  List.assoc (Id.to_string x) tenv
 	with
-	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) -> TBaseCPS Ty.int
 	| Not_found -> Format.eprintf "%a@." Print.id x; assert false
       in
       {t_orig=t; t_cps=VarCPS{id_cps=x;id_typ=typ}; typ_cps=typ; effect=new_evar()}

@@ -4,8 +4,6 @@ open CEGAR_type
 open CEGAR_print
 open CEGAR_util
 
-module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
-
 let hd (defs,ts) =
   assert (defs = []);
   match ts with
@@ -13,119 +11,11 @@ let hd (defs,ts) =
   | [x] -> x
   | _ -> assert false
 
-let check_aux _ cond p =
-  let cond' = List.map FpatInterface.conv_formula cond in
-  let p' = FpatInterface.conv_formula p in
-  Fpat.SMTProver.implies_dyn cond' [p']
-
-let check env cond pbs p =
-  let ps,_ = List.split pbs in
-  check_aux env (cond@@@ps) p
-
-let equiv env cond t1 t2 =
-  check_aux env (t1::cond) t2 && check_aux env (t2::cond) t1
-
-let satisfiable env cond t =
-  not @@ check_aux env cond @@ make_not t
-
-
 let print_pb fm (p,b) =
   Format.fprintf fm "%a := %a" CEGAR_print.term b CEGAR_print.term p
 
 let print_pbs fm pbs =
   print_list print_pb ";@\n" fm pbs
-
-let min_unsat_cores _ cond ds =
-  let ds =
-    if !Fpat.PredAbst.use_neg_pred then (* TODO: remove this if statement after Fpat is fixed *)
-      List.map (Pair.map make_not make_not) ds @ ds
-    else
-      ds in
-  let cond' = List.map FpatInterface.conv_formula cond in
-  let ds' = List.map (Fpat.Pair.lift FpatInterface.conv_formula) ds in
-  FpatInterface.inv_formula @@ Fpat.PredAbst.min_unsat_cores cond' ds'
-
-let weakest _ cond ds p =
-  let cond' = List.map FpatInterface.conv_formula cond in
-  let ds' = List.map (Fpat.Pair.lift FpatInterface.conv_formula) ds in
-  let p' = FpatInterface.conv_formula p in
-  Fpat.PredAbst.weakest cond' ds' p' |>
-    Fpat.Pair.lift FpatInterface.inv_formula
-
-
-
-
-let filter_pbs env cond pbs =
-  pbs
-  |& !Flag.PredAbst.remove_false &> List.filter_out (check_aux env cond -| fst)
-  |> List.filter_out (check_aux env cond -| make_not -| fst)
-
-let filter env cond pbs t =
-  Debug.printf "filter@.";
-  let pbs' = if !Flag.PredAbst.remove_false then filter_pbs env cond pbs else pbs in
-  Debug.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
-(*
-  Debug.printf "  orig pbs: @[<hv>%a@." print_pbs pbs;
-  let pbss =
-    let rec aux sets (p,b) =
-      let fv = get_fv p in
-      let sets1,sets2 = List.partition (fun set -> List.exists (VarSet.mem -$- set) fv) sets in
-      match sets1 with
-      | [] -> List.fold_right VarSet.add fv VarSet.empty :: sets
-      | _ ->
-          let set1 = List.fold_left VarSet.union VarSet.empty sets1 in
-          List.fold_right VarSet.add fv set1 :: sets2
-    in
-    let xss = List.map VarSet.elements @@ List.fold_left aux [] pbs' in
-    List.map (fun xs -> List.filter (List.exists (List.mem -$- xs) -| get_fv -| fst) pbs') xss
-  in
-*)
-  let pbss = [pbs'] in
-  let aux pbs =
-    Debug.printf "  pbs: @[<hv>%a@." print_pbs pbs;
-    min_unsat_cores env cond pbs
-  in
-  let unsats1 = List.map aux pbss in
-  let unsats2 = List.filter_map (fun (p,b) -> if check env cond [p,b] @@ Const False then Some b else None) pbs' in
-  let unsat = List.fold_left make_or (Const False) (unsats2 @ unsats1) in
-  Debug.printf "  unsat:%a@.@." CEGAR_print.term unsat;
-  make_if unsat (Const Bottom) t
-
-
-
-let abst env cond pbs p =
-  Debug.printf "abst@.";
-  Debug.printf "  cond: %a@." (print_list  CEGAR_print.term "; ") cond;
-  let pbs' = filter_pbs env cond pbs in
-  Debug.printf "  pbs: @[<hv>%a@]@.  p:%a@." print_pbs pbs' CEGAR_print.term p;
-  if has_bottom p
-  then Const Bottom
-  else
-    let tt, ff = weakest env cond pbs' p in
-    Debug.printf "  tt:%a@.  ff:%a@.@." CEGAR_print.term tt CEGAR_print.term ff;
-    if make_not tt = ff || tt = make_not ff
-    then tt
-    else make_if tt (Const True) (make_if ff (Const False) (make_br (Const True) (Const False)))
-
-
-let assume env cond pbs t1 t2 = filter env (t1::cond) pbs t2
-
-
-let rec congruent env cond typ1 typ2 =
-  match typ1,typ2 with
-  | TBase(b1,ps1), TBase(b2,ps2) when b1=b2 ->
-      let x = new_id "x_abst" in
-      let env' = (x,typ1)::env in
-      let ps1' = ps1 (Var x) in
-      let ps2' = ps2 (Var x) in
-      List.length ps1' = List.length ps2' && List.for_all2 (equiv env' cond) ps1' ps2'
-  | TFun(typ11,typ12), TFun(typ21,typ22) ->
-      let x = new_id "x_abst" in
-      let typ12 = typ12 (Var x) in
-      let typ22 = typ22 (Var x) in
-      let env' = (x,typ11)::env in
-      congruent env cond typ11 typ21 && congruent env' cond typ12 typ22
-  | _ -> Format.eprintf "CONGRUENT: %a,%a@." CEGAR_print.typ typ1 CEGAR_print.typ typ2; assert false
 
 
 let rec is_base_term env t =
@@ -254,50 +144,3 @@ let add_ext_funs prog =
   {prog with defs=defs'}
 
 
-let check_exist env cond x p =
-  Debug.printf "check_exists:@.";
-  Debug.printf "  cond: %a@." (List.print CEGAR_print.term) cond;
-  Debug.printf "  \\exists r. %a@." CEGAR_print.term @@ subst x (Var "r") p;
-  let xs = List.filter_out ((=) x) @@ (get_fv_list (p::cond)) in
-  if !Flag.NonTermination.use_omega_first then
-    try
-      OmegaInterface.is_valid_forall_exists xs [x] cond p
-      |@> Debug.printf "check_exists: %b@."
-    with OmegaInterface.Unknown ->
-      Debug.printf "check_exists: OmegaInterface.Unknown@.";
-      Debug.printf "Try checking by z3...@.";
-      try
-        let b = FpatInterface.is_valid_forall_exists xs [x] cond p in
-        Debug.printf "check_exists: %b@." b;
-        ignore @@ read_line();
-        b
-      with Fpat.SMTProver.Unknown ->
-        Debug.printf "check_exists: FpatInterface.Unknown@.";
-        if Flag.Method.exists_unknown_false
-        then false
-        else raise Fpat.SMTProver.Unknown
-  else
-    try
-      FpatInterface.is_valid_forall_exists xs [x] cond p
-      |@> Debug.printf "check_exists: %b@."
-    with
-    | Fpat.SMTProver.Unknown when !Flag.NonTermination.use_omega ->
-        Debug.printf "check_exists: Fpat.SMTProver.Unknown@.";
-        Debug.printf "Try checking by omega...@.";
-        begin
-          try
-            let b = OmegaInterface.is_valid_forall_exists xs [x] cond p in
-            Debug.printf "check_exists: %b@." b;
-            Debug.exec (fun _ -> ignore @@ read_line());
-            b
-          with OmegaInterface.Unknown ->
-               Debug.printf "check_exists: OmegaInterface.Unknown@.";
-               if Flag.Method.exists_unknown_false
-               then false
-               else raise Fpat.SMTProver.Unknown
-        end
-    | Fpat.SMTProver.Unknown when !Flag.NonTermination.use_omega ->
-        Debug.printf "check_exists: Fpat.SMTProver.Unknown@.";
-        if Flag.Method.exists_unknown_false
-        then false
-        else raise Fpat.SMTProver.Unknown

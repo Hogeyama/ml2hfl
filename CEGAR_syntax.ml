@@ -7,6 +7,7 @@ exception CannotDiscoverPredicate
 exception NonLinear
 
 type var = string
+  [@@deriving show]
 
 type counterexample = int list
 
@@ -28,7 +29,7 @@ type const =
   | Int32 of int32
   | Int64 of int64
   | Nativeint of nativeint
-  | Rand of base * int option
+  | Rand of (base [@opaque]) * int option
   | And
   | Or
   | Not
@@ -85,7 +86,8 @@ and info =
    orig_fun_list : var list;
    inlined : var list;
    pred_share : (var * int list * int list list * var * int list) list;
-   fairness : Fair_termination_type.fairness option}
+   fairness : Fair_termination_type.fairness option [@opaque]}
+  [@@deriving show]
 
 let init_info =
   {attr = [];

@@ -518,6 +518,19 @@ module List = struct
     in
     go [] xs
 
+  let partition_map f ys =
+    let rec aux xs = fun ls rs ->
+      match xs with
+      | [] -> ls, rs
+      | x :: xs' ->
+        match f x with
+        | `L(y) -> aux xs' (y :: ls) rs
+        | `R(y) -> aux xs' ls (y :: rs)
+        | _ -> failwith "Util.List.partition_map"
+    in
+    aux (rev ys) [] []
+
+
   module Set = struct
     let diff ?(eq=(=)) l1 l2 = filter_out (mem ~eq -$- l2) l1
     let inter ?(eq=(=)) l1 l2 = filter (mem ~eq -$- l2) l1
@@ -1014,3 +1027,12 @@ let rec transitive_closure ?(eq=(=)) edges =
     List.fold_left aux edges' edges'
   in
   fixed_point ~eq:(List.Set.eq ~eq:eq') f edges
+
+module Silent = struct
+  let check () = false
+  let fprintf = Format.ifprintf
+  let printf f = fprintf Format.std_formatter f
+  let eprintf f = fprintf Format.err_formatter f
+  let exec f = if check() then f ()
+  (* let print_time ?(ppf=Format.std_formatter) s = Format.fprintf ppf "[%.3f] %s@." (Util.Time.get()) s *)
+end

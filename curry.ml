@@ -262,7 +262,7 @@ and remove_pair_aux ?typ t =
   | Match(t1,pats) -> assert false
   | TryWith(t1,t2) -> assert false
   | Tuple ts -> node @@ List.map remove_pair_aux ts
-  | Proj(i, {desc=Var x}) when x = abst_var -> leaf (make_var x) (* for predicates *)
+  (* | Proj(i, {desc=Var x}) when x = abst_var -> leaf (make_var x) (* for predicates *) *)
   | Proj(i,t) ->
       let Tree.Node(_, ts) = remove_pair_aux t in
       List.nth ts i

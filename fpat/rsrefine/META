@@ -1,5 +1,0 @@
-name="rsrefine"
-description="complete predicate refinement based on relaxed stratification"
-archive(byte)="ocamlmsat5.cma ocamlminisat.cma"
-archive(native)="ocamlmsat5.cmxa ocamlminisat.cmxa"
-

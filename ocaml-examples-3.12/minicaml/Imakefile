@@ -1,6 +1,0 @@
-CamlProgP4Byt(minicaml,eval.cmo lexuniv.cmo syntaxe.cmo types.cmo synthese.cmo caml.cmo,)
-CamlProgP4Bin(minicaml,eval.cmx lexuniv.cmx syntaxe.cmx types.cmx synthese.cmx caml.cmx,)
-CamlProgP4Byt(camlinterp,eval.cmo lexuniv.cmo syntaxe.cmo interp.cmo,)
-CamlProgP4Bin(camlinterp,eval.cmx lexuniv.cmx syntaxe.cmx interp.cmx,)
-CamlProgP4Byt(camltyp,lexuniv.cmo syntaxe.cmo types.cmo synthese.cmo typeur.cmo,)
-CamlProgP4Bin(camltyp,lexuniv.cmx syntaxe.cmx types.cmx synthese.cmx typeur.cmx,)

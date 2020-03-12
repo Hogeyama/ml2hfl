@@ -1,24 +1,28 @@
 open Util
 
 type var = string
+  [@@deriving show]
 
 type base =
   | TUnit
   | TInt
   | TBool
   | TAbst of string
+  [@@deriving show]
 
 type 'a constr =
   | TList
   | TTuple
   | TFixPred of ('a -> 'a)
   | TPath of int list (* used only for refinement *)
+  [@@deriving show]
 
 type 'a t =
   | TBase of base * ('a -> 'a list)
   | TConstr of 'a constr
   | TApp of 'a t * 'a t
   | TFun of 'a t * ('a -> 'a t)
+  [@@deriving show]
 
 (** Constructors *)
 

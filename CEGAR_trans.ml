@@ -46,13 +46,7 @@ let rec merge_typ env typ typ' =
           ps2'
       in
       let add p ps =
-        let equiv t1 t2 =
-          let t1' = FpatInterface.conv_formula t1 in
-          let t2' = FpatInterface.conv_formula t2 in
-          FpatInterface.implies [t1'] [t2'] &&
-          FpatInterface.implies [t2'] [t1']
-        in
-        if List.exists (equiv p) ps then
+        if false then
           ps
         else
           normalize_bool_term p :: ps
@@ -890,12 +884,7 @@ let rec has_rand t =
   | Fun(_, _, t) -> has_rand t
 
 
-let implies env t =
-  try
-    let pre = List.map FpatInterface.conv_formula env in
-    let p = FpatInterface.conv_formula t in
-    FpatInterface.implies pre [p]
-  with _ -> false
+let implies env t = false
 
 (* fv = FV(env) *)
 let rec simplify_if_term env fv t =

@@ -1,4 +1,0 @@
-CamlProgByt(calc,lexer.cmo parser.cmo calc.cmo main.cmo,)
-CamlProgBin(calc,lexer.cmx parser.cmx calc.cmx main.cmx,)
-CamlYaccFile(parser)
-CamlLexFile(lexer)

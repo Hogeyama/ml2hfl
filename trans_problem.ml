@@ -46,7 +46,6 @@ let encode_bool_as_int = map Trans.encode_bool_as_int
 let reduce_rand = map Trans.reduce_rand
 let reduce_ignore = map Trans.reduce_ignore
 let reduce_branch = map Trans.reduce_branch
-let insert_extra_param = map Trans.insert_extra_param
 let variant_args_to_tuple = map Trans.variant_args_to_tuple
 let unify_pure_fun_app = map Trans.unify_pure_fun_app
 let add_occurence_param = map Trans.add_occurence_param

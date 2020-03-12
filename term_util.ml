@@ -2,8 +2,6 @@ open Util
 open Syntax
 open Type
 
-module Debug = Debug.Make(struct let check = Flag.Debug.make_check __MODULE__ end)
-
 let get_fv = Syntax.get_fv
 
 let occur_in x t =
@@ -13,13 +11,13 @@ let occur_in x t =
 
 let typ_result = TData "X"
 let typ_event = Ty.(fun_ unit unit)
-let typ_event' = Ty.(fun_ unit typ_result)
+let typ_event' : term t = Ty.(fun_ unit typ_result)
 let typ_event_cps = Ty.(funs [unit; fun_ unit typ_result] typ_result)
 let typ_exn = TData "exn"
 
-let abst_var = Id.make (-1) "v" [] typ_unknown
-let abst_var_int = Id.set_typ abst_var Ty.int
-let abst_var_bool = Id.set_typ abst_var Ty.bool
+let abst_var : int t Id.t = Id.make (-1) "v" [] typ_unknown
+let abst_var_int : int t Id.t = Id.set_typ abst_var Ty.int
+let abst_var_bool : int t Id.t = Id.set_typ abst_var Ty.bool
 
 let make_attr ?(attrs=const_attr) ts =
   let check a = List.for_all (fun {attr} -> List.mem a attr) ts in
@@ -669,7 +667,7 @@ let subst_var_map map t =
     subst_map (List.map (Pair.map_snd make_var) map) t
 
 (* TODO: subst_var_without_typ must be a derivative of subst_var_map_without_typ *)
-let subst_var_without_typ =
+let subst_var_without_typ x y =
   let tr = make_trans2 () in
   let tr_desc (x,y) desc =
     match desc with
@@ -692,7 +690,7 @@ let subst_var_without_typ =
     | _ -> tr.tr2_desc_rec (x,y) desc
   in
   tr.tr2_desc <- tr_desc;
-  Fun.curry tr.tr2_term
+  Fun.curry tr.tr2_term x y
 let subst_var_map_without_typ map t =
   List.fold_right (Fun.uncurry subst_var_without_typ) map t
 
@@ -1334,36 +1332,6 @@ let rec decomp_prog t =
       bindings::defs, main
   | _ -> [], t
 
-let from_fpat_const c =
-  match c with
-  | Fpat.Const.Unit -> unit_term
-  | Fpat.Const.True -> true_term
-  | Fpat.Const.False -> false_term
-  | Fpat.Const.Int n -> make_int n
-  | _ -> unsupported "Term_util.from_fpat_const"
-
-let from_fpat_idnt x =
-  Id.from_string (Fpat.Idnt.string_of x) typ_unknown
-
-let decomp_binop t =
-  match t with
-  | Fpat.Term.Const c ->
-      begin
-      match c with
-      | Fpat.Const.Lt _ -> Some make_lt
-      | Fpat.Const.Gt _ -> Some make_gt
-      | Fpat.Const.Leq _ -> Some make_leq
-      | Fpat.Const.Geq _ -> Some make_geq
-      | Fpat.Const.Eq _ -> Some make_eq
-      | Fpat.Const.Add _ -> Some make_add
-      | Fpat.Const.Sub _ -> Some make_sub
-      | Fpat.Const.Mul _ -> Some make_mul
-      | Fpat.Const.Div _ -> Some make_div
-      | Fpat.Const.Neq _ -> Some (fun x y -> make_not @@ make_eq x y)
-      | _ -> None
-      end
-  | _ -> None
-
 let rec decomp_list t =
   match t.desc with
   | Nil -> Some []
@@ -1371,28 +1339,14 @@ let rec decomp_list t =
   | _ -> None
 let is_list_literal t = None <> decomp_list t
 
-let rec from_fpat_term = function
-  | Fpat.Term.Const c -> from_fpat_const c
-  | Fpat.Term.Var x -> make_var (from_fpat_idnt x)
-  | Fpat.Term.App(Fpat.Term.App(f, t1), t2) when Option.is_some @@ decomp_binop f ->
-      let make = Option.get @@ decomp_binop f in
-      let t1' = from_fpat_term t1 in
-      let t2' = from_fpat_term t2 in
-      make t1' t2'
-  | Fpat.Term.App(Fpat.Term.Const Fpat.Const.Not, t) -> make_not (from_fpat_term t)
-  | t -> Fpat.Term.pr Format.std_formatter t; assert false
-
-let from_fpat_formula t = from_fpat_term @@ Fpat.Formula.term_of t
-
-
 let find_exn_typ = make_col [] (@)
 let find_exn_typ_term t =
   match t.desc with
   | Raise t' ->
-      Debug.printf "FOUND1: %a@." Print.typ t'.typ;
+      (* Debug.printf "FOUND1: %a@." Print.typ t'.typ; *)
       [t'.typ]
   | TryWith(t', {typ=TFun(x, _)}) ->
-      Debug.printf "FOUND2: %a@." Print.typ @@ Id.typ x;
+      (* Debug.printf "FOUND2: %a@." Print.typ @@ Id.typ x; *)
       [Id.typ x]
   | _ -> find_exn_typ.col_term_rec t
 let find_exn_typ_typ typ = []

@@ -1,5 +1,0 @@
-rm -f *~
-rm -f *.cm*
-rm -f *.output
-rm -f lexer.ml parser.mli parser.ml
-rm -f polish

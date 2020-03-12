@@ -21,3 +21,4 @@ module Make (Cond : COND) : DEBUG = struct
   let exec f = if check() then f ()
   let print_time ?(ppf=Format.std_formatter) s = Format.fprintf ppf "[%.3f] %s@." (Util.Time.get()) s
 end
+

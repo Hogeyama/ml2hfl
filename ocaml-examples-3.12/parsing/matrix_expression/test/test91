@@ -1,7 +1,0 @@
-// Tests imported from scicoslab tests
-
-[
-
-.switch u1 .otherwise 0 .end;
-
-]

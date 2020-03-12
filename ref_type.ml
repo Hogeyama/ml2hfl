@@ -473,10 +473,10 @@ let rec has_no_predicate typ =
   | Exn(typ1,typ2) -> has_no_predicate typ1 && has_no_predicate typ2
 
 
-let conv = Fpat.Formula.of_term -| FpatInterface.of_term
-let is_sat = FpatInterface.is_sat -| conv
-let is_valid = FpatInterface.is_valid -| conv
-let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
+let conv _ = assert false
+let is_sat _ = assert false
+let is_valid  _ = assert false
+let implies ts t = assert false
 
 let rec simplify_pred t =
   try

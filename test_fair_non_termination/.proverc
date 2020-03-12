@@ -1,2 +1,0 @@
--fcm --timer --trap
---exec "./test.py"

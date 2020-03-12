@@ -162,7 +162,7 @@ let rec infer_term fun_arg_env env = function
         try
           assoc_env x env
         with
-        | CEGAR_util.Type_not_found _ when Fpat.RefTypInfer.is_parameter x -> TInt
+        | CEGAR_util.Type_not_found _ -> TInt
       end
   | App(t1,t2) ->
       let typ1 = infer_term fun_arg_env env t1 in

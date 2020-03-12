@@ -556,7 +556,7 @@ let trans t = t
   |@> Debug.printf "remove_label: %a@." Print.term_typ
   |> move_proj.tr_term
   |@> Debug.printf "move_proj: %a@." Print.term_typ
-  |@> Trans.inline_no_effect
+  |@> (fun x -> ignore @@ Trans.inline_no_effect x)
   |@> Debug.printf "inline_no_effect: %a@." Print.term_typ
   |> Trans.normalize_let
   |> Trans.inline_simple_exp

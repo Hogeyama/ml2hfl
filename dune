@@ -1,0 +1,13 @@
+(executable
+  (name mochi)
+  (libraries
+    fmt
+    str
+    unix
+    yojson
+    batteries
+    compiler-libs.common
+  )
+  (flags (:standard -cclib -lglpk -w -6-9-11-21-26-27-32-33-38-39-50-52-57))
+  (preprocess (pps ppx_deriving.std ppx_compare ppx_sexp_conv))
+  (modes byte native))

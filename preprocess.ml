@@ -233,9 +233,6 @@ let all spec : t list =
       map_trans mark_fv_as_external;
     Eliminate_unused_let,
       map_trans @@ elim_unused_let ~leave_last:true;
-    Insert_extra_param,
-      if_ !Flag.Method.relative_complete @@
-      map_trans insert_extra_param;
     Encode_bool_as_int,
       if_ !Flag.Encode.bool_to_int @@
       map_trans encode_bool_as_int;

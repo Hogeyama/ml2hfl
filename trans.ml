@@ -10,7 +10,7 @@ let flatten_tvar,flatten_tvar_typ =
   tr.tr_term, tr.tr_typ
 
 (* not capture-avoiding *)
-let subst_var_id =
+let subst_var_id x x' t =
   let tr = make_trans2 () in
   let tr_desc (x,x') desc =
     match desc with
@@ -18,7 +18,7 @@ let subst_var_id =
     | _ -> tr.tr2_desc_rec (x,x') desc
   in
   tr.tr2_desc <- tr_desc;
-  fun x x' t -> tr.tr2_term (x,x') t
+  tr.tr2_term (x,x') t
 
 let map_id =
   let tr = make_trans2 () in
@@ -735,7 +735,6 @@ let make_ext_env =
   let col = make_col2 [] (@@@) in
   let col_desc funs desc =
     match desc with
-    | Var x when Fpat.RefTypInfer.is_parameter (Id.name x) -> []
     | Var x when Id.is_coefficient x -> []
     | Var x when Id.mem x funs -> [x, Id.typ x]
     | Var x -> []
@@ -791,8 +790,8 @@ let rec inlined_f inlined fs t =
              let (f, xs, t) = try List.find (Triple.fst |- Id.same f) fs with Not_found -> assert false in
              let ts = List.map (inlined_f inlined fs) ts in
              let ys = List.map (fun t -> match t.desc with Const (Unit | True | False | Int _) | Var _ -> `L(t) | _ -> `R(Id.new_var ~name:"arg" t.typ)) ts in
-             let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else Fpat.Util.List.split_nth (List.length xs) ys in
-             let xs1, xs2 = Fpat.Util.List.split_nth (List.length ys1) xs in
+             let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else List.split_nth (List.length xs) ys in
+             let xs1, xs2 = List.split_nth (List.length ys1) xs in
              let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
              let t' = subst_map map t in
              let f, _ =
@@ -801,7 +800,7 @@ let rec inlined_f inlined fs t =
                  ((fun t -> t), Type.app_typ t1.typ (List.map Syntax.typ ts))
                  xs2
              in
-             let bindings = Fpat.Util.List.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, t)) ys ts in
+             let bindings = List.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, t)) ys ts in
              (make_lets bindings (make_app (f t') (List.map (fun y -> match y with `L(t) -> t | `R(y) -> make_var y) ys2))).desc
          | _ ->
              let t1' = inlined_f inlined fs t1 in
@@ -813,7 +812,7 @@ let rec inlined_f inlined fs t =
         let aux (f,t) =
           `L(f, inlined_f inlined fs t)
         in
-        let bindings', fs' = Fpat.Util.List.partition_map aux bindings in
+        let bindings', fs' = List.partition_map aux bindings in
         let t2' = inlined_f inlined (fs @ fs') t2 in
         if bindings' = [] then
           t2'.desc
@@ -2146,10 +2145,10 @@ let beta_size1 =
   tr.tr_term
 
 
-let conv = Fpat.Formula.of_term -| FpatInterface.of_term
-let is_sat = FpatInterface.is_sat -| conv
-let is_valid = FpatInterface.is_valid -| conv
-let implies ts t = FpatInterface.implies (List.map conv ts) [conv t]
+let conv _ = assert false
+let is_sat _ =  false
+let is_valid _ = false
+let implies ts t = false
 
 
 let reconstruct =
@@ -3306,12 +3305,6 @@ let split_assert t =
   let t' = split_assert_and t in
   let map,t'' = mark_fail t' in
   List.rev_map (fun (id,loc) -> replace_fail_with_bot_except id t'', loc) map
-
-let insert_extra_param t =
-  t
-  |> lift_fst_snd
-  |> FpatInterface.insert_extra_param (* THERE IS A BUG in exception handling *)
-  |@> Debug.printf "insert_extra_param (%d added)::@. @[%a@.@." (List.length !Fpat.RefTypInfer.params) Print.term
 
 (* input must be the whole program *)
 let unify_pure_fun_app =

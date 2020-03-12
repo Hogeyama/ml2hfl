@@ -1,5 +1,0 @@
-name="sppoc"
-description="SPPoC"
-archive(byte)="camlp5.cma MlTools.cma Formel.cma"
-archive(native)="camlp5.cmxa MlTools.cmxa Formel.cmxa"
-linkopts = "-cclib -lstdc++ -cclib -lunix -cclib -lnums -cclib -linterf -cclib -lpip -cclib -lomega -cclib -lomegastub -cclib -lpoly -cclib -lsys -cclib -lcom -cclib -lcipol -cclib -lgmp -cclib -lpolylib64"

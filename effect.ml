@@ -144,8 +144,6 @@ let rec gen_constr env tenv t =
 	try
 	  Id.assoc x tenv
 	with
-	| Not_found when Fpat.RefTypInfer.is_parameter (Id.name x) ->
-            add_effect_typ [] Ty.int
 	| Not_found ->
             Format.eprintf "%a@." Print.id x; assert false
       in
