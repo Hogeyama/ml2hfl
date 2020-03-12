@@ -1,3 +1,38 @@
+
+
+Dependency
+==========
+
+- fmt
+- str
+- unix
+- yojson
+- batteries
+- compiler-libs.common
+
+All of them can be installed via opam.
+
+Install
+=======
+
+`dune build ml2hfl`
+
+Usage
+=====
+
+```
+dune exec ./ml2hfl.exe INPUT
+```
+
+
+Note
+====
+
+This project reuses code of [MoCHi](http://www-kb.is.s.u-tokyo.ac.jp/~ryosuke/mochi/).
+Rest of this README is MoCHi's original one.
+
+--------------------------------------------------------------------------------
+
 How to build MoCHi
 ==================
 
