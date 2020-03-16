@@ -21,4 +21,5 @@ jobs:
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
     - run: opam install dune re2 fmt yojson batteries ppx_deriving
+    - run: cp parser_wrapper_4.08.ml parser_wrapper.ml
     - run: opam exec -- dune build ./ml2hfl.exe
