@@ -3,6 +3,7 @@
 Dependency
 ==========
 
+- re2
 - fmt
 - str
 - unix
@@ -12,10 +13,13 @@ Dependency
 
 All of them can be installed via opam.
 
-Install
-=======
+Build
+=====
 
-`dune build ml2hfl`
+```
+$ cp parser_wrapper_[YOUR-VERSION-OF-OCAML].ml parser_wrapper.ml
+$ dune build ./ml2hfl.exe
+```
 
 Usage
 =====
@@ -23,7 +27,6 @@ Usage
 ```
 dune exec ./ml2hfl.exe INPUT
 ```
-
 
 Note
 ====
