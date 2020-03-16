@@ -1,6 +1,7 @@
 (executable
   (name ml2hfl)
   (libraries
+    re2
     fmt
     str
     unix

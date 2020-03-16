@@ -34,6 +34,7 @@ type hes = rule list
   [@@deriving show]
 
 let mk_var ~toplevel s =
+  let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'") s in
   if List.mem s toplevel
   then V (String.uppercase_ascii s)
   else V s
@@ -49,7 +50,7 @@ let rec negate = function
   | Op (And, x, y) -> Op (Or , negate x, negate y)
   | Op (Or , x, y) -> Op (And, negate x, negate y)
   | t ->
-      Format.printf "Cannot negate %a@." pp_hflz t;
+      Format.eprintf "Cannot negate %a@." pp_hflz t;
       assert false
 
 let rec hflz_of_cegar ~toplevel : CEGAR_syntax.t -> hflz =
@@ -88,7 +89,7 @@ let rec hflz_of_cegar ~toplevel : CEGAR_syntax.t -> hflz =
     | App (Const (TreeConstr _), x) -> aux x
     | App (Const (Label _), x) -> aux x
     | App (x,y) -> App (aux x, aux y)
-    | Fun (f,_,x) -> Abs (V f, aux x)
+    | Fun (f,_,x) -> Abs (mk_var ~toplevel f, aux x)
     | t ->
       Format.printf "%a@.%a@."
         CEGAR_syntax.pp t
@@ -109,7 +110,8 @@ let rule_of_fun_def ~toplevel : CEGAR_syntax.fun_def -> rule = fun def  ->
       | p -> Op (Or, p, hflz_of_cegar ~toplevel def.body)
   in { fn; args; body}
 
-let hes_of_prog : CEGAR_syntax.prog -> hes = fun {defs; main=orig_main; _} ->
+let hes_of_prog : CEGAR_syntax.prog -> hes = fun ({defs; main=orig_main; _} as prog) ->
+  (* Format.eprintf "%a" CEGAR_print.prog prog; *)
   let toplevel = List.map (fun x -> x.CEGAR_syntax.fn) defs in
   let rules =
     let fold_left1 f = function
@@ -232,8 +234,9 @@ module Print = struct(*{{{*)
   let rec hflz_ prec ppf (phi : hflz) = match phi with
     | Bool true -> Fmt.string ppf "true"
     | Bool false -> Fmt.string ppf "false"
-    | Int n -> Fmt.int ppf n
-    | Var (V x) -> Fmt.string ppf x
+    | Int n when n >= 0 -> Fmt.int ppf n
+    | Int n -> Fmt.pf ppf "(%d)" n
+    | Var v -> var ppf v
     | App (psi1, psi2) ->
         show_paren (prec > Prec.app) ppf "@[<1>%a@ %a@]"
           (hflz_ Prec.app) psi1
