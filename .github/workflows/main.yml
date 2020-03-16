@@ -20,5 +20,5 @@ jobs:
     - uses: avsm/setup-ocaml@master
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
-    - run: opam install dune re2 fmt str unix yojson batteries compiler-libs.common
+    - run: opam install dune re2 fmt yojson batteries
     - run: opam exec -- dune build ./ml2hfl.exe
