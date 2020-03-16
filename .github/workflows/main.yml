@@ -1,0 +1,24 @@
+name: Build
+
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  run:
+    name: Build
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      matrix:
+        operating-system: [macos-latest, ubuntu-latest, windows-latest]
+        ocaml-version: [ '4.08.1' ]
+    steps:
+    - uses: actions/checkout@master
+    - uses: avsm/setup-ocaml@master
+      with:
+        ocaml-version: ${{ matrix.ocaml-version }}
+    - run: opam install dune re2 fmt str unix yojson batteries compiler-libs.common
+    - run: opam exec -- dune build ./ml2hfl.exe
