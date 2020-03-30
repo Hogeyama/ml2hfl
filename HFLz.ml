@@ -63,7 +63,7 @@ let rec hflz_of_cegar ~toplevel : CEGAR_syntax.t -> hflz =
     | Let _ -> assert false
     | Const Unit -> Bool true
     | Const CPS_result -> Bool true
-    | Const Bottom -> Bool false
+    | Const Bottom -> Bool true
     | Const True -> Bool true
     | Const False -> Bool false
     | Const (Int   i) -> Int i
