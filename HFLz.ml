@@ -182,11 +182,11 @@ module Print = struct(*{{{*)
   let hes : hes Fmt.t = fun ppf hes ->
     Fmt.pf ppf "%%HES@.";
     Fmt.pf ppf "@[<v>%a@]@." (Fmt.list rule)  hes;
-    Fmt.pf ppf "Forall p        =v ForallAux p 0.@.";
-    Fmt.pf ppf "ForallAux p x   =v p x /\\ ForallAux p (x-1) /\\ ForallAux p (x+1).@.";
+    Fmt.pf ppf "Forall p      =v ForallAux p 0.@.";
+    Fmt.pf ppf "ForallAux p x =v p x /\\ p (0-x) /\\ ForallAux p (x+1).@.";
     (* Fmt.pf ppf "Exists p        =v p 1000 \\/ p 8 \\/ p 5 \\/ p 3 \\/ p (-200).@."; *)
-    Fmt.pf ppf "Exists p        =v ExistsAux 1000 0 p.@.";
-    Fmt.pf ppf "ExistsAux y x p =v y > 0 /\\ (p x \\/ ExistsAux (y-1) (x-1) p \\/ ExistsAux (y-1) (x+1) p).@."
+    Fmt.pf ppf "Exists p      =v ExistsAux 1000 p.@.";
+    Fmt.pf ppf "ExistsAux x p =v x > 0 /\\ (p x \\/ p (0-x) \\/ ExistsAux (x-1) p).@."
 end(*}}}*)
 
 module OfSafety = struct(*{{{*)
