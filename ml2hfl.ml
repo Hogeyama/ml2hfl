@@ -28,7 +28,7 @@ let save_input_to_file filenames =
 
 let main filenames =
   (* origにはdirectiveと型定義が入っている．今回は無視してよい *)
-  let _, parsed = Parser_wrapper.parse_files !Flag.Input.filenames in
+  let _orig, parsed = Parser_wrapper.parse_files !Flag.Input.filenames in
   let problem = Problem.safety parsed in
   Main_loop.run Spec.init problem
 

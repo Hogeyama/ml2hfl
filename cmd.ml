@@ -260,7 +260,8 @@ let rec arg_spec for_completion =
        Arg.Unit Flag.(fun _ ->
                       Method.mode := Method.NonTermination;
                       ModelCheck.church_encode := true;
-                      ModelCheck.mc := ModelCheck.HorSat),
+                      ModelCheck.mc := ModelCheck.HorSat;
+                      Flag.Method.slice := false),
        " Check non-termination"]
   in
   let non_termination =

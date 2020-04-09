@@ -104,7 +104,7 @@ let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
   in
   let cegar_prog = { cegar_prog with info } in
   let cegar_prog = CEGAR_abst_CPS.expand_non_rec cegar_prog in
-  let hes = HFLz.hes_of_prog cegar_prog in
+  let hes = HFLz.of_cegar cegar_prog in
   Format.printf "%a" HFLz.Print.hes hes
 
 (* TODO CEGAR_syntax.prog -> HFL -> string *)
