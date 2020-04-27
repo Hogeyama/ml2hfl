@@ -53,7 +53,7 @@ let rec negate = function
   | Op (Or , x, y) -> Op (And, negate x, negate y)
   | t ->
       Format.eprintf "Cannot negate %a@." pp_hflz t;
-      assert false
+      failwith "negate"
 
 module Print = struct(*{{{*)
   open Fmt
@@ -189,28 +189,42 @@ module Print = struct(*{{{*)
     Fmt.pf ppf "ExistsAux x p =v x > 0 /\\ (p x \\/ p (0-x) \\/ ExistsAux (x-1) p).@."
 end(*}}}*)
 
-module OfSafety = struct(*{{{*)
-  let rec term ~toplevel : CEGAR_syntax.t -> hflz =
+module OfCEGAR = struct
+  type target = Reachability | NonTermination
+  let rec term ~target ~toplevel : CEGAR_syntax.t -> hflz =
     let rec aux : CEGAR_syntax.t -> hflz = fun t ->
-        (* Debug.eprintf "%a@.%a@." *)
-        (*   CEGAR_syntax.pp t *)
-        (*   CEGAR_print.term t; *)
       match t with
       | Var v -> Var (mk_var ~toplevel v)
       | Let _ -> assert false
       | Const Unit -> Bool true
-      | Const CPS_result -> Bool true
+      | Const CPS_result ->
+          begin match target with
+          | Reachability -> Bool true
+          | NonTermination -> Bool false
+          end
       | Const Bottom -> Bool true
       | Const True -> Bool true
       | Const False -> Bool false
       | Const (Int   i) -> Int i
       | Const (Int32 i) -> Int (Int32.to_int i)
       | Const (Int64 i) -> Int (Int64.to_int i)
-      | Const (Rand (TInt, None)) -> Var (V "Forall")
+      | Const (Rand (TInt, None)) ->
+          begin match target with
+          | Reachability -> Var (V "Forall")
+          | NonTermination -> Var (V "Exists")
+          end
       | App (App ((App (Const If, x)), y), z) ->
-          (* (not x \/ y) /\ (x \/ y) *)
-          Op (And, (Op (Or, negate (aux x), aux y))
-                 , (Op (Or, aux x         , aux z)))
+          (* (not x \/ y) /\ (x \/ z) *)
+          begin match aux x, aux y, aux z with
+          | Bool true , y, _ -> y
+          | Bool false, _, z -> z
+          | x, Bool true, z  -> Op (Or, x , z)
+          | x, Bool false, z -> Op (And, negate x, z)
+          | x, y, Bool true  -> Op (Or, negate x, y)
+          | x, y, Bool false -> Op (And, x, y)
+          | x,y,z -> Op (And, (Op (Or, negate x, y))
+                            , (Op (Or, x       , z)))
+          end
       | App ((App (Const Add, x)), y) -> Op (Add, aux x, aux y)
       | App ((App (Const Sub, x)), y) -> Op (Sub, aux x, aux y)
       | App ((App (Const Mul, x)), y) -> Op (Mul, aux x, aux y)
@@ -235,19 +249,20 @@ module OfSafety = struct(*{{{*)
     in aux
 
   (* fun_def list は同じものが複数入っている *)
-  let rule ~toplevel : CEGAR_syntax.fun_def -> rule = fun def  ->
+  let rule ~target ~toplevel : CEGAR_syntax.fun_def -> rule = fun def  ->
     let fn = mk_var ~toplevel def.fn in
     let args = List.map (mk_var ~toplevel) def.args in
     let body =
       if List.mem (CEGAR_syntax.Event "fail") def.events then
         Bool false
       else
-        match negate (term ~toplevel def.cond) with
-        | Bool false -> term ~toplevel def.body
-        | p -> Op (Or, p, term ~toplevel def.body)
+        match negate (term ~target ~toplevel def.cond) with
+        | Bool false -> term ~target ~toplevel def.body
+        | p -> Op (Or, p, term ~target ~toplevel def.body)
+        | exception _ -> failwith "negate @cond"
     in { fn; args; body}
 
-  let hes : CEGAR_syntax.prog -> hes = fun ({defs; main=orig_main; _} as prog) ->
+  let hes : target:target -> CEGAR_syntax.prog -> hes = fun ~target ({defs; main=orig_main; _} as prog) ->
     Debug.eprintf "%a" CEGAR_print.prog prog;
     let toplevel = List.map (fun x -> x.CEGAR_syntax.fn) defs in
     let rules =
@@ -260,7 +275,7 @@ module OfSafety = struct(*{{{*)
         { rule1 with body }
       in
       defs
-      |> List.map (rule ~toplevel)
+      |> List.map (rule ~target ~toplevel)
       |> List.sort (fun x y -> compare x.fn y.fn)
       |> List.group_consecutive (fun x y -> x.fn = y.fn)
       |> List.map (fold_left1 merge)
@@ -284,108 +299,13 @@ module OfSafety = struct(*{{{*)
       main, others
     in
     main :: others
-end(*}}}*)
-
-module OfNonTermination = struct(*{{{*)
-  let rec term ~toplevel : CEGAR_syntax.t -> hflz =
-    let rec aux : CEGAR_syntax.t -> hflz = fun t ->
-        (* Debug.eprintf "%a@.%a@." *)
-        (*   CEGAR_syntax.pp t *)
-        (*   CEGAR_print.term t; *)
-      match t with
-      | Var v -> Var (mk_var ~toplevel v)
-      | Let _ -> assert false
-      | Const Unit -> Bool true
-      | Const CPS_result -> Bool false
-      | Const Bottom -> Bool true
-      | Const True -> Bool true
-      | Const False -> Bool false
-      | Const (Int   i) -> Int i
-      | Const (Int32 i) -> Int (Int32.to_int i)
-      | Const (Int64 i) -> Int (Int64.to_int i)
-      | Const (Rand (TInt, None)) -> Var (V "Exists")
-      | App (App ((App (Const If, x)), y), z) ->
-          (* (not x \/ y) /\ (x \/ y) *)
-          Op (And, (Op (Or, negate (aux x), aux y))
-                 , (Op (Or, aux x         , aux z)))
-      | App ((App (Const Add, x)), y) -> Op (Add, aux x, aux y)
-      | App ((App (Const Sub, x)), y) -> Op (Sub, aux x, aux y)
-      | App ((App (Const Mul, x)), y) -> Op (Mul, aux x, aux y)
-      | App ((App (Const Div, x)), y) -> Op (Div, aux x, aux y)
-      | App ((App (Const And, x)), y) -> Op (And, aux x, aux y)
-      | App ((App (Const Or , x)), y) -> Op (Or , aux x, aux y)
-      | App ((App (Const Lt , x)), y) -> Op (Lt , aux x, aux y)
-      | App ((App (Const Gt , x)), y) -> Op (Gt , aux x, aux y)
-      | App ((App (Const Leq, x)), y) -> Op (Leq, aux x, aux y)
-      | App ((App (Const Geq, x)), y) -> Op (Geq, aux x, aux y)
-      | App ((App (Const EqInt, x)), y) -> Op (Eq, aux x, aux y)
-      | App (Const Not, x) -> negate (aux x)
-      | App (Const (TreeConstr _), x) -> aux x
-      | App (Const (Label _), x) -> aux x
-      | App (x,y) -> App (aux x, aux y)
-      | Fun (f,_,x) -> Abs (mk_var ~toplevel f, aux x)
-      | t ->
-        Format.eprintf "%a@.%a@."
-          CEGAR_syntax.pp t
-          CEGAR_print.term t;
-        assert false
-    in aux
-
-  (* fun_def list は同じものが複数入っている *)
-  let rule ~toplevel : CEGAR_syntax.fun_def -> rule = fun def  ->
-    let fn = mk_var ~toplevel def.fn in
-    let args = List.map (mk_var ~toplevel) def.args in
-    let body =
-      if List.mem (CEGAR_syntax.Event "fail") def.events then
-        Bool false
-      else
-        match negate (term ~toplevel def.cond) with
-        | Bool false -> term ~toplevel def.body
-        | p -> Op (Or, p, term ~toplevel def.body)
-    in { fn; args; body}
-
-  let hes : CEGAR_syntax.prog -> hes = fun ({defs; main=orig_main; _} as prog) ->
-    Debug.eprintf "%a" CEGAR_print.prog prog;
-    let toplevel = List.map (fun x -> x.CEGAR_syntax.fn) defs in
-    let rules =
-      let fold_left1 f = function
-        | x::xs -> List.fold_left f x xs
-        | [] -> assert false
-      in
-      let merge rule1 rule2 =
-        let body = Op (And, rule1.body, rule2.body) in
-        { rule1 with body }
-      in
-      defs
-      |> List.map (rule ~toplevel)
-      |> List.sort (fun x y -> compare x.fn y.fn)
-      |> List.group_consecutive (fun x y -> x.fn = y.fn)
-      |> List.map (fold_left1 merge)
-    in
-    let main, others =
-      let main_var = mk_var ~toplevel orig_main in
-      let others = List.remove_if (fun x -> x.fn = main_var) rules in
-      let main = List.find (fun x -> x.fn = main_var) rules in
-      let remove_forall : hflz -> hflz * var list =
-        let rec go acc = function
-          | App (Var (V "Forall"), Abs (v, t)) -> go (v::acc) t
-          | t -> (t, acc)
-        in
-        go []
-      in
-      let main =
-        let body, args = remove_forall main.body in
-        (* { main' with args; body } *) (* 鈴木さんのはこっちに非対応 *)
-        { main with body }
-      in
-      main, others
-    in
-    main :: others
-end(*}}}*)
+end
 
 let of_cegar : CEGAR_syntax.prog -> hes = fun prog ->
-  match !Flag.Method.mode with
-  | NonTermination -> OfNonTermination.hes prog
-  | Reachability   -> OfSafety.hes prog
-  | _ -> unsupported "HFLz.of_cegar: mode"
+  let target : OfCEGAR.target =
+    match !Flag.Method.mode with
+    | NonTermination -> NonTermination
+    | Reachability   -> Reachability
+    | _ -> unsupported "HFLz.of_cegar: mode"
+  in OfCEGAR.hes ~target prog
 
