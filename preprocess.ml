@@ -78,6 +78,7 @@ and preprocess_label =
   | Slice
   | Split_by_ref_type
   | Slice_top_fun
+  | Remove_not
 
 let string_of_label = function
   | Init -> "Init"
@@ -143,6 +144,7 @@ let string_of_label = function
   | Slice -> "Slice"
   | Split_by_ref_type -> "Split by refinement types"
   | Slice_top_fun -> "Slice by top-level function definitions"
+  | Remove_not -> "Remove not by duplicate bool"
 
 let rec get r =
   match r with
@@ -369,6 +371,9 @@ let all spec : t list =
     Alpha_rename,
       if_ Flag.Method.(!mode <> Termination) @@
       singleton alpha_rename;
+    Remove_not,
+      if_ !Flag.Method.remove_not @@
+      map_trans remove_not;
   ]
 
 let pr () = if !!Debug_ty.check then Problem.print_debug else Problem.print

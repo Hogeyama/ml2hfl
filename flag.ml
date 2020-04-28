@@ -75,6 +75,7 @@ module Method = struct
   let slice_num = ref 10
   let sub = ref false
   let target = ref ""
+  let remove_not = ref true
 end
 
 module Encode = struct

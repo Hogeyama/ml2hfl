@@ -103,6 +103,7 @@ let rec arg_spec for_completion =
      "-make-ext-fun-before-encode", Arg.Clear Flag.Method.encode_before_make_ext_fun, " Make external functions before encode";
      "-no-slice", Arg.Clear Flag.Method.slice, " Do not slice";
      "-slice-exp", Arg.Set_float Flag.Method.slice_sub, " Do not slice";
+     "-no-remove-not", Arg.Clear Flag.Method.remove_not, " Do not remove not";
      "-recdata",
        Arg.Int (fun n ->
            let open Flag.Encode.RecData in

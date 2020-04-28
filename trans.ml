@@ -3819,3 +3819,218 @@ let split_by_ref_type env =
     | _ -> [None, make acc_rev t]
   in
   aux []
+
+let remove_not =
+  let duplicate_bool = make_trans () in
+  begin
+    let negate_op = function
+      | Eq -> Neq
+      | Neq -> Eq
+      | Lt -> Geq
+      | Geq -> Lt
+      | Leq -> Gt
+      | Gt -> Leq
+      | And -> Or
+      | Or -> And
+      | _ -> assert false
+    in
+    let tr_desc = function
+      | Const True  -> Tuple [true_term; false_term]
+      | Const False -> Tuple [false_term; true_term]
+      | If (b,t1,t2) ->
+          let b = duplicate_bool.tr_term b in
+          let t1 = duplicate_bool.tr_term t1 in
+          let t2 = duplicate_bool.tr_term t2 in
+          If (make_fst b, t1, t2)
+      | Not t ->
+          let t = duplicate_bool.tr_term t in
+          Tuple [make_snd t; make_fst t]
+      | BinOp (op,t1,t2) as desc ->
+          begin match op with
+          | Eq | Neq | Lt | Gt | Leq | Geq ->
+              let t1 = duplicate_bool.tr_term t1 in
+              let t2 = duplicate_bool.tr_term t2 in
+              Tuple [ make_binop op             t1 t2
+                    ; make_binop (negate_op op) t1 t2 ]
+          | And | Or ->
+              assert (t1.typ = Ty.bool);
+              let t1 = duplicate_bool.tr_term t1 in
+              let t2 = duplicate_bool.tr_term t2 in
+              Tuple [ make_binop op             (make_fst t1) (make_fst t2)
+                    ; make_binop (negate_op op) (make_snd t1) (make_snd t2) ]
+          | _ -> duplicate_bool.tr_desc_rec desc
+          end
+      | desc -> duplicate_bool.tr_desc_rec desc
+    in
+    let tr_typ = function
+      | TBase TBool -> Ty.(tuple [bool;bool])
+      | typ -> duplicate_bool.tr_typ_rec typ
+    in
+    duplicate_bool.tr_desc <- tr_desc;
+    duplicate_bool.tr_typ  <- tr_typ;
+  end;
+  duplicate_bool.tr_term
+     (* |- Remove_pair.remove_pair *)
+
+
+(* XXX Bad practice *)
+let negate_bool_pairs : (string, string) BatHashtbl.t = BatHashtbl.create 100
+
+module Remove_pair = struct (* specialization of curry.ml *)
+    type 'a tree = Leaf of 'a | Pair of 'a * 'a
+    let leaf x = Leaf x
+    let node = function
+      | [Leaf x; Leaf y] -> Pair (x,y)
+      | _ -> assert false
+    let root = function
+      | Leaf x -> x
+      | Pair _ -> failwith "root"
+    let flatten = function
+      | Leaf x -> [x]
+      | Pair (x,y) -> [x;y]
+    let map f = function
+      | Leaf x -> Leaf (f x)
+      | Pair (x,y) -> Pair (f x, f y)
+
+    let rec remove_pair_typ ty =
+      match ty with
+      | TBase _ -> leaf ty
+      | TData s -> leaf (TData s)
+      | TFun _ ->
+          let xs,ty' = decomp_tfun ty in
+          let xs' : id list = List.flatten_map (flatten -| remove_pair_var) xs in
+          leaf @@ List.fold_right _TFun xs' ty'
+      | TTuple ([{typ=TBase TBool};{typ=TBase TBool}] as xs) ->
+          node [leaf (TBase TBool); leaf (TBase TBool)]
+      | TAttr(_, TTuple[x; {Id.typ}]) when get_tapred ty <> None ->
+          let y,ps = Option.get @@ get_tapred ty in
+          begin
+            match typ with
+            | TFun _ -> (* Function types cannot have predicates *)
+                let x1 = Id.new_var_id x in
+                let x2 = Id.new_var typ in
+                let ps' = List.map Term.(y |-> pair (var x1) (var x2)) ps in
+                let x' = Id.map_typ (add_tapred x1 ps') x in
+                remove_pair_typ @@ TTuple [x'; Id.new_var typ]
+            | _ ->
+                let y' = Id.set_typ y typ in
+                let ps' = List.map Term.(y |-> pair (var x) (var y')) ps in
+                let typ' = add_tapred y' ps' typ in
+                remove_pair_typ @@ TTuple [x; Id.new_var typ']
+          end
+      (* | TAttr(_, typ) when get_tapred ty <> None -> *)
+      (*     let x,ps = Option.get @@ get_tapred ty in *)
+      (*     let ps' = List.map remove_pair ps in *)
+      (*     let typ' = *)
+      (*       match remove_pair_typ (Id.typ x) with *)
+      (*       | Tree.Node(Some typ, []) -> typ *)
+      (*       | Tree.Node _ -> fatal "Not implemented CPS.remove_pair_typ(TPred)" *)
+      (*     in *)
+      (*     leaf (add_tapred x ps' typ') *)
+      | TAttr(attr, typ) ->
+          typ
+          |> remove_pair_typ
+          |> root
+          |> _TAttr attr
+          |> leaf
+      | typ ->
+          Format.eprintf "remove_pair_typ: %a@." Print.typ typ;
+          assert false
+
+    and remove_pair_var x : id tree =
+      match remove_pair_typ (Id.typ x) with
+      | Pair (TBase TBool, TBase TBool) ->
+          let x1 = Id.set_typ x (TBase TBool)
+                 |>Id.add_name_after "_pos" in
+          let x2 = Id.set_typ x (TBase TBool)
+                 |>Id.add_name_after "_neg" in
+          BatHashtbl.add negate_bool_pairs (Id.to_string x1) (Id.to_string x2);
+          BatHashtbl.add negate_bool_pairs (Id.to_string x2) (Id.to_string x1);
+          Pair (x1,x2)
+      | Leaf typ ->
+          Leaf (Id.set_typ x typ)
+      | _ -> assert false
+
+    and remove_pair_aux ?typ t =
+      let typs =
+        typ
+        |> Option.default t.typ
+        |> remove_pair_typ
+      in
+      match t.desc with
+      | Const _
+      | Event _ -> leaf t
+      | Bottom -> map make_bottom typs
+      | Var x -> map make_var (remove_pair_var x)
+      | Fun(x, t) ->
+          let xs = flatten @@ remove_pair_var x in
+          let t' = remove_pair t in
+          leaf Term.(funs xs t')
+      | App(t1, ts) ->
+          let typs = get_argtyps t1.typ in
+          assert (List.length typs >= List.length ts);
+          let typs' = List.take (List.length ts) typs in
+          let t' = remove_pair t1 in
+          let ts' = List.flatten (List.map2 (fun t typ -> flatten @@ remove_pair_aux ~typ t) ts typs') in
+          leaf Term.(t' @ ts')
+      | If(t1, t2, t3) ->
+          let t1' = remove_pair t1 in
+          let t2' = remove_pair t2 in
+          let t3' = remove_pair t3 in
+          leaf (add_attrs t.attr @@ make_if t1' t2' t3')
+      | Local(Decl_let bindings, t) ->
+          let aux (f,t) =
+            root @@ remove_pair_var f,
+            root @@ remove_pair_aux t
+          in
+          let bindings' = List.map aux bindings in
+          let t' = remove_pair t in
+          leaf Term.(let_ bindings' t')
+      | BinOp(op, t1, t2) ->
+          let t1' = remove_pair t1 in
+          let t2' = remove_pair t2 in
+          leaf Term.(t1' <|op|> t2')
+      | Tuple ts -> node @@ List.map remove_pair_aux ts
+      | Proj(i,t) ->
+          begin match remove_pair_aux t with
+          | Pair (x,_) when i = 0 -> leaf x
+          | Pair (_,y) when i = 1 -> leaf y
+          | _  -> assert false
+          end
+      | _ ->
+          Format.eprintf "%a@." Print.term t;
+          assert false
+
+    and remove_pair t = {(root (remove_pair_aux t)) with attr=t.attr}
+
+    let remove_pair t =
+      BatHashtbl.clear negate_bool_pairs;
+      let xs = get_vars t in
+      let collided =
+        let vars = List.map (fun x -> x, Id.to_string x) xs in
+        let collides (x,s_x) (y,s_y) =
+          String.starts_with s_y s_x &&
+          let a,b = String.split ~by:s_x s_y in
+          a = "" &&
+          Exception.not_raise int_of_string b
+        in
+        vars
+        |> List.filter (is_tuple_typ -| Id.typ -| fst)
+        |> List.filter (fun (x,s) -> s = Id.name x)
+        |> List.filter (fun x -> List.exists (collides x) vars)
+        |> List.map fst
+      in
+      t
+      |*@> Format.printf "INPUT: @[%a@." Print.term
+      |> alpha_rename_if (Id.mem -$- collided)
+      |*@> Format.printf "OUTPUT: @[%a@." Print.term
+      |> remove_pair
+  end
+let remove_not = remove_not |- Remove_pair.remove_pair
+(*
+ダメになった
+- adt/search.ml failed
+- adt/cat_maybes.ml
+# たぶんEqBoolが関係している
+*)
+(* remove_not -> CPS -> remove_pair が正しい流れっぽい？ *)
