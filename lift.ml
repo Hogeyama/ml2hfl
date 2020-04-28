@@ -84,9 +84,13 @@ let rec lift_aux post xs t =
     | Const _
     | Var _ -> [], t.desc
     | Fun(x,t1) ->
-        let f = Id.new_var ~name:("f" ^ post) t.typ in
-        let defs,t' = lift_aux post xs (make_let [f,t] @@ make_var f) in
-        defs, t'.desc
+        if true then
+          let defs, t1' = lift_aux post xs t1 in
+          defs, Fun(x,t1')
+        else
+          let f = Id.new_var ~name:("f" ^ post) t.typ in
+          let defs,t' = lift_aux post xs (make_let [f,t] @@ make_var f) in
+          defs, t'.desc
     | App(t, ts) ->
         let defs,t' = lift_aux post xs t in
         let defss,ts' = List.split_map (lift_aux post xs) ts in

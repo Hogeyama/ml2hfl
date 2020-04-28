@@ -79,6 +79,7 @@ and preprocess_label =
   | Split_by_ref_type
   | Slice_top_fun
   | Remove_not
+  | Beta_reduce
 
 let string_of_label = function
   | Init -> "Init"
@@ -145,6 +146,7 @@ let string_of_label = function
   | Split_by_ref_type -> "Split by refinement types"
   | Slice_top_fun -> "Slice by top-level function definitions"
   | Remove_not -> "Remove not by duplicate bool"
+  | Beta_reduce -> "Beta reduce"
 
 let rec get r =
   match r with
@@ -321,8 +323,8 @@ let all spec : t list =
     Tupling,
       if_ !Flag.Method.tupling @@
       singleton @@ Problem.map_on Focus.fst Tupling.trans;
-    Inline,
-      (fun prog -> with_get_rtyp_id [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog]);
+    (* Inline, *)
+    (*   (fun prog -> with_get_rtyp_id [Problem.map (Trans.inlined_f (Spec.get_inlined_f spec @@ Problem.term prog)) prog]); *)
     Make_ext_funs,
       if_ !Flag.Method.encode_before_make_ext_fun @@
       map_trans make_ext_funs;
@@ -354,6 +356,10 @@ let all spec : t list =
     Remove_pair,
       if_ !Flag.Mode.trans_to_CPS @@
       singleton Curry.remove_pair;
+    Inline,
+      map_trans inline;
+    Beta_reduce,
+      map_trans beta_reduce';
     Add_occurence_param,
       if_ !Flag.Method.occurence_param @@
       map_trans add_occurence_param;

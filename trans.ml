@@ -789,7 +789,12 @@ let rec inlined_f inlined fs t =
          | Var f when List.exists (Triple.fst |- Id.same f) fs ->
              let (f, xs, t) = try List.find (Triple.fst |- Id.same f) fs with Not_found -> assert false in
              let ts = List.map (inlined_f inlined fs) ts in
-             let ys = List.map (fun t -> match t.desc with Const (Unit | True | False | Int _) | Var _ -> `L(t) | _ -> `R(Id.new_var ~name:"arg" t.typ)) ts in
+             let ys = List.map (fun t ->
+                     match t.desc with
+                     | Const (Unit | True | False | Int _) | Var _ | _ -> `L(t)
+                     | _ -> `R(Id.new_var ~name:"arg" t.typ)
+               ) ts
+             in
              let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else List.split_nth (List.length xs) ys in
              let xs1, xs2 = List.split_nth (List.length ys1) xs in
              let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
@@ -809,8 +814,23 @@ let rec inlined_f inlined fs t =
     | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
     | Local(Decl_type decls, t2) -> Local(Decl_type decls, inlined_f inlined fs t2)
     | Local(Decl_let bindings, t2) ->
+        let module IdSet = Set.Make(ID) in
+        let ids = List.map fst bindings
+                (* |@> Format.printf "IDS: %a@." Print.(list id) *)
+                |> IdSet.of_list
+        in
         let aux (f,t) =
-          `L(f, inlined_f inlined fs t)
+          let t = inlined_f inlined fs t in
+          let fvs = get_fv t
+                  (* |@> Format.printf "FVS of %a: %a@." Print.id f Print.(list id) *)
+                  |> IdSet.of_list in
+          if IdSet.(is_empty (inter ids fvs)) then begin
+            (* Format.printf "%a is inlineable@." Print.id f; *)
+            let xs, body = decomp_funs t in
+            `R(f, xs, body)
+          end else begin
+            `L(f, t)
+          end
         in
         let bindings', fs' = List.partition_map aux bindings in
         let t2' = inlined_f inlined (fs @ fs') t2 in

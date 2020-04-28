@@ -51,6 +51,8 @@ let unify_pure_fun_app = map Trans.unify_pure_fun_app
 let add_occurence_param = map Trans.add_occurence_param
 let slice = map Slice.slice
 let remove_not = map Trans.remove_not
+let inline = map (Trans.inlined_f())
+let beta_reduce' = map Trans.beta_reduce
 
 let split_assert {term; env; attr; kind; info} =
   let update_info loc info =
