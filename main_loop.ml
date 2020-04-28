@@ -78,33 +78,48 @@ let check ?fun_list ?(exparam_sol=[]) spec pp =
 
 let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
   let preprocessed = run_preprocess ?make_pps spec problem in
-  let is_singleton = Exception.not_raise Preprocess.get preprocessed in
-  if not is_singleton then unsupported "multiple goal";
-  let cegar_prog =
-    let rec aux label acc r =
-        match r with
-        | Preprocess.Before p ->
-            if not is_singleton then Verbose.printf "Start checking sub-problem.@.";
-            check ?fun_list ?exparam_sol spec ((label,p)::acc)
-        | Preprocess.After {Preprocess.label; problem; op; result=[r]} ->
-            let acc' = (label,problem)::acc in
-            aux label acc' r
-        | _ -> assert false
-    in aux Preprocess.Init [] preprocessed
-  in
-  let info =
-    let open CEGAR_syntax in
-    let non_rec =
-      if !Flag.PredAbst.expand_non_rec then
-        CEGAR_util.get_non_rec CEGAR_abst_CPS.beta_reduce_term @@
-          snd @@ CEGAR_abst_util.add_label cegar_prog
-      else
-        cegar_prog.info.non_rec
-    in { cegar_prog.info with non_rec }
-  in
-  let cegar_prog = { cegar_prog with info } in
-  let cegar_prog = CEGAR_abst_CPS.expand_non_rec cegar_prog in
-  let hes = HFLz.of_cegar cegar_prog in
-  Format.printf "%a" HFLz.Print.hes hes
+  if true then begin
+    let term = Preprocess.get preprocessed in
+    let (defs,t_main), _ = Lift.lift term in
+    let pp_def ppf (f,(xs,body)) =
+      Format.fprintf ppf "@[<2>%a %a =@ %a@]"
+        Print.id f
+        Print.(list id) xs
+        Print.term body
+    in
+    Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs;
+    Debug.eprintf "%a@." Print.term_typ t_main;
+    let hes = HFLz.of_lifted (defs,t_main) in
+    Format.printf "%a" HFLz.Print.hes hes
+  end else begin
+    let is_singleton = Exception.not_raise Preprocess.get preprocessed in
+    if not is_singleton then unsupported "multiple goal";
+    let cegar_prog =
+      let rec aux label acc r =
+          match r with
+          | Preprocess.Before p ->
+              if not is_singleton then Verbose.printf "Start checking sub-problem.@.";
+              check ?fun_list ?exparam_sol spec ((label,p)::acc)
+          | Preprocess.After {Preprocess.label; problem; op; result=[r]} ->
+              let acc' = (label,problem)::acc in
+              aux label acc' r
+          | _ -> assert false
+      in aux Preprocess.Init [] preprocessed
+    in
+    let info =
+      let open CEGAR_syntax in
+      let non_rec =
+        if !Flag.PredAbst.expand_non_rec then
+          CEGAR_util.get_non_rec CEGAR_abst_CPS.beta_reduce_term @@
+            snd @@ CEGAR_abst_util.add_label cegar_prog
+        else
+          cegar_prog.info.non_rec
+      in { cegar_prog.info with non_rec }
+    in
+    let cegar_prog = { cegar_prog with info } in
+    let cegar_prog = CEGAR_abst_CPS.expand_non_rec cegar_prog in
+    let hes = HFLz.of_cegar cegar_prog in
+    Format.printf "%a" HFLz.Print.hes hes
+  end
 
 (* TODO CEGAR_syntax.prog -> HFL -> string *)

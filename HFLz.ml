@@ -35,25 +35,263 @@ type rule = { fn : var; args: var list; body : hflz }
 type hes = rule list
   [@@deriving show]
 
-let mk_var ~toplevel s =
-  let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'") s in
-  if List.mem s toplevel
-  then V (String.uppercase_ascii s)
-  else V s
 
-let rec negate = function
-  | Bool b -> Bool (not b)
-  | Op (Neq, x, y) -> Op (Eq , x, y)
-  | Op (Eq , x, y) -> Op (Neq, x, y)
-  | Op (Geq, x, y) -> Op (Lt , x, y)
-  | Op (Leq, x, y) -> Op (Gt , x, y)
-  | Op (Gt , x, y) -> Op (Leq, x, y)
-  | Op (Lt , x, y) -> Op (Geq, x, y)
-  | Op (And, x, y) -> Op (Or , negate x, negate y)
-  | Op (Or , x, y) -> Op (And, negate x, negate y)
-  | t ->
-      Format.eprintf "Cannot negate %a@." pp_hflz t;
-      failwith "negate"
+module OfCEGAR = struct (*{{{*)
+  type target = Reachability | NonTermination
+  let mk_var ~toplevel s =
+    let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'") s in
+    if List.mem s toplevel
+    then V (String.uppercase_ascii s)
+    else V s
+  let rec negate = function
+    | Bool b -> Bool (not b)
+    | Op (Neq, x, y) -> Op (Eq , x, y)
+    | Op (Eq , x, y) -> Op (Neq, x, y)
+    | Op (Geq, x, y) -> Op (Lt , x, y)
+    | Op (Leq, x, y) -> Op (Gt , x, y)
+    | Op (Gt , x, y) -> Op (Leq, x, y)
+    | Op (Lt , x, y) -> Op (Geq, x, y)
+    | Op (And, x, y) -> Op (Or , negate x, negate y)
+    | Op (Or , x, y) -> Op (And, negate x, negate y)
+    | t ->
+        Format.eprintf "Cannot negate %a@." pp_hflz t;
+        failwith "negate"
+
+
+
+  let rec term ~target ~toplevel : CEGAR_syntax.t -> hflz =
+    let rec aux : CEGAR_syntax.t -> hflz = fun t ->
+      match t with
+      | Var v -> Var (mk_var ~toplevel v)
+      | Let _ -> assert false
+      | Const Unit -> Bool true
+      | Const CPS_result ->
+          begin match target with
+          | Reachability -> Bool true
+          | NonTermination -> Bool false
+          end
+      | Const Bottom -> Bool true
+      | Const True -> Bool true
+      | Const False -> Bool false
+      | Const (Int   i) -> Int i
+      | Const (Int32 i) -> Int (Int32.to_int i)
+      | Const (Int64 i) -> Int (Int64.to_int i)
+      | Const (Rand (TInt, None)) ->
+          begin match target with
+          | Reachability -> Var (V "Forall")
+          | NonTermination -> Var (V "Exists")
+          end
+      | App (App ((App (Const If, x)), y), z) ->
+          (* (not x \/ y) /\ (x \/ z) *)
+          begin match aux x, aux y, aux z with
+          | Bool true , y, _ -> y
+          | Bool false, _, z -> z
+          | x, Bool true, z  -> Op (Or, x , z)
+          | x, Bool false, z -> Op (And, negate x, z)
+          | x, y, Bool true  -> Op (Or, negate x, y)
+          | x, y, Bool false -> Op (And, x, y)
+          | x,y,z -> Op (And, (Op (Or, negate x, y))
+                            , (Op (Or, x       , z)))
+          end
+      | App ((App (Const Add, x)), y) -> Op (Add, aux x, aux y)
+      | App ((App (Const Sub, x)), y) -> Op (Sub, aux x, aux y)
+      | App ((App (Const Mul, x)), y) -> Op (Mul, aux x, aux y)
+      | App ((App (Const Div, x)), y) -> Op (Div, aux x, aux y)
+      | App ((App (Const And, x)), y) -> Op (And, aux x, aux y)
+      | App ((App (Const Or , x)), y) -> Op (Or , aux x, aux y)
+      | App ((App (Const Lt , x)), y) -> Op (Lt , aux x, aux y)
+      | App ((App (Const Gt , x)), y) -> Op (Gt , aux x, aux y)
+      | App ((App (Const Leq, x)), y) -> Op (Leq, aux x, aux y)
+      | App ((App (Const Geq, x)), y) -> Op (Geq, aux x, aux y)
+      | App ((App (Const EqInt, x)), y) -> Op (Eq, aux x, aux y)
+      | App (Const Not, x) -> negate (aux x)
+      | App (Const (TreeConstr _), x) -> aux x
+      | App (Const (Label _), x) -> aux x
+      | App (x,y) -> App (aux x, aux y)
+      | Fun (f,_,x) -> Abs (mk_var ~toplevel f, aux x)
+      | t ->
+        Format.eprintf "%a@.%a@."
+          CEGAR_syntax.pp t
+          CEGAR_print.term t;
+        assert false
+    in aux
+
+  (* fun_def list は同じものが複数入っている *)
+  let rule ~target ~toplevel : CEGAR_syntax.fun_def -> rule = fun def  ->
+    let fn = mk_var ~toplevel def.fn in
+    let args = List.map (mk_var ~toplevel) def.args in
+    let body =
+      if List.mem (CEGAR_syntax.Event "fail") def.events then
+        Bool false
+      else
+        match negate (term ~target ~toplevel def.cond) with
+        | Bool false -> term ~target ~toplevel def.body
+        | p -> Op (Or, p, term ~target ~toplevel def.body)
+        | exception _ -> failwith "negate @cond"
+    in { fn; args; body}
+
+  let hes : target:target -> CEGAR_syntax.prog -> hes = fun ~target ({defs; main=orig_main; _} as prog) ->
+    Debug.eprintf "%a" CEGAR_print.prog prog;
+    let toplevel = List.map (fun x -> x.CEGAR_syntax.fn) defs in
+    let rules =
+      let fold_left1 f = function
+        | x::xs -> List.fold_left f x xs
+        | [] -> assert false
+      in
+      let merge rule1 rule2 =
+        let body = Op (And, rule1.body, rule2.body) in
+        { rule1 with body }
+      in
+      defs
+      |> List.map (rule ~target ~toplevel)
+      |> List.sort (fun x y -> compare x.fn y.fn)
+      |> List.group_consecutive (fun x y -> x.fn = y.fn)
+      |> List.map (fold_left1 merge)
+    in
+    let main, others =
+      let main_var = mk_var ~toplevel orig_main in
+      let others = List.remove_if (fun x -> x.fn = main_var) rules in
+      let main = List.find (fun x -> x.fn = main_var) rules in
+      let remove_forall : hflz -> hflz * var list =
+        let rec go acc = function
+          | App (Var (V "Forall"), Abs (v, t)) -> go (v::acc) t
+          | t -> (t, acc)
+        in
+        go []
+      in
+      let main =
+        let body, args = remove_forall main.body in
+        (* { main' with args; body } *) (* 鈴木さんのはこっちに非対応 *)
+        { main with body }
+      in
+      main, others
+    in
+    main :: others
+end(*}}}*)
+
+module OfLifted = struct (*{{{*)
+  type def = Syntax.id * (Syntax.id list * Syntax.term)
+  type term = Syntax.term
+  type target = Reachability | NonTermination
+
+  let var ~toplevel v =
+    let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'") (Id.to_string v) in
+    if List.mem s toplevel
+    then V (String.uppercase_ascii s)
+    else V s
+
+  let rec negate = function
+    | Var (V x) when BatHashtbl.mem Trans.negate_bool_pairs x ->
+        Var (V (BatHashtbl.find Trans.negate_bool_pairs x))
+    | Bool b -> Bool (not b)
+    | Op (Neq, x, y) -> Op (Eq , x, y)
+    | Op (Eq , x, y) -> Op (Neq, x, y)
+    | Op (Geq, x, y) -> Op (Lt , x, y)
+    | Op (Leq, x, y) -> Op (Gt , x, y)
+    | Op (Gt , x, y) -> Op (Leq, x, y)
+    | Op (Lt , x, y) -> Op (Geq, x, y)
+    | Op (And, x, y) -> Op (Or , negate x, negate y)
+    | Op (Or , x, y) -> Op (And, negate x, negate y)
+    | t ->
+        Format.eprintf "Cannot negate %a@." pp_hflz t;
+        failwith "negate"
+
+  let rec const ~target : Syntax.const -> hflz = function
+    | Unit -> Bool true
+    | True -> Bool true
+    | False -> Bool false
+    | CPS_result ->
+          begin match target with
+          | Reachability -> Bool true
+          | NonTermination -> Bool false
+          end
+    | Int n -> Int n
+    | Rand(TBase TInt,true) -> failwith "rand_int_cps"
+    | Rand(TBase TBool,true) -> failwith "rand_bool_cps"
+    | _ -> assert false
+
+  let term ~toplevel ~target : term -> hflz =
+    let rec aux = fun (t : term) ->
+      match t.desc with
+      | Var v -> Var (var ~toplevel v)
+      | Bottom -> Bool true
+      | Const Unit -> Bool true
+      | Const True -> Bool true
+      | Const False -> Bool false
+      | Const CPS_result ->
+          begin match target with
+          | Reachability -> Bool true
+          | NonTermination -> Bool false
+          end
+      | Const Int n -> Int n
+      | BinOp (Eq  , x, y) -> Op (Eq , aux x, aux y)
+      | BinOp (Neq , x, y) -> Op (Neq, aux x, aux y)
+      | BinOp (Lt  , x, y) -> Op (Lt , aux x, aux y)
+      | BinOp (Gt  , x, y) -> Op (Gt , aux x, aux y)
+      | BinOp (Leq , x, y) -> Op (Leq, aux x, aux y)
+      | BinOp (Geq , x, y) -> Op (Geq, aux x, aux y)
+      | BinOp (And , x, y) -> Op (And, aux x, aux y)
+      | BinOp (Or  , x, y) -> Op (Or , aux x, aux y)
+      | BinOp (Add , x, y) -> Op (Add, aux x, aux y)
+      | BinOp (Sub , x, y) -> Op (Sub, aux x, aux y)
+      | BinOp (Mult, x, y) -> Op (Mul, aux x, aux y)
+      | BinOp (Div , x, y) -> Op (Div, aux x, aux y)
+      | Fun (f,x) -> Abs (var ~toplevel f, aux x)
+      | If (x,y,z) -> (* (not x \/ y) /\ (x \/ z) *)
+          begin match aux x, aux y, aux z with
+          | Bool true , y, _ -> y
+          | Bool false, _, z -> z
+          | x, Bool true, z  -> Op (Or, x , z)
+          | x, Bool false, z -> Op (And, negate x, z)
+          | x, y, Bool true  -> Op (Or, negate x, y)
+          | x, y, Bool false -> Op (And, x, y)
+          | x,y,z -> Op (And, (Op (Or, negate x, y))
+                            , (Op (Or, x       , z)))
+          end
+      | App ({desc=Const Rand(TBase TInt,true)}, [_;k]) ->
+          let f =
+            begin match target with
+            | Reachability -> Var (V "Forall")
+            | NonTermination -> Var (V "Exists")
+            end
+          in App (f, aux k)
+      | App ({desc=(Syntax.Event ("fail", true))},_) -> Bool false
+      | App (x,xs) -> List.fold_left (fun x y -> App (x, aux y)) (aux x) xs
+      | _ ->
+          Format.eprintf "%a@.%a@."
+            Print.term t
+            Syntax.pp_term t;
+          assert false
+    in aux
+
+  let hes ~target : def list * term -> hes = fun (defs, main) ->
+    let toplevel =
+      List.map (fst |- Id.to_string) defs
+    in
+    let rules =
+      List.Labels.map defs ~f:begin fun (f, (args, body)) ->
+        let fn = var ~toplevel f in
+        let args = List.map (var ~toplevel) args in
+        let body = term ~toplevel ~target body in
+        { fn; args; body }
+      end
+    in
+    let main =
+      let fn = V "MAIN" in
+      let args = [] in
+      let body = term ~toplevel ~target main in
+      let body, _args =
+        let remove_forall : hflz -> hflz * var list =
+          let rec go acc = function
+            | App (Var (V "Forall"), Abs (v, t)) -> go (v::acc) t
+            | t -> (t, acc)
+          in
+          go []
+        in remove_forall body
+      in { fn; args; body }
+    in
+    main :: rules
+end(*}}}*)
 
 module Print = struct(*{{{*)
   open Fmt
@@ -189,118 +427,6 @@ module Print = struct(*{{{*)
     Fmt.pf ppf "ExistsAux x p =v x > 0 /\\ (p x \\/ p (0-x) \\/ ExistsAux (x-1) p).@."
 end(*}}}*)
 
-module OfCEGAR = struct
-  type target = Reachability | NonTermination
-  let rec term ~target ~toplevel : CEGAR_syntax.t -> hflz =
-    let rec aux : CEGAR_syntax.t -> hflz = fun t ->
-      match t with
-      | Var v -> Var (mk_var ~toplevel v)
-      | Let _ -> assert false
-      | Const Unit -> Bool true
-      | Const CPS_result ->
-          begin match target with
-          | Reachability -> Bool true
-          | NonTermination -> Bool false
-          end
-      | Const Bottom -> Bool true
-      | Const True -> Bool true
-      | Const False -> Bool false
-      | Const (Int   i) -> Int i
-      | Const (Int32 i) -> Int (Int32.to_int i)
-      | Const (Int64 i) -> Int (Int64.to_int i)
-      | Const (Rand (TInt, None)) ->
-          begin match target with
-          | Reachability -> Var (V "Forall")
-          | NonTermination -> Var (V "Exists")
-          end
-      | App (App ((App (Const If, x)), y), z) ->
-          (* (not x \/ y) /\ (x \/ z) *)
-          begin match aux x, aux y, aux z with
-          | Bool true , y, _ -> y
-          | Bool false, _, z -> z
-          | x, Bool true, z  -> Op (Or, x , z)
-          | x, Bool false, z -> Op (And, negate x, z)
-          | x, y, Bool true  -> Op (Or, negate x, y)
-          | x, y, Bool false -> Op (And, x, y)
-          | x,y,z -> Op (And, (Op (Or, negate x, y))
-                            , (Op (Or, x       , z)))
-          end
-      | App ((App (Const Add, x)), y) -> Op (Add, aux x, aux y)
-      | App ((App (Const Sub, x)), y) -> Op (Sub, aux x, aux y)
-      | App ((App (Const Mul, x)), y) -> Op (Mul, aux x, aux y)
-      | App ((App (Const Div, x)), y) -> Op (Div, aux x, aux y)
-      | App ((App (Const And, x)), y) -> Op (And, aux x, aux y)
-      | App ((App (Const Or , x)), y) -> Op (Or , aux x, aux y)
-      | App ((App (Const Lt , x)), y) -> Op (Lt , aux x, aux y)
-      | App ((App (Const Gt , x)), y) -> Op (Gt , aux x, aux y)
-      | App ((App (Const Leq, x)), y) -> Op (Leq, aux x, aux y)
-      | App ((App (Const Geq, x)), y) -> Op (Geq, aux x, aux y)
-      | App ((App (Const EqInt, x)), y) -> Op (Eq, aux x, aux y)
-      | App (Const Not, x) -> negate (aux x)
-      | App (Const (TreeConstr _), x) -> aux x
-      | App (Const (Label _), x) -> aux x
-      | App (x,y) -> App (aux x, aux y)
-      | Fun (f,_,x) -> Abs (mk_var ~toplevel f, aux x)
-      | t ->
-        Format.eprintf "%a@.%a@."
-          CEGAR_syntax.pp t
-          CEGAR_print.term t;
-        assert false
-    in aux
-
-  (* fun_def list は同じものが複数入っている *)
-  let rule ~target ~toplevel : CEGAR_syntax.fun_def -> rule = fun def  ->
-    let fn = mk_var ~toplevel def.fn in
-    let args = List.map (mk_var ~toplevel) def.args in
-    let body =
-      if List.mem (CEGAR_syntax.Event "fail") def.events then
-        Bool false
-      else
-        match negate (term ~target ~toplevel def.cond) with
-        | Bool false -> term ~target ~toplevel def.body
-        | p -> Op (Or, p, term ~target ~toplevel def.body)
-        | exception _ -> failwith "negate @cond"
-    in { fn; args; body}
-
-  let hes : target:target -> CEGAR_syntax.prog -> hes = fun ~target ({defs; main=orig_main; _} as prog) ->
-    Debug.eprintf "%a" CEGAR_print.prog prog;
-    let toplevel = List.map (fun x -> x.CEGAR_syntax.fn) defs in
-    let rules =
-      let fold_left1 f = function
-        | x::xs -> List.fold_left f x xs
-        | [] -> assert false
-      in
-      let merge rule1 rule2 =
-        let body = Op (And, rule1.body, rule2.body) in
-        { rule1 with body }
-      in
-      defs
-      |> List.map (rule ~target ~toplevel)
-      |> List.sort (fun x y -> compare x.fn y.fn)
-      |> List.group_consecutive (fun x y -> x.fn = y.fn)
-      |> List.map (fold_left1 merge)
-    in
-    let main, others =
-      let main_var = mk_var ~toplevel orig_main in
-      let others = List.remove_if (fun x -> x.fn = main_var) rules in
-      let main = List.find (fun x -> x.fn = main_var) rules in
-      let remove_forall : hflz -> hflz * var list =
-        let rec go acc = function
-          | App (Var (V "Forall"), Abs (v, t)) -> go (v::acc) t
-          | t -> (t, acc)
-        in
-        go []
-      in
-      let main =
-        let body, args = remove_forall main.body in
-        (* { main' with args; body } *) (* 鈴木さんのはこっちに非対応 *)
-        { main with body }
-      in
-      main, others
-    in
-    main :: others
-end
-
 let of_cegar : CEGAR_syntax.prog -> hes = fun prog ->
   let target : OfCEGAR.target =
     match !Flag.Method.mode with
@@ -308,4 +434,13 @@ let of_cegar : CEGAR_syntax.prog -> hes = fun prog ->
     | Reachability   -> Reachability
     | _ -> unsupported "HFLz.of_cegar: mode"
   in OfCEGAR.hes ~target prog
+
+let of_lifted : (Syntax.id * (Syntax.id list * Syntax.term)) list * Syntax.term -> hes =
+  fun lifted ->
+    let target : OfLifted.target =
+      match !Flag.Method.mode with
+      | NonTermination -> NonTermination
+      | Reachability   -> Reachability
+      | _ -> unsupported "HFLz.of_cegar: mode"
+    in OfLifted.hes ~target lifted
 
