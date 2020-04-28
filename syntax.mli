@@ -273,3 +273,6 @@ val pp_typ : Format.formatter -> typ -> unit
 val pp_declaration : Format.formatter -> declaration -> unit
 val pp_pattern : Format.formatter -> pattern -> unit
 val pp_binop : Format.formatter -> binop -> unit
+
+module IdSet : BatSet.S with type elt = id
+module IdMap : BatMap.S with type key = id

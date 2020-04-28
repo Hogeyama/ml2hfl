@@ -82,7 +82,8 @@ module IntSet =
       let compare = compare
     end)
 
-module StringSet = Set.Make(String)
+module StringSet = BatSet.String
+module StringMap = BatMap.String
 
 module Pair = struct
   let fst = fst
@@ -600,6 +601,7 @@ module Array = BatArray
 module Hashtbl = BatHashtbl
 
 module Map = BatMap
+module Set = BatSet
 
 module Char = BatChar
 

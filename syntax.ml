@@ -131,6 +131,9 @@ module ID = struct
   let print = Id.print
 end
 
+module IdSet = BatSet.Make(ID)
+module IdMap = BatMap.Make(ID)
+
 module PredVar = struct
   let pvar_name = "P"
   let is_pvar = Id.is_predicate
