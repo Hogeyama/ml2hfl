@@ -310,7 +310,7 @@ let abst_poly_comp_term =
   let tr_term t =
     let t' = tr.tr_term_rec t in
     match t'.desc with
-    | BinOp((Eq | Lt | Gt | Leq | Geq), t1, t2) ->
+    | BinOp((Eq | Neq | Lt | Gt | Leq | Geq), t1, t2) ->
         begin
           match elim_tattr t1.typ with
           | TBase _ -> t'

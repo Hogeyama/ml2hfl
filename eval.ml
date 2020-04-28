@@ -103,6 +103,7 @@ let rec eval_print fm cnt limit gen t =
       begin
         match op with
         | Eq -> make_bool (n1 = n2)
+        | Neq -> make_bool (n1 <> n2)
         | Lt -> make_bool (n1 < n2)
         | Gt -> make_bool (n1 > n2)
         | Leq -> make_bool (n1 <= n2)

@@ -192,6 +192,7 @@ and trans_typ ty =
 
 and trans_binop = function
   | S.Eq -> assert false
+  | S.Neq -> assert false
   | S.Lt -> Const Lt
   | S.Gt -> Const Gt
   | S.Leq -> Const Leq
@@ -295,6 +296,19 @@ and trans_term post xs env t =
         | typ -> Format.eprintf "trans_term: %a@." Print.typ typ; assert false
       in
       defs1@defs2, make_app (Const op) [t1'; t2']
+  | S.BinOp(S.Neq, t1, t2) ->
+      let defs1,t1' = trans_term post xs env t1 in
+      let defs2,t2' = trans_term post xs env t2 in
+      let op =
+        match Type.elim_tattr t1.S.typ with
+        | Type.TBase Type.TUnit -> EqUnit
+        | Type.TBase Type.TBool -> EqBool
+        | Type.TBase Type.TInt -> EqInt
+        | Type.TBase (Type.TPrim ty) -> CmpPoly(ty, "=")
+        | Type.TData ty -> CmpPoly(ty, "=")
+        | typ -> Format.eprintf "trans_term: %a@." Print.typ typ; assert false
+      in
+      defs1@defs2, App(Const Not, make_app (Const op) [t1'; t2'])
   | S.BinOp(op, t1, t2) ->
       let defs1,t1' = trans_term post xs env t1 in
       let defs2,t2' = trans_term post xs env t2 in

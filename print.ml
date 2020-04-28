@@ -77,6 +77,7 @@ and paren pri p = if pri < p then "","" else "(",")"
 
 and print_binop fm = function
   | Eq -> fprintf fm "="
+  | Neq -> fprintf fm "!="
   | Lt -> fprintf fm "<"
   | Gt -> fprintf fm ">"
   | Leq -> fprintf fm "<="
@@ -290,8 +291,8 @@ and print_desc cfg pri attr fm desc =
       let p = 50 in
       let s1,s2 = paren pri p in
       fprintf fm "%s@[%a@ <>@ %a@]%s" s1 (pr_t p) t1 (pr_t p) t2 s2
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(Rand(TBase TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(Rand(TBase TInt,false))}, [{desc=Const Unit}])}) ->
+  | BinOp((Eq|Neq|Leq|Geq|Lt|Gt), {desc=App({desc=Const(Rand(TBase TInt,false))}, [{desc=Const Unit}])}, {desc=Const _})
+  | BinOp((Eq|Neq|Leq|Geq|Lt|Gt), {desc=Const _}, {desc=App({desc=Const(Rand(TBase TInt,false))}, [{desc=Const Unit}])}) ->
       let p = 80 in
       let s1,s2 = paren pri p in
       if cfg.as_ocaml then

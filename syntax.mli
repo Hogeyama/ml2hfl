@@ -2,7 +2,8 @@
 (** Syntax of intermediate language *)
 
 type label = Read | Write | Close
-type binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
+(* Neq is used only after @Remove_not@ *)
+type binop = Eq | Neq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
 type typ = term Type.t
 and tattr = term Type.attr
 and id = typ Id.t
@@ -271,3 +272,4 @@ val pp_id : Format.formatter -> id -> unit
 val pp_typ : Format.formatter -> typ -> unit
 val pp_declaration : Format.formatter -> declaration -> unit
 val pp_pattern : Format.formatter -> pattern -> unit
+val pp_binop : Format.formatter -> binop -> unit

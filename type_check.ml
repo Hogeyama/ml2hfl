@@ -82,6 +82,10 @@ let rec check env t typ =
       assert (Type.can_unify t1.typ t2.typ);
       check env t1 t1.typ;
       check env t2 t2.typ;
+  | BinOp(Neq,t1,t2), TBase TBool ->
+      assert (Type.can_unify t1.typ t2.typ);
+      check env t1 t1.typ;
+      check env t2 t2.typ;
   | BinOp((Lt|Gt|Leq|Geq),t1,t2), TBase TBool ->
       assert (Type.can_unify t1.typ t2.typ);
       check env t1 t1.typ;

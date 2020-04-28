@@ -239,8 +239,8 @@ and remove_pair_aux ?typ t =
   | BinOp(op, t1, t2) ->
       begin
         match op, elim_tattr t1.typ with
-        | (Eq | Lt | Gt | Leq | Geq), (TBase _ | TData _) -> ()
-        | (Eq | Lt | Gt | Leq | Geq), _ ->
+        | (Eq | Neq | Lt | Gt | Leq | Geq), (TBase _ | TData _) -> ()
+        | (Eq | Neq | Lt | Gt | Leq | Geq), _ ->
             Format.eprintf "%a@." Print.typ t1.typ;
             Format.eprintf "%a@." Print.typ t2.typ;
             Format.eprintf "%a@." Print.term' t;

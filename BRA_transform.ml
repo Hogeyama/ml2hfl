@@ -94,6 +94,7 @@ and show_desc top = function
       raise (Invalid_argument "show_term")
 and show_binop = function
   | Eq -> "="
+  | Neq -> "="
   | Lt -> "<"
   | Gt -> ">"
   | Leq -> "<="

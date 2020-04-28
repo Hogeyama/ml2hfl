@@ -659,7 +659,7 @@ let rec normalize_bool_exp t =
     | BinOp(Eq, _, {desc=Const(True|False)})
     | BinOp(Eq, {desc=Nil|Cons _}, _)
     | BinOp(Eq, _, {desc=Nil|Cons _}) as t -> t
-    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> normalize_binop_exp op t1 t2
+    | BinOp(Eq|Neq|Lt|Gt|Leq|Geq as op, t1, t2) -> normalize_binop_exp op t1 t2
     | Not t -> Not (normalize_bool_exp t)
     | _ -> assert false
   in
@@ -706,7 +706,7 @@ let rec merge_geq_leq t =
         let t1' = merge_geq_leq t1 in
         let t2' = merge_geq_leq t2 in
         BinOp(Or, t1', t2')
-    | BinOp(Eq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
+    | BinOp(Eq|Neq|Lt|Gt|Leq|Geq as op, t1, t2) -> BinOp(op, t1, t2)
     | Not t -> Not (merge_geq_leq t)
     | _ -> Format.eprintf "%a@." Print.term t; assert false
   in
@@ -1381,6 +1381,22 @@ let decomp_pair_eq =
             post2 @@ post1 @@ List.fold_left make_and true_term ts
         | _ -> tr.tr_term_rec t
         end
+    | BinOp(Neq, t1, t2) ->
+        begin match t1.typ with
+        | TTuple xs ->
+            let aux t =
+              match t with
+              | {desc=Var y} -> y, Fun.id
+              | _ ->
+                  let y = new_var_of_term t in
+                  y, make_let [y,t]
+            in
+            let y1,post1 = aux @@ tr.tr_term t1 in
+            let y2,post2 = aux @@ tr.tr_term t2 in
+            let ts = List.mapi Term.(fun i _ -> proj i (var y1) <> proj i (var y2)) xs in
+            post2 @@ post1 @@ List.fold_left make_or false_term ts
+        | _ -> tr.tr_term_rec t
+        end
     | _ -> tr.tr_term_rec t
   in
   tr.tr_term <- tr_term;
@@ -1592,10 +1608,11 @@ let rec eval_bexp t =
   | Const True -> true
   | Const False -> false
   | Var _ -> invalid_arg "eval_bexp"
-  | BinOp((Eq|Lt|Gt|Leq|Geq) as op, t1, t2) ->
+  | BinOp((Eq|Neq|Lt|Gt|Leq|Geq) as op, t1, t2) ->
       let f =
         match op with
         | Eq -> (=)
+        | Neq -> (<>)
         | Lt -> (<)
         | Gt -> (>)
         | Leq -> (<=)
@@ -3124,7 +3141,7 @@ let encode_bool_as_int =
         let t1' = boo_of_int @@ tr.tr_term t1 in
         let t2' = boo_of_int @@ tr.tr_term t2 in
         (int_of_bool @@ op' t1' t2').desc
-    | BinOp((Eq|Lt|Gt|Leq|Geq), _, _) ->
+    | BinOp((Eq|Neq|Lt|Gt|Leq|Geq), _, _) ->
         let desc' = tr.tr_desc_rec desc in
         let t' = {desc=desc'; attr=[]; typ=Ty.bool} in
         (int_of_bool t').desc
@@ -3209,7 +3226,7 @@ let reduce_rand =
     | Const Unit -> true
     | App({desc=Const (Rand(_,false))}, [{desc=Const Unit}]) -> true
     | Tuple ts -> List.for_all is_rand_unit ts
-    | BinOp((Eq|Lt|Gt|Leq|Geq), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
+    | BinOp((Eq|Neq|Lt|Gt|Leq|Geq), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
     | BinOp((Add|Sub|Mult), t1, t2) -> is_rand_unit t1 || is_rand_unit t2
     | BinOp(Div, t1, {desc=Const c}) when c <> Int 0 -> is_rand_unit t1
     | If(t1,t2,t3) -> has_safe_attr t1 && is_rand_unit t2 && is_rand_unit t3

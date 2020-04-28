@@ -227,7 +227,14 @@ let make_eq t1 t2 =
       else
         {desc=BinOp(Eq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_neq t1 t2 =
-  make_not (make_eq t1 t2)
+  assert (Flag.Debug.check_typ => Type.can_unify t1.typ t2.typ);
+  match t1.desc, t2.desc with
+  | Const c1, Const c2 -> make_bool (c1 <> c2)
+  | _ ->
+      if t1.typ = Ty.unit && has_safe_attr t1 && has_safe_attr t2 then
+        true_term
+      else
+        {desc=BinOp(Neq, t1, t2); typ=TBase TBool; attr=make_attr[t1;t2]}
 let make_lt t1 t2 =
   {desc=BinOp(Lt, t1, t2); typ=(TBase TBool); attr=make_attr[t1;t2]}
 let make_gt t1 t2 =
@@ -239,6 +246,7 @@ let make_geq t1 t2 =
 let make_binop op =
   match op with
   | Eq -> make_eq
+  | Neq -> make_neq
   | Lt -> make_lt
   | Gt -> make_gt
   | Leq -> make_leq
@@ -429,8 +437,8 @@ let is_randint_unit t =
   | _ -> false
 let is_randbool_unit t =
   match t.desc with
-  | BinOp((Eq|Leq|Geq|Lt|Gt), t, {desc=Const _})
-  | BinOp((Eq|Leq|Geq|Lt|Gt), {desc=Const _}, t) -> is_randint_unit t
+  | BinOp((Eq|Neq|Leq|Geq|Lt|Gt), t, {desc=Const _})
+  | BinOp((Eq|Neq|Leq|Geq|Lt|Gt), {desc=Const _}, t) -> is_randint_unit t
   | _ -> false
 
 

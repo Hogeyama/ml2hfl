@@ -6,7 +6,7 @@ let print_location_ref = ref (fun _ -> assert false)
 let print_location fm loc = !print_location_ref fm loc
 
 type label = Read | Write | Close
-and binop = Eq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
+and binop = Eq | Neq | Lt | Gt | Leq | Geq | And | Or | Add | Sub | Mult | Div
 
 and typ = term Type.t
 and tattr = term Type.attr [@printer Type.print_attr]
