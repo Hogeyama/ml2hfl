@@ -241,10 +241,16 @@ module OfLifted = struct (*{{{*)
           begin match aux x, aux y, aux z with
           | Bool true , y, _ -> y
           | Bool false, _, z -> z
+          | _, Bool true , Bool true  -> Bool true
+          | x, Bool true , Bool false -> x
+          | x, Bool false, Bool true  -> negate x
+          | _, Bool false, Bool false -> Bool false
           | x, Bool true, z  -> Op (Or, x , z)
-          | x, Bool false, z -> Op (And, negate x, z)
           | x, y, Bool true  -> Op (Or, negate x, y)
-          | x, y, Bool false -> Op (And, x, y)
+          (* | x, Bool false, z -> Op (And, negate x, z) *)
+          (* | x, y, Bool false -> Op (And, x, y) *)
+          | x, Bool false, z -> Op (And, negate x, (Op (Or, x, z)))
+          | x, y, Bool false -> Op (And, (Op (Or, negate x, y)), x)
           | x,y,z -> Op (And, (Op (Or, negate x, y))
                             , (Op (Or, x       , z)))
           end
