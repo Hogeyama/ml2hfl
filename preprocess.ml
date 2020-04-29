@@ -406,6 +406,7 @@ let rec trans_and_print
           exit 0;
         if !!Debug.check || !!Debug_ty.check then
           let t = Problem.term problem' in
+          Format.eprintf "%a@.@." Print.term t;
           try
             Type_check.check t ~ty:t.Syntax.typ
           with e ->
