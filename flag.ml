@@ -282,6 +282,11 @@ module Experiment = struct
   end
 end
 
+module ToHFLz = struct
+  let of_cegar = ref false
+  let lift_lambda = ref false
+end
+
 module Debug = struct
   let check_fun_arg_typ = false
   let check_typ = true

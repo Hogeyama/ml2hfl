@@ -295,6 +295,16 @@ let rec arg_spec for_completion =
        Arg.Set_int Flag.FairNonTermination.expand_ce_iter_init,
        " Same as -expand-ce-iter-init"]
   in
+  let toHFLz =
+    "Option for emit HFLz",
+    ["-of-cegar",
+       Arg.Set Flag.ToHFLz.of_cegar,
+       " Convert to HFLz via CEGAR_syntax.t";
+     "-lift-lambda",
+       Arg.Set Flag.ToHFLz.lift_lambda,
+       " Lift lambda expression"
+    ]
+  in
   let tail = "Other options", [] in
   align_spec
     [general;
@@ -316,6 +326,7 @@ let rec arg_spec for_completion =
      termination;
      non_termination;
      fair_non_termination;
+     toHFLz;
      tail]
 
 and print_option_and_exit () =

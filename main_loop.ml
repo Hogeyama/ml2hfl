@@ -78,20 +78,7 @@ let check ?fun_list ?(exparam_sol=[]) spec pp =
 
 let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
   let preprocessed = run_preprocess ?make_pps spec problem in
-  if true then begin
-    let term = Preprocess.get preprocessed in
-    let (defs,t_main), _ = Lift.lift term in
-    let pp_def ppf (f,(xs,body)) =
-      Format.fprintf ppf "@[<2>%a %a =@ %a@]"
-        Print.id f
-        Print.(list id) xs
-        Print.term body
-    in
-    Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs;
-    Debug.eprintf "%a@." Print.term_typ t_main;
-    let hes = HFLz.of_lifted (defs,t_main) in
-    Format.printf "%a" HFLz.Print.hes hes
-  end else begin
+  if !Flag.ToHFLz.of_cegar then begin
     let is_singleton = Exception.not_raise Preprocess.get preprocessed in
     if not is_singleton then unsupported "multiple goal";
     let cegar_prog =
@@ -119,6 +106,19 @@ let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
     let cegar_prog = { cegar_prog with info } in
     let cegar_prog = CEGAR_abst_CPS.expand_non_rec cegar_prog in
     let hes = HFLz.of_cegar cegar_prog in
+    Format.printf "%a" HFLz.Print.hes hes
+  end else begin
+    let term = Preprocess.get preprocessed in
+    let (defs,t_main), _ = Lift.lift term in
+    let pp_def ppf (f,(xs,body)) =
+      Format.fprintf ppf "@[<2>%a %a =@ %a@]"
+        Print.id f
+        Print.(list id) xs
+        Print.term body
+    in
+    Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs;
+    Debug.eprintf "%a@." Print.term_typ t_main;
+    let hes = HFLz.of_lifted (defs,t_main) in
     Format.printf "%a" HFLz.Print.hes hes
   end
 
