@@ -761,7 +761,7 @@ let init_base_rand =
   tr.tr_term <- tr_term;
   tr.tr_term
 
-let rec inlined_f inlined fs t =
+let rec inlined_f fs t =
   let desc =
     match t.desc with
     | Const c -> Const c
@@ -779,22 +779,17 @@ let rec inlined_f inlined fs t =
               (Fun.id, t.typ)
               xs
           in
-          let t' = inlined_f inlined fs t' in
+          let t' = inlined_f fs t' in
           (f t').desc
         else
           Var y
-    | Fun(y, t1) -> Fun(y, inlined_f inlined fs t1)
+    | Fun(y, t1) -> Fun(y, inlined_f fs t1)
     | App(t1, ts) ->
         (match t1.desc with
          | Var f when List.exists (Triple.fst |- Id.same f) fs ->
              let (f, xs, t) = try List.find (Triple.fst |- Id.same f) fs with Not_found -> assert false in
-             let ts = List.map (inlined_f inlined fs) ts in
-             let ys = List.map (fun t ->
-                     match t.desc with
-                     | Const (Unit | True | False | Int _) | Var _ | _ -> `L(t)
-                     | _ -> `R(Id.new_var ~name:"arg" t.typ)
-               ) ts
-             in
+             let ts = List.map (inlined_f fs) ts in
+             let ys = List.map (fun t -> `L(t)) ts in
              let ys1, ys2 = if List.length ys <= List.length xs then ys, [] else List.split_nth (List.length xs) ys in
              let xs1, xs2 = List.split_nth (List.length ys1) xs in
              let map = List.map2 (fun x y -> match y with `L(t) -> x, t | `R(y) -> x, make_var y) xs1 ys1 in
@@ -808,11 +803,11 @@ let rec inlined_f inlined fs t =
              let bindings = List.filter_map2 (fun y t -> match y with `L(_) -> None | `R(y) -> Some(y, t)) ys ts in
              (make_lets bindings (make_app (f t') (List.map (fun y -> match y with `L(t) -> t | `R(y) -> make_var y) ys2))).desc
          | _ ->
-             let t1' = inlined_f inlined fs t1 in
-             let ts' = List.map (inlined_f inlined fs) ts in
+             let t1' = inlined_f fs t1 in
+             let ts' = List.map (inlined_f fs) ts in
              App(t1', ts'))
-    | If(t1, t2, t3) -> If(inlined_f inlined fs t1, inlined_f inlined fs t2, inlined_f inlined fs t3)
-    | Local(Decl_type decls, t2) -> Local(Decl_type decls, inlined_f inlined fs t2)
+    | If(t1, t2, t3) -> If(inlined_f fs t1, inlined_f fs t2, inlined_f fs t3)
+    | Local(Decl_type decls, t2) -> Local(Decl_type decls, inlined_f fs t2)
     | Local(Decl_let bindings, t2) ->
         let module IdSet = Set.Make(ID) in
         let ids = List.map fst bindings
@@ -820,7 +815,7 @@ let rec inlined_f inlined fs t =
                 |> IdSet.of_list
         in
         let aux (f,t) =
-          let t = inlined_f inlined fs t in
+          let t = inlined_f fs t in
           let fvs = get_fv t
                   (* |@> Format.printf "FVS of %a: %a@." Print.id f Print.(list id) *)
                   |> IdSet.of_list in
@@ -833,33 +828,33 @@ let rec inlined_f inlined fs t =
           end
         in
         let bindings', fs' = List.partition_map aux bindings in
-        let t2' = inlined_f inlined (fs @ fs') t2 in
+        let t2' = inlined_f (fs @ fs') t2 in
         if bindings' = [] then
           t2'.desc
         else
           Local(Decl_let bindings', t2')
-    | BinOp(op, t1, t2) -> BinOp(op, inlined_f inlined fs t1, inlined_f inlined fs t2)
-    | Not t1 -> Not (inlined_f inlined fs t1)
+    | BinOp(op, t1, t2) -> BinOp(op, inlined_f fs t1, inlined_f fs t2)
+    | Not t1 -> Not (inlined_f fs t1)
     | Event(s,b) -> Event(s,b)
-    | Record fields ->  Record (List.map (Pair.map_snd @@ inlined_f inlined fs) fields)
-    | Field(t1,s) -> Field(inlined_f inlined fs t1,s)
-    | SetField(t1,s,t2) -> SetField(inlined_f inlined fs t1,s,inlined_f inlined fs t2)
+    | Record fields ->  Record (List.map (Pair.map_snd @@ inlined_f fs) fields)
+    | Field(t1,s) -> Field(inlined_f fs t1,s)
+    | SetField(t1,s,t2) -> SetField(inlined_f fs t1,s,inlined_f fs t2)
     | Nil -> Nil
-    | Cons(t1,t2) -> Cons(inlined_f inlined fs t1, inlined_f inlined fs t2)
-    | Constr(s,ts) -> Constr(s, List.map (inlined_f inlined fs) ts)
+    | Cons(t1,t2) -> Cons(inlined_f fs t1, inlined_f fs t2)
+    | Constr(s,ts) -> Constr(s, List.map (inlined_f fs) ts)
     | Match(t1,pats) ->
-        let aux (pat,t1) = pat, inlined_f inlined fs t1 in
-        Match(inlined_f inlined fs t1, List.map aux pats)
-    | Raise t -> Raise (inlined_f inlined fs t)
-    | TryWith(t1,t2) -> TryWith(inlined_f inlined fs t1, inlined_f inlined fs t2)
-    | Tuple ts -> Tuple (List.map (inlined_f inlined fs) ts)
-    | Proj(i,t) -> Proj(i, inlined_f inlined fs t)
+        let aux (pat,t1) = pat, inlined_f fs t1 in
+        Match(inlined_f fs t1, List.map aux pats)
+    | Raise t -> Raise (inlined_f fs t)
+    | TryWith(t1,t2) -> TryWith(inlined_f fs t1, inlined_f fs t2)
+    | Tuple ts -> Tuple (List.map (inlined_f fs) ts)
+    | Proj(i,t) -> Proj(i, inlined_f fs t)
     | Bottom -> Bottom
     | _ -> Format.eprintf "inlined_f: %a@." Print.constr t; assert false
   in
   {t with desc}
 
-let inlined_f inlined t = inlined_f inlined [] t |@> Type_check.check
+let inlined_f ?(defs=[]) t = inlined_f defs t |@> Type_check.check
 
 
 
