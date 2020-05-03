@@ -87,9 +87,9 @@ module OfCEGAR = struct (*{{{*)
           | Bool true , y, _ -> y
           | Bool false, _, z -> z
           | x, Bool true, z  -> Op (Or, x , z)
-          | x, Bool false, z -> Op (And, negate x, z)
+          (* | x, Bool false, z -> Op (And, negate x, z) *)
           | x, y, Bool true  -> Op (Or, negate x, y)
-          | x, y, Bool false -> Op (And, x, y)
+          (* | x, y, Bool false -> Op (And, x, y) *)
           | x,y,z -> Op (And, (Op (Or, negate x, y))
                             , (Op (Or, x       , z)))
           end
