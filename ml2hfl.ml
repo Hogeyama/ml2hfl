@@ -118,6 +118,11 @@ let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
     in
     Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs;
     Debug.eprintf "%a@." Print.term_typ t_main;
+    Debug.eprintf "--@.";
+    let defs,t_main = Inline.inline (defs,t_main) in
+    Debug.eprintf "--@.";
+    Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs;
+    Debug.eprintf "%a@." Print.term_typ t_main;
     let hes = HFLz.of_lifted (defs,t_main) in
     Format.printf "%a" HFLz.Print.hes hes
   end

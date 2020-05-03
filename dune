@@ -5,6 +5,7 @@
     fmt
     str
     unix
+    core
     yojson
     batteries
     compiler-libs.common
