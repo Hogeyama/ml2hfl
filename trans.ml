@@ -3875,6 +3875,9 @@ let remove_not =
 
 (* XXX Bad practice *)
 let negate_bool_pairs : (string, string) BatHashtbl.t = BatHashtbl.create 100
+let pp_negate_bool_pairs ppf () =
+  let pp_pair ppf (s1,s2) = Fmt.pf ppf "(%s,%s)" s1 s2 in
+  Fmt.pf ppf "@[<v>%a@]" (Fmt.list pp_pair) (BatHashtbl.to_list negate_bool_pairs)
 
 module Remove_pair = struct (* specialization of curry.ml *)
     type 'a tree = Leaf of 'a | Pair of 'a * 'a
@@ -3944,8 +3947,8 @@ module Remove_pair = struct (* specialization of curry.ml *)
                  |>Id.add_name_after "_pos" in
           let x2 = Id.set_typ x (TBase TBool)
                  |>Id.add_name_after "_neg" in
-          BatHashtbl.add negate_bool_pairs (Id.to_string x1) (Id.to_string x2);
-          BatHashtbl.add negate_bool_pairs (Id.to_string x2) (Id.to_string x1);
+          BatHashtbl.replace negate_bool_pairs (Id.to_string x1) (Id.to_string x2);
+          BatHashtbl.replace negate_bool_pairs (Id.to_string x2) (Id.to_string x1);
           Pair (x1,x2)
       | Leaf typ ->
           Leaf (Id.set_typ x typ)

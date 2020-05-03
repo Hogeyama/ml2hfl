@@ -101,7 +101,10 @@ let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
             snd @@ CEGAR_abst_util.add_label cegar_prog
         else
           cegar_prog.info.non_rec
-      in { cegar_prog.info with non_rec }
+      in
+      let non_rec_vars : string list = List.map fst non_rec in
+      Debug.eprintf "non_rec: %a@." Print.(list string) non_rec_vars;
+      { cegar_prog.info with non_rec }
     in
     let cegar_prog = { cegar_prog with info } in
     let cegar_prog = CEGAR_abst_CPS.expand_non_rec cegar_prog in
