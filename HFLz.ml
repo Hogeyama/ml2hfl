@@ -224,6 +224,7 @@ module OfLifted = struct (*{{{*)
           | NonTermination -> Bool false
           end
       | Const Int n -> Int n
+      | Not x -> negate (aux x)
       | BinOp (Eq  , x, y) -> Op (Eq , aux x, aux y)
       | BinOp (Neq , x, y) -> Op (Neq, aux x, aux y)
       | BinOp (Lt  , x, y) -> Op (Lt , aux x, aux y)
