@@ -809,23 +809,8 @@ let rec inlined_f fs t =
     | If(t1, t2, t3) -> If(inlined_f fs t1, inlined_f fs t2, inlined_f fs t3)
     | Local(Decl_type decls, t2) -> Local(Decl_type decls, inlined_f fs t2)
     | Local(Decl_let bindings, t2) ->
-        let module IdSet = Set.Make(ID) in
-        let ids = List.map fst bindings
-                (* |@> Format.printf "IDS: %a@." Print.(list id) *)
-                |> IdSet.of_list
-        in
         let aux (f,t) =
-          let t = inlined_f fs t in
-          let fvs = get_fv t
-                  (* |@> Format.printf "FVS of %a: %a@." Print.id f Print.(list id) *)
-                  |> IdSet.of_list in
-          if IdSet.(is_empty (inter ids fvs)) then begin
-            (* Format.printf "%a is inlineable@." Print.id f; *)
-            let xs, body = decomp_funs t in
-            `R(f, xs, body)
-          end else begin
-            `L(f, t)
-          end
+          `L(f, inlined_f fs t)
         in
         let bindings', fs' = List.partition_map aux bindings in
         let t2' = inlined_f (fs @ fs') t2 in
