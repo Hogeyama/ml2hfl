@@ -102,8 +102,8 @@ let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
         else
           cegar_prog.info.non_rec
       in
-      let non_rec_vars : string list = List.map fst non_rec in
-      Debug.eprintf "non_rec: %a@." Print.(list string) non_rec_vars;
+      (* let non_rec_vars : string list = List.map fst non_rec in *)
+      (* Debug.eprintf "non_rec: %a@." Print.(list string) non_rec_vars; *)
       { cegar_prog.info with non_rec }
     in
     let cegar_prog = { cegar_prog with info } in
@@ -113,29 +113,36 @@ let rec run ?make_pps ?fun_list ?exparam_sol spec problem =
   end else begin
     let term = Preprocess.get preprocessed in
     let (defs,t_main), _ = Lift.lift term in
-    let pp_def ppf (f,(xs,body)) =
-      Format.fprintf ppf "@[<2>%a %a =@ %a@]"
-        Print.id f
-        Print.(list id) xs
-        Print.term body
-    in
-    Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs;
-    Debug.eprintf "%a@." Print.term_typ t_main;
-    Debug.eprintf "--@.";
+    (* let pp_def ppf (f,(xs,body)) = *)
+    (*   Format.fprintf ppf "@[<2>%a %a =@ %a@]" *)
+    (*     Print.id f *)
+    (*     Print.(list id) xs *)
+    (*     Print.term body *)
+    (* in *)
+    (* Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs; *)
+    (* Debug.eprintf "%a@." Print.term_typ t_main; *)
     let defs,t_main = Inline.inline (defs,t_main) in
-    Debug.eprintf "--@.";
-    Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs;
-    Debug.eprintf "%a@." Print.term_typ t_main;
+    (* Debug.eprintf "@[<v>%a@]@." (Fmt.list pp_def) defs; *)
+    (* Debug.eprintf "%a@." Print.term_typ t_main; *)
     let hes = HFLz.of_lifted (defs,t_main) in
     Format.printf "%a" HFLz.Print.hes hes
   end
 
-(* TODO CEGAR_syntax.prog -> HFL -> string *)
 let main filenames =
-  (* origにはdirectiveと型定義が入っている．今回は無視してよい *)
   let _orig, parsed = Parser_wrapper.parse_files !Flag.Input.filenames in
   let problem = Problem.safety parsed in
-  run Spec.init problem
+  try
+    run Spec.init problem
+  with HFLz.CannotNegate ->
+    if !Flag.ToHFLz.failover_remove_not then begin
+      Debug.eprintf "Exception CannotNegate raised. Retry with -remove-not@.";
+      Flag.Method.remove_not := true;
+      run Spec.init problem
+    end else begin
+      Format.eprintf "Failure: cannot negate@.";
+      exit 1
+    end
+
 
 let () =
   Cmd.parse_arg ();

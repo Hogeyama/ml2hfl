@@ -35,6 +35,7 @@ type rule = { fn : var; args: var list; body : hflz }
 type hes = rule list
   [@@deriving show]
 
+exception CannotNegate
 
 module OfCEGAR = struct (*{{{*)
   type target = Reachability | NonTermination
@@ -54,10 +55,8 @@ module OfCEGAR = struct (*{{{*)
     | Op (And, x, y) -> Op (Or , negate x, negate y)
     | Op (Or , x, y) -> Op (And, negate x, negate y)
     | t ->
-        Format.eprintf "Cannot negate %a@." pp_hflz t;
-        failwith "negate"
-
-
+        Debug.eprintf "Cannot negate %a@." pp_hflz t;
+        raise CannotNegate
 
   let rec term ~target ~toplevel : CEGAR_syntax.t -> hflz =
     let rec aux : CEGAR_syntax.t -> hflz = fun t ->
@@ -193,8 +192,8 @@ module OfLifted = struct (*{{{*)
     | Op (And, x, y) -> Op (Or , negate x, negate y)
     | Op (Or , x, y) -> Op (And, negate x, negate y)
     | t ->
-        Format.eprintf "Cannot negate %a@." pp_hflz t;
-        failwith "negate"
+        Debug.eprintf "Cannot negate %a@." pp_hflz t;
+        raise CannotNegate
 
   let rec const ~target : Syntax.const -> hflz = function
     | Unit -> Bool true

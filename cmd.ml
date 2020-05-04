@@ -103,7 +103,7 @@ let rec arg_spec for_completion =
      "-make-ext-fun-before-encode", Arg.Clear Flag.Method.encode_before_make_ext_fun, " Make external functions before encode";
      "-no-slice", Arg.Clear Flag.Method.slice, " Do not slice";
      "-slice-exp", Arg.Set_float Flag.Method.slice_sub, " Do not slice";
-     "-no-remove-not", Arg.Clear Flag.Method.remove_not, " Do not remove not";
+     "-remove-not", Arg.Set Flag.Method.remove_not, " Remove not";
      "-recdata",
        Arg.Int (fun n ->
            let open Flag.Encode.RecData in
@@ -300,6 +300,9 @@ let rec arg_spec for_completion =
     ["-of-cegar",
        Arg.Set Flag.ToHFLz.of_cegar,
        " Convert to HFLz via CEGAR_syntax.t";
+     "-no-failover-remove-not",
+       Arg.Clear Flag.ToHFLz.failover_remove_not,
+       " Do not rerun with -remove-not even if failed";
     ]
   in
   let tail = "Other options", [] in

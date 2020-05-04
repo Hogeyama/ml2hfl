@@ -75,7 +75,7 @@ module Method = struct
   let slice_num = ref 10
   let sub = ref false
   let target = ref ""
-  let remove_not = ref true
+  let remove_not = ref false
 end
 
 module Encode = struct
@@ -284,6 +284,7 @@ end
 
 module ToHFLz = struct
   let of_cegar = ref false
+  let failover_remove_not = ref true
 end
 
 module Debug = struct
