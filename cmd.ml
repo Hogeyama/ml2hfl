@@ -300,9 +300,6 @@ let rec arg_spec for_completion =
     ["-of-cegar",
        Arg.Set Flag.ToHFLz.of_cegar,
        " Convert to HFLz via CEGAR_syntax.t";
-     "-lift-lambda",
-       Arg.Set Flag.ToHFLz.lift_lambda,
-       " Lift lambda expression"
     ]
   in
   let tail = "Other options", [] in
