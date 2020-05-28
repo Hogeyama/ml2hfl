@@ -40,7 +40,7 @@ exception CannotNegate
 module OfCEGAR = struct (*{{{*)
   type target = Reachability | NonTermination
   let mk_var ~toplevel s =
-    let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'") s in
+    let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'|\\.") s in
     if List.mem s toplevel
     then V (String.uppercase_ascii s)
     else V s
@@ -174,7 +174,7 @@ module OfLifted = struct (*{{{*)
   type target = Reachability | NonTermination
 
   let var ~toplevel v =
-    let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'") (Id.to_string v) in
+    let s = Re2.replace_exn ~f:(fun _ -> "_") (Re2.create_exn "'|\\.") (Id.to_string v) in
     if List.mem s toplevel
     then V (String.uppercase_ascii s)
     else V s
@@ -212,7 +212,9 @@ module OfLifted = struct (*{{{*)
   let term ~toplevel ~target : term -> hflz =
     let rec aux = fun (t : term) ->
       match t.desc with
+      (* variables *)
       | Var v -> Var (var ~toplevel v)
+      (* constants *)
       | Bottom -> Bool true
       | Const Unit -> Bool true
       | Const True -> Bool true
@@ -223,19 +225,44 @@ module OfLifted = struct (*{{{*)
           | NonTermination -> Bool false
           end
       | Const Int n -> Int n
+      (* negation *)
       | Not x -> negate (aux x)
+      (* equality on booleans *)
+      | BinOp (Eq  , x, {desc=Const True }) -> aux x
+      | BinOp (Eq  , x, {desc=Const False}) -> negate (aux x)
+      | BinOp (Eq  , {desc=Const True }, x) -> aux x
+      | BinOp (Eq  , {desc=Const False}, x) -> negate (aux x)
+      | BinOp (Neq , x, {desc=Const True }) -> negate (aux x)
+      | BinOp (Neq , x, {desc=Const False}) -> aux x
+      | BinOp (Neq , {desc=Const True }, x) -> negate (aux x)
+      | BinOp (Neq , {desc=Const False}, x) -> aux x
+      | BinOp (Eq  , ({typ=TBase TBool} as x), y) ->
+          let x = aux x in
+          let y = aux y in
+          Op (Or, (Op (And, x, y))
+                , (Op (And, negate x, negate y)))
+      | BinOp (Neq , ({typ=TBase TBool} as x), y) ->
+          let x = aux x in
+          let y = aux y in
+          Op (Or, (Op (And, negate x, y))
+                , (Op (And, x, negate y)))
+      (* equality on integers *)
       | BinOp (Eq  , x, y) -> Op (Eq , aux x, aux y)
       | BinOp (Neq , x, y) -> Op (Neq, aux x, aux y)
+      (* comparison on integer *)
       | BinOp (Lt  , x, y) -> Op (Lt , aux x, aux y)
       | BinOp (Gt  , x, y) -> Op (Gt , aux x, aux y)
       | BinOp (Leq , x, y) -> Op (Leq, aux x, aux y)
       | BinOp (Geq , x, y) -> Op (Geq, aux x, aux y)
+      (* logical operations *)
       | BinOp (And , x, y) -> Op (And, aux x, aux y)
       | BinOp (Or  , x, y) -> Op (Or , aux x, aux y)
+      (* arithmetic operations *)
       | BinOp (Add , x, y) -> Op (Add, aux x, aux y)
       | BinOp (Sub , x, y) -> Op (Sub, aux x, aux y)
       | BinOp (Mult, x, y) -> Op (Mul, aux x, aux y)
       | BinOp (Div , x, y) -> Op (Div, aux x, aux y)
+      (* other syntax *)
       | Fun (f,x) -> Abs (var ~toplevel f, aux x)
       | If (x,y,z) -> (* (not x \/ y) /\ (x \/ z) *)
           begin match aux x, aux y, aux z with
