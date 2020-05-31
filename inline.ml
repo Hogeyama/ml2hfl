@@ -52,19 +52,16 @@ module Scc = struct
             g3, x::r3
       end
 
-  let rec rdfs : ?before:(id->unit) -> ?after:(id->unit)
-              -> graph -> id -> id list -> graph * id list =
-    fun ?(before = Fn.const()) ?(after = Fn.const()) g v ls ->
-      before v;
+  let rec rdfs : graph -> id -> id list -> graph * id list =
+    fun g v ls ->
       let ret =
         match Map.find g v with
         | None   -> g, ls
         | Some s ->
             Set.fold s ~init:(Map.remove g v, v :: ls) ~f:begin fun (rg,ls) v ->
-              rdfs ~before ~after rg v ls
+              rdfs rg v ls
             end
       in
-      after v;
       ret
 
   let scc g =
@@ -80,15 +77,21 @@ module Scc = struct
     in
     ls
 
-  (* XXX dirty impl *)
-  let rec dfs_post_order g s =
-    let queue = ref [] in
-    let after x =
-      if List.mem !queue x ~equal:Id.same
-      then ()
-      else queue := x :: !queue in
-    let _ = rdfs ~after g s [] in
-    List.rev !queue
+  let dfs_post_order g v =
+    let add x ys =
+      if List.mem ~equal:Id.same ys x then ys else x :: ys
+    in
+    let rec aux g v ls =
+        match Map.find g v with
+        | None -> g, add v ls
+        | Some s ->
+            let g, ls =
+              Set.fold s ~init:(Map.remove g v, ls) ~f:begin fun (rg,ls) v ->
+                aux rg v ls
+              end
+            in g, add v ls
+    in
+    List.rev @@ snd @@ aux g v []
 
 end
 module IdSet = Scc.Set
